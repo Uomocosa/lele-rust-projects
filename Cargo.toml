@@ -1,0 +1,18 @@
+[package]
+name = "project_to_rename"
+version = "0.0.1"
+edition = "2024" # latest possible edition, depending on the libraries used
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+
+[dev-dependencies]
+
+[[example]]
+# name = "todo"
+# path = "unruled_examples/todo.rs"
+
+[lints.rust]
+non_snake_case = "allow"
