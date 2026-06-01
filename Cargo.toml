@@ -1,18 +1,26 @@
 [package]
-name = "project_to_rename"
-version = "0.0.1"
-edition = "2024" # latest possible edition, depending on the libraries used
+name = "bevy_freenet"
+version = "0.1.0"
+edition = "2024"
 
 [lib]
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
+bevy = "0.18"
+freenet = "0.2.68"
+libp2p = { version = "0.56", features = [
+    "tcp", "noise", "yamux", "tokio", "dns", "ping",
+    "request-response", "identify",
+] }
+tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread"] }
+thiserror = "2"
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+futures = "0.3"
 
 [dev-dependencies]
-
-[[example]]
-# name = "todo"
-# path = "unruled_examples/todo.rs"
 
 [lints.rust]
 non_snake_case = "allow"
