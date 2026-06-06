@@ -2,5 +2,10 @@
   "$schema": "https://opencode.ai/config.json",
   "instructions": [
     ".agents/skills/project-conventions/SKILL.md"
-  ]
+  ],
+  "permission": {
+    "external_directory": {
+      "/**": "allow"
+    }
+  }
 }

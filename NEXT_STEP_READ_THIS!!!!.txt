@@ -1,0 +1,26 @@
+We need to split the OBJECTIVE.md into many different rust projects
+Each project should have its own contract
+1st project THE SIMPLEST POSSIBLE freenet "app" to show how we can use freenet.
+2nd project try to use libp2p in freenet (ping)
+3rd project create the bevy+libp2+freeent integration.
+
+We have to start from the 1st project.
+First we need to chagne the folder structure:
+.agents
+.git
+.zed
+.gitginre
+AGENTS.md
+opencode.json
+freenet_example/
+	OBJECTIVE.md
+	cargo.toml
+	...
+freenet_libp2p_example/
+	OBJECTIVE.md
+	cargo.toml
+	...
+freenet_libp2p_bevy_example/
+	OBJECTIVE.md
+	cargo.toml
+	...
