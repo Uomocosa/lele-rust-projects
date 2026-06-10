@@ -5,7 +5,16 @@ description: Audit all agent skills in .agents/skills/ for clarity, consistency,
 
 ## Instructions
 
-Load every skill from the `<available_skills>` catalog. For each skill's SKILL.md, evaluate it against the following dimensions:
+Load every skill from the `<available_skills>` catalog.
+
+### Staleness Guard
+
+The `skill` tool may return stale cached content. After loading each skill:
+1. Note the skill file paths from `<skill_files>` in the `skill` tool output.
+2. Use the `read` tool to load each skill's `.md` file directly from disk.
+3. If content differs, the on-disk version is authoritative. Base all `file:line` references on the `read` output, not the `skill` tool output.
+
+For each skill's SKILL.md, evaluate it against the following dimensions:
 
 ### 1. Self-Consistency
 

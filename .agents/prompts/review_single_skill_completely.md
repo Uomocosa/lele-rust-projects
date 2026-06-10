@@ -7,6 +7,13 @@ description: Review a single named skill against all 7 dimensions
 
 Load the skill named `<skill-name>` from the `<available_skills>` catalog.
 
+### Staleness Guard
+
+The `skill` tool may return stale cached content. After loading the skill:
+1. Note the skill file paths from `<skill_files>` in the `skill` tool output.
+2. Use the `read` tool to load the skill's `.md` file directly from disk.
+3. If content differs, the on-disk version is authoritative. Base all `file:line` references on the `read` output, not the `skill` tool output.
+
 **PROPOSED SOLUTIONS MUST NOT CONTRADICT ANY LOADED SKILL.** If a fix for this skill would create a contradiction with another skill in the catalog, flag the conflict instead of applying the fix.
 
 Review the skill against ALL of the following dimensions:
@@ -59,7 +66,7 @@ Report each issue as:
   Suggestion: <concrete fix or clarification>
 ```
 
-Prepend each issue with its dimension number (e.g., `4 — Section 2` for a completeness issue in Section 2). Use section headers or rule numbers as location identifiers. `file:line` is not available when loading via the `skill` tool.
+Prepend each issue with its dimension number (e.g., `4 — Section 2` for a completeness issue in Section 2). Use section headers or rule numbers as location identifiers. `file:line` IS available from the on-disk read (see Staleness Guard).
 
 If no issues found: `[SKILL: <skill-name>] ✓ No issues found across all dimensions.`
 
