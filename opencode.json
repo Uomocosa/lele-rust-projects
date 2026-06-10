@@ -1,11 +1,26 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "model": "opencode-go/deepseek-v4-flash",
   "instructions": [
     ".agents/skills/project-conventions/SKILL.md"
   ],
   "permission": {
     "external_directory": {
       "/**": "allow"
+    }
+  },
+  "provider": {
+    "opencode-go": {
+      "models": {
+        "deepseek-v4-flash": {
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        }
+      }
     }
   }
 }
