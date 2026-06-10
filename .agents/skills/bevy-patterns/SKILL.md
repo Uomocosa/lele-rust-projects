@@ -16,12 +16,12 @@ Bevy engine patterns for Rust projects that depend on `bevy`. This skill may ove
 Separate the Plugin struct definition from its `impl Plugin for ...` trait implementation. The trait impl in `StructName.rs` is a thin delegate calling a free function in `{Type}Method/` per the atomic file structure rule:
 
 ```
-P2pPlugin.rs                # struct P2pPlugin { ... } — definition only
-                            # + impl Plugin for P2pPlugin { fn build(...) {
-                            #     P2pPluginMethod::build(self, app) } }
-P2pPluginMethod/
+Plugin.rs                # struct Plugin { ... } — definition only
+                            # + impl Plugin for Plugin { fn build(...) {
+                            #     PluginMethod::build(self, app) } }
+PluginMethod/
   mod.rs                    # pub mod declarations + pub use flattening
-  build.rs                  # pub fn build(plugin: &P2pPlugin, app: &mut App)
+  build.rs                  # pub fn build(plugin: &Plugin, app: &mut App)
 ```
 
 - The function file inside `{Type}Method/` follows snake_case naming — e.g., `build.rs` for `fn build()`.
@@ -91,13 +91,15 @@ pub fn poll_network(
 ) { ... }
 ```
 
+The `p2p::Event` type in the system signature refers to the `Event` enum defined in Section 1 (in `Event.rs` using `#[derive(Message)]`).
+
 ### System Registration
 
 Register systems with `app.add_systems()`:
 
 ```rust
-// P2pPluginMethod/build.rs
-pub fn build(plugin: &P2pPlugin, app: &mut App) {
+// PluginMethod/build.rs
+pub fn build(plugin: &Plugin, app: &mut App) {
     app.init_resource::<Tick>()
        .init_resource::<NetworkState>()
        .insert_resource(Session::new(...))
@@ -221,20 +223,7 @@ app.add_plugins((
 
 ## 6. Internal Subfolder Convention
 
-Every top-level module MUST follow this internal structure when its corresponding types exist:
-
-```
-{module}/
-  component/         — #[derive(Component)] types (omit if module has none)
-  resource/          — #[derive(Resource)] types (omit if module has none)
-  system/            — Bevy system functions
-  {Type}Method/      — free functions for methods and trait impls (per atomic file structure rule)
-  (flat files)       — plain structs, enums, free functions, error types
-```
-
-Only create `component/` or `resource/` directories when they contain at least one type. Empty directories clutter the tree and serve no purpose. If a module has no component or resource types, do not declare the submodule in `mod.rs`.
-
-`{Type}Method/` directories live alongside their type file, whether that file is in `component/`, `resource/`, or the module root.
+Every top-level module MUST follow the project-conventions atomic file structure. `{Type}Method/` directories live alongside their type file — if the type is at the module root, `{Type}Method/` is at the module root; if the type is in `component/` or `resource/`, `{Type}Method/` is inside that subdirectory alongside the type file. Only create `component/` or `resource/` subdirectories when they contain at least one type (empty directories clutter the tree). If a module has no component or resource types, do not declare the submodule in `mod.rs`.
 
 ```
 // Example: p2p module layout

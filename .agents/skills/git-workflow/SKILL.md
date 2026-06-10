@@ -26,6 +26,8 @@ Use **Conventional Commits** format:
 [optional footer]
 ```
 
+> **Note:** The body is marked as optional per the Conventional Commits spec, but always prefer writing a body that explains *why* the change was made. See the safeguards in Section 9.
+
 ### Types
 
 | Type | When to use |
@@ -181,7 +183,7 @@ When a rebase or merge produces conflicts:
    - Understand both sides — what does each version intend?
    - Choose one side, or write a combined version
    - **Remove the conflict markers** (`<<<<<<<`, `=======`, `>>>>>>>`)
-   - Verify the result compiles: `cargo build`
+   - Verify the result compiles: `cargo build --all-targets`
 
 4. **Stage and continue:**
    ```bash

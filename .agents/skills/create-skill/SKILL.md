@@ -56,7 +56,7 @@ Before writing any file, design the skill to be **project-agnostic**:
 
 ```
 skill-name/
-  SKILL.md            # YAML frontmatter + instructions (max 500 lines)
+  SKILL.md            # YAML frontmatter + instructions (aim for ≤500 lines; may exceed when cross-references prevent splitting)
   references/         # Detailed docs, test prompts, edge cases
     REFERENCE.md
     test-prompts.md
@@ -73,6 +73,7 @@ Create the `SKILL.md` with:
 name: skill-name            # lowercase, hyphens, 1-64 chars
 description: |              # 1-1024 chars, must trigger correctly
   Use when... [trigger conditions]. Works with any Rust project.
+# disable-model-invocation: true   # uncomment for destructive/high-risk skills
 license: Apache-2.0         # optional
 metadata:
   author: project-name
@@ -93,9 +94,7 @@ Check every rule:
 |-------|-----|
 | Name valid? | Lowercase, hyphens, 1-64 chars, matches directory name |
 | Description triggers? | Read it cold — would an agent load this for the right task? |
-| Zero project references? | `grep -i "project_name\|src/"` — must return nothing.
-                         Also grep for `\{\{` — any remaining unreplaced
-                         template variables are a warning. |
+| Zero project references? | `grep -i "project_name\|src/"` — must return nothing. |
 | Cross-refs clean? | Search for `see Rule`, `see section`, `as described in`. If present, do NOT split. If absent AND >500 lines, split reference material. |
 | Under 500 lines? | `Measure-Object -Line` on SKILL.md. Ignore if cross-references exist. |
 | Reusable in other Rust project? | Would this work if copied to a different Rust repo unchanged? |

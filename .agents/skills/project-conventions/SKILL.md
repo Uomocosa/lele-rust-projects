@@ -16,6 +16,7 @@ All examples use template variables to remain project-agnostic:
 | `{{type}}` | snake_case type name (lowercase of `{{Type}}`) | `config`, `credentials` |
 | `{{function}}` | snake_case function name | `authenticate`, `broadcast` |
 | `{{submodule}}` | Subdirectory name | `system`, `component`, `resource` |
+| `{{project_name}}` | Project name (snake_case or kebab-case) | `bevy_p2p`, `my_project` |
 
 Replace these with actual names from your project. Never use template variables literally in code — the compiler will reject them.
 
@@ -35,7 +36,7 @@ Every file must contain exactly **one** primary logic unit (one function, one st
   **Structure:**
   - `StructName.rs` — struct definition **plus `impl TypeName { pub const ... }` blocks (associated constants, real bodies)** plus **`impl Default` (if any, real body)** plus ALL other `impl` blocks (inherent and trait) as **thin delegates** (one-line call to `TypeNameMethod::function_name()`). No method bodies, no business logic, no tests.
 
-  > **Why `impl Default` is an exception:** `Default` is uniformly trivial (one-liner constructor or literal fields), exempt from testing as a trivial method (Rule 8), and extracting it into `DefaultMethod/default.rs` would add a file for no architectural benefit. This exception is pragmatic and does not extend to any other trait or inherent impl.
+  > **Why `impl Default` is an exception:** `Default` is uniformly trivial (one-liner constructor or literal fields), exempt from testing as a trivial method (Rule 8), and `StructName.rs` with only `impl Default` + thin delegates is exempt from the struct-level `test_usage` requirement (Rule 8). Extracting `Default` into `DefaultMethod/default.rs` would add a file for no architectural benefit. This exception is pragmatic and does not extend to any other trait or inherent impl.
 
   > **`#[rustfmt::skip]` on thin delegate impl blocks:** rustfmt expands single-line function bodies to three lines by default. To preserve the one-liner thin delegates, annotate every thin delegate `impl` block with `#[rustfmt::skip]`. The `impl Default` block (which has a real body) is NOT skipped — only the delegate-only impl blocks. See the example below.
   - `StructNameMethod/` — each public method and each trait method gets its own file with a **free function** whose name matches the method exactly. The body and inline test live here.
@@ -71,13 +72,13 @@ Every file must contain exactly **one** primary logic unit (one function, one st
   **`*Method/` free function naming — MUST match the method:**
   The function name in `*Method/*.rs` MUST be identical to the method name (including trait methods like `fmt`). The `*Method/` module path provides disambiguation — `ConfigMethod::fmt` is unambiguous. In test modules, use `use super::fmt as display_fmt;` if the standard `fmt` module is also needed.
 
-**Directory module declarations — PascalCase directly (no `#[path]`):**
-Because `non_snake_case` is allowed at the crate level, directory modules (directories, not `.rs` files) use PascalCase directly with no `#[path]`:
+**`{Type}Method/` directories — PascalCase directly (no `#[path]`):**
+Because `non_snake_case` is allowed at the crate level, directory modules (directories, not `.rs` files) can use their natural name with no `#[path]`:
   ```rust
   // p2p/mod.rs — no #[path], no snake_case alias
   pub mod ConfigMethod;   // resolves to ConfigMethod/mod.rs
   ```
-  Only `.rs` files where filename == struct name need `#[path]` (see section below). Directory modules have no type-namespace collision and require no `#[path]` — use PascalCase directly.
+  Only `.rs` files where filename == struct name need `#[path]` (see section below). Directory modules have no type-namespace collision and require no `#[path]`. Use PascalCase for `{Type}Method/` directories (matching the type name); use snake_case for categorization directories (`component/`, `resource/`, `system/`).
 
   **Benefits of this decomposition:**
   - `StructName.rs` shows every public method signature at a glance — the complete API surface without scrolling through bodies.
@@ -106,7 +107,7 @@ With that allow in place, `pub mod Credentials;` resolves to `Credentials.rs`. H
 **Naming rules:**
 - Struct and enum names MUST be PascalCase (e.g., `Config`, `Event`, `PeerState`).
 - Function names MUST be snake_case (e.g., `get_game_topic`, `poll_network`).
-- Module names MUST be snake_case. For `.rs` files containing PascalCase types, use the snake_case version of the type name as the module alias (e.g., `config` for `Config`, `event` for `Event`). Since Rust is case-sensitive, a lowercase module `config` and a PascalCase type `Config` are distinct identifiers in the type namespace — no collision occurs. For function files, `pub mod get_game_topic; pub use get_game_topic::get_game_topic;` works because functions are in the value namespace, separate from modules.
+- Module names MUST be snake_case for `.rs` file module declarations (e.g., `pub mod config;` for `Config.rs`, `pub mod authenticate;` for `authenticate.rs`). For `.rs` files containing PascalCase types, use the snake_case version of the type name as the module alias (e.g., `config` for `Config`, `event` for `Event`). Since Rust is case-sensitive, a lowercase module `config` and a PascalCase type `Config` are distinct identifiers in the type namespace — no collision occurs. For function files, `pub mod get_game_topic; pub use get_game_topic::get_game_topic;` works because functions are in the value namespace, separate from modules. Directory modules use their natural name — `{Type}Method/` directories are PascalCase, categorization directories (`component/`, `resource/`, `system/`) are snake_case. See "Directory module declarations" above.
 
 ```rust
 // p2p/mod.rs — correct patterns
@@ -118,10 +119,10 @@ pub use config::Config;
 pub mod swarm;
 pub use swarm::Swarm;
 
-// Directories — no #[path], PascalCase directly:
-pub mod ConfigMethod;
-pub mod resource;
-pub mod system;
+// Directories — no #[path], name matches path on disk:
+pub mod ConfigMethod;   // PascalCase: {Type}Method/ directory
+pub mod resource;       // snake_case: categorization directory
+pub mod system;         // snake_case: categorization directory
 ```
 
 ### Constants
@@ -133,14 +134,14 @@ Constants follow different rules depending on their nature. This section is an a
 A constant whose value is exclusively meaningful in the context of a **single** struct type MUST be defined as an associated constant inside that struct's `impl TypeName` block in `StructName.rs`:
 
 ```rust
-// GossipTopic.rs
-pub struct GossipTopic(pub libp2p::gossipsub::IdentTopic);
+// {{Type}}.rs
+pub struct {{Type}} { pub inner: libp2p::gossipsub::IdentTopic }
 
-impl GossipTopic {
-    pub const GAME_TOPIC_STR: &str = "bevy_p2p_game";
+impl {{Type}} {
+    pub const GAME_TOPIC_STR: &str = "{{project_name}}_p2p_game";
 }
 
-impl Default for GossipTopic {
+impl Default for {{Type}} {
     fn default() -> Self { Self::new() }
 }
 ```
@@ -151,7 +152,7 @@ impl Default for GossipTopic {
 3. `impl Default` — real body (existing exception)
 4. All other `impl` blocks — thin delegates to `TypeNameMethod/` (existing rule)
 
-**Consumer path:** `TypeName::CONST` (e.g., `GossipTopic::GAME_TOPIC_STR`)
+**Consumer path:** `TypeName::CONST` (e.g., `{{Type}}::GAME_TOPIC_STR`)
 
 **Criterion — associated vs. module-level:** A constant MUST be an associated constant if **all** of the following hold:
 1. Its value is only meaningful in the context of one specific struct type.
@@ -388,6 +389,8 @@ Every file whose primary item is a non-trivial function (containing branching, a
 3. Assert on an observable outcome.
 
 A test that merely calls constructors without exercising consumer logic (e.g., `let _ = Config::default(); let _ = Config::new();`) is insufficient.
+
+**Exemption — thin-delegate struct files:** A `StructName.rs` whose only non-thin-delegate `impl` block is `impl Default` does not require a `test_usage` test. All business logic lives in `StructNameMethod/` files which carry their own tests; `impl Default` is already exempt as a trivial method.
 
 **Exemption — trivial methods:** One-liner accessor or delegating methods (getters, setters, thin delegation wrappers) with no branching, arithmetic, or I/O do NOT require a `test_usage` test. Their correctness is trivially verified by callers in the integration flow.
 
