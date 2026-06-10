@@ -383,7 +383,7 @@ Every file whose primary item is a non-trivial function (containing branching, a
 
 **Exemption — type-only definitions:** Files whose primary item (struct or enum) has **zero `impl` blocks of any kind** (no `impl TypeName`, no `impl Trait for TypeName`) are pure type definitions and do NOT require a `test_usage` test. Examples: a `thiserror` error enum with no methods, a marker struct, a plain data enum.
 
-**Struct files with hand-written impl blocks — test_usage required:** A `StructName.rs` file that contains any hand-written `impl` block (inherent impls, trait impls, or `impl Default`) is a **non-trivial struct** and MUST contain a `test_usage` test. The test must:
+**Struct files with hand-written impl blocks — test_usage required:** A `StructName.rs` file that contains any hand-written `impl` block (inherent impls or trait impls — if `impl Default` is the only hand-written impl, see the exemption below) is a **non-trivial struct** and MUST contain a `test_usage` test. The test must:
 1. Construct the struct (via `Default`, `new()`, or direct construction).
 2. Exercise it through the **primary integration path** — the trait impl that defines its role, the system or consumer function that uses it.
 3. Assert on an observable outcome.
@@ -618,7 +618,7 @@ fn inner(&self) -> &Inner { &self.inner }   // inner: Inner, not pub
 
 ### Relationship to Rule 8 (Testing)
 
-Rule 8 exempts trivial accessors from requiring a `test_usage` test. This rule goes further: they must not exist at all. If removing a trivial accessor and its test file would leave a directory with no remaining methods, the directory (and its `mod.rs`) MAY also be removed.
+Rule 8 exempts trivial accessors from requiring a `test_usage` test. This rule goes further: they must not exist at all. If removing a trivial accessor and its test module would leave a `{Type}Method/` directory with no remaining methods, the directory (and its `mod.rs`) MAY also be removed.
 
 ## 13. No Positional Struct Field Access
 
