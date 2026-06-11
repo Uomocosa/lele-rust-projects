@@ -14,7 +14,9 @@ enum Role {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stdout)
+        .init();
 
     let role = parse_role();
 
