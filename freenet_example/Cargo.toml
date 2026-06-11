@@ -12,7 +12,6 @@ name = "freenet_example"
 path = "src/main.rs"
 
 [dependencies]
-freenet = "0.2.68"
 freenet-stdlib = { version = "0.8", features = ["net"] }
 tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
 tokio-tungstenite = "0.27"
@@ -25,4 +24,5 @@ bincode = "1"
 thiserror = "2"
 
 [dev-dependencies]
+freenet = "0.2.71"
 tempfile = "3"
