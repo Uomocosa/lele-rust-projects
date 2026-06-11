@@ -207,6 +207,7 @@ async fn run_increment_loop(
                         UpdateData::Delta(d) => bincode::deserialize(d.as_ref()).unwrap_or(0),
                         _ => 0,
                     };
+                    count = updated_count;
                     info!(
                         target: "freenet_example",
                         key = %key,
