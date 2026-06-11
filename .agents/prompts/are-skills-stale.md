@@ -14,6 +14,7 @@ The `skill` tool may return stale cached content. After loading all skills, run 
 2. Use the `read` tool to load the skill's `.md` file directly from disk.
 3. Mark all the skills that are stale (i.e., the on-disk version is different from the cached version).
 4. Report the staleness results to the user, listing each skill and its status.
+5. If ANY stale skills are found, run the remediation below.
 
 ## Output
 
@@ -22,3 +23,11 @@ The `skill` tool may return stale cached content. After loading all skills, run 
 [SKILL: <skill-name>] ✓ (fresh)
 [SKILL: <skill-name>] ✓ (fresh)
 ```
+
+## Remediation (Human Only)
+
+If ANY stale skills are found, the agent MUST NOT run these commands. Instruct the human to run them from a **separate terminal** (not inside OpenCode):
+
+1. `ssh <user>@<host-ip> 'sudo reboot'`
+
+The reboot will kill OpenCode's process, so the agent cannot execute it itself.

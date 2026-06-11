@@ -63,3 +63,11 @@ Then final recap (all skills, same order as `<available_skills>`):
   without affecting the issue count. Only items 1-4 contribute to `(found N issues)`.
 - Do NOT edit any files. Read-only.
 - Run exactly once. No loops, no iterations.
+
+### Remediation (Human Only)
+
+If ANY stale skills are found, the agent MUST NOT run these commands. Instruct the human to run them from a **separate terminal** (not inside OpenCode):
+
+1. `ssh <user>@<host-ip> 'sudo reboot'`
+
+The reboot will kill OpenCode's process, so the agent cannot execute it itself.
