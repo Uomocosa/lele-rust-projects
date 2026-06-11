@@ -1,0 +1,37 @@
+[tasks.build-contract]
+description = "Build the clicker contract WASM"
+command = "cargo"
+args = ["build", "--release", "--target", "wasm32-unknown-unknown"]
+cwd = "./contract"
+
+[tasks.start-node]
+description = "Start a local freenet node in background"
+command = "bash"
+args = ["-c", "freenet --local &"]
+script_runner = "@rust"
+script = []
+# Background the node
+
+[tasks.wait-for-node]
+description = "Wait for the freenet node WebSocket API to be ready"
+command = "bash"
+args = ["-c", "for i in $(seq 1 30); do curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7509/ 2>/dev/null | grep -q '200\\|400\\|404' && break; sleep 1; done"]
+
+[tasks.run-client]
+description = "Run the clicker example client"
+command = "cargo"
+args = ["run", "--"]
+
+[tasks.run]
+description = "Full pipeline: build contract, start node, run client"
+dependencies = ["build-contract", "start-node", "wait-for-node", "run-client"]
+
+[tasks.run.postlude]
+description = "Kill the freenet node after client exits"
+command = "bash"
+args = ["-c", "pkill -f 'freenet --local' 2>/dev/null; exit 0"]
+
+[tasks.clean]
+description = "Clean all build artifacts"
+command = "bash"
+args = ["-c", "cargo clean && cd contract && cargo clean"]

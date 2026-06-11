@@ -1,41 +1,96 @@
-//! Minimal freenet client — connects to a local freenet node via WebSocket,
-//! deploys the clicker counter contract, increments it, and subscribes to updates.
-//!
-//! Prerequisites:
-//!   1. Build the contract:
-//!        cd contract && cargo build --release --target wasm32-unknown-unknown
-//!   2. Start a local freenet node (e.g. `freenet --local`)
-//!   3. Run this binary
-
+use std::sync::Arc;
 use std::time::Duration;
+
+use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
+use freenet_stdlib::prelude::*;
 use tracing::info;
+
+use freenet_example::FreenetClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    // Load compiled contract WASM
-    let _contract_wasm = std::fs::read(
-        "contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm",
-    )?;
+    let node_host = std::env::var("FREENET_HOST").unwrap_or_else(|_| "127.0.0.1".into());
+    let node_port: u16 = std::env::var("FREENET_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(7509);
 
-    // TODO: Connect to local freenet WebSocket API (default ws://127.0.0.1:5050)
-    // and deploy the contract, get/subscribe/update its state.
-    //
-    // The freenet WebSocket API uses flatbuffers for message encoding.
-    // See freenet's `client_api` module and WebSocket example for details.
-    //
-    // Pseudo-code:
-    //   let client = FreenetClient::connect("ws://127.0.0.1:5050").await?;
-    //   let key = client.deploy_contract(contract_wasm).await?;
-    //   let state: u64 = client.get_state(&key).await?;
-    //   info!("Initial count: {state}");
-    //   for i in 0..5 {
-    //       client.update_contract(&key, &bincode::serialize(&(i+1))?).await?;
-    //       tokio::time::sleep(Duration::from_secs(1)).await;
-    //   }
+    let contract_wasm =
+        std::fs::read("contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm")?;
 
-    info!("Client ready — connect to a local freenet node to use this example");
-    tokio::time::sleep(Duration::from_secs(1)).await;
-    Ok(())
+    info!(target: "freenet_example", size = contract_wasm.len(), "loaded contract wasm");
+
+    let mut client = FreenetClient::connect(&node_host, node_port).await?;
+    info!(target: "freenet_example", "connected to freenet node");
+
+    let contract_code = Arc::new(ContractCode::from(contract_wasm));
+    let params = Parameters::from(Vec::new());
+    let wrapped = WrappedContract::new(contract_code, params);
+    let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
+    let initial_state = WrappedState::new(bincode::serialize(&0u64)?);
+    let related = RelatedContracts::default();
+
+    let put_req = ContractRequest::Put {
+        contract: container,
+        state: initial_state,
+        related_contracts: related,
+        subscribe: true,
+        blocking_subscribe: true,
+    };
+    client.send(ClientRequest::ContractOp(put_req)).await?;
+
+    let contract_key = match client.recv().await? {
+        HostResponse::ContractResponse(response) => match response {
+            ContractResponse::PutResponse { key }
+            | ContractResponse::SubscribeResponse { key, .. } => key,
+            other => {
+                return Err(format!("unexpected response to put: {other:?}").into());
+            }
+        },
+        other => {
+            return Err(format!("unexpected response: {other:?}").into());
+        }
+    };
+
+    info!(target: "freenet_example", key = %contract_key, "contract deployed and subscribed");
+
+    let mut count = 0u64;
+    loop {
+        count = count.wrapping_add(1);
+        let new_state = State::from(bincode::serialize(&count)?);
+        let update_req = ContractRequest::Update {
+            key: contract_key,
+            data: UpdateData::State(new_state),
+        };
+        client.send(ClientRequest::ContractOp(update_req)).await?;
+        info!(target: "freenet_example", count, "sent increment");
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        while let Some(result) = client.recv_timeout(Duration::from_millis(100)).await {
+            match result? {
+                HostResponse::ContractResponse(ContractResponse::UpdateNotification {
+                    key,
+                    update,
+                }) => {
+                    let updated_count: u64 = match &update {
+                        UpdateData::State(s) => bincode::deserialize(s.as_ref()).unwrap_or(0),
+                        UpdateData::Delta(d) => bincode::deserialize(d.as_ref()).unwrap_or(0),
+                        _ => 0,
+                    };
+                    info!(target: "freenet_example", key = %key, count = updated_count, "received update notification");
+                }
+                HostResponse::ContractResponse(ContractResponse::UpdateResponse {
+                    key, ..
+                }) => {
+                    info!(target: "freenet_example", key = %key, "update confirmed");
+                }
+                other => {
+                    info!(target: "freenet_example", ?other, "unexpected message");
+                }
+            }
+        }
+    }
 }

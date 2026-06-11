@@ -1,5 +1,8 @@
+#![allow(unexpected_cfgs)]
+
 use freenet_stdlib::prelude::*;
 
+#[allow(dead_code)]
 struct ClickerContract;
 
 #[contract]
@@ -19,8 +22,11 @@ impl ContractInterface for ClickerContract {
         state: State<'static>,
         _data: Vec<UpdateData<'static>>,
     ) -> Result<UpdateModification<'static>, ContractError> {
-        let mut count = bincode::deserialize::<u64>(state.as_ref())
-            .map_err(|e| ContractError::InvalidUpdateWithInfo { reason: e.to_string() })?;
+        let mut count = bincode::deserialize::<u64>(state.as_ref()).map_err(|e| {
+            ContractError::InvalidUpdateWithInfo {
+                reason: e.to_string(),
+            }
+        })?;
         count = count.wrapping_add(1);
         let new_state = State::from(bincode::serialize(&count).unwrap());
         Ok(UpdateModification::valid(new_state))
@@ -30,8 +36,8 @@ impl ContractInterface for ClickerContract {
         _parameters: Parameters<'static>,
         state: State<'static>,
     ) -> Result<StateSummary<'static>, ContractError> {
-        let count = bincode::deserialize::<u64>(state.as_ref())
-            .map_err(|_| ContractError::InvalidState)?;
+        let count =
+            bincode::deserialize::<u64>(state.as_ref()).map_err(|_| ContractError::InvalidState)?;
         let summary = StateSummary::from(bincode::serialize(&count).unwrap());
         Ok(summary)
     }
@@ -42,5 +48,46 @@ impl ContractInterface for ClickerContract {
         _summary: StateSummary<'static>,
     ) -> Result<StateDelta<'static>, ContractError> {
         Ok(StateDelta::from(vec![]))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_usage() {
+        let params = Parameters::from(Vec::new());
+        let related = RelatedContracts::default();
+        let state = State::from(bincode::serialize(&0u64).unwrap());
+
+        let result = ClickerContract::validate_state(params.clone(), state.clone(), related);
+        assert!(matches!(result, Ok(ValidateResult::Valid)));
+
+        let result = ClickerContract::update_state(params.clone(), state, vec![]);
+        assert!(result.is_ok());
+        let new_state = result.unwrap().unwrap_valid();
+        let count: u64 = bincode::deserialize(new_state.as_ref()).unwrap();
+        assert_eq!(count, 1);
+
+        let result = ClickerContract::summarize_state(
+            params,
+            State::from(bincode::serialize(&42u64).unwrap()),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_state_rejected() {
+        let bad_state = State::from(b"short".to_vec());
+        let result = ClickerContract::validate_state(
+            Parameters::from(Vec::new()),
+            bad_state,
+            RelatedContracts::default(),
+        );
+        assert!(
+            matches!(result, Err(ContractError::InvalidState)),
+            "expected InvalidState, got {result:?}"
+        );
     }
 }

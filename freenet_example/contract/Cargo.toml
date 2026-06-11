@@ -6,6 +6,10 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = ["freenet-main-contract"]
+freenet-main-contract = []
+
 [dependencies]
 freenet-stdlib = { version = "0.8", features = ["contract"] }
 freenet-macros = "0.2"
