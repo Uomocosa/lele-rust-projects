@@ -9,12 +9,17 @@ Load all skills from the `<available_skills>` catalog.
 
 ### Staleness Guard
 
-The `skill` tool may return stale cached content. After loading all skills, run each skill through the staleness guard:
+The `skill` tool strips YAML frontmatter and prepends `# Skill: <name>\n\n`.
+To detect staleness, compare bodies (not raw content):
 1. Note the on-disk SKILL.md paths from `<location>` in `<available_skills>`.
 2. Use the `read` tool to load the skill's `.md` file directly from disk.
-3. Mark all the skills that are stale (i.e., the on-disk version is different from the cached version).
-4. Report the staleness results to the user, listing each skill and its status.
-5. If ANY stale skills are found, run the remediation below.
+3. Extract the on-disk body: remove YAML frontmatter (from first `---` through
+   closing `---`, inclusive), trim whitespace.
+4. Extract the cached body: take `<skill_content>`, remove everything up to and
+   including the first blank line after `# Skill:`, trim whitespace.
+5. Report the skill as stale IF the two bodies differ. The on-disk version is the
+   source of truth.
+6. If ANY stale skills are found, run the remediation below.
 
 ## Output
 
@@ -24,10 +29,8 @@ The `skill` tool may return stale cached content. After loading all skills, run 
 [SKILL: <skill-name>] ✓ (fresh)
 ```
 
-## Remediation (Human Only)
+## Remediation
 
-If ANY stale skills are found, the agent MUST NOT run these commands. Instruct the human to run them from a **separate terminal** (not inside OpenCode):
-
-1. `ssh -t <user>@<host-ip> "sudo reboot"`
-
-The reboot will kill OpenCode's process, so the agent cannot execute it itself.
+If ANY stale skills are found:
+- Report which skills are stale so the user is aware
+- The skill cache is maintained by the OpenCode process. To refresh it, the user must restart OpenCode (`opencode reload` or close/reopen). The agent cannot refresh the cache.

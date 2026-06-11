@@ -8,11 +8,17 @@ description: Read-only review of all skills. Checks frontmatter validity, filena
 Load ALL skills from `<available_skills>`.
 
 ### Staleness Guard
-For each skill:
+
+The `skill` tool strips YAML frontmatter and prepends `# Skill: <name>\n\n`.
+To compare correctly:
 1. Get the SKILL.md path from `<location>` in `<available_skills>`.
 2. Read the file from disk with the `read` tool.
-3. If content differs from the cached `<skill_content>`, use the on-disk version
-   and mark the skill as **stale**.
+3. Extract the on-disk body: remove YAML frontmatter (from first `---` through
+   closing `---`, inclusive), trim leading/trailing whitespace.
+4. Extract the cached body: take `<skill_content>`, remove everything up to and
+   including the first blank line after `# Skill:` (the auto-injected prefix),
+   trim leading/trailing whitespace.
+5. If the two bodies differ, use the on-disk version and mark the skill **stale**.
 
 Staleness is a data-freshness concern, not a checklist issue. A stale skill
 receives a `(⚠ stale)` marker in the output but does not increase the issue count.
@@ -27,32 +33,20 @@ Check each item in order. Record any failures.
 
 ### Output
 
-For each skill, the first line shows staleness status, then any checklist issues:
+One line per skill with status + issue count. Issues listed below if any.
 
-Non-stale skill with issues:
 ```
 [skill-name] ✓ synced
-  Issue 1: <description>
-  Issue 2: <description>
-```
-
-Stale skill with issues:
-```
-[skill-name] (⚠ stale)
-  Issue 1: <description>
-  Issue 2: <description>
-```
-
-If a skill has no checklist issues, its line is just the status:
-```
-[skill-name] ✓ synced
-[skill-name] (⚠ stale)
-```
-
-Then final recap (all skills, same order as `<available_skills>`):
-```
+[skill-name] ✓ synced, Issue: <description>
 [skill-name] (⚠ stale) ✗ (found 2 issues)
+  Issue 1: <description>
+  Issue 2: <description>
+```
+
+Final recap (same order as `<available_skills>`):
+```
 [skill-name] ✓ synced
+[skill-name] (⚠ stale) ✗ (found 2 issues)
 [skill-name] ✓ synced
 ```
 
@@ -64,10 +58,9 @@ Then final recap (all skills, same order as `<available_skills>`):
 - Do NOT edit any files. Read-only.
 - Run exactly once. No loops, no iterations.
 
-### Remediation (Human Only)
+### Remediation
 
-If ANY stale skills are found, the agent MUST NOT run these commands. Instruct the human to run them from a **separate terminal** (not inside OpenCode):
-
-1. `ssh -t <user>@<host-ip> "sudo reboot"`
-
-The reboot will kill OpenCode's process, so the agent cannot execute it itself.
+If ANY stale skills are found:
+- The agent uses the on-disk version for all analysis (staleness does not affect checklist results)
+- Report which skills are stale so the user is aware
+- The skill cache is maintained by the OpenCode process. To refresh it, the user must restart OpenCode (`opencode reload` or close/reopen). The agent cannot refresh the cache.
