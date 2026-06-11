@@ -19,15 +19,23 @@ impl ContractInterface for ClickerContract {
 
     fn update_state(
         _parameters: Parameters<'static>,
-        state: State<'static>,
-        _data: Vec<UpdateData<'static>>,
+        _state: State<'static>,
+        data: Vec<UpdateData<'static>>,
     ) -> Result<UpdateModification<'static>, ContractError> {
-        let mut count = bincode::deserialize::<u64>(state.as_ref()).map_err(|e| {
+        let new_count = data
+            .into_iter()
+            .next()
+            .and_then(|d| match d {
+                UpdateData::State(s) => Some(s),
+                UpdateData::Delta(d) => Some(State::from(d.as_ref().to_vec())),
+                _ => None,
+            })
+            .ok_or(ContractError::InvalidUpdate)?;
+        let count = bincode::deserialize::<u64>(new_count.as_ref()).map_err(|e| {
             ContractError::InvalidUpdateWithInfo {
                 reason: e.to_string(),
             }
         })?;
-        count = count.wrapping_add(1);
         let new_state = State::from(bincode::serialize(&count).unwrap());
         Ok(UpdateModification::valid(new_state))
     }
@@ -64,11 +72,14 @@ mod tests {
         let result = ClickerContract::validate_state(params.clone(), state.clone(), related);
         assert!(matches!(result, Ok(ValidateResult::Valid)));
 
-        let result = ClickerContract::update_state(params.clone(), state, vec![]);
+        let update = vec![UpdateData::State(State::from(
+            bincode::serialize(&42u64).unwrap(),
+        ))];
+        let result = ClickerContract::update_state(params.clone(), state, update);
         assert!(result.is_ok());
         let new_state = result.unwrap().unwrap_valid();
         let count: u64 = bincode::deserialize(new_state.as_ref()).unwrap();
-        assert_eq!(count, 1);
+        assert_eq!(count, 42);
 
         let result = ClickerContract::summarize_state(
             params,
