@@ -28,6 +28,6 @@ The `skill` tool may return stale cached content. After loading all skills, run 
 
 If ANY stale skills are found, the agent MUST NOT run these commands. Instruct the human to run them from a **separate terminal** (not inside OpenCode):
 
-1. `ssh <user>@<host-ip> 'sudo reboot'`
+1. `ssh -t <user>@<host-ip> "sudo reboot"`
 
 The reboot will kill OpenCode's process, so the agent cannot execute it itself.
