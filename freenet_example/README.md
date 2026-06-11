@@ -1,12 +1,14 @@
 # Freenet Clicker Example
 
-A shared counter contract with real-time pub/sub.
+A shared counter contract with real-time pub/sub across multiple clients.
 
 ## Quick Start
 
 ```bash
 cargo make run
 ```
+
+Builds the contract, starts a gateway node, and runs the publisher.
 
 ## Two Clients (Same Machine)
 
@@ -15,13 +17,17 @@ cargo make run
 freenet network --is-gateway --skip-load-from-network --public-network-address 127.0.0.1 --public-network-port 31337
 
 # Terminal 2: publisher (deploys + increments)
-cargo run -- --role publish 2>&1
+cargo run -- --role publish
 
 # Terminal 3: subscriber (subscribes + increments)
-cargo run -- --role subscribe 2>&1
+cargo run -- --role subscribe
 ```
 
-> **Note:** Run `freenet local` instead for single-client testing. Pub/sub notifications only work in network mode.
+Both clients show `received update notification` for each other's increments.
+Counter converges correctly (~2x per second when both running).
+
+> **Note:** `freenet local` does not dispatch `UpdateNotification` to subscribers.
+> Use network mode for multi-client pub/sub.
 
 ## Two Machines
 
@@ -35,15 +41,20 @@ freenet
 cargo run -- --role subscribe
 ```
 
-## Clear Node State
-
-```bash
-rm -rf ~/.local/share/freenet/db
-```
+No configuration needed — both connect to `127.0.0.1:7509`. The P2P network routes
+by the deterministic `ContractKey`. No IP sharing required.
 
 ## Build
 
 ```bash
-cargo make build-contract
-cargo build --release
+cargo make build-contract    # WASM contract
+cargo build --release        # client binary
+```
+
+## Clear Node State
+
+If the contract was previously marked broken (non-idempotent), clear the DB:
+
+```bash
+rm -rf ~/.local/share/freenet/db
 ```
