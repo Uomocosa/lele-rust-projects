@@ -41,58 +41,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match role {
         Role::Publish => {
-            let initial_state = WrappedState::new(bincode::serialize(&0u64)?);
-            let related = RelatedContracts::default();
+            let instance_id = *contract_key.id();
 
-            let put_req = ContractRequest::Put {
-                contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-                state: initial_state,
-                related_contracts: related,
-                subscribe: true,
-                blocking_subscribe: false,
-            };
-            client.send(ClientRequest::ContractOp(put_req)).await?;
-
-            let key = match recv_with_timeout(&mut client).await? {
-                HostResponse::ContractResponse(response) => match response {
-                    ContractResponse::PutResponse { key }
-                    | ContractResponse::SubscribeResponse { key, .. }
-                    | ContractResponse::UpdateResponse { key, .. } => key,
-                    other => {
-                        return Err(format!("unexpected response to put: {other:?}").into());
+            // Try Get+subscribe first; if NotFound, deploy then retry
+            let initial_get = recv_after_get(&mut client, instance_id).await;
+            let (key, initial_count) = match initial_get {
+                Ok(result) => result,
+                Err(_) => {
+                    // Deploy
+                    let put_req = ContractRequest::Put {
+                        contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
+                        state: WrappedState::new(bincode::serialize(&0u64)?),
+                        related_contracts: RelatedContracts::default(),
+                        subscribe: true,
+                        blocking_subscribe: false,
+                    };
+                    client.send(ClientRequest::ContractOp(put_req)).await?;
+                    match recv_with_timeout(&mut client).await? {
+                        HostResponse::ContractResponse(response) => match response {
+                            ContractResponse::PutResponse { key }
+                            | ContractResponse::SubscribeResponse { key, .. }
+                            | ContractResponse::UpdateResponse { key, .. } => {
+                                info!(target: "freenet_example", key = %key, "contract deployed");
+                            }
+                            other => {
+                                return Err(format!("unexpected response to put: {other:?}").into());
+                            }
+                        },
+                        other => {
+                            return Err(format!("unexpected response: {other:?}").into());
+                        }
                     }
-                },
-                other => {
-                    return Err(format!("unexpected response: {other:?}").into());
-                }
-            };
-
-            info!(target: "freenet_example", key = %key, "contract ready");
-
-            // Subscribe and get current state (ignore stray notifications
-            // from other clients that arrive before GetResponse)
-            let get_req = ContractRequest::Get {
-                key: *key.id(),
-                return_contract_code: false,
-                subscribe: true,
-                blocking_subscribe: true,
-            };
-            client.send(ClientRequest::ContractOp(get_req)).await?;
-            let (key, initial_count) = loop {
-                match recv_with_timeout(&mut client).await? {
-                    HostResponse::ContractResponse(ContractResponse::GetResponse {
-                        key,
-                        state,
-                        ..
-                    }) => {
-                        break (key, bincode::deserialize(state.as_ref()).unwrap_or(0));
-                    }
-                    HostResponse::ContractResponse(ContractResponse::UpdateNotification {
-                        ..
-                    }) => continue,
-                    other => {
-                        return Err(format!("unexpected response to get: {other:?}").into());
-                    }
+                    // Get after deploy
+                    recv_after_get(&mut client, instance_id).await?
                 }
             };
             info!(
@@ -106,49 +87,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Role::Subscribe => {
             let instance_id = *contract_key.id();
             loop {
-                let get_req = ContractRequest::Get {
-                    key: instance_id,
-                    return_contract_code: false,
-                    subscribe: true,
-                    blocking_subscribe: true,
-                };
-                client.send(ClientRequest::ContractOp(get_req)).await?;
-
-                match recv_with_timeout(&mut client).await? {
-                    HostResponse::ContractResponse(ContractResponse::GetResponse {
-                        key,
-                        state,
-                        ..
-                    }) => {
-                        let initial_count: u64 = bincode::deserialize(state.as_ref()).unwrap_or(0);
+                match recv_after_get(&mut client, instance_id).await {
+                    Ok((key, count)) => {
                         info!(
                             target: "freenet_example",
                             key = %key,
-                            count = initial_count,
+                            count = count,
                             "subscribed and got current state"
                         );
-                        run_increment_loop(&mut client, key, initial_count).await?;
+                        run_increment_loop(&mut client, key, count).await?;
                         break;
                     }
-                    HostResponse::ContractResponse(ContractResponse::UpdateNotification {
-                        ..
-                    }) => {
-                        continue;
-                    }
-                    HostResponse::ContractResponse(ContractResponse::NotFound { instance_id }) => {
+                    Err(_) => {
                         info!(
                             target: "freenet_example",
                             %instance_id,
                             "contract not found yet, retrying in 1s"
                         );
                         tokio::time::sleep(Duration::from_secs(1)).await;
-                        continue;
-                    }
-                    HostResponse::ContractResponse(other) => {
-                        return Err(format!("unexpected response to get: {other:?}").into());
-                    }
-                    other => {
-                        return Err(format!("unexpected response: {other:?}").into());
                     }
                 }
             }
@@ -177,6 +133,34 @@ fn parse_role() -> Role {
         }
     }
     Role::Publish
+}
+
+async fn recv_after_get(
+    client: &mut FreenetClient,
+    instance_id: ContractInstanceId,
+) -> Result<(ContractKey, u64), Box<dyn std::error::Error>> {
+    let get_req = ContractRequest::Get {
+        key: instance_id,
+        return_contract_code: false,
+        subscribe: true,
+        blocking_subscribe: true,
+    };
+    client.send(ClientRequest::ContractOp(get_req)).await?;
+    loop {
+        match recv_with_timeout(client).await? {
+            HostResponse::ContractResponse(ContractResponse::GetResponse {
+                key, state, ..
+            }) => {
+                let count = bincode::deserialize(state.as_ref()).unwrap_or(0);
+                return Ok((key, count));
+            }
+            HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
+                return Err("contract not found".into());
+            }
+            HostResponse::ContractResponse(ContractResponse::UpdateNotification { .. }) => continue,
+            other => return Err(format!("unexpected response: {other:?}").into()),
+        }
+    }
 }
 
 async fn recv_with_timeout(

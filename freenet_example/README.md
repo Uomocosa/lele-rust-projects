@@ -16,7 +16,7 @@ Builds the contract, starts a gateway node, and runs the publisher.
 # Terminal 1: start node
 freenet network --is-gateway --skip-load-from-network --public-network-address 127.0.0.1 --public-network-port 31337
 
-# Terminal 2: publisher (deploys + increments)
+# Terminal 2: publisher (subscribes + increments; deploys if new)
 cargo run -- --role publish
 
 # Terminal 3: subscriber (subscribes + increments)
@@ -24,7 +24,8 @@ cargo run -- --role subscribe
 ```
 
 Both clients show `received update notification` for each other's increments.
-Counter converges correctly (~2x per second when both running).
+Counter converges correctly (~2x per second when both running). The count
+persists across restarts — publisher only resets on first deploy.
 
 > **Note:** `freenet local` does not dispatch `UpdateNotification` to subscribers.
 > Use network mode for multi-client pub/sub.
