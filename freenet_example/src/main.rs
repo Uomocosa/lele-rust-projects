@@ -67,8 +67,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            info!(target: "freenet_example", key = %key, "contract deployed and subscribed");
-            run_increment_loop(&mut client, key, 0).await?;
+            info!(target: "freenet_example", key = %key, "contract ready");
+
+            // Get current state and subscribe (blocking ensures subscription is active)
+            let get_req = ContractRequest::Get {
+                key: *key.id(),
+                return_contract_code: false,
+                subscribe: true,
+                blocking_subscribe: true,
+            };
+            client.send(ClientRequest::ContractOp(get_req)).await?;
+            match recv_with_timeout(&mut client).await? {
+                HostResponse::ContractResponse(ContractResponse::GetResponse {
+                    key,
+                    state,
+                    ..
+                }) => {
+                    let initial_count: u64 = bincode::deserialize(state.as_ref()).unwrap_or(0);
+                    info!(
+                        target: "freenet_example",
+                        key = %key,
+                        count = initial_count,
+                        "subscribed and got current state"
+                    );
+                    run_increment_loop(&mut client, key, initial_count).await?;
+                }
+                other => {
+                    return Err(format!("unexpected response to get: {other:?}").into());
+                }
+            }
         }
         Role::Subscribe => {
             let instance_id = *contract_key.id();
@@ -77,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     key: instance_id,
                     return_contract_code: false,
                     subscribe: true,
-                    blocking_subscribe: false,
+                    blocking_subscribe: true,
                 };
                 client.send(ClientRequest::ContractOp(get_req)).await?;
 
@@ -157,18 +184,8 @@ async fn run_increment_loop(
     mut count: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     loop {
-        count = count.wrapping_add(1);
-        let new_state = State::from(bincode::serialize(&count)?);
-        let update_req = ContractRequest::Update {
-            key: contract_key,
-            data: UpdateData::State(new_state),
-        };
-        client.send(ClientRequest::ContractOp(update_req)).await?;
-        info!(target: "freenet_example", count, "sent increment");
-
-        tokio::time::sleep(Duration::from_secs(1)).await;
-
-        while let Some(result) = client.recv_timeout(Duration::from_millis(100)).await {
+        // Drain pending notifications before sending our update
+        while let Some(result) = client.recv_timeout(Duration::from_millis(10)).await {
             match result? {
                 HostResponse::ContractResponse(ContractResponse::UpdateNotification {
                     key,
@@ -196,5 +213,16 @@ async fn run_increment_loop(
                 }
             }
         }
+
+        count = count.wrapping_add(1);
+        let new_state = State::from(bincode::serialize(&count)?);
+        let update_req = ContractRequest::Update {
+            key: contract_key,
+            data: UpdateData::State(new_state),
+        };
+        client.send(ClientRequest::ContractOp(update_req)).await?;
+        info!(target: "freenet_example", count, "sent increment");
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
