@@ -52,20 +52,33 @@ let mut swarm = libp2p::SwarmBuilder::with_new_identity()  // IdentityPhase
 ### Minimal setup (ping example)
 
 ```rust
-use std::error::Error;
-use libp2p::{noise, ping, tcp, yamux, Multiaddr, StreamProtocol, Stream};
+use libp2p::{noise, ping, tcp, yamux, Multiaddr};
 use futures::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let mut swarm = libp2p::SwarmBuilder::with_new_identity()
-        .with_tokio()
-        .with_tcp(tcp::Config::default(), noise::Config::new, yamux::Config::default)?
-        .with_behaviour(|_| ping::Behaviour::default())?
-        .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(std::time::Duration::from_secs(u64::MAX)))
-        .build();
+async fn main() {
+    let Ok(mut swarm) = (|| -> std::io::Result<_> {
+        Ok(libp2p::SwarmBuilder::with_new_identity()
+            .with_tokio()
+            .with_tcp(tcp::Config::default(), noise::Config::new, yamux::Config::default)?
+            .with_dns()?
+            .with_behaviour(|_| ping::Behaviour::default())
+            .map_err(|e| std::io::Error::other(e.to_string()))?
+            .with_swarm_config(|cfg| {
+                cfg.with_idle_connection_timeout(std::time::Duration::from_secs(u64::MAX))
+            })
+            .build())
+    })() else {
+        eprintln!("Failed to build swarm");
+        return;
+    };
 
-    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+    if let Ok(addr) = "/ip4/0.0.0.0/tcp/0".parse::<Multiaddr>() {
+        if let Err(e) = swarm.listen_on(addr) {
+            eprintln!("Failed to start listener: {e}");
+            return;
+        }
+    }
 
     loop {
         match swarm.select_next_some().await {
@@ -188,13 +201,14 @@ async fn send_position(stream: &mut libp2p::Stream, pos: &Position) -> Result<()
     Ok(())
 }
 
-async fn recv_position(stream: &mut libp2p::Stream) -> Result<Position, Box<dyn std::error::Error>> {
+async fn recv_position(stream: &mut libp2p::Stream) -> std::io::Result<Position> {
     let mut len_buf = [0u8; 4];
     stream.read_exact(&mut len_buf).await?;
     let len = u32::from_be_bytes(len_buf) as usize;
     let mut buf = vec![0u8; len];
     stream.read_exact(&mut buf).await?;
-    let pos = bincode::deserialize(&buf)?;
+    let pos = bincode::deserialize(&buf)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     Ok(pos)
 }
 ```
@@ -229,7 +243,7 @@ use libp2p::request_response::{self, ProtocolSupport, ResponseChannel};
 
 // Define a codec:
 #[derive(Serialize, Deserialize)]
-struct PositionRequest(Position);
+struct PositionRequest { inner: Position }
 
 impl request_response::Codec for PositionCodec { ... }
 
