@@ -69,7 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             info!(target: "freenet_example", key = %key, "contract ready");
 
-            // Get current state and subscribe (blocking ensures subscription is active)
+            // Subscribe and get current state (ignore stray notifications
+            // from other clients that arrive before GetResponse)
             let get_req = ContractRequest::Get {
                 key: *key.id(),
                 return_contract_code: false,
@@ -77,25 +78,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 blocking_subscribe: true,
             };
             client.send(ClientRequest::ContractOp(get_req)).await?;
-            match recv_with_timeout(&mut client).await? {
-                HostResponse::ContractResponse(ContractResponse::GetResponse {
-                    key,
-                    state,
-                    ..
-                }) => {
-                    let initial_count: u64 = bincode::deserialize(state.as_ref()).unwrap_or(0);
-                    info!(
-                        target: "freenet_example",
-                        key = %key,
-                        count = initial_count,
-                        "subscribed and got current state"
-                    );
-                    run_increment_loop(&mut client, key, initial_count).await?;
+            let (key, initial_count) = loop {
+                match recv_with_timeout(&mut client).await? {
+                    HostResponse::ContractResponse(ContractResponse::GetResponse {
+                        key,
+                        state,
+                        ..
+                    }) => {
+                        break (key, bincode::deserialize(state.as_ref()).unwrap_or(0));
+                    }
+                    HostResponse::ContractResponse(ContractResponse::UpdateNotification {
+                        ..
+                    }) => continue,
+                    other => {
+                        return Err(format!("unexpected response to get: {other:?}").into());
+                    }
                 }
-                other => {
-                    return Err(format!("unexpected response to get: {other:?}").into());
-                }
-            }
+            };
+            info!(
+                target: "freenet_example",
+                key = %key,
+                count = initial_count,
+                "subscribed and got current state"
+            );
+            run_increment_loop(&mut client, key, initial_count).await?;
         }
         Role::Subscribe => {
             let instance_id = *contract_key.id();
@@ -123,6 +129,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         );
                         run_increment_loop(&mut client, key, initial_count).await?;
                         break;
+                    }
+                    HostResponse::ContractResponse(ContractResponse::UpdateNotification {
+                        ..
+                    }) => {
+                        continue;
                     }
                     HostResponse::ContractResponse(ContractResponse::NotFound { instance_id }) => {
                         info!(

@@ -63,16 +63,16 @@ cargo make run
 
 This will:
 1. Build the clicker contract to WASM
-2. Start a local-only freenet node (`local`, no P2P) in the background
+2. Start a freenet node in network mode (`--skip-load-from-network`) in the background
 3. Wait for the node to be ready
 4. Run the client in **publish** mode — deploys the contract, subscribes,
    and increments every second
 
-### Two clients, one machine
+### Two clients, one machine (pub/sub live updates)
 
 ```bash
 # Terminal 1: start the node
-freenet local
+freenet network --is-gateway --skip-load-from-network
 
 # Terminal 2: wait for node, then run publisher
 cargo make run-publisher
@@ -81,8 +81,12 @@ cargo make run-publisher
 cargo make run-subscriber
 ```
 
-Both clients increment the same counter and see each other's updates. The
-counter climbs ~2x per second.
+Both clients increment the same counter and see each other's updates via
+`UpdateNotification` (pub/sub). The counter climbs ~2x per second.
+
+> **Note:** `freenet local` mode does not dispatch `UpdateNotification` to
+> subscribers — use `freenet network --is-gateway --skip-load-from-network` for single-machine
+> multi-client demos.
 
 ### Two clients, two machines
 
@@ -99,15 +103,6 @@ cargo make run-subscriber
 No configuration needed — both connect to `127.0.0.1:7509`. The P2P network
 routes by the deterministic `ContractKey`. Start the publisher first so the
 subscriber's initial `Get` finds the contract.
-
-### Alternative: network-mode on one machine
-
-```bash
-cargo make run-network
-```
-
-Same as `cargo make run` but starts a network-mode `freenet` instead of
-`freenet local`. Useful for testing with real P2P routing.
 
 ## How the Subscriber Works
 
