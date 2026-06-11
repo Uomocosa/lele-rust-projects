@@ -13,7 +13,6 @@ pub struct FreenetClient {
 impl FreenetClient {
     pub async fn connect(host: &str, port: u16) -> Result<Self, Box<dyn std::error::Error>> {
         let url = format!("ws://{host}:{port}/v1/contract/command?encodingProtocol=native");
-        eprintln!("[connect] url: {url}");
         info!(target: "freenet_example", url = %url, "connecting to freenet node");
 
         use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -22,10 +21,8 @@ impl FreenetClient {
             "encoding-protocol",
             http::HeaderValue::from_static("native"),
         );
-        eprintln!("[connect] calling connect_async");
         let ws = tokio::time::timeout(Duration::from_secs(5), connect_async(request));
         let (ws_stream, _) = ws.await.map_err(|_| "connection timed out after 5s")??;
-        eprintln!("[connect] connected");
         let (mut ws_write, mut ws_read) = ws_stream.split();
 
         let (write_tx, mut write_rx) = tokio::sync::mpsc::unbounded_channel::<Message>();

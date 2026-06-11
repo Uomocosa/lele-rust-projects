@@ -14,9 +14,7 @@ enum Role {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("[main] starting up");
     tracing_subscriber::fmt::init();
-    eprintln!("[main] tracing initialized");
 
     let role = parse_role();
 
