@@ -47,11 +47,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 state: initial_state,
                 related_contracts: related,
                 subscribe: true,
-                blocking_subscribe: true,
+                blocking_subscribe: false,
             };
             client.send(ClientRequest::ContractOp(put_req)).await?;
 
-            let key = match client.recv().await? {
+            let key = match recv_with_timeout(&mut client).await? {
                 HostResponse::ContractResponse(response) => match response {
                     ContractResponse::PutResponse { key }
                     | ContractResponse::SubscribeResponse { key, .. }
@@ -75,11 +75,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     key: instance_id,
                     return_contract_code: false,
                     subscribe: true,
-                    blocking_subscribe: true,
+                    blocking_subscribe: false,
                 };
                 client.send(ClientRequest::ContractOp(get_req)).await?;
 
-                match client.recv().await? {
+                match recv_with_timeout(&mut client).await? {
                     HostResponse::ContractResponse(ContractResponse::GetResponse {
                         key,
                         state,
@@ -137,6 +137,16 @@ fn parse_role() -> Role {
         }
     }
     Role::Publish
+}
+
+async fn recv_with_timeout(
+    client: &mut FreenetClient,
+) -> Result<HostResponse, Box<dyn std::error::Error>> {
+    const TIMEOUT_SECS: u64 = 10;
+    match tokio::time::timeout(Duration::from_secs(TIMEOUT_SECS), client.recv()).await {
+        Ok(result) => result,
+        Err(_) => Err(format!("no response from node within {TIMEOUT_SECS}s").into()),
+    }
 }
 
 async fn run_increment_loop(
