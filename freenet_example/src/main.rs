@@ -54,7 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let key = match client.recv().await? {
                 HostResponse::ContractResponse(response) => match response {
                     ContractResponse::PutResponse { key }
-                    | ContractResponse::SubscribeResponse { key, .. } => key,
+                    | ContractResponse::SubscribeResponse { key, .. }
+                    | ContractResponse::UpdateResponse { key, .. } => key,
                     other => {
                         return Err(format!("unexpected response to put: {other:?}").into());
                     }
