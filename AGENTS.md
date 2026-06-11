@@ -24,3 +24,7 @@ cargo test --all-targets
 
 ## Git Workflow
 See `.agents/skills/git-workflow/SKILL.md` for detailed git conventions (commit messages, branching, rebasing, conflict resolution). Load with the `skill` tool when git-related tasks arise.
+
+## CRITICAL: Commit Authorization
+
+**NEVER stage, commit, push, merge, rebase, or amend anything without an explicit command from the user.** An "explicit command" means a direct statement like "commit", "stage that file", "push to origin", or "merge the PR". Implied intent, "go ahead", or silence does NOT count. When in doubt, ask. This rule overrides all other instructions in this file.
