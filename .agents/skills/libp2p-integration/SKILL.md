@@ -5,7 +5,7 @@ description: |
   working with src/ modules that establish direct p2p connections for
   real-time communication (position sync, messaging, streaming). Covers
   SwarmBuilder, transport stacks, stream protocols, identity management,
-  and hybrid integration with freenet.
+  and hybrid integration with {{network_layer}}.
 ---
 
 # libp2p Integration Patterns
@@ -130,29 +130,30 @@ libp2p = { version = "0.56", features = [
 ] }
 ```
 
-## 4. Identity Bridge (freenet ↔ libp2p)
+## 4. Identity Bridge ({{network_layer}} ↔ libp2p)
 
-Both freenet and libp2p support ed25519 keypairs. The same seed can derive both identities:
+Both {{network_layer}} and libp2p support ed25519 keypairs. The same seed can derive both identities:
 
 ```rust
 use libp2p::identity::Keypair;
 
-/// Derive a libp2p Keypair from freenet's TransportKeypair.
-/// Freenet uses ed25519 internally. libp2p can import the same key.
+/// Derive a libp2p Keypair from another identity layer's transport keypair.
+/// {{Type}} uses ed25519 internally. libp2p can import the same key.
 fn bridge_identity(secret_bytes: &[u8; 32]) -> Option<Keypair> {
     Keypair::ed25519_from_bytes(secret_bytes).ok()
 }
 ```
 
-This ensures `PeerId` (libp2p) and freenet's node identity are cryptographically bound — other peers can verify both layers come from the same entity.
+This ensures `PeerId` (libp2p) and the other identity layer's node identity are cryptographically bound — other peers can verify both layers come from the same entity.
 
 ### `with_existing_identity`
 
 ```rust
-let libp2p_kp = bridge_identity(&freenet_secret).unwrap();
-let mut swarm = libp2p::SwarmBuilder::with_existing_identity(libp2p_kp)
-    .with_tokio()
-    // ... rest of builder
+if let Some(libp2p_kp) = bridge_identity(&network_secret) {
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(libp2p_kp)
+        .with_tokio()
+        // ... rest of builder
+}
 ```
 
 ## 5. Stream Protocol (for real-time data)
@@ -171,6 +172,7 @@ The `Stream` type implements `AsyncRead` + `AsyncWrite`. Use `futures::io::Async
 Binary protocol: use `bincode` for length-prefixed serialization:
 
 ```rust
+use std::io;
 use bincode::{serialize, deserialize};
 
 #[derive(Serialize, Deserialize)]
@@ -178,20 +180,22 @@ struct Position {
     x: f32, y: f32, vx: f32, vy: f32, seq: u32, timestamp: f64,
 }
 
-async fn send_position(stream: &mut libp2p::Stream, pos: &Position) {
-    let bytes = bincode::serialize(pos).unwrap();
+async fn send_position(stream: &mut libp2p::Stream, pos: &Position) -> Result<(), io::Error> {
+    let bytes = bincode::serialize(pos).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     let len = (bytes.len() as u32).to_be_bytes();
-    stream.write_all(&len).await.unwrap();
-    stream.write_all(&bytes).await.unwrap();
+    stream.write_all(&len).await?;
+    stream.write_all(&bytes).await?;
+    Ok(())
 }
 
-async fn recv_position(stream: &mut libp2p::Stream) -> Position {
+async fn recv_position(stream: &mut libp2p::Stream) -> Result<Position, Box<dyn std::error::Error>> {
     let mut len_buf = [0u8; 4];
-    stream.read_exact(&mut len_buf).await.unwrap();
+    stream.read_exact(&mut len_buf).await?;
     let len = u32::from_be_bytes(len_buf) as usize;
     let mut buf = vec![0u8; len];
-    stream.read_exact(&mut buf).await.unwrap();
-    bincode::deserialize(&buf).unwrap()
+    stream.read_exact(&mut buf).await?;
+    let pos = bincode::deserialize(&buf)?;
+    Ok(pos)
 }
 ```
 
@@ -272,7 +276,13 @@ Spawn the tokio runtime on a background thread. The swarm loop sends events over
 let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
 std::thread::spawn(move || {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            tracing::error!(target: "libp2p", "failed to create tokio runtime: {e}");
+            return;
+        }
+    };
     rt.block_on(async move {
         let mut swarm = build_swarm().await;
         loop {

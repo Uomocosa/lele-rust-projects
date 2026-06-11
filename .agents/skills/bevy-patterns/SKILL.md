@@ -13,7 +13,7 @@ Bevy engine patterns for Rust projects that depend on `bevy`. This skill may ove
 
 ### Plugin Struct + Delegate Separation
 
-Separate the Plugin struct definition from its `impl Plugin for ...` trait implementation. The trait impl in `StructName.rs` is a thin delegate calling a free function in `{Type}Method/` per the atomic file structure rule:
+Separate the Plugin struct definition from its `impl Plugin for ...` trait implementation. The trait impl in `StructName.rs` is a thin delegate calling a free function in `{{Type}}Method/` per the atomic file structure rule:
 
 ```
 Plugin.rs                # struct Plugin { ... } — definition only
@@ -24,7 +24,7 @@ PluginMethod/
   build.rs                  # pub fn build(plugin: &Plugin, app: &mut App)
 ```
 
-- The function file inside `{Type}Method/` follows snake_case naming — e.g., `build.rs` for `fn build()`.
+- The function file inside `{{Type}}Method/` follows snake_case naming — e.g., `build.rs` for `fn build()`.
 - The thin delegate `impl Plugin for ...` block in `StructName.rs` MUST be annotated with `#[rustfmt::skip]` and kept as single-line methods (per the thin delegate convention).
 
 ### Component Files
@@ -223,7 +223,7 @@ app.add_plugins((
 
 ## 6. Internal Subfolder Convention
 
-Every top-level module MUST follow the project-conventions atomic file structure. `{Type}Method/` directories live alongside their type file — if the type is at the module root, `{Type}Method/` is at the module root; if the type is in `component/` or `resource/`, `{Type}Method/` is inside that subdirectory alongside the type file. Only create `component/` or `resource/` subdirectories when they contain at least one type (empty directories clutter the tree). If a module has no component or resource types, do not declare the submodule in `mod.rs`.
+Every top-level module MUST follow the project-conventions atomic file structure. `{{Type}}Method/` directories live alongside their type file — if the type is at the module root, `{{Type}}Method/` is at the module root; if the type is in `component/` or `resource/`, `{{Type}}Method/` is inside that subdirectory alongside the type file. Only create `component/` or `resource/` subdirectories when they contain at least one type (empty directories clutter the tree). If a module has no component or resource types, do not declare the submodule in `mod.rs`.
 
 ```
 // Example: p2p module layout
@@ -244,12 +244,12 @@ p2p/
     poll_network.rs          # Bevy system
     log_peer_count.rs        # Bevy system
 ```
-Note — items in `component/`, `resource/`, and `system/` are NOT re-exported at the module root. Consumers import them through their full submodule path (e.g., `use crate::{{module}}::resource::{{Type}};`). This follows the general rule — the `{{submodule}}` template variable maps to one of these concrete names (`component`, `resource`, `system`, or a `{Type}Method/` directory).
+Note — items in `component/`, `resource/`, and `system/` are NOT re-exported at the module root. Consumers import them through their full submodule path (e.g., `use crate::{{module}}::resource::{{Type}};`). This follows the general rule — the `{{submodule}}` template variable maps to one of these concrete names (`component`, `resource`, `system`, or a `{{Type}}Method/` directory).
 
 ## 7. System Placement
 
 ### Definition
-A **system function** is any function registered with `app.add_systems()` (or any other schedule) inside a `{Type}Method/build.rs` file.
+A **system function** is any function registered with `app.add_systems()` (or any other schedule) inside a `{{Type}}Method/build.rs` file.
 
 ### Placement Rules
 
