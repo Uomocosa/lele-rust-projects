@@ -3,12 +3,19 @@
   "default_agent": "plan",
   "model": "opencode-go/deepseek-v4-flash",
   "instructions": [
-    ".agents/skills/project-conventions/SKILL.md",
-    ".agents/skills/git-workflow/SKILL.md"
+    "~/.config/opencode/skills/lele-syntax-rs/SKILL.md",
+    "~/.config/opencode/skills/opencode-git-workflow/SKILL.md"
   ],
   "permission": {
     "external_directory": {
       "/**": "allow"
+    },
+    "skill": {
+      "*": "deny",
+      "opencode-*": "allow",
+      "*-rs": "allow",
+      "bevy": "allow",
+      "libp2p-rust": "allow"
     }
   },
   "provider": {
