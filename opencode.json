@@ -15,7 +15,8 @@
       "opencode-*": "allow",
       "*-rs": "allow",
       "bevy": "allow",
-      "libp2p-rust": "allow"
+      "libp2p": "allow",
+      "freenet": "allow"
     }
   },
   "provider": {
