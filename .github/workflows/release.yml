@@ -10,11 +10,14 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact: freenet_example-linux
+            artifact: freenet-example-linux
+            binary: freenet-example
           - os: macos-latest
-            artifact: freenet_example-macos
+            artifact: freenet-example-macos
+            binary: freenet-example
           - os: windows-latest
-            artifact: freenet_example-windows.exe
+            artifact: freenet-example-windows.exe
+            binary: freenet-example.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -33,17 +36,43 @@ jobs:
       - name: Smoke test (Linux / macOS)
         if: runner.os != 'Windows'
         run: |
-          timeout 30 ./target/release/freenet_example --standalone 2>&1 | tee /tmp/demo.log
+          timeout 30 ./target/release/freenet-example --standalone 2>&1 | tee /tmp/demo.log
           grep -q "Demo complete" /tmp/demo.log
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: freenet_example/target/release/freenet_example${{ runner.os == 'Windows' && '.exe' || '' }}
+          path: freenet_example/target/release/${{ matrix.binary }}
+
+  verify:
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: verify-artifacts
+
+      - name: Check all artifacts are present and non-empty
+        run: |
+          set -e
+          echo "=== Downloaded artifacts ==="
+          find verify-artifacts -type f -ls
+
+          for f in verify-artifacts/*/freenet-example*; do
+            size=$(stat --format=%s "$f")
+            echo "Checking $f (${size} bytes)"
+            test "$size" -gt 1000000 || { echo "ERROR: $f too small ($size bytes)"; exit 1; }
+          done
+
+          chmod +x verify-artifacts/freenet-example-linux/freenet-example
+          timeout 30 ./verify-artifacts/freenet-example-linux/freenet-example --standalone 2>&1 | tee /tmp/verify.log
+          grep -q "Demo complete" /tmp/verify.log
+          echo "=== All artifacts verified ==="
 
   create-release:
-    needs: [build]
+    needs: [verify]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -60,20 +89,21 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           body: |
-            ## freenet_example ${{ github.ref_name }}
+            ## freenet-example ${{ github.ref_name }}
 
             ### Download
 
             | Platform | Binary |
             |----------|--------|
-            | Linux | freenet_example-linux |
-            | macOS | freenet_example-macos |
-            | Windows | freenet_example-windows.exe |
+            | Linux | freenet-example-linux |
+            | macOS | freenet-example-macos |
+            | Windows | freenet-example-windows.exe |
 
             ### Usage
 
             ```bash
-            ./freenet_example --standalone
+            chmod +x freenet-example-linux
+            ./freenet-example-linux --standalone
             ```
 
             No dependencies required. Runs an in-process freenet node.

@@ -11,7 +11,7 @@ name = "freenet_example"
 path = "src/lib.rs"
 
 [[bin]]
-name = "freenet_example"
+name = "freenet-example"
 path = "src/main.rs"
 
 [dependencies]
