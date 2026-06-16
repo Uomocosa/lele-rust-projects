@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: freenet_example-linux
+          - os: macos-latest
+            artifact: freenet_example-macos
+          - os: windows-latest
+            artifact: freenet_example-windows.exe
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: freenet_example
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Smoke test (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          timeout 30 ./target/release/freenet_example --standalone 2>&1 | tee /tmp/demo.log
+          grep -q "Demo complete" /tmp/demo.log
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: freenet_example/target/release/freenet_example${{ runner.os == 'Windows' && '.exe' || '' }}
+
+  create-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## freenet_example ${{ github.ref_name }}
+
+            ### Download
+
+            | Platform | Binary |
+            |----------|--------|
+            | Linux | freenet_example-linux |
+            | macOS | freenet_example-macos |
+            | Windows | freenet_example-windows.exe |
+
+            ### Usage
+
+            ```bash
+            ./freenet_example --standalone
+            ```
+
+            No dependencies required. Runs an in-process freenet node.
+          files: release-artifacts/**/*

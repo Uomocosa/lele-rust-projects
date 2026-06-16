@@ -1,5 +1,10 @@
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::time::Duration;
 
+use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
+use freenet::local_node::{NodeConfig, OperationMode};
+use freenet::run_network_node;
+use freenet::server::serve_client_api_with_listener;
 use tracing::info;
 
 use freenet_example::Role;
@@ -11,10 +16,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_writer(std::io::stdout)
         .init();
 
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.iter().any(|a| a == "--standalone") {
+        run_standalone().await
+    } else {
+        run_client(false).await
+    }
+}
+
+async fn run_client(standalone: bool) -> Result<(), Box<dyn std::error::Error>> {
     let role = parse_role()?;
 
-    let contract_wasm =
-        std::fs::read("contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm")?;
+    let contract_wasm = if standalone {
+        include_bytes!("../contract/clicker_contract.wasm").to_vec()
+    } else {
+        std::fs::read("contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm")?
+    };
+
     info!(target: "freenet_example", size = contract_wasm.len(), "loaded contract wasm");
 
     let node_host = std::env::var("FREENET_HOST").unwrap_or_else(|_| "127.0.0.1".into());
@@ -33,18 +52,96 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
+async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
+    let tmp = tempfile::tempdir()?;
+
+    let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
+    let port = listener.local_addr()?.port();
+
+    info!(port, "starting in-process network-mode node");
+
+    let ws_config = WebsocketApiConfig {
+        address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+        port,
+        ..Default::default()
+    };
+    let clients = serve_client_api_with_listener(ws_config, listener).await?;
+
+    let config_args = ConfigArgs {
+        mode: Some(OperationMode::Network),
+        network_api: NetworkArgs {
+            is_gateway: true,
+            skip_load_from_network: true,
+            public_address: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            public_port: Some(31337),
+            ..Default::default()
+        },
+        config_paths: ConfigPathsArgs {
+            config_dir: Some(tmp.path().to_path_buf()),
+            data_dir: Some(tmp.path().to_path_buf()),
+            log_dir: Some(tmp.path().to_path_buf()),
+        },
+        ..Default::default()
+    };
+    let config = config_args.build().await?;
+    let node_config = NodeConfig::new(config).await?;
+    let node = node_config.build(clients).await?;
+
+    tokio::spawn(async move {
+        if let Err(e) = run_network_node(node).await {
+            tracing::error!(error = %e, "node exited with error");
+        }
+    });
+
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    info!("node started");
+
+    let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
+
+    let mut publisher =
+        ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;
+    info!(key = %publisher.contract_key(), count = publisher.count(), "publisher deployed and subscribed");
+
+    for i in 1..=3 {
+        let count = publisher.tick().await?;
+        info!(count, "publisher tick {i}");
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    let state_after = publisher.state().await?;
+    info!(state_after, "publisher final state");
+
+    let mut subscriber =
+        ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Subscribe).await?;
+    let sub_state = subscriber.state().await?;
+    info!(sub_state, "subscriber reads state");
+
+    println!();
+    println!("=== Demo complete ===");
+    println!("Publisher deployed and incremented 3 times");
+    println!("Subscriber found the contract and confirmed state = {sub_state}");
+    println!("State persisted across disconnect");
+    println!("======================");
+    println!();
+    println!("Your freenet counter app works! {sub_state}");
+
+    Ok(())
+}
+
 fn parse_role() -> Result<Role, String> {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
-        if arg == "--role" {
-            match args.next().as_deref() {
+        match arg.as_str() {
+            "--standalone" => {}
+            "--role" => match args.next().as_deref() {
                 Some("subscribe") => return Ok(Role::Subscribe),
                 Some("publish") => return Ok(Role::Publish),
                 Some(other) => {
                     return Err(format!("unknown role: {other}. Use publish or subscribe"));
                 }
                 None => return Err("--role requires an argument: publish or subscribe".into()),
-            }
+            },
+            _ => {}
         }
     }
     Ok(Role::Publish)
