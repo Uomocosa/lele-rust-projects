@@ -10,8 +10,7 @@ use freenet::server::serve_client_api_with_listener;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use freenet_example::FreenetClient;
-use freenet_example::clicker::{ClickerClient, Role};
+use freenet_example::{ClickerClient, FreenetClient, Role};
 
 // ---------------------------------------------------------------------------
 // Helpers

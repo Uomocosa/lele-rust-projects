@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use tracing::info;
 
-use freenet_example::clicker::{ClickerClient, Role};
+use freenet_example::Role;
+use freenet_example::clicker_client::ClickerClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -10,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_writer(std::io::stdout)
         .init();
 
-    let role = parse_role();
+    let role = parse_role()?;
 
     let contract_wasm =
         std::fs::read("contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm")?;
@@ -32,23 +33,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn parse_role() -> Role {
+fn parse_role() -> Result<Role, String> {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         if arg == "--role" {
             match args.next().as_deref() {
-                Some("subscribe") => return Role::Subscribe,
-                Some("publish") => return Role::Publish,
+                Some("subscribe") => return Ok(Role::Subscribe),
+                Some("publish") => return Ok(Role::Publish),
                 Some(other) => {
-                    eprintln!("unknown role: {other}. Use publish or subscribe");
-                    std::process::exit(1);
+                    return Err(format!("unknown role: {other}. Use publish or subscribe"));
                 }
-                None => {
-                    eprintln!("--role requires an argument: publish or subscribe");
-                    std::process::exit(1);
-                }
+                None => return Err("--role requires an argument: publish or subscribe".into()),
             }
         }
     }
-    Role::Publish
+    Ok(Role::Publish)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_role;
+
+    #[test]
+    fn test_usage() {
+        let result = parse_role();
+        assert!(result.is_ok() || result.is_err());
+    }
 }

@@ -3,6 +3,9 @@ name = "freenet_example"
 version = "0.1.0"
 edition = "2024"
 
+[lints.rust]
+non_snake_case = "allow"
+
 [lib]
 name = "freenet_example"
 path = "src/lib.rs"
