@@ -1,0 +1,51 @@
+[package]
+name = "bevy_p2p_app"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+bevy = "0.18.1"
+libp2p = { version = "0.56", features = [
+    "tcp", "mdns", "noise", "yamux", "gossipsub", "serde", "tokio", "macros"
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+thiserror = "2"
+
+[dev-dependencies]
+duct = "0.13"
+os_pipe = "1.0"
+
+[[example]]
+name = "tcp_direct_connect"
+path = "unruled_examples/tcp_direct_connect.rs"
+
+[[example]]
+name = "mdns_shared_runtime"
+path = "unruled_examples/mdns_shared_runtime.rs"
+
+[[example]]
+name = "mdns_separate_process_self_spawn"
+path = "unruled_examples/mdns_separate_process_self_spawn.rs"
+
+[[example]]
+name = "mdns_separate_process_duct"
+path = "unruled_examples/mdns_separate_process_duct.rs"
+
+[[example]]
+name = "mdns_orchestrated"
+path = "unruled_examples/mdns_orchestrated.rs"
+
+[[example]]
+name = "mdns_testing_module"
+path = "unruled_examples/mdns_testing_module.rs"
+
+[lints.rust]
+non_snake_case = "allow"

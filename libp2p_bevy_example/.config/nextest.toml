@@ -1,0 +1,17 @@
+# .config/nextest.toml
+
+[profile.default]
+# Print out tests that take longer than 1 second
+slow-timeout = "10s"
+# slow-timeout = { period = "1s", terminate = false }
+
+# Automatically retry flaky tests 2 times before calling them a failure
+retries = 2
+
+# How to display output
+# 'failure' means it only shows terminal output (stdout/stderr) for FAILED tests.
+failure-output = "immediate"
+success-output = "never"
+
+# Show a status line at the bottom of the terminal while tests run
+status-level = "pass"

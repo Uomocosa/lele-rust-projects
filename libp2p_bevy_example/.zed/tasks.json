@@ -1,0 +1,27 @@
+[
+    {
+        "label": "run",
+        "command": "if [[ \"$ZED_FILE\" == *\"/examples/\"* ]]; then cargo nextest run --example \"$ZED_STEM\"; elif [[ \"$ZED_FILE\" == *\"/tests/\"* ]]; then cargo nextest run --test \"$ZED_STEM\"; elif [[ \"$ZED_STEM\" == \"lib\" ]]; then cargo nextest run --lib; elif [[ \"$ZED_STEM\" == \"main\" ]]; then cargo nextest run --bins; else cargo nextest run \"$ZED_STEM\"; fi",
+        "use_new_terminal": false,
+        "env": { "NEXTEST_HIDE_PROGRESS_BAR": "1" },
+        "allow_concurrent_runs": false,
+        "tags": ["rust", "test"],
+        "reveal": "always",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": false,
+        "show_command": false
+    },
+    {
+        "label": "Nextest: Run ALL Tests",
+        "command": "cargo nextest run --all-targets",
+        "env": { "NEXTEST_HIDE_PROGRESS_BAR": "1" },
+        "use_new_terminal": false,
+        "allow_concurrent_runs": false,
+        "reveal": "always",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": false,
+        "show_command": true
+    }
+]
