@@ -1,16 +1,8 @@
-use std::sync::Arc;
 use std::time::Duration;
 
-use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
-use freenet_stdlib::prelude::*;
 use tracing::info;
 
-use freenet_example::FreenetClient;
-
-enum Role {
-    Publish,
-    Subscribe,
-}
+use freenet_example::clicker::{ClickerClient, Role};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,7 +14,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let contract_wasm =
         std::fs::read("contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm")?;
-
     info!(target: "freenet_example", size = contract_wasm.len(), "loaded contract wasm");
 
     let node_host = std::env::var("FREENET_HOST").unwrap_or_else(|_| "127.0.0.1".into());
@@ -31,87 +22,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(7509);
 
-    let mut client = FreenetClient::connect(&node_host, node_port).await?;
-    info!(target: "freenet_example", "connected to freenet node");
+    let mut clicker = ClickerClient::connect(&node_host, node_port, &contract_wasm, role).await?;
+    info!(target: "freenet_example", key = %clicker.contract_key(), count = clicker.count(), "connected and subscribed");
 
-    let contract_code = Arc::new(ContractCode::from(contract_wasm));
-    let params = Parameters::from(Vec::new());
-    let wrapped = WrappedContract::new(contract_code, params);
-    let contract_key = wrapped.key;
-
-    match role {
-        Role::Publish => {
-            let instance_id = *contract_key.id();
-
-            // Try Get+subscribe first; if NotFound, deploy then retry
-            let initial_get = recv_after_get(&mut client, instance_id).await;
-            let (key, initial_count) = match initial_get {
-                Ok(result) => result,
-                Err(_) => {
-                    // Deploy
-                    let put_req = ContractRequest::Put {
-                        contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-                        state: WrappedState::new(bincode::serialize(&0u64)?),
-                        related_contracts: RelatedContracts::default(),
-                        subscribe: true,
-                        blocking_subscribe: false,
-                    };
-                    client.send(ClientRequest::ContractOp(put_req)).await?;
-                    match recv_with_timeout(&mut client).await? {
-                        HostResponse::ContractResponse(response) => match response {
-                            ContractResponse::PutResponse { key }
-                            | ContractResponse::SubscribeResponse { key, .. }
-                            | ContractResponse::UpdateResponse { key, .. } => {
-                                info!(target: "freenet_example", key = %key, "contract deployed");
-                            }
-                            other => {
-                                return Err(format!("unexpected response to put: {other:?}").into());
-                            }
-                        },
-                        other => {
-                            return Err(format!("unexpected response: {other:?}").into());
-                        }
-                    }
-                    // Get after deploy
-                    recv_after_get(&mut client, instance_id).await?
-                }
-            };
-            info!(
-                target: "freenet_example",
-                key = %key,
-                count = initial_count,
-                "subscribed and got current state"
-            );
-            run_increment_loop(&mut client, key, initial_count).await?;
-        }
-        Role::Subscribe => {
-            let instance_id = *contract_key.id();
-            loop {
-                match recv_after_get(&mut client, instance_id).await {
-                    Ok((key, count)) => {
-                        info!(
-                            target: "freenet_example",
-                            key = %key,
-                            count = count,
-                            "subscribed and got current state"
-                        );
-                        run_increment_loop(&mut client, key, count).await?;
-                        break;
-                    }
-                    Err(_) => {
-                        info!(
-                            target: "freenet_example",
-                            %instance_id,
-                            "contract not found yet, retrying in 1s"
-                        );
-                        tokio::time::sleep(Duration::from_secs(1)).await;
-                    }
-                }
-            }
-        }
+    loop {
+        let count = clicker.tick().await?;
+        info!(target: "freenet_example", count, "tick done");
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
-
-    Ok(())
 }
 
 fn parse_role() -> Role {
@@ -133,92 +51,4 @@ fn parse_role() -> Role {
         }
     }
     Role::Publish
-}
-
-async fn recv_after_get(
-    client: &mut FreenetClient,
-    instance_id: ContractInstanceId,
-) -> Result<(ContractKey, u64), Box<dyn std::error::Error>> {
-    let get_req = ContractRequest::Get {
-        key: instance_id,
-        return_contract_code: false,
-        subscribe: true,
-        blocking_subscribe: true,
-    };
-    client.send(ClientRequest::ContractOp(get_req)).await?;
-    loop {
-        match recv_with_timeout(client).await? {
-            HostResponse::ContractResponse(ContractResponse::GetResponse {
-                key, state, ..
-            }) => {
-                let count = bincode::deserialize(state.as_ref()).unwrap_or(0);
-                return Ok((key, count));
-            }
-            HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
-                return Err("contract not found".into());
-            }
-            HostResponse::ContractResponse(ContractResponse::UpdateNotification { .. }) => continue,
-            other => return Err(format!("unexpected response: {other:?}").into()),
-        }
-    }
-}
-
-async fn recv_with_timeout(
-    client: &mut FreenetClient,
-) -> Result<HostResponse, Box<dyn std::error::Error>> {
-    const TIMEOUT_SECS: u64 = 10;
-    match tokio::time::timeout(Duration::from_secs(TIMEOUT_SECS), client.recv()).await {
-        Ok(result) => result,
-        Err(_) => Err(format!("no response from node within {TIMEOUT_SECS}s").into()),
-    }
-}
-
-async fn run_increment_loop(
-    client: &mut FreenetClient,
-    contract_key: ContractKey,
-    mut count: u64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    loop {
-        // Drain pending notifications before sending our update
-        while let Some(result) = client.recv_timeout(Duration::from_millis(10)).await {
-            match result? {
-                HostResponse::ContractResponse(ContractResponse::UpdateNotification {
-                    key,
-                    update,
-                }) => {
-                    let updated_count: u64 = match &update {
-                        UpdateData::State(s) => bincode::deserialize(s.as_ref()).unwrap_or(0),
-                        UpdateData::Delta(d) => bincode::deserialize(d.as_ref()).unwrap_or(0),
-                        _ => 0,
-                    };
-                    count = updated_count;
-                    info!(
-                        target: "freenet_example",
-                        key = %key,
-                        count = updated_count,
-                        "received update notification"
-                    );
-                }
-                HostResponse::ContractResponse(ContractResponse::UpdateResponse {
-                    key, ..
-                }) => {
-                    info!(target: "freenet_example", key = %key, "update confirmed");
-                }
-                other => {
-                    info!(target: "freenet_example", ?other, "unexpected message");
-                }
-            }
-        }
-
-        count = count.wrapping_add(1);
-        let new_state = State::from(bincode::serialize(&count)?);
-        let update_req = ContractRequest::Update {
-            key: contract_key,
-            data: UpdateData::State(new_state),
-        };
-        client.send(ClientRequest::ContractOp(update_req)).await?;
-        info!(target: "freenet_example", count, "sent increment");
-
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
 }

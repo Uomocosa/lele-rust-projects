@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use freenet_stdlib::client_api::{ClientError, ClientRequest, HostResponse};
+use freenet_stdlib::client_api::{ClientError, ClientRequest, ContractResponse, HostResponse};
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tracing::info;
@@ -88,5 +88,29 @@ impl FreenetClient {
         timeout: Duration,
     ) -> Option<Result<HostResponse, Box<dyn std::error::Error>>> {
         tokio::time::timeout(timeout, self.recv()).await.ok()
+    }
+
+    /// Receive the next non-notification response.
+    /// Skips `UpdateNotification` messages (which arrive via subscription,
+    /// not as direct replies) and returns the first meaningful response.
+    pub async fn recv_response(&mut self) -> Result<HostResponse, Box<dyn std::error::Error>> {
+        loop {
+            match self.recv().await? {
+                HostResponse::ContractResponse(ContractResponse::UpdateNotification { .. }) => {
+                    continue;
+                }
+                other => return Ok(other),
+            }
+        }
+    }
+
+    /// Like [`recv_response`](Self::recv_response) but with a timeout.
+    pub async fn recv_response_timeout(
+        &mut self,
+        timeout: Duration,
+    ) -> Option<Result<HostResponse, Box<dyn std::error::Error>>> {
+        tokio::time::timeout(timeout, self.recv_response())
+            .await
+            .ok()
     }
 }

@@ -38,6 +38,18 @@ description = "Kill the freenet node after client exits"
 command = "bash"
 args = ["-c", "pkill -f 'freenet network' 2>/dev/null; exit 0"]
 
+[tasks.test]
+description = "Build contract WASM then run all tests"
+dependencies = ["build-contract"]
+command = "cargo"
+args = ["test", "--", "--nocapture"]
+
+[tasks.test-no-capture]
+description = "Build contract WASM then run tests without output capture (for debugging)"
+dependencies = ["build-contract"]
+command = "cargo"
+args = ["test", "--", "--nocapture", "--test-threads", "1"]
+
 [tasks.clean]
 description = "Clean all build artifacts"
 command = "bash"
