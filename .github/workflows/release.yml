@@ -78,6 +78,13 @@ jobs:
         with:
           path: release-artifacts
 
+      - name: Rename artifacts with platform suffix
+        run: |
+          ls -la release-artifacts/
+          mv release-artifacts/freenet-example-linux/freenet-example release-artifacts/freenet-example-linux/freenet-example-linux
+          mv release-artifacts/freenet-example-macos/freenet-example release-artifacts/freenet-example-macos/freenet-example-macos
+          # windows already has the right name
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
