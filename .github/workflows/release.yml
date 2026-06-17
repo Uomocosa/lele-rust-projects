@@ -92,8 +92,8 @@ jobs:
           body: |
             ## freenet-example ${{ github.ref_name }}
 
-            A shared counter contract demo on the Freenet network.
-            No external dependencies needed — runs its own node in-process.
+            A shared counter that anyone can run across the Freenet P2P network.
+            Just download and run — no install steps, no dependencies.
 
             ### Download
 
@@ -105,19 +105,21 @@ jobs:
 
             ### Usage
 
-            **Linux & macOS** — open a terminal:
+            **Linux & macOS**
 
             ```bash
             chmod +x freenet-example-linux
             ./freenet-example-linux
             ```
 
-            **Windows** — double-click the `.exe` or run from Command Prompt:
+            **Windows** — double-click or run from Command Prompt:
 
             ```cmd
             freenet-example-windows.exe
             ```
 
-            The app runs indefinitely, incrementing the counter every second.
-            Press `Ctrl+C` or close the terminal to stop.
+            The binary starts its own Freenet node, joins the global P2P network,
+            and increments a shared counter every second. Press Ctrl+C to stop.
+
+            Run it on multiple machines — they all share the same counter via P2P.
           files: release-artifacts/**/*

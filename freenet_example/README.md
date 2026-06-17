@@ -1,61 +1,68 @@
 # Freenet Clicker Example
 
-A shared counter contract with real-time pub/sub across multiple clients.
+A shared counter that runs across the Freenet P2P network.
+Just download and run — no install steps, no dependencies.
 
 ## Quick Start
 
-```bash
-cargo make run
-```
-
-Builds the contract, starts a gateway node, and runs the publisher.
-
-## Two Clients (Same Machine)
+Download the latest binary for your OS:
+https://github.com/Uomocosa/lele-rust-projects/releases
 
 ```bash
-# Terminal 1: start node
-freenet network --is-gateway --skip-load-from-network --public-network-address 127.0.0.1 --public-network-port 31337
-
-# Terminal 2: publisher (subscribes + increments; deploys if new)
-cargo run -- --role publish
-
-# Terminal 3: subscriber (subscribes + increments)
-cargo run -- --role subscribe
+chmod +x freenet-example-linux
+./freenet-example-linux
 ```
 
-Both clients show `received update notification` for each other's increments.
-Counter converges correctly (~2x per second when both running). The count
-persists across restarts — publisher only resets on first deploy.
+The binary starts its own Freenet node, joins the global P2P network,
+and increments a shared counter every second. Press Ctrl+C to stop.
 
-> **Note:** `freenet local` does not dispatch `UpdateNotification` to subscribers.
-> Use network mode for multi-client pub/sub.
+Re-run any time to rejoin the same global counter — state lives on
+the network, not on your machine.
 
-## Two Machines
+## Two Machines (Same Counter)
+
+Run the same binary on two machines. Both connect to the global Freenet
+network and share the same deterministic contract. No configuration,
+no IP sharing, no server.
 
 ```bash
 # Machine A
-freenet
-cargo run -- --role publish
+./freenet-example-linux
 
 # Machine B
-freenet
-cargo run -- --role subscribe
+./freenet-example-linux
 ```
 
-No configuration needed — both connect to `127.0.0.1:7509`. The P2P network routes
-by the deterministic `ContractKey`. No IP sharing required.
+Both increment the same counter. Each sees the other's updates via
+pub/sub notifications.
 
-## Build
+## Development Build
 
 ```bash
-cargo make build-contract    # WASM contract
-cargo build --release        # client binary
+# Build the WASM contract
+cargo build --release --target wasm32-unknown-unknown --manifest-path contract/Cargo.toml
+
+# Build the binary
+cargo build --release
+
+# Copy the WASM so the binary can embed it
+cp contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm contract/
+
+# Run
+cargo run --release
 ```
 
-## Clear Node State
+## Advanced: External Freenet Node
 
-If the contract was previously marked broken (non-idempotent), clear the DB:
+If you already have a Freenet node running, connect to it with:
 
 ```bash
-rm -rf ~/.local/share/freenet/db
+# Deploy and increment (also subscribes)
+./freenet-example --role publish
+
+# Subscribe to existing contract
+./freenet-example --role subscribe
 ```
+
+Configure host/port via `FREENET_HOST` and `FREENET_PORT` env vars
+(default: `127.0.0.1:7509`).

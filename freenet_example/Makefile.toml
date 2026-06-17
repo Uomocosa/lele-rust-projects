@@ -4,49 +4,32 @@ command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown"]
 cwd = "./contract"
 
-[tasks.start-local-node]
-description = "Start a local freenet node in background (no P2P)"
-command = "bash"
-args = ["-c", "freenet local &"]
-
-[tasks.start-node]
-description = "Start a freenet node in background (network mode, local-only P2P)"
-command = "bash"
-args = ["-c", "freenet network --is-gateway --skip-load-from-network --public-network-address 127.0.0.1 --public-network-port 31337 &"]
-
-[tasks.wait-for-node]
-description = "Wait for the freenet node WebSocket API to be ready"
-command = "bash"
-args = ["-c", "for i in $(seq 1 30); do curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7509/ 2>/dev/null | grep -q '200\\|400\\|404' && break; sleep 1; done"]
+[tasks.copy-wasm]
+description = "Copy WASM to repo root for include_bytes! (used by binary + tests)"
+command = "cp"
+args = ["target/wasm32-unknown-unknown/release/clicker_contract.wasm", "../contract/clicker_contract.wasm"]
+cwd = "./contract"
+dependencies = ["build-contract"]
 
 [tasks.run-publisher]
-description = "Run the clicker client in publish mode (deploys + increments)"
+description = "Connect to an existing node as publisher"
 command = "cargo"
 args = ["run", "--", "--role", "publish"]
 
 [tasks.run-subscriber]
-description = "Run the clicker client in subscribe mode (subscribes + increments)"
+description = "Connect to an existing node as subscriber"
 command = "cargo"
 args = ["run", "--", "--role", "subscribe"]
 
-[tasks.run]
-description = "Full pipeline: build contract, start node, run publisher"
-dependencies = ["build-contract", "start-node", "wait-for-node", "run-publisher"]
-
-[tasks.run.postlude]
-description = "Kill the freenet node after client exits"
-command = "bash"
-args = ["-c", "pkill -f 'freenet network' 2>/dev/null; exit 0"]
-
 [tasks.test]
 description = "Build contract WASM then run all tests"
-dependencies = ["build-contract"]
+dependencies = ["copy-wasm"]
 command = "cargo"
 args = ["test", "--", "--nocapture"]
 
 [tasks.test-no-capture]
 description = "Build contract WASM then run tests without output capture (for debugging)"
-dependencies = ["build-contract"]
+dependencies = ["copy-wasm"]
 command = "cargo"
 args = ["test", "--", "--nocapture", "--test-threads", "1"]
 
