@@ -52,7 +52,10 @@ async fn run_client() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
-    let tmp = tempfile::tempdir()?;
+    let data_dir = std::path::PathBuf::from(".freenet-demo");
+    std::fs::create_dir_all(data_dir.join("config"))?;
+    std::fs::create_dir_all(data_dir.join("data"))?;
+    std::fs::create_dir_all(data_dir.join("log"))?;
 
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
     let port = listener.local_addr()?.port();
@@ -76,9 +79,9 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         },
         config_paths: ConfigPathsArgs {
-            config_dir: Some(tmp.path().to_path_buf()),
-            data_dir: Some(tmp.path().to_path_buf()),
-            log_dir: Some(tmp.path().to_path_buf()),
+            config_dir: Some(data_dir.join("config")),
+            data_dir: Some(data_dir.join("data")),
+            log_dir: Some(data_dir.join("log")),
         },
         ..Default::default()
     };
