@@ -1,5 +1,6 @@
 target/
 Cargo.lock
+.freenet-demo/
 .env
 .env.*
 *.env
