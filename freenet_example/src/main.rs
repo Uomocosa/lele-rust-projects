@@ -11,33 +11,23 @@ use freenet_example::Role;
 use freenet_example::clicker_client::ClickerClient;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
     tracing_subscriber::fmt()
         .with_writer(std::io::stdout)
         .init();
 
     let args: Vec<String> = std::env::args().collect();
     let has_role = args.iter().any(|a| a == "--role");
-    let is_standalone = args.iter().any(|a| a == "--standalone");
 
-    if is_standalone || !has_role {
-        run_standalone().await?;
-        pause_if_windows();
-        Ok(())
-    } else {
+    let result = if has_role {
         run_client().await
+    } else {
+        run_standalone().await
+    };
+    if let Err(e) = result {
+        eprintln!("Error: {e}");
     }
 }
-
-#[cfg(windows)]
-fn pause_if_windows() {
-    use std::io::{stdin, Read};
-    println!("Press Enter to exit...");
-    let _ = stdin().read(&mut [0u8]);
-}
-
-#[cfg(not(windows))]
-fn pause_if_windows() {}
 
 async fn run_client() -> Result<(), Box<dyn std::error::Error>> {
     let role = parse_role()?;
@@ -103,38 +93,19 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     tokio::time::sleep(Duration::from_secs(3)).await;
-    info!("node started");
 
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
+    let mut clicker = ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;
 
-    let mut publisher =
-        ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;
-    info!(key = %publisher.contract_key(), count = publisher.count(), "publisher deployed and subscribed");
+    info!(key = %clicker.contract_key(), count = clicker.count(), "connected, running indefinitely");
 
-    for i in 1..=3 {
-        let count = publisher.tick().await?;
-        info!(count, "publisher tick {i}");
-        tokio::time::sleep(Duration::from_millis(500)).await;
+    loop {
+        match clicker.tick().await {
+            Ok(count) => info!(count, "tick"),
+            Err(e) => eprintln!("tick error: {e}"),
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
-
-    let state_after = publisher.state().await?;
-    info!(state_after, "publisher final state");
-
-    let mut subscriber =
-        ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Subscribe).await?;
-    let sub_state = subscriber.state().await?;
-    info!(sub_state, "subscriber reads state");
-
-    println!();
-    println!("=== Demo complete ===");
-    println!("Publisher deployed and incremented 3 times");
-    println!("Subscriber found the contract and confirmed state = {sub_state}");
-    println!("State persisted across disconnect");
-    println!("======================");
-    println!();
-    println!("Your freenet counter app works! {sub_state}");
-
-    Ok(())
 }
 
 fn parse_role() -> Result<Role, String> {

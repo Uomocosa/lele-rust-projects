@@ -92,21 +92,32 @@ jobs:
           body: |
             ## freenet-example ${{ github.ref_name }}
 
+            A shared counter contract demo on the Freenet network.
+            No external dependencies needed — runs its own node in-process.
+
             ### Download
 
             | Platform | Binary |
             |----------|--------|
-            | Linux | freenet-example-linux |
-            | macOS | freenet-example-macos |
-            | Windows | freenet-example-windows.exe |
+            | Linux | `freenet-example-linux` |
+            | macOS | `freenet-example-macos` |
+            | Windows | `freenet-example-windows.exe` |
 
-            ### Usage (no flags needed)
+            ### Usage
+
+            **Linux & macOS** — open a terminal:
 
             ```bash
             chmod +x freenet-example-linux
             ./freenet-example-linux
             ```
 
-            No dependencies required. Runs an in-process freenet node.
-            Double-click works on Windows (pauses on exit to show output).
+            **Windows** — double-click the `.exe` or run from Command Prompt:
+
+            ```cmd
+            freenet-example-windows.exe
+            ```
+
+            The app runs indefinitely, incrementing the counter every second.
+            Press `Ctrl+C` or close the terminal to stop.
           files: release-artifacts/**/*
