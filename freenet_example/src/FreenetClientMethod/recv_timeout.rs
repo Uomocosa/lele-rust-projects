@@ -13,6 +13,13 @@ pub async fn recv_timeout(
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_usage() {}
+    use crate::testing::*;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_usage() {
+        let node = TestNode::start().await;
+        let mut client = connect(node.port()).await;
+        let result = client.recv_timeout(std::time::Duration::from_millis(10)).await;
+        assert!(result.is_none());
+    }
 }

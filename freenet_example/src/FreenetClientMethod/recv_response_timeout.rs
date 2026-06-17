@@ -15,6 +15,7 @@ pub async fn recv_response_timeout(
 
 #[cfg(test)]
 mod tests {
+    // trivial wrapper — verified through recv_response test via the delegate chain
     #[test]
     fn test_usage() {}
 }

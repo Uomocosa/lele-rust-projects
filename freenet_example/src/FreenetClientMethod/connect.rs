@@ -68,6 +68,14 @@ pub async fn connect(host: &str, port: u16) -> Result<crate::FreenetClient, Ce> 
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_usage() {}
+    use crate::testing::*;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_usage() {
+        let node = TestNode::start().await;
+        let client = connect(node.port()).await;
+        client.send(
+            freenet_stdlib::client_api::ClientRequest::Disconnect { cause: None },
+        ).await.unwrap();
+    }
 }

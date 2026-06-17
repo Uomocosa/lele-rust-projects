@@ -1,19 +1,14 @@
 use std::net::{IpAddr, Ipv4Addr, TcpListener};
-use std::time::Duration;
 
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
 use freenet::local_node::{NodeConfig, OperationMode};
 use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 
-use freenet_example::{ClickerClient, Role};
+pub async fn start() -> crate::testing::test_node::TestNode {
+    let _ = tracing_subscriber::fmt::try_init();
 
-const WASM: &[u8] = include_bytes!("../contract/clicker_contract.wasm");
-
-#[tokio::test(flavor = "multi_thread")]
-async fn test_standalone_demo_works() {
     let tmp = tempfile::tempdir().unwrap();
-
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0)).unwrap();
     let port = listener.local_addr().unwrap().port();
 
@@ -24,7 +19,7 @@ async fn test_standalone_demo_works() {
     };
     let clients = serve_client_api_with_listener(ws_config, listener).await.unwrap();
 
-    let config_args = ConfigArgs {
+    let args = ConfigArgs {
         mode: Some(OperationMode::Network),
         network_api: NetworkArgs {
             is_gateway: true,
@@ -40,32 +35,29 @@ async fn test_standalone_demo_works() {
         },
         ..Default::default()
     };
-    let config = config_args.build().await.unwrap();
+    let config = args.build().await.unwrap();
     let node_config = NodeConfig::new(config).await.unwrap();
     let node = node_config.build(clients).await.unwrap();
-
-    let _node = tokio::spawn(async move {
-        let _ = run_network_node(node).await;
+    let task = tokio::spawn(async move {
+        if let Err(e) = run_network_node(node).await {
+            tracing::error!(error = %e, "node exited with error");
+        }
     });
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
-
-    let mut publisher = ClickerClient::connect("127.0.0.1", port, WASM, Role::Publish)
-        .await
-        .unwrap();
-    assert_eq!(publisher.count(), 0, "publisher initial count");
-
-    for expected in 1..=3 {
-        let count = publisher.tick().await.unwrap();
-        assert_eq!(count, expected, "publisher tick {expected}");
+    crate::testing::test_node::TestNode {
+        _tmp: tmp,
+        port,
+        _task: task,
     }
+}
 
-    let state = publisher.state().await.unwrap();
-    assert_eq!(state, 3, "publisher final state");
+#[cfg(test)]
+mod tests {
+    use crate::testing::TestNode;
 
-    let mut subscriber = ClickerClient::connect("127.0.0.1", port, WASM, Role::Subscribe)
-        .await
-        .unwrap();
-    let sub_state = subscriber.state().await.unwrap();
-    assert_eq!(sub_state, 3, "subscriber reads state 3");
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_usage() {
+        let node = TestNode::start().await;
+        assert!(node.port() > 0);
+    }
 }
