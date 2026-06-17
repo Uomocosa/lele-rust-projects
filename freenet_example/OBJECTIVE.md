@@ -1,124 +1,60 @@
-# freenet_example — Pure Freenet Clicker Game
+# freenet_example
 
-The simplest possible freenet "app" to prove contract integration works.
+A shared counter that anyone can run — just download, execute, and you're
+participating in a global shared state over the Freenet P2P network.
 
 ## Goal
 
-A shared counter contract where any participant can increment the count and all
-subscribers see updates in real time via pub/sub. Demonstrates:
+**A single executable that works on any platform.** Anyone downloads it,
+runs it, and their machine immediately becomes part of a shared counter
+contract across the Freenet network. No install steps, no toolchain, no
+dependencies.
 
-- Deploying a contract to a freenet node
-- Subscribing to contract state updates
-- Sending updates (increment)
-- **Multi-peer: multiple clients incrementing the same counter across machines**
+The counter persists on the network — restarting the binary fetches the
+current global state, not a local cache.
 
-## Architecture
+## How it works
 
 ```
-Publisher                        Subscriber
+Your machine                   Friend's machine
     │                                │
     ├─127.0.0.1:7509                 ├─127.0.0.1:7509
     ▼                                ▼
  Local freenet node ─── P2P ───► Local freenet node
-       (or same node for single-machine demo)
 ```
 
-Both clients connect to their **own** local node at `127.0.0.1:7509`. The
-deterministic `ContractKey` (hash of WASM + params) is the global address —
-the P2P network handles routing. No IP sharing needed.
+Each machine runs its own Freenet node (embedded in the binary). The nodes
+sync contract state via the global Freenet P2P network. The deterministic
+`ContractKey` (hash of WASM + params) is the global address — no IP sharing,
+no server, no configuration.
 
-## Status
+The subscriber:
+1. Loads the same WASM, computes the same deterministic `ContractKey`
+2. Sends `Get { subscribe: true }`
+3. If the contract doesn't exist yet, retries every second
+4. Once found, joins the increment loop alongside the publisher
+5. Both see each other's updates via pub/sub notifications
 
-| Component | Status |
-|-----------|--------|
-| Contract (`contract/src/lib.rs`) | ✅ Complete |
-| Client WebSocket (`src/connect.rs`) | ✅ Complete |
-| Client logic (`src/main.rs`) | ✅ Complete |
-| Build automation (`Makefile.toml`) | ✅ Complete |
-| Contract unit tests (`contract/src/lib.rs`) | ✅ 2 tests |
-| Integration test (`tests/clicker_integration.rs`) | ✅ 1 test |
-| Multi-peer (publisher + subscriber) | ✅ Complete (0.0.2) |
+## Achieved
 
-## Prerequisites
+- A single executable that starts an in-process Freenet node, deploys the
+  contract, joins the global P2P network, and increments every second
+- Cross-platform: CI builds and validates on Linux, macOS, Windows
+- No dependencies: WASM embedded at compile time, node runs in-process
+- A clicker WASM contract with validate, update, summarize, and delta logic
+- A WebSocket client library (`FreenetClient`) for talking to a Freenet node
+- A `ClickerClient` that handles the full lifecycle
+- Automated tests with in-process network-mode node covering lifecycle,
+  pub/sub, persistence, and concurrent writers
+
+## Get it
+
+Download the latest binary for your OS from
+https://github.com/Uomocosa/lele-rust-projects/releases
 
 ```bash
-# Install cargo-make
-cargo install cargo-make
-
-# Install freenet node
-git clone https://github.com/freenet/freenet-core.git
-cd freenet-core && cargo install --path crates/core
-
-# Ensure wasm target
-rustup target add wasm32-unknown-unknown
+chmod +x freenet-example-linux
+./freenet-example-linux
 ```
 
-## Usage
-
-### Single client (one terminal)
-
-```bash
-cargo make run
-```
-
-This will:
-1. Build the clicker contract to WASM
-2. Start a freenet node in network mode (`--skip-load-from-network`) in the background
-3. Wait for the node to be ready
-4. Run the client in **publish** mode — deploys the contract, subscribes,
-   and increments every second
-
-### Two clients, one machine (pub/sub live updates)
-
-```bash
-# Terminal 1: start the node
-freenet network --is-gateway --skip-load-from-network
-
-# Terminal 2: wait for node, then run publisher
-cargo make run-publisher
-
-# Terminal 3: wait for node, then run subscriber
-cargo make run-subscriber
-```
-
-Both clients increment the same counter and see each other's updates via
-`UpdateNotification` (pub/sub). The counter climbs ~2x per second.
-
-> **Note:** `freenet local` mode does not dispatch `UpdateNotification` to
-> subscribers — use `freenet network --is-gateway --skip-load-from-network` for single-machine
-> multi-client demos.
-
-### Two clients, two machines
-
-```bash
-# Machine A: start a network-mode node, then publisher
-freenet
-cargo make run-publisher
-
-# Machine B: start a network-mode node, then subscriber
-freenet
-cargo make run-subscriber
-```
-
-No configuration needed — both connect to `127.0.0.1:7509`. The P2P network
-routes by the deterministic `ContractKey`. Start the publisher first so the
-subscriber's initial `Get` finds the contract.
-
-## How the Subscriber Works
-
-1. Loads the same WASM, computes `ContractKey::from_params_and_code`
-2. Sends `Get { subscribe: true, blocking_subscribe: true }`
-3. If the publisher hasn't deployed yet, receives `NotFound` and retries
-   every second
-4. Once found, enters the same increment loop as the publisher
-5. Both clients see each other's `UpdateNotification`s via pub/sub
-
-The `ContractKey` is deterministic — `blake3(blake3(wasm) || params)` — so
-any client with the same WASM and empty params derives the exact same key
-without any network round-trip.
-
-## Configuration
-
-- `FREENET_HOST` env var (default: `127.0.0.1`)
-- `FREENET_PORT` env var (default: `7509`)
-- `--role publish|subscribe` CLI flag (default: `publish`)
+Press Ctrl+C to stop. Re-run to rejoin the global counter.
