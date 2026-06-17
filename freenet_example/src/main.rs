@@ -73,7 +73,6 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         mode: Some(OperationMode::Network),
         network_api: NetworkArgs {
             is_gateway: true,
-            skip_load_from_network: true,
             public_address: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             public_port: Some(31337),
             ..Default::default()
@@ -95,7 +94,7 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    tokio::time::sleep(Duration::from_secs(10)).await;
 
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
     let mut clicker = ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;

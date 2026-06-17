@@ -4,7 +4,7 @@ use freenet_stdlib::client_api::HostResponse;
 
 use crate::ClientError;
 
-const TIMEOUT_SECS: u64 = 10;
+const TIMEOUT_SECS: u64 = 60;
 
 pub(crate) async fn recv_response(
     client: &mut crate::FreenetClient,
