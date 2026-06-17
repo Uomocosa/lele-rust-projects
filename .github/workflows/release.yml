@@ -100,12 +100,13 @@ jobs:
             | macOS | freenet-example-macos |
             | Windows | freenet-example-windows.exe |
 
-            ### Usage
+            ### Usage (no flags needed)
 
             ```bash
             chmod +x freenet-example-linux
-            ./freenet-example-linux --standalone
+            ./freenet-example-linux
             ```
 
             No dependencies required. Runs an in-process freenet node.
+            Double-click works on Windows (pauses on exit to show output).
           files: release-artifacts/**/*

@@ -17,23 +17,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let args: Vec<String> = std::env::args().collect();
+    let has_role = args.iter().any(|a| a == "--role");
+    let is_standalone = args.iter().any(|a| a == "--standalone");
 
-    if args.iter().any(|a| a == "--standalone") {
-        run_standalone().await
+    if is_standalone || !has_role {
+        run_standalone().await?;
+        pause_if_windows();
+        Ok(())
     } else {
-        run_client(false).await
+        run_client().await
     }
 }
 
-async fn run_client(standalone: bool) -> Result<(), Box<dyn std::error::Error>> {
+#[cfg(windows)]
+fn pause_if_windows() {
+    use std::io::{stdin, Read};
+    println!("Press Enter to exit...");
+    let _ = stdin().read(&mut [0u8]);
+}
+
+#[cfg(not(windows))]
+fn pause_if_windows() {}
+
+async fn run_client() -> Result<(), Box<dyn std::error::Error>> {
     let role = parse_role()?;
 
-    let contract_wasm = if standalone {
-        include_bytes!("../contract/clicker_contract.wasm").to_vec()
-    } else {
-        std::fs::read("contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm")?
-    };
-
+    let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
     info!(target: "freenet_example", size = contract_wasm.len(), "loaded contract wasm");
 
     let node_host = std::env::var("FREENET_HOST").unwrap_or_else(|_| "127.0.0.1".into());
