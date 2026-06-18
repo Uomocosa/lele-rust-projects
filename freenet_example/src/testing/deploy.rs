@@ -3,9 +3,10 @@ use std::sync::Arc;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
+use crate::ClientError;
 use crate::FreenetClient;
 
-pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> ContractKey {
+pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractKey, ClientError> {
     let code = Arc::new(ContractCode::from(wasm.to_vec()));
     let params = Parameters::from(Vec::new());
     let wrapped = WrappedContract::new(code, params);
@@ -18,30 +19,29 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> ContractKey {
         subscribe: false,
         blocking_subscribe: false,
     };
-    client.send(ClientRequest::ContractOp(get_req)).await.unwrap();
+    client.send(ClientRequest::ContractOp(get_req)).await?;
 
-    loop {
-        match client.recv_response().await.unwrap() {
-            HostResponse::ContractResponse(ContractResponse::GetResponse { key, .. }) => return key,
-            HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => break,
-            other => panic!("unexpected response to initial GET: {other:?}"),
+    match client.recv_response().await? {
+        HostResponse::ContractResponse(ContractResponse::GetResponse { key, .. }) => {
+            return Ok(key);
         }
+        HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {}
+        other => return Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
 
     let put_req = ContractRequest::Put {
         contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-        state: WrappedState::new(bincode::serialize(&0u64).unwrap()),
+        state: WrappedState::new(bincode::serialize(&0u64)?),
         related_contracts: RelatedContracts::default(),
         subscribe: true,
         blocking_subscribe: true,
     };
-    client.send(ClientRequest::ContractOp(put_req)).await.unwrap();
+    client.send(ClientRequest::ContractOp(put_req)).await?;
 
-    match client.recv_response().await.unwrap() {
+    match client.recv_response().await? {
         HostResponse::ContractResponse(
-            ContractResponse::PutResponse { key }
-            | ContractResponse::SubscribeResponse { key, .. },
-        ) => key,
-        other => panic!("unexpected response to PUT: {other:?}"),
+            ContractResponse::PutResponse { key } | ContractResponse::SubscribeResponse { key, .. },
+        ) => Ok(key),
+        other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
 }

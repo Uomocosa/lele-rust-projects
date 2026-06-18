@@ -94,7 +94,8 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
     tokio::time::sleep(Duration::from_secs(10)).await;
 
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    let mut clicker = ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;
+    let mut clicker =
+        ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;
 
     info!(key = %clicker.contract_key(), count = clicker.count(), "connected, running indefinitely");
 

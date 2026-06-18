@@ -72,10 +72,11 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_usage() {
-        let node = TestNode::start().await;
-        let client = connect(node.port()).await;
-        client.send(
-            freenet_stdlib::client_api::ClientRequest::Disconnect { cause: None },
-        ).await.unwrap();
+        let node = TestNode::start().await.unwrap();
+        let client = connect(node.port()).await.unwrap();
+        client
+            .send(freenet_stdlib::client_api::ClientRequest::Disconnect { cause: None })
+            .await
+            .unwrap();
     }
 }

@@ -19,9 +19,9 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_usage() {
-        let node = TestNode::start().await;
-        let mut client = connect(node.port()).await;
-        let wasm = load_wasm();
-        let _key = deploy(&mut client, &wasm).await;
+        let node = TestNode::start().await.unwrap();
+        let mut client = connect(node.port()).await.unwrap();
+        let wasm = load_wasm().unwrap();
+        let _key = deploy(&mut client, &wasm).await.unwrap();
     }
 }

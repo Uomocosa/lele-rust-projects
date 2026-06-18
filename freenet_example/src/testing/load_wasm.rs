@@ -1,6 +1,7 @@
+use std::io;
+
 const WASM_PATH: &str = "contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm";
 
-pub fn load_wasm() -> Vec<u8> {
+pub fn load_wasm() -> Result<Vec<u8>, io::Error> {
     std::fs::read(WASM_PATH)
-        .expect("contract WASM not found — build with: cargo make build-contract")
 }

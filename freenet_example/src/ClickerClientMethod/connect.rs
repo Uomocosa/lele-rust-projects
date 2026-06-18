@@ -76,50 +76,50 @@ pub async fn connect(
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::*;
     use crate::ClickerClient;
     use crate::Role;
+    use crate::testing::*;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_usage() {
-        let node = TestNode::start().await;
-        let wasm = load_wasm();
-        let mut client = connect(node.port()).await;
-        let key = deploy(&mut client, &wasm).await;
-        assert_eq!(get_count(&mut client, key).await, 0);
-        update_count(&mut client, key, 42).await;
-        assert_eq!(get_count(&mut client, key).await, 42);
-        update_count(&mut client, key, 99).await;
-        assert_eq!(get_count(&mut client, key).await, 99);
+        let node = TestNode::start().await.unwrap();
+        let wasm = load_wasm().unwrap();
+        let mut client = connect(node.port()).await.unwrap();
+        let key = deploy(&mut client, &wasm).await.unwrap();
+        assert_eq!(get_count(&mut client, key).await.unwrap(), 0);
+        update_count(&mut client, key, 42).await.unwrap();
+        assert_eq!(get_count(&mut client, key).await.unwrap(), 42);
+        update_count(&mut client, key, 99).await.unwrap();
+        assert_eq!(get_count(&mut client, key).await.unwrap(), 99);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_persistence() {
-        let node = TestNode::start().await;
-        let wasm = load_wasm();
+        let node = TestNode::start().await.unwrap();
+        let wasm = load_wasm().unwrap();
         let key;
         {
-            let mut client = connect(node.port()).await;
-            key = deploy(&mut client, &wasm).await;
-            update_count(&mut client, key, 5).await;
-            assert_eq!(get_count(&mut client, key).await, 5);
+            let mut client = connect(node.port()).await.unwrap();
+            key = deploy(&mut client, &wasm).await.unwrap();
+            update_count(&mut client, key, 5).await.unwrap();
+            assert_eq!(get_count(&mut client, key).await.unwrap(), 5);
         }
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         {
-            let mut client = connect(node.port()).await;
-            assert_eq!(get_count(&mut client, key).await, 5);
-            update_count(&mut client, key, 8).await;
-            assert_eq!(get_count(&mut client, key).await, 8);
+            let mut client = connect(node.port()).await.unwrap();
+            assert_eq!(get_count(&mut client, key).await.unwrap(), 5);
+            update_count(&mut client, key, 8).await.unwrap();
+            assert_eq!(get_count(&mut client, key).await.unwrap(), 8);
         }
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_publish_subscribe() {
-        let node = TestNode::start().await;
-        let wasm = load_wasm();
-        let mut pub_ = connect(node.port()).await;
-        let key = deploy(&mut pub_, &wasm).await;
-        update_count(&mut pub_, key, 5).await;
+        let node = TestNode::start().await.unwrap();
+        let wasm = load_wasm().unwrap();
+        let mut pub_ = connect(node.port()).await.unwrap();
+        let key = deploy(&mut pub_, &wasm).await.unwrap();
+        update_count(&mut pub_, key, 5).await.unwrap();
         let mut sub = ClickerClient::connect("127.0.0.1", node.port(), &wasm, Role::Subscribe)
             .await
             .unwrap();
@@ -128,8 +128,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_standalone_demo_works() {
-        let node = TestNode::start().await;
-        let wasm = load_wasm();
+        let node = TestNode::start().await.unwrap();
+        let wasm = load_wasm().unwrap();
         let mut clicker = ClickerClient::connect("127.0.0.1", node.port(), &wasm, Role::Publish)
             .await
             .unwrap();

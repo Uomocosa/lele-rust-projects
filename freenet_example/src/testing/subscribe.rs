@@ -1,22 +1,21 @@
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
+use crate::ClientError;
 use crate::FreenetClient;
 
-pub async fn subscribe(client: &mut FreenetClient, key: ContractKey) -> u64 {
+pub async fn subscribe(client: &mut FreenetClient, key: ContractKey) -> Result<u64, ClientError> {
     let get_req = ContractRequest::Get {
         key: *key.id(),
         return_contract_code: false,
         subscribe: true,
         blocking_subscribe: true,
     };
-    client.send(ClientRequest::ContractOp(get_req)).await.unwrap();
-    loop {
-        match client.recv_response().await.unwrap() {
-            HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-                return bincode::deserialize(state.as_ref()).unwrap();
-            }
-            other => panic!("unexpected subscribe response: {other:?}"),
+    client.send(ClientRequest::ContractOp(get_req)).await?;
+    match client.recv_response().await? {
+        HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
+            Ok(bincode::deserialize(state.as_ref())?)
         }
+        other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
 }

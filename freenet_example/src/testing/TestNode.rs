@@ -6,6 +6,6 @@ pub struct TestNode {
 
 #[rustfmt::skip]
 impl TestNode {
-    pub async fn start() -> Self { crate::testing::TestNodeMethod::start().await }
+    pub async fn start() -> Result<Self, Box<dyn std::error::Error>> { crate::testing::TestNodeMethod::start().await }
     pub fn port(&self) -> u16 { crate::testing::TestNodeMethod::port(self) }
 }
