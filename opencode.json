@@ -2,12 +2,16 @@
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "plan",
   "model": "opencode-go/deepseek-v4-flash",
+  "compaction": {
+    "auto": true
+  },
   "instructions": [
-    "{file:~/.config/opencode/skills/lele-syntax-rs/SKILL.md}",
-    "{file:~/.config/opencode/skills/opencode-git-workflow/SKILL.md}"
+    "/root/.config/opencode/skills/lele-syntax-rs/SKILL.md",
+    "/root/.config/opencode/skills/opencode-git-workflow/SKILL.md"
   ],
   "permission": {
     "external_directory": {
+      "*": "allow",
       "/**": "allow"
     },
     "skill": {
@@ -25,7 +29,7 @@
         "deepseek-v4-flash": {
           "variants": {
             "high": {
-              "reasoningEffort": "high"
+              "reasoningEffort": "Max"
             }
           }
         }
