@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: freenet_example
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            freenet_example
+            freenet_example/contract
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build contract WASM
+        working-directory: freenet_example/contract
+        run: cargo build --release --target wasm32-unknown-unknown
+
+      - name: Refresh committed contract WASM used by include_bytes!
+        shell: bash
+        run: cp contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm contract/clicker_contract.wasm
+
+      - name: Build all targets (release)
+        run: cargo build --all-targets --release
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --all-targets --release -- -D warnings
+
+      - name: Run all tests
+        run: cargo test --all-targets --release -- --nocapture
