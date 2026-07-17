@@ -1,8 +1,14 @@
 use std::process::Command;
 
 fn main() {
+    let dst = "contract/clicker_contract.wasm";
     println!("cargo:rerun-if-changed=contract/src/lib.rs");
     println!("cargo:rerun-if-changed=contract/Cargo.toml");
+    println!("cargo:rerun-if-changed={dst}");
+
+    if std::path::Path::new(dst).exists() {
+        return;
+    }
 
     let status = Command::new("cargo")
         .args([
@@ -21,6 +27,5 @@ fn main() {
     }
 
     let wasm_src = "contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm";
-    let wasm_dst = "contract/clicker_contract.wasm";
-    std::fs::copy(wasm_src, wasm_dst).expect("failed to copy contract WASM");
+    std::fs::copy(wasm_src, dst).expect("failed to copy contract WASM");
 }

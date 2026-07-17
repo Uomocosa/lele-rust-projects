@@ -5,7 +5,28 @@ on:
     tags: ["v*"]
 
 jobs:
+  build-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: freenet_example
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build contract WASM (once for all platforms)
+        working-directory: freenet_example/contract
+        run: cargo build --release --target wasm32-unknown-unknown
+      - name: Copy WASM to embed location
+        run: cp contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm contract/clicker_contract.wasm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contract-wasm
+          path: freenet_example/contract/clicker_contract.wasm
+
   build:
+    needs: [build-contract]
     strategy:
       matrix:
         include:
@@ -28,10 +49,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Download pre-built contract WASM
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-wasm
+          path: freenet_example/contract
 
-      - name: Install wasm32-unknown-unknown target
-        run: rustup target add wasm32-unknown-unknown
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Test contract
         working-directory: freenet_example/contract
