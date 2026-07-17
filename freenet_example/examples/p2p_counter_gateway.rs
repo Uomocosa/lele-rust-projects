@@ -1,10 +1,11 @@
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
 use std::time::Duration;
 
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
 use freenet::local_node::{NodeConfig, OperationMode};
 use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
+use freenet::transport::TransportKeypair;
 
 use freenet_example::ClickerClient;
 use freenet_example::Role;
@@ -12,10 +13,15 @@ use freenet_example::Role;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
+    let is_gateway = args.iter().any(|a| a == "--gateway");
+    let connect_pos = args.iter().position(|a| a == "--connect");
 
-    if args.iter().any(|a| a == "--gateway") {
-        run_gateway().await
-    } else if let Some(pos) = args.iter().position(|a| a == "--connect") {
+    if is_gateway {
+        let connect_str = connect_pos
+            .and_then(|p| args.get(p + 1))
+            .map(|s| s.to_string());
+        run_gateway(connect_str).await
+    } else if let Some(pos) = connect_pos {
         let connect_str = args
             .get(pos + 1)
             .ok_or("--connect requires <ip>:<port>,<pubkey>")?;
@@ -23,16 +29,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         eprintln!("Usage:");
         eprintln!(
-            "  Gateway: cargo run --example p2p_counter_gateway -- --gateway --public-address <YOUR_IP>"
+            "  Gateway: cargo run --example p2p_counter_gateway -- --gateway --public-address <IP>"
         );
         eprintln!(
-            "  Peer:    cargo run --example p2p_counter_gateway -- --connect <GATEWAY_IP>:<PORT>,<PUBKEY>"
+            "  Gateway+peer: cargo run --example p2p_counter_gateway -- --gateway --public-address <IP> --connect <GATEWAY>:<PORT>,<PUBKEY>"
+        );
+        eprintln!(
+            "  Peer:    cargo run --example p2p_counter_gateway -- --connect <GATEWAY>:<PORT>,<PUBKEY>"
         );
         std::process::exit(1);
     }
 }
 
-async fn run_gateway() -> Result<(), Box<dyn std::error::Error>> {
+async fn run_gateway(upstream_gateway: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let public_addr = args
         .iter()
@@ -40,6 +49,11 @@ async fn run_gateway() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|p| args.get(p + 1))
         .ok_or("--gateway requires --public-address <IP>")?;
     let public_ip: IpAddr = public_addr.parse()?;
+
+    let p2p_port = UdpSocket::bind("127.0.0.1:0")
+        .and_then(|s| s.local_addr())
+        .map(|a| a.port())
+        .unwrap_or(31337);
 
     let tmp = tempfile::tempdir()?;
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
@@ -58,6 +72,8 @@ async fn run_gateway() -> Result<(), Box<dyn std::error::Error>> {
             is_gateway: true,
             skip_load_from_network: true,
             public_address: Some(public_ip),
+            public_port: Some(p2p_port),
+            gateway: upstream_gateway.map(|s| vec![s]),
             ..Default::default()
         },
         config_paths: ConfigPathsArgs {
@@ -69,11 +85,10 @@ async fn run_gateway() -> Result<(), Box<dyn std::error::Error>> {
     };
     let config = config_args.build().await?;
     let node_config = NodeConfig::new(config).await?;
-    let secrets = tmp.path().join("secrets");
-    tracing::info!(gateway_addr = %public_ip, ws_port = %ws_port, secrets = %secrets.display(), "gateway started");
-    println!("Gateway started at {public_addr}");
-    println!("Secrets directory: {}", secrets.display());
-    println!("Share this with peers: --connect {public_addr}:31337,<pubkey-from-secrets>");
+
+    let keypair = TransportKeypair::load(tmp.path().join("secrets").join("transport_keypair"))?;
+    let pubkey_hex = hex::encode(keypair.public().as_bytes());
+    println!("GATEWAY_CONNECT=127.0.0.1:{p2p_port},{pubkey_hex}");
 
     let node = node_config.build(clients).await?;
     tokio::spawn(async move {
@@ -82,7 +97,7 @@ async fn run_gateway() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
     let mut clicker = ClickerClient::connect("127.0.0.1", ws_port, &wasm, Role::Publish).await?;
@@ -133,7 +148,7 @@ async fn run_peer(connect_str: &str) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
     let mut clicker = ClickerClient::connect("127.0.0.1", ws_port, &wasm, Role::Subscribe).await?;

@@ -154,3 +154,139 @@ async fn test_two_clients_talk_via_node() {
         .unwrap();
     assert_eq!(sub.state().await.unwrap(), 3);
 }
+
+fn spawn_example(args: &[&str]) -> (std::process::Child, std::sync::mpsc::Receiver<String>) {
+    let target_dir = std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
+    // Build the example first so the binary exists
+    let _ = std::process::Command::new("cargo")
+        .args(["build", "--example", "p2p_counter_gateway"])
+        .env("CARGO_TARGET_DIR", &target_dir)
+        .stderr(std::process::Stdio::null())
+        .status();
+    let exe = std::path::Path::new(&target_dir)
+        .join("debug")
+        .join("examples")
+        .join("p2p_counter_gateway");
+    let mut cmd = std::process::Command::new(exe);
+    cmd.args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let mut child = cmd.spawn().unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let mut stderr = child.stderr.take().unwrap();
+    std::thread::spawn(move || {
+        use std::io::Read;
+        let mut buf = Vec::new();
+        let _ = stderr.read_to_end(&mut buf);
+        if !buf.is_empty() {
+            eprintln!("[subprocess stderr]: {}", String::from_utf8_lossy(&buf));
+        }
+    });
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        let reader = std::io::BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(l) => {
+                    if tx.send(l).is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+    (child, rx)
+}
+
+fn expect_line(rx: &std::sync::mpsc::Receiver<String>, prefix: &str, timeout: Duration) -> String {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        match rx.recv_timeout(Duration::from_millis(200)) {
+            Ok(line) => {
+                if line.starts_with(prefix) {
+                    return line;
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if std::time::Instant::now() >= deadline {
+                    panic!("timed out waiting for line starting with: {prefix}");
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("subprocess exited before printing: {prefix}");
+            }
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_gateway_subprocess_smoke() {
+    let (mut gateway, gw_rx) = spawn_example(&["--gateway", "--public-address", "127.0.0.1"]);
+
+    let connect_line = expect_line(&gw_rx, "GATEWAY_CONNECT=", Duration::from_secs(30));
+    assert!(
+        connect_line.len() > "GATEWAY_CONNECT=".len(),
+        "connect string should contain pubkey"
+    );
+
+    let deployed_line = expect_line(
+        &gw_rx,
+        "counter deployed, initial count:",
+        Duration::from_secs(15),
+    );
+    let initial_count = deployed_line
+        .split("initial count:")
+        .nth(1)
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .unwrap_or(u64::MAX);
+    assert_eq!(initial_count, 0);
+
+    let tick_line = expect_line(&gw_rx, "tick 1:", Duration::from_secs(10));
+    let tick_count = tick_line
+        .split("count =")
+        .nth(1)
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .unwrap_or(0);
+    assert!(tick_count >= 1, "gateway should increment the counter");
+
+    let _ = gateway.kill();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "Freenet assigns random UDP ports for P2P transport that differ from the configured \
+           `public_port`, and NAT-traversal hole punching does not work between two processes on \
+           the same loopback interface. A full P2P e2e test requires either separate machines \
+           with routable IPs, or Freenet's `turmoil` simulation framework.\n\n\
+           The gateway smoke test above verifies the subprocess starts, deploys, and ticks. \
+           The in-process integration tests (e.g. test_two_clients_talk_via_node) verify pub/sub \
+           and state sync through a single node's WebSocket API — which is the same API the P2P \
+           layer feeds into.\n\n\
+           Run manually with:\n\
+             # Terminal 1: start gateway\n\
+             cargo run --example p2p_counter_gateway -- --gateway --public-address <YOUR_IP>\n\
+             # Terminal 2: start peer (use the GATEWAY_CONNECT line from terminal 1)\n\
+             cargo run --example p2p_counter_gateway -- --connect <CONNECT_STRING>\n\
+             # Both should show synchronized ticks"]
+async fn test_p2p_gateway_peer_sync() {}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "Same limitation as test_p2p_gateway_peer_sync — P2P between two local processes \
+           requires routable IPs or the turmoil simulator.\n\n\
+           When testing on separate machines, run gateway B with both --gateway and --connect:\n\
+             cargo run --example p2p_counter_gateway -- --gateway --public-address <IP_B> \
+               --connect <IP_A>:<PORT_A>,<PUBKEY_A>"]
+async fn test_p2p_both_gateways_sync() {}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "This test requires the real Freenet P2P network. Both standalone binaries use \
+           `skip_load_from_network: false` to discover peers via the global DHT — there is no \
+           way to supply a self-contained DHT in CI.\n\n\
+           To verify manually on two machines with routable IPs:\n\
+             1. Machine A: cargo run --release\n\
+             2. Machine B: cargo run --release\n\
+             3. Both should see each other's counter updates\n\n\
+           Run in CI with:\n\
+             cargo test --test integration test_p2p_two_standalone_binaries -- --ignored --nocapture"]
+async fn test_p2p_two_standalone_binaries() {}

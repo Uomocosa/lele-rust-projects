@@ -1,6 +1,6 @@
 [package]
 name = "freenet_example"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 [lints.rust]
@@ -27,3 +27,4 @@ serde = { version = "1", features = ["derive"] }
 bincode = "1"
 thiserror = "2"
 tempfile = "3"
+hex = "0.4"
