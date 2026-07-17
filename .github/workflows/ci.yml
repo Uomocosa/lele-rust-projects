@@ -34,13 +34,9 @@ jobs:
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Build contract WASM
+      - name: Test contract
         working-directory: freenet_example/contract
-        run: cargo build --release --target wasm32-unknown-unknown
-
-      - name: Refresh committed contract WASM used by include_bytes!
-        shell: bash
-        run: cp contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm contract/clicker_contract.wasm
+        run: cargo test --release
 
       - name: Build all targets (release)
         run: cargo build --all-targets --release
