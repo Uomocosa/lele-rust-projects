@@ -15,7 +15,8 @@ pub async fn recv_response_timeout(
 
 #[cfg(test)]
 mod tests {
-    // trivial wrapper — verified through recv_response test via the delegate chain
+    // Trivial wrapper/delegate module — skip test_usage.
+    // The real coverage comes from integration tests.
     #[test]
     fn test_usage() {}
 }

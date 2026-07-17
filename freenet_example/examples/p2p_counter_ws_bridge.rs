@@ -111,20 +111,3 @@ async fn run_client() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use freenet_example::ClickerClient;
-    use freenet_example::Role;
-    use freenet_example::testing::TestNode;
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_usage() {
-        let node = TestNode::start().await.unwrap();
-        let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-        let mut clicker = ClickerClient::connect("127.0.0.1", node.port(), &wasm, Role::Publish)
-            .await
-            .unwrap();
-        assert_eq!(clicker.tick().await.unwrap(), 1);
-    }
-}

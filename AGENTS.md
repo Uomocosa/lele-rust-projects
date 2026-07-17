@@ -23,4 +23,21 @@ cargo fmt -- --check
 cargo test --all-targets
 ```
 
+> **Note:** The `freenet_example` project depends on `freenet` → `tikv-jemalloc-sys`,
+> which fails when the source path contains spaces (the `configure` step rejects them).
+> If your path has spaces (e.g. `[AAI] Agentic AI`), prepend `CARGO_TARGET_DIR=/tmp/frt-build`
+> to all cargo commands above.
+
+## Conventions
+
+- **`test_usage` in `src/` modules:** Every library module under `src/` should include
+  at least one `test_usage` test. Trivial wrapper/delegate modules may include an empty
+  `test_usage` with a comment noting that real coverage comes from integration tests.
+  Example binaries (`examples/`) and integration test files (`tests/`) are exempt from
+  `test_usage`.
+
+- **Delegate pattern:** Structs hold only data fields. All methods are defined as free
+  functions in a sibling `*Method/` directory. Method call sites in `impl` blocks use
+  `#[rustfmt::skip]`.
+
 

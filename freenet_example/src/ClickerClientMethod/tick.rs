@@ -45,7 +45,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_usage() {
         let node = TestNode::start().await.unwrap();
-        let wasm = load_wasm().unwrap();
+        let wasm = load_wasm();
         let mut client = connect(node.port()).await.unwrap();
         let key = deploy(&mut client, &wasm).await.unwrap();
         for expected in 1..=5 {
@@ -53,22 +53,5 @@ mod tests {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
         assert_eq!(get_count(&mut client, key).await.unwrap(), 5);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_two_publishers() {
-        let node = TestNode::start().await.unwrap();
-        let wasm = load_wasm().unwrap();
-        let mut writer_a = connect(node.port()).await.unwrap();
-        let mut writer_b = connect(node.port()).await.unwrap();
-        let mut verifier = connect(node.port()).await.unwrap();
-        let key = deploy(&mut writer_a, &wasm).await.unwrap();
-        subscribe(&mut writer_b, key).await.unwrap();
-        subscribe(&mut verifier, key).await.unwrap();
-        update_count(&mut writer_a, key, 3).await.unwrap();
-        recv_notification(&mut verifier, std::time::Duration::from_secs(10)).await;
-        update_count(&mut writer_b, key, 7).await.unwrap();
-        recv_notification(&mut verifier, std::time::Duration::from_secs(10)).await;
-        assert_eq!(get_count(&mut verifier, key).await.unwrap(), 7);
     }
 }

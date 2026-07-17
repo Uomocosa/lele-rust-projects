@@ -21,7 +21,7 @@ mod tests {
     async fn test_usage() {
         let node = TestNode::start().await.unwrap();
         let mut client = connect(node.port()).await.unwrap();
-        let wasm = load_wasm().unwrap();
+        let wasm = load_wasm();
         let _key = deploy(&mut client, &wasm).await.unwrap();
     }
 }

@@ -28,4 +28,6 @@ pub(crate) use recv_after_get::recv_after_get;
 pub(crate) mod recv_response;
 pub(crate) use recv_response::recv_response;
 
+// The `testing` module is intentionally public so that example binaries
+// and integration tests can reuse TestNode and test helpers.
 pub mod testing;

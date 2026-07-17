@@ -11,6 +11,7 @@ pub mod load_wasm;
 pub mod recv_notification;
 pub mod subscribe;
 pub mod update_count;
+pub mod wait_for_count;
 
 pub use connect::connect;
 pub use deploy::deploy;
@@ -19,3 +20,4 @@ pub use load_wasm::load_wasm;
 pub use recv_notification::recv_notification;
 pub use subscribe::subscribe;
 pub use update_count::update_count;
+pub use wait_for_count::wait_for_count;
