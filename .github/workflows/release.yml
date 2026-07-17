@@ -30,6 +30,9 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Build release binary
         run: cargo build --release
 
