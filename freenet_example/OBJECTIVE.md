@@ -18,7 +18,7 @@ current global state, not a local cache.
 ```
 Your machine                   Friend's machine
     │                                │
-    ├─127.0.0.1:7509                 ├─127.0.0.1:7509
+    ├─127.0.0.1:{port}               ├─127.0.0.1:{port}
     ▼                                ▼
  Local freenet node ─── P2P ───► Local freenet node
 ```
@@ -40,12 +40,21 @@ The subscriber:
 - A single executable that starts an in-process Freenet node, deploys the
   contract, joins the global P2P network, and increments every second
 - Cross-platform: CI builds and validates on Linux, macOS, Windows
-- No dependencies: WASM embedded at compile time, node runs in-process
+- Cross-platform deterministic contract: all three platform binaries embed
+  the same WASM, producing the same `ContractKey` — Linux, macOS, and
+  Windows users share one counter
+- No dependencies: WASM embedded at compile time via `build.rs`, node runs
+  in-process
 - A clicker WASM contract with validate, update, summarize, and delta logic
+  (commutative monoid — correct idempotent `update_state`)
 - A WebSocket client library (`FreenetClient`) for talking to a Freenet node
-- A `ClickerClient` that handles the full lifecycle
-- Automated tests with in-process network-mode node covering lifecycle,
-  pub/sub, persistence, and concurrent writers
+- A `ClickerClient` that handles the full lifecycle (deploy, subscribe,
+  update, pub/sub notification draining)
+- Automated tests: 22 unit + integration tests running in CI on 3 platforms
+- End-to-end tests: binary smoke test, two-instance P2P sync test, WebSocket
+  bridge test — all via subprocess-based verification
+- CI/CD pipeline: auto-builds release binaries on tag push, publishes to
+  GitHub Releases
 
 ## Get it
 

@@ -39,18 +39,39 @@ pub/sub notifications.
 ## Development Build
 
 ```bash
-# Build the WASM contract
-cargo build --release --target wasm32-unknown-unknown --manifest-path contract/Cargo.toml
-
-# Build the binary
+# Build and run — build.rs handles the WASM contract automatically
 cargo build --release
-
-# Copy the WASM so the binary can embed it
-cp contract/target/wasm32-unknown-unknown/release/clicker_contract.wasm contract/
-
-# Run
 cargo run --release
+
+# Or with a custom P2P port
+cargo run --release -- --p2p-port 41338
 ```
+
+### Prerequisites
+
+- Rust toolchain with `wasm32-unknown-unknown` target:
+  ```bash
+  rustup target add wasm32-unknown-unknown
+  ```
+
+## Testing
+
+Three test tiers, from fast/offline to slow/online:
+
+| Command | What | Internet? |
+|---------|------|:---:|
+| `cargo test --all-targets` | Contract (2) + library (12) + integration (8) — 22 tests | No |
+| `cargo make e2e` | Binary smoke + two-instance P2P sync + WS bridge | Yes (sync test needs Freenet P2P) |
+| `cargo make pre-push` | Build + clippy + fmt + all tests + e2e | Yes |
+
+Individual e2e tests:
+```bash
+cargo test --manifest-path e2e_tests/Cargo.toml --release --test smoke
+cargo test --manifest-path e2e_tests/Cargo.toml --release --test two_instances_sync
+cargo test --manifest-path e2e_tests/Cargo.toml --release --test ws_bridge_sync
+```
+
+Run with `--nocapture` to see the binary's output.
 
 ## Advanced: External Freenet Node
 

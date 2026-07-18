@@ -33,8 +33,8 @@ cargo test --all-targets
 - **`test_usage` in `src/` modules:** Every library module under `src/` should include
   at least one `test_usage` test. Trivial wrapper/delegate modules may include an empty
   `test_usage` with a comment noting that real coverage comes from integration tests.
-  Example binaries (`examples/`) and integration test files (`tests/`) are exempt from
-  `test_usage`.
+  Example binaries (`examples/`) and integration test files (`integration_tests/`)
+  are exempt from `test_usage`.
 
 - **Delegate pattern:** Structs hold only data fields. All methods are defined as free
   functions in a sibling `*Method/` directory. Method call sites in `impl` blocks use
