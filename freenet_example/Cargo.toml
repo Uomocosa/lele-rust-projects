@@ -14,6 +14,46 @@ path = "src/lib.rs"
 name = "freenet-example"
 path = "src/main.rs"
 
+[[test]]
+name = "full_lifecycle"
+path = "integration_tests/full_lifecycle.rs"
+
+[[test]]
+name = "persistence"
+path = "integration_tests/persistence.rs"
+
+[[test]]
+name = "publish_subscribe"
+path = "integration_tests/publish_subscribe.rs"
+
+[[test]]
+name = "standalone_demo"
+path = "integration_tests/standalone_demo.rs"
+
+[[test]]
+name = "two_writers"
+path = "integration_tests/two_writers.rs"
+
+[[test]]
+name = "multi_subscriber_notifications"
+path = "integration_tests/multi_subscriber_notifications.rs"
+
+[[test]]
+name = "two_clients_talk_via_node"
+path = "integration_tests/two_clients_talk_via_node.rs"
+
+[[test]]
+name = "gateway_subprocess_smoke"
+path = "integration_tests/gateway_subprocess_smoke.rs"
+
+[[example]]
+name = "connect_to_external"
+path = "scenarios/connect_to_external.rs"
+
+[[example]]
+name = "p2p_counter_gateway"
+path = "scenarios/p2p_counter_gateway.rs"
+
 [dependencies]
 freenet = "0.2.71"
 freenet-stdlib = { version = "0.8", features = ["net"] }

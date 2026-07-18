@@ -1,4 +1,4 @@
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
 use std::time::Duration;
 
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
@@ -46,12 +46,18 @@ async fn run_host() -> Result<(), Box<dyn std::error::Error>> {
     };
     let clients = serve_client_api_with_listener(ws_config, listener).await?;
 
+    let p2p_port = UdpSocket::bind("127.0.0.1:0")
+        .and_then(|s| s.local_addr())
+        .map(|a| a.port())
+        .unwrap_or(31337);
+
     let config_args = ConfigArgs {
         mode: Some(OperationMode::Network),
         network_api: NetworkArgs {
             is_gateway: true,
             skip_load_from_network: true,
             public_address: Some(bind_addr),
+            public_port: Some(p2p_port),
             ..Default::default()
         },
         config_paths: ConfigPathsArgs {

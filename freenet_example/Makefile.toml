@@ -33,6 +33,29 @@ dependencies = ["copy-wasm"]
 command = "cargo"
 args = ["test", "--", "--nocapture", "--test-threads", "1"]
 
+[tasks.e2e]
+description = "Run end-to-end tests only"
+dependencies = ["copy-wasm"]
+script = """
+cargo build --release
+cargo build --release --examples
+cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture
+"""
+
+[tasks.pre-push]
+description = "Full verification before push"
+dependencies = ["copy-wasm"]
+script = """
+set -e
+cargo build --all-targets --release
+cargo build --release --examples
+cargo clippy --all-targets --release -- -D warnings
+cargo fmt -- --check
+cargo test --all-targets --release -- --nocapture
+cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture
+echo "ALL CHECKS PASSED"
+"""
+
 [tasks.clean]
 description = "Clean all build artifacts"
 command = "bash"
