@@ -39,7 +39,7 @@ dependencies = ["copy-wasm"]
 script = """
 cargo build --release
 cargo build --release --examples
-cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture
+cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture --test-threads=1
 """
 
 [tasks.pre-push]
@@ -52,7 +52,7 @@ cargo build --release --examples
 cargo clippy --all-targets --release -- -D warnings
 cargo fmt -- --check
 cargo test --all-targets --release -- --nocapture
-cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture
+cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture --test-threads=1
 echo "ALL CHECKS PASSED"
 """
 

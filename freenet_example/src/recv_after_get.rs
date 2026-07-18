@@ -15,14 +15,21 @@ pub(crate) async fn recv_after_get(
         blocking_subscribe: true,
     };
     client.send(ClientRequest::ContractOp(get_req)).await?;
-    match recv_response(client).await? {
-        HostResponse::ContractResponse(ContractResponse::GetResponse { key, state, .. }) => {
-            let count = bincode::deserialize(state.as_ref()).unwrap_or(0);
-            Ok((key, count))
+    loop {
+        match recv_response(client).await? {
+            HostResponse::ContractResponse(ContractResponse::GetResponse {
+                key, state, ..
+            }) => {
+                let count = bincode::deserialize(state.as_ref()).unwrap_or(0);
+                return Ok((key, count));
+            }
+            HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
+                return Err(ClientError::ContractNotFound);
+            }
+            HostResponse::ContractResponse(ContractResponse::SubscribeResponse { .. }) => {
+                continue;
+            }
+            other => return Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
         }
-        HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
-            Err(ClientError::ContractNotFound)
-        }
-        other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
 }
