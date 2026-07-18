@@ -1,4 +1,4 @@
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
 use std::time::Duration;
 
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
@@ -71,7 +71,7 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         network_api: NetworkArgs {
             is_gateway: true,
             public_address: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
-            public_port: Some(31337),
+            public_port: Some(p2p_port()),
             ..Default::default()
         },
         config_paths: ConfigPathsArgs {
@@ -125,6 +125,24 @@ fn parse_role() -> Result<Role, String> {
         }
     }
     Ok(Role::Publish)
+}
+
+fn p2p_port() -> u16 {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--p2p-port"
+            && let Some(val) = args.next()
+            && let Ok(port) = val.parse::<u16>()
+        {
+            return port;
+        }
+    }
+    let socket = UdpSocket::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+        .expect("failed to probe an available UDP port");
+    socket
+        .local_addr()
+        .expect("failed to read assigned port")
+        .port()
 }
 
 #[cfg(test)]
