@@ -4,21 +4,27 @@ use rmcp::model::{CallToolResult, ContentBlock};
 
 use crate::{Error, ProcessMap, ReadOutputParams};
 
+const POLL_MS: u64 = 50;
+
 pub async fn read_output(
     processes: &ProcessMap,
     params: ReadOutputParams,
 ) -> Result<CallToolResult, Error> {
     let ReadOutputParams { pid, timeout_ms } = params;
 
-    if timeout_ms > 0 {
-        tokio::time::sleep(std::time::Duration::from_millis(timeout_ms)).await;
-    }
-
-    let map = processes.lock().await;
-    let handle = map.get(&pid).ok_or(Error::UnknownPid(pid))?;
-
-    let text = handle.output_buf.lock().await.drain(..).collect::<String>();
-    let alive = handle.alive.load(Ordering::Relaxed);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let (text, alive) = loop {
+        {
+            let map = processes.lock().await;
+            let handle = map.get(&pid).ok_or(Error::UnknownPid(pid))?;
+            let alive = handle.alive.load(Ordering::Relaxed);
+            let mut buf = handle.output_buf.lock().await;
+            if !buf.is_empty() || !alive || std::time::Instant::now() >= deadline {
+                break (buf.drain(..).collect::<String>(), alive);
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(POLL_MS)).await;
+    };
 
     Ok(CallToolResult::success(vec![ContentBlock::text(format!(
         "alive={alive}\n{text}"
@@ -61,6 +67,36 @@ mod tests {
         assert!(result.is_ok());
         let text = format!("{:?}", result.ok());
         assert!(text.contains("hello-read"));
+        crate::ServerMethod::kill_process(&processes, 1).await.ok();
+    }
+
+    #[tokio::test]
+    async fn test_returns_early_on_new_output() {
+        let processes: ProcessMap = Arc::new(Mutex::new(HashMap::new()));
+        let next_id = Arc::new(AtomicU32::new(1));
+        let params = SpawnParams {
+            cmd: "sh".to_string(),
+            args: vec!["-c".to_string(), "echo early-line; sleep 30".to_string()],
+            cwd: None,
+            env: HashMap::new(),
+        };
+        ServerMethod::spawn_process(&processes, &next_id, params)
+            .await
+            .ok();
+        let start = std::time::Instant::now();
+        let result = read_output(
+            &processes,
+            ReadOutputParams {
+                pid: 1,
+                timeout_ms: 20_000,
+            },
+        )
+        .await;
+        let elapsed = start.elapsed();
+        assert!(result.is_ok());
+        let text = format!("{:?}", result.ok());
+        assert!(text.contains("early-line"));
+        assert!(elapsed < std::time::Duration::from_secs(5));
         crate::ServerMethod::kill_process(&processes, 1).await.ok();
     }
 }
