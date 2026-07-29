@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 use freenet_bevy::clicker::{ClickerCommand, ClickerEvent};
-use freenet_bevy::testing::*;
+use testing::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_deploy_and_count() {

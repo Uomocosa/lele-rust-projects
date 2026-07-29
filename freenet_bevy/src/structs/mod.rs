@@ -8,4 +8,3 @@ pub mod freenet_client;
 pub use freenet_client::FreenetClient;
 
 pub mod clicker;
-pub mod testing;

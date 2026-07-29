@@ -3,10 +3,10 @@ use std::sync::Arc;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use crate::structs::client_error::ClientError;
-use crate::structs::freenet_client::FreenetClient;
-
-pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractKey, ClientError> {
+pub async fn deploy(
+    client: &mut freenet_bevy::FreenetClient,
+    wasm: &[u8],
+) -> Result<ContractKey, freenet_bevy::ClientError> {
     let code = Arc::new(ContractCode::from(wasm.to_vec()));
     let params = Parameters::from(Vec::new());
     let wrapped = WrappedContract::new(code, params);
@@ -26,7 +26,11 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractK
             return Ok(key);
         }
         HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {}
-        other => return Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
+        other => {
+            return Err(freenet_bevy::ClientError::UnexpectedResponse(format!(
+                "{other:?}"
+            )))
+        }
     }
 
     let put_req = ContractRequest::Put {
@@ -40,8 +44,11 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractK
 
     match client.recv_response().await? {
         HostResponse::ContractResponse(
-            ContractResponse::PutResponse { key } | ContractResponse::SubscribeResponse { key, .. },
+            ContractResponse::PutResponse { key }
+            | ContractResponse::SubscribeResponse { key, .. },
         ) => Ok(key),
-        other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
+        other => Err(freenet_bevy::ClientError::UnexpectedResponse(format!(
+            "{other:?}"
+        ))),
     }
 }

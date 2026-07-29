@@ -3,9 +3,10 @@ use std::time::Duration;
 use freenet_stdlib::client_api::{ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use crate::structs::freenet_client::FreenetClient;
-
-pub async fn recv_notification(client: &mut FreenetClient, timeout: Duration) -> Option<u64> {
+pub async fn recv_notification(
+    client: &mut freenet_bevy::FreenetClient,
+    timeout: Duration,
+) -> Option<u64> {
     match tokio::time::timeout(timeout, client.recv()).await {
         Ok(Ok(HostResponse::ContractResponse(ContractResponse::UpdateNotification {
             update,

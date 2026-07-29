@@ -7,7 +7,7 @@ use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 
 pub async fn start()
--> Result<crate::structs::testing::test_node::TestNode, Box<dyn std::error::Error>> {
+-> Result<crate::structs::test_node::TestNode, Box<dyn std::error::Error>> {
     let _ = tracing_subscriber::fmt::try_init();
 
     let tmp = tempfile::tempdir()?;
@@ -48,7 +48,7 @@ pub async fn start()
 
     tokio::time::sleep(Duration::from_secs(5)).await;
 
-    Ok(crate::structs::testing::test_node::TestNode {
+    Ok(crate::structs::test_node::TestNode {
         _tmp: tmp,
         port,
         _task: task,
@@ -57,7 +57,7 @@ pub async fn start()
 
 #[cfg(test)]
 mod tests {
-    use crate::structs::testing::test_node::TestNode;
+    use crate::structs::test_node::TestNode;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_usage() {

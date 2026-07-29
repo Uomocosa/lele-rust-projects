@@ -7,4 +7,3 @@ pub use structs::freenet_client::FreenetClient;
 pub use structs::role::Role;
 
 pub use structs::clicker;
-pub use structs::testing;

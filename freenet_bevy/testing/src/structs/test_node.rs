@@ -1,6 +1,6 @@
 use tokio::task::JoinHandle;
 
-use crate::methods::testing::test_node as tn_method;
+use crate::methods::test_node as tn_method;
 
 pub struct TestNode {
     pub _tmp: tempfile::TempDir,

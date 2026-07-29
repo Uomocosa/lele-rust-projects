@@ -1,14 +1,11 @@
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use crate::structs::client_error::ClientError;
-use crate::structs::freenet_client::FreenetClient;
-
 pub async fn update_count(
-    client: &mut FreenetClient,
+    client: &mut freenet_bevy::FreenetClient,
     key: ContractKey,
     count: u64,
-) -> Result<(), ClientError> {
+) -> Result<(), freenet_bevy::ClientError> {
     let update_req = ContractRequest::Update {
         key,
         data: UpdateData::State(State::from(bincode::serialize(&count)?)),
@@ -16,6 +13,8 @@ pub async fn update_count(
     client.send(ClientRequest::ContractOp(update_req)).await?;
     match client.recv_response().await? {
         HostResponse::ContractResponse(ContractResponse::UpdateResponse { .. }) => Ok(()),
-        other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
+        other => Err(freenet_bevy::ClientError::UnexpectedResponse(format!(
+            "{other:?}"
+        ))),
     }
 }
