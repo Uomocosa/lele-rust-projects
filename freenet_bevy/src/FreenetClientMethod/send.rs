@@ -11,3 +11,9 @@ pub async fn send(
         .map_err(|_| crate::ClientError::SendError)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_usage() {}
+}

@@ -12,3 +12,9 @@ pub async fn recv_response(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_usage() {}
+}

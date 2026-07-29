@@ -7,3 +7,20 @@ pub enum ClickerError {
     #[error("timeout")]
     Timeout,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ClickerError;
+    use crate::ClientError;
+
+    #[test]
+    fn test_usage() {
+        let e = ClickerError::Timeout;
+        assert_eq!(e.to_string(), "timeout");
+        let e2: ClickerError = ClientError::ConnectionTimeout.into();
+        assert!(matches!(
+            e2,
+            ClickerError::Client(ClientError::ConnectionTimeout)
+        ));
+    }
+}

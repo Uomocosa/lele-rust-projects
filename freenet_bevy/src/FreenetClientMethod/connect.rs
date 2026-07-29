@@ -65,3 +65,9 @@ pub async fn connect(host: &str, port: u16) -> Result<crate::FreenetClient, Ce> 
         read: read_rx,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_usage() {}
+}

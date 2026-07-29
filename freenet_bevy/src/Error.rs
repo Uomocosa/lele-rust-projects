@@ -33,3 +33,14 @@ impl From<http::uri::InvalidUri> for ClientError {
         ClientError::Http(http::Error::from(e))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ClientError;
+
+    #[test]
+    fn test_usage() {
+        let e = ClientError::ConnectionTimeout;
+        assert_eq!(e.to_string(), "connection timed out");
+    }
+}

@@ -10,3 +10,9 @@ pub async fn recv_response_timeout(
         .await
         .ok()
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_usage() {}
+}

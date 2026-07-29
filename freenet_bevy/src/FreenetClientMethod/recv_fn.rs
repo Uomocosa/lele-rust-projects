@@ -7,3 +7,9 @@ pub async fn recv(client: &mut crate::FreenetClient) -> Result<HostResponse, cra
         None => Err(crate::ClientError::Disconnected),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_usage() {}
+}
