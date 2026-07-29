@@ -15,8 +15,9 @@ pub mod clicker_error;
 pub use clicker_error::ClickerError;
 
 pub mod PluginMethod;
-pub mod component;
-pub mod headless;
+pub mod cli;
+pub mod gui;
 pub mod message;
+pub mod remote;
 pub mod resource;
 pub mod system;

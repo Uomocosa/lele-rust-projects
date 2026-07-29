@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::clicker::ClickerCommand;
-use crate::clicker::component::IncrementButton::IncrementButton;
+use crate::clicker::gui::component::IncrementButton;
 use crate::clicker::resource::State::ClickerState;
 
 pub fn increment_button(
@@ -23,7 +23,7 @@ mod tests {
 
     use super::increment_button;
     use crate::clicker::ClickerCommand;
-    use crate::clicker::component::IncrementButton::IncrementButton;
+    use crate::clicker::gui::component::IncrementButton;
     use crate::clicker::resource::State::ClickerState;
     use tokio::sync::mpsc;
 

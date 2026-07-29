@@ -21,10 +21,10 @@ description = "Connect to an existing node as subscriber"
 command = "cargo"
 args = ["run", "--", "--role", "subscribe"]
 
-[tasks.run-headless]
-description = "Run headless (no window) for N ticks"
+[tasks.run-cli]
+description = "Run CLI mode (no window, interactive stdin/stdout)"
 command = "cargo"
-args = ["run", "--", "--headless", "--ticks", "5"]
+args = ["run", "--", "--mode", "cli"]
 
 [tasks.test]
 description = "Build contract WASM then run all tests"

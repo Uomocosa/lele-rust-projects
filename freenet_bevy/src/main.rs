@@ -13,7 +13,8 @@ use freenet_stdlib::prelude::*;
 use tracing::info;
 
 use freenet_bevy::Role;
-use freenet_bevy::clicker::headless::State::HeadlessConfig;
+use freenet_bevy::clicker::cli::CliPlugin;
+use freenet_bevy::clicker::gui::GuiPlugin;
 use freenet_bevy::clicker::{ClickerCommand, ClickerConfig, ClickerEvent, ClickerPlugin};
 
 #[tokio::main]
@@ -24,8 +25,7 @@ async fn main() {
 
     let args: Vec<String> = std::env::args().collect();
     let has_role = args.iter().any(|a| a == "--role");
-    let headless = args.iter().any(|a| a == "--headless");
-    let tick_count = parse_tick_count();
+    let mode = parse_mode();
     let role = parse_role();
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
 
@@ -67,19 +67,21 @@ async fn main() {
 
     let config = ClickerConfig::new(cmd_tx, evt_rx, contract_key, initial_count);
 
-    if headless {
-        let config = config.with_headless(HeadlessConfig {
-            max_ticks: tick_count,
-        });
-        App::new()
-            .add_plugins(MinimalPlugins)
-            .add_plugins(ClickerPlugin { config })
-            .run();
-    } else {
-        App::new()
-            .add_plugins(DefaultPlugins)
-            .add_plugins(ClickerPlugin { config })
-            .run();
+    match mode {
+        Mode::Gui => {
+            App::new()
+                .add_plugins(DefaultPlugins)
+                .add_plugins(ClickerPlugin { config })
+                .add_plugins(GuiPlugin)
+                .run();
+        }
+        Mode::Cli => {
+            App::new()
+                .add_plugins(MinimalPlugins)
+                .add_plugins(ClickerPlugin { config })
+                .add_plugins(CliPlugin)
+                .run();
+        }
     }
 }
 
@@ -336,6 +338,25 @@ fn p2p_port() -> u16 {
         .port()
 }
 
+enum Mode {
+    Gui,
+    Cli,
+}
+
+fn parse_mode() -> Mode {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--mode" {
+            match args.next().as_deref() {
+                Some("cli") => return Mode::Cli,
+                Some("gui") => return Mode::Gui,
+                _ => {}
+            }
+        }
+    }
+    Mode::Gui
+}
+
 fn parse_role() -> Role {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -348,17 +369,4 @@ fn parse_role() -> Role {
         }
     }
     Role::Publish
-}
-
-fn parse_tick_count() -> usize {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--ticks"
-            && let Some(val) = args.next()
-            && let Ok(n) = val.parse::<usize>()
-        {
-            return n;
-        }
-    }
-    5
 }

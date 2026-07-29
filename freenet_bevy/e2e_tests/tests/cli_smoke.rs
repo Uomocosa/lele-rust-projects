@@ -18,7 +18,7 @@ fn binary_path() -> PathBuf {
 }
 
 #[test]
-fn test_headless_binary_output() {
+fn test_cli_binary_starts() {
     let bin = binary_path();
     assert!(
         bin.exists(),
@@ -27,18 +27,12 @@ fn test_headless_binary_output() {
     );
 
     let (mut child, receivers) =
-        spawn_binary(bin.to_str().unwrap(), &["--headless", "--ticks", "2"]);
+        spawn_binary(bin.to_str().unwrap(), &["--mode", "cli"]);
     let stdout_rx = &receivers[0];
 
     let connected =
         expect_line(stdout_rx, Duration::from_secs(600), "connected, running");
     assert!(!connected.is_empty(), "should print connected line");
-
-    let tick1 = expect_line(stdout_rx, Duration::from_secs(300), "tick 1, count=1");
-    assert!(!tick1.is_empty(), "should print first tick");
-
-    let tick2 = expect_line(stdout_rx, Duration::from_secs(300), "tick 2, count=2");
-    assert!(!tick2.is_empty(), "should print second tick");
 
     let _ = child.kill();
     let _ = child.wait();

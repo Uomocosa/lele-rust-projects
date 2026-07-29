@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::clicker::component::CounterText::CounterText;
+use crate::clicker::gui::component::CounterText;
 use crate::clicker::message::CountChanged::CountChanged;
 
 pub fn update_counter_ui(
@@ -19,7 +19,7 @@ mod tests {
     use bevy::prelude::*;
 
     use super::update_counter_ui;
-    use crate::clicker::component::CounterText::CounterText;
+    use crate::clicker::gui::component::CounterText;
     use crate::clicker::message::CountChanged::CountChanged;
 
     #[test]

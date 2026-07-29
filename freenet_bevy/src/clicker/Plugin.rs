@@ -6,7 +6,6 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::clicker::clicker_command::ClickerCommand;
 use crate::clicker::clicker_event::ClickerEvent;
-use crate::clicker::headless::State::HeadlessConfig;
 
 pub struct ClickerPlugin {
     pub config: ClickerConfig,
@@ -17,7 +16,6 @@ pub struct ClickerConfig {
     evt_rx: Mutex<Option<UnboundedReceiver<ClickerEvent>>>,
     pub contract_key: ContractKey,
     pub initial_count: u64,
-    pub headless: Option<HeadlessConfig>,
 }
 
 impl ClickerConfig {
@@ -32,13 +30,7 @@ impl ClickerConfig {
             evt_rx: Mutex::new(Some(evt_rx)),
             contract_key,
             initial_count,
-            headless: None,
         }
-    }
-
-    pub fn with_headless(mut self, config: HeadlessConfig) -> Self {
-        self.headless = Some(config);
-        self
     }
 
     pub fn take_evt_rx(&self) -> UnboundedReceiver<ClickerEvent> {
