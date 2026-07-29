@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-pub struct CliPlugin;
+pub struct Plugin;
 
-impl Plugin for CliPlugin {
+impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         crate::clicker::cli::PluginMethod::build::build(app);
     }

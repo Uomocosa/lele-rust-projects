@@ -13,7 +13,7 @@ use freenet_stdlib::prelude::*;
 use tracing::info;
 
 use freenet_bevy::Role;
-use freenet_bevy::clicker::cli::CliPlugin;
+use freenet_bevy::clicker::cli;
 use freenet_bevy::clicker::gui::GuiPlugin;
 use freenet_bevy::clicker::{ClickerCommand, ClickerConfig, ClickerEvent, ClickerPlugin};
 
@@ -79,7 +79,7 @@ async fn main() {
             App::new()
                 .add_plugins(MinimalPlugins)
                 .add_plugins(ClickerPlugin { config })
-                .add_plugins(CliPlugin)
+                .add_plugins(cli::Plugin)
                 .run();
         }
     }

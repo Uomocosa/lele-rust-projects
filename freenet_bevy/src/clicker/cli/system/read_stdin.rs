@@ -2,42 +2,18 @@ use std::io::{self, BufRead};
 
 use bevy::prelude::*;
 
-use crate::clicker::ClickerCommand;
-use crate::clicker::resource::State::ClickerState;
+use crate::clicker::cli::CliCommand;
 
-pub fn read_stdin(mut state: ResMut<ClickerState>) {
+pub fn read_stdin(mut writer: MessageWriter<CliCommand>) {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
 
     if let Some(Ok(line)) = lines.next() {
-        let line = line.trim().to_lowercase();
-        match line.as_str() {
-            "increment" | "inc" | "+" => {
-                state.count = state.count.wrapping_add(1);
-                let cmd = ClickerCommand::Increment { count: state.count };
-                let _ = state.cmd_tx.send(cmd);
-                println!("> incremented to {}", state.count);
+        match CliCommand::parse(&line) {
+            Some(cmd) => {
+                writer.write(cmd);
             }
-            "status" | "s" => {
-                println!("> current count: {}", state.count);
-            }
-            "quit" | "q" | "exit" => {
-                println!("> quitting...");
-                std::process::exit(0);
-            }
-            "help" | "h" => {
-                println!("Commands:");
-                println!("  increment, inc, +  - Increment the counter");
-                println!("  status, s          - Show current count");
-                println!("  quit, q, exit      - Quit the application");
-                println!("  help, h            - Show this help");
-            }
-            _ => {
-                println!(
-                    "> unknown command: '{}'. Type 'help' for available commands.",
-                    line
-                );
-            }
+            None => println!("> unknown command: '{}'", line.trim()),
         }
     }
 }
