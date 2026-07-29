@@ -36,6 +36,9 @@
     "opencode-go": {
       "models": {
         "qwen3.7-plus": {
+          "options": {
+            "reasoningEffort": "none"
+          },
           "variants": {
             "minimal": {
               "reasoningEffort": "none"
