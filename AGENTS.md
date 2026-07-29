@@ -37,7 +37,7 @@ cargo test --all-targets
   are exempt from `test_usage`.
 
 - **Delegate pattern:** Structs hold only data fields. All methods are defined as free
-  functions in a sibling `*Method/` directory. Method call sites in `impl` blocks use
-  `#[rustfmt::skip]`.
+  functions in sibling `<struct>_<method>.rs` files. Method files are private modules
+  consumed exclusively through the struct's thin delegates (`#[rustfmt::skip]`).
 
 
