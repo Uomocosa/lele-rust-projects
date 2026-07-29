@@ -3,9 +3,6 @@ name = "freenet_bevy"
 version = "0.1.0"
 edition = "2024"
 
-[lints.rust]
-non_snake_case = "allow"
-
 [lib]
 name = "freenet_bevy"
 path = "src/lib.rs"
