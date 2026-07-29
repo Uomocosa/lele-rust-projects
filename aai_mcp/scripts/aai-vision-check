@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODEL_NAME="${1:-}"
+if [ -z "$MODEL_NAME" ]; then
+    echo "usage: aai-vision-check <model-name>"
+    exit 1
+fi
+
+CACHE_FILE="/tmp/aai-models-cache.json"
+CACHE_MAX_AGE=$((24 * 3600))
+
+if [ ! -f "$CACHE_FILE" ] || [ "$(($(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0)))" -gt "$CACHE_MAX_AGE" ]; then
+    curl -sfL --max-time 30 "https://models.dev/models.json" -o "$CACHE_FILE.tmp" 2>/dev/null && mv "$CACHE_FILE.tmp" "$CACHE_FILE"
+fi
+
+if [ ! -s "$CACHE_FILE" ]; then
+    echo "error: could not fetch model data from models.dev"
+    exit 2
+fi
+
+LOWER_NAME=$(echo "$MODEL_NAME" | tr '[:upper:]' '[:lower:]')
+
+set +e
+RESULT=$(python3 -c "
+import json, sys
+data = json.load(open('$CACHE_FILE'))
+name = '$LOWER_NAME'
+for key, value in data.items():
+    last = key.split('/')[-1].lower()
+    if last == name:
+        print('yes' if value.get('attachment') else 'no')
+        sys.exit(0)
+print('not_found')
+" 2>/dev/null)
+set -e
+
+case "$RESULT" in
+    yes) echo "vision: yes" ;;
+    no)  echo "vision: no" ;;
+    *)   echo "error: model \"$MODEL_NAME\" not found in models.dev catalog"; exit 3 ;;
+esac
