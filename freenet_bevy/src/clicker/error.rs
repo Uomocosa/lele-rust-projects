@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ClickerError {
+pub enum Error {
     #[error("client error: {0}")]
     Client(#[from] crate::ClientError),
     #[error("timeout")]
@@ -10,17 +10,14 @@ pub enum ClickerError {
 
 #[cfg(test)]
 mod tests {
-    use super::ClickerError;
+    use super::Error;
     use crate::ClientError;
 
     #[test]
     fn test_usage() {
-        let e = ClickerError::Timeout;
+        let e = Error::Timeout;
         assert_eq!(e.to_string(), "timeout");
-        let e2: ClickerError = ClientError::ConnectionTimeout.into();
-        assert!(matches!(
-            e2,
-            ClickerError::Client(ClientError::ConnectionTimeout)
-        ));
+        let e2: Error = ClientError::ConnectionTimeout.into();
+        assert!(matches!(e2, Error::Client(ClientError::ConnectionTimeout)));
     }
 }

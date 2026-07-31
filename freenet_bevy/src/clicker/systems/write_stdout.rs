@@ -1,22 +1,22 @@
 use bevy::prelude::*;
 
-use crate::clicker::event::ClickerEvent;
-use crate::clicker::state::ClickerState;
+use crate::clicker::event::Event;
+use crate::clicker::state::State;
 
-pub fn write_stdout(state: ResMut<ClickerState>) {
+pub fn write_stdout(state: ResMut<State>) {
     let mut event_rx = state.event_rx.lock().unwrap();
     while let Ok(event) = event_rx.try_recv() {
         match event {
-            ClickerEvent::Init {
+            Event::Init {
                 contract_key,
                 count,
             } => {
                 println!("[event] init: contract={}, count={}", contract_key, count);
             }
-            ClickerEvent::Notification { count } => {
+            Event::Notification { count } => {
                 println!("[event] notification: count={}", count);
             }
-            ClickerEvent::UpdateResponse { count } => {
+            Event::UpdateResponse { count } => {
                 println!("[event] update response: count={}", count);
             }
         }

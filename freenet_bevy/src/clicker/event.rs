@@ -1,7 +1,7 @@
 use freenet_stdlib::prelude::ContractKey;
 
 #[derive(Debug)]
-pub enum ClickerEvent {
+pub enum Event {
     Init {
         contract_key: ContractKey,
         count: u64,
@@ -16,7 +16,7 @@ pub enum ClickerEvent {
 
 #[cfg(test)]
 mod tests {
-    use super::ClickerEvent;
+    use super::Event;
     use freenet_stdlib::prelude::ContractKey;
 
     #[test]
@@ -25,12 +25,12 @@ mod tests {
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        let evt = ClickerEvent::Init {
+        let evt = Event::Init {
             contract_key: key,
             count: 5,
         };
         match evt {
-            ClickerEvent::Init {
+            Event::Init {
                 contract_key,
                 count,
             } => {

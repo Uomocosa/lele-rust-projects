@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::clicker::gui::counter_text::CounterText;
-use crate::clicker::gui::increment_button_gui::IncrementButton;
+use crate::clicker::counter_text::CounterText;
+use crate::clicker::increment_button::IncrementButton;
 
 pub fn spawn_ui(mut commands: Commands) {
     commands.spawn(Camera2d);

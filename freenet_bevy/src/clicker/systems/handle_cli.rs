@@ -1,14 +1,13 @@
 use bevy::prelude::*;
 
-use crate::clicker;
-use crate::clicker::cli::cli_command::CliCommand;
-use crate::clicker::state::ClickerState;
+use crate::clicker::cli_command::CliCommand;
+use crate::clicker::state::State;
 
-pub fn handle_cli(mut reader: MessageReader<CliCommand>, mut state: ResMut<ClickerState>) {
+pub fn handle_cli(mut reader: MessageReader<CliCommand>, mut state: ResMut<State>) {
     for cmd in reader.read() {
         match cmd {
             CliCommand::Increment => {
-                clicker::increment(&mut state, 1);
+                crate::clicker::increment(&mut state, 1);
                 println!("> incremented to {}", state.count);
             }
             CliCommand::Status => {
@@ -33,8 +32,8 @@ mod tests {
     use tokio::sync::mpsc;
 
     use super::handle_cli;
-    use crate::clicker::cli::cli_command::CliCommand;
-    use crate::clicker::state::ClickerState;
+    use crate::clicker::cli_command::CliCommand;
+    use crate::clicker::state::State;
 
     #[test]
     fn test_usage() {
@@ -46,7 +45,7 @@ mod tests {
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        app.insert_resource(ClickerState {
+        app.insert_resource(State {
             event_rx: Mutex::new(mpsc::unbounded_channel().1),
             cmd_tx: tx,
             contract_key: key,
@@ -63,7 +62,7 @@ mod tests {
             .write(CliCommand::Increment);
         app.update();
 
-        let state = app.world().resource::<ClickerState>();
+        let state = app.world().resource::<State>();
         assert_eq!(state.count, 6);
     }
 }

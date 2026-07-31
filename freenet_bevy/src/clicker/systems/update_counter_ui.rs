@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::clicker::count_changed::CountChanged;
-use crate::clicker::gui::counter_text::CounterText;
+use crate::clicker::counter_text::CounterText;
 
 pub fn update_counter_ui(
     mut count_reader: MessageReader<CountChanged>,
@@ -20,7 +20,7 @@ mod tests {
 
     use super::update_counter_ui;
     use crate::clicker::count_changed::CountChanged;
-    use crate::clicker::gui::counter_text::CounterText;
+    use crate::clicker::counter_text::CounterText;
 
     #[test]
     fn test_usage() {
@@ -31,7 +31,6 @@ mod tests {
 
         app.add_systems(Update, update_counter_ui);
 
-        // Write a CountChanged event
         app.world_mut()
             .resource_mut::<Messages<CountChanged>>()
             .write(CountChanged { count: 99 });

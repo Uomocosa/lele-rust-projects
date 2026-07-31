@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
 use crate::clicker;
-use crate::clicker::gui::increment_button_gui::IncrementButton;
-use crate::clicker::state::ClickerState;
+use crate::clicker::increment_button::IncrementButton;
+use crate::clicker::state::State;
 
-pub fn increment_button(
+pub fn handle_increment_click(
     interaction_query: Query<&Interaction, (Changed<Interaction>, With<IncrementButton>)>,
-    mut state: ResMut<ClickerState>,
+    mut state: ResMut<State>,
 ) {
     for interaction in &interaction_query {
         if *interaction == Interaction::Pressed {
@@ -20,10 +20,10 @@ mod tests {
     use bevy::prelude::*;
     use tokio::sync::mpsc;
 
-    use super::increment_button;
-    use crate::clicker::command::ClickerCommand;
-    use crate::clicker::gui::increment_button_gui::IncrementButton;
-    use crate::clicker::state::ClickerState;
+    use super::handle_increment_click;
+    use crate::clicker::command::Command;
+    use crate::clicker::increment_button::IncrementButton;
+    use crate::clicker::state::State;
 
     #[test]
     fn test_usage() {
@@ -34,7 +34,7 @@ mod tests {
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        app.insert_resource(ClickerState {
+        app.insert_resource(State {
             event_rx: std::sync::Mutex::new(mpsc::unbounded_channel().1),
             cmd_tx: tx,
             contract_key: key,
@@ -44,14 +44,14 @@ mod tests {
         app.world_mut()
             .spawn((IncrementButton, Interaction::Pressed));
 
-        app.add_systems(Update, increment_button);
+        app.add_systems(Update, handle_increment_click);
         app.update();
 
         let Ok(cmd) = rx.try_recv() else {
             panic!("expected increment command");
         };
         match cmd {
-            ClickerCommand::Increment { count } => assert_eq!(count, 6),
+            Command::Increment { count } => assert_eq!(count, 6),
         }
     }
 }

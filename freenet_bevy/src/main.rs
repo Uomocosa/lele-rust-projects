@@ -13,9 +13,9 @@ use freenet_stdlib::prelude::*;
 use tracing::info;
 
 use freenet_bevy::Role;
-use freenet_bevy::clicker::cli;
-use freenet_bevy::clicker::gui::GuiPlugin;
-use freenet_bevy::clicker::{ClickerCommand, ClickerConfig, ClickerEvent, ClickerPlugin};
+use freenet_bevy::clicker::CliPlugin;
+use freenet_bevy::clicker::GuiPlugin;
+use freenet_bevy::clicker::{Command, Config, Event, Plugin};
 
 #[tokio::main]
 async fn main() {
@@ -57,29 +57,29 @@ async fn main() {
 
     info!(target: "freenet_bevy", key = %contract_key, count = initial_count, "connected, running");
 
-    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel::<ClickerCommand>();
-    let (evt_tx, evt_rx) = tokio::sync::mpsc::unbounded_channel::<ClickerEvent>();
+    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel::<Command>();
+    let (evt_tx, evt_rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
 
     let cmd_key = contract_key;
     tokio::spawn(async move {
         command_handler(client, cmd_key, cmd_rx, evt_tx).await;
     });
 
-    let config = ClickerConfig::new(cmd_tx, evt_rx, contract_key, initial_count);
+    let config = Config::new(cmd_tx, evt_rx, contract_key, initial_count);
 
     match mode {
         Mode::Gui => {
             App::new()
                 .add_plugins(DefaultPlugins)
-                .add_plugins(ClickerPlugin { config })
+                .add_plugins(Plugin { config })
                 .add_plugins(GuiPlugin)
                 .run();
         }
         Mode::Cli => {
             App::new()
                 .add_plugins(MinimalPlugins)
-                .add_plugins(ClickerPlugin { config })
-                .add_plugins(cli::Plugin)
+                .add_plugins(Plugin { config })
+                .add_plugins(CliPlugin)
                 .run();
         }
     }
@@ -214,14 +214,14 @@ async fn setup_contract(
 async fn command_handler(
     mut client: freenet_bevy::FreenetClient,
     contract_key: ContractKey,
-    mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<ClickerCommand>,
-    evt_tx: tokio::sync::mpsc::UnboundedSender<ClickerEvent>,
+    mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<Command>,
+    evt_tx: tokio::sync::mpsc::UnboundedSender<Event>,
 ) {
     loop {
         tokio::select! {
             cmd = cmd_rx.recv() => {
                 match cmd {
-                    Some(ClickerCommand::Increment { count }) => {
+                    Some(Command::Increment { count }) => {
                         let data = State::from(bincode::serialize(&count).unwrap());
                         let req = ContractRequest::Update {
                             key: contract_key,
@@ -235,14 +235,14 @@ async fn command_handler(
                                 Ok(HostResponse::ContractResponse(
                                     ContractResponse::UpdateResponse { .. },
                                 )) => {
-                                    evt_tx.send(ClickerEvent::UpdateResponse { count }).ok();
+                                    evt_tx.send(Event::UpdateResponse { count }).ok();
                                     break;
                                 }
                                 Ok(HostResponse::ContractResponse(
                                     ContractResponse::UpdateNotification { update, .. },
                                 )) => {
                                     let nc = count_from_update(&update);
-                                    evt_tx.send(ClickerEvent::Notification { count: nc }).ok();
+                                    evt_tx.send(Event::Notification { count: nc }).ok();
                                 }
                                 Ok(_) => continue,
                                 Err(_) => break,
@@ -258,7 +258,7 @@ async fn command_handler(
                 ))) = result
                 {
                     let count = count_from_update(&update);
-                    evt_tx.send(ClickerEvent::Notification { count }).ok();
+                    evt_tx.send(Event::Notification { count }).ok();
                 }
             }
         }

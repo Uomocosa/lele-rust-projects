@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use tokio::sync::mpsc;
 
-use freenet_bevy::clicker::{ClickerCommand, ClickerEvent};
+use freenet_bevy::clicker::{Command, Event};
 use testing::*;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -24,16 +24,14 @@ async fn test_deploy_and_count() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_channel_roundtrip() {
-    let (_cmd_tx, _cmd_rx) = mpsc::unbounded_channel::<ClickerCommand>();
-    let (evt_tx, mut evt_rx) = mpsc::unbounded_channel::<ClickerEvent>();
+    let (_cmd_tx, _cmd_rx) = mpsc::unbounded_channel::<Command>();
+    let (evt_tx, mut evt_rx) = mpsc::unbounded_channel::<Event>();
 
-    evt_tx
-        .send(ClickerEvent::Notification { count: 99 })
-        .unwrap();
+    evt_tx.send(Event::Notification { count: 99 }).unwrap();
 
     let event = evt_rx.recv().await.unwrap();
     match event {
-        ClickerEvent::Notification { count } => assert_eq!(count, 99),
+        Event::Notification { count } => assert_eq!(count, 99),
         _ => unreachable!(),
     }
 }

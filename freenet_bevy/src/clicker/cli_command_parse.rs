@@ -1,4 +1,4 @@
-use crate::clicker::cli::cli_command::CliCommand;
+use crate::clicker::cli_command::CliCommand;
 
 pub fn parse(input: &str) -> Option<CliCommand> {
     match input.trim().to_lowercase().as_str() {
@@ -13,7 +13,7 @@ pub fn parse(input: &str) -> Option<CliCommand> {
 #[cfg(test)]
 mod tests {
     use super::parse;
-    use crate::clicker::cli::cli_command::CliCommand;
+    use crate::clicker::cli_command::CliCommand;
 
     #[test]
     fn test_usage() {

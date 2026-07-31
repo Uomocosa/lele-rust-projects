@@ -1,16 +1,16 @@
-pub enum ClickerCommand {
+pub enum Command {
     Increment { count: u64 },
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ClickerCommand;
+    use super::Command;
 
     #[test]
     fn test_usage() {
-        let cmd = ClickerCommand::Increment { count: 42 };
+        let cmd = Command::Increment { count: 42 };
         match cmd {
-            ClickerCommand::Increment { count } => assert_eq!(count, 42),
+            Command::Increment { count } => assert_eq!(count, 42),
         }
     }
 }

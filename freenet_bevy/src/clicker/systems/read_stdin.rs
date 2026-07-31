@@ -2,7 +2,7 @@ use std::io::{self, BufRead};
 
 use bevy::prelude::*;
 
-use crate::clicker::cli::cli_command::CliCommand;
+use crate::clicker::cli_command::CliCommand;
 
 pub fn read_stdin(mut writer: MessageWriter<CliCommand>) {
     let stdin = io::stdin();

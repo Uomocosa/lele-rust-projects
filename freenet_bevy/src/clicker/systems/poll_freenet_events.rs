@@ -1,31 +1,28 @@
 use bevy::prelude::*;
 
 use crate::clicker::count_changed::CountChanged;
-use crate::clicker::event::ClickerEvent;
-use crate::clicker::state::ClickerState;
+use crate::clicker::event::Event;
+use crate::clicker::state::State;
 
-pub fn poll_freenet_events(
-    state: ResMut<ClickerState>,
-    mut count_writer: MessageWriter<CountChanged>,
-) {
+pub fn poll_freenet_events(state: ResMut<State>, mut count_writer: MessageWriter<CountChanged>) {
     let mut rx = state.event_rx.lock().unwrap();
     while let Ok(event) = rx.try_recv() {
         match event {
-            ClickerEvent::Notification { count } => {
+            Event::Notification { count } => {
                 drop(rx);
                 let mut s = state;
                 s.count = count;
                 count_writer.write(CountChanged { count });
                 return;
             }
-            ClickerEvent::UpdateResponse { count } => {
+            Event::UpdateResponse { count } => {
                 drop(rx);
                 let mut s = state;
                 s.count = count;
                 count_writer.write(CountChanged { count });
                 return;
             }
-            ClickerEvent::Init { .. } => {}
+            Event::Init { .. } => {}
         }
     }
 }
@@ -36,8 +33,8 @@ mod tests {
 
     use super::poll_freenet_events;
     use crate::clicker::count_changed::CountChanged;
-    use crate::clicker::event::ClickerEvent;
-    use crate::clicker::state::ClickerState;
+    use crate::clicker::event::Event;
+    use crate::clicker::state::State;
     use tokio::sync::mpsc;
 
     #[test]
@@ -51,7 +48,7 @@ mod tests {
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        app.insert_resource(ClickerState {
+        app.insert_resource(State {
             event_rx: std::sync::Mutex::new(evt_rx),
             cmd_tx,
             contract_key: key,
@@ -60,10 +57,10 @@ mod tests {
 
         app.add_systems(Update, poll_freenet_events);
 
-        assert!(evt_tx.send(ClickerEvent::Notification { count: 7 }).is_ok());
+        assert!(evt_tx.send(Event::Notification { count: 7 }).is_ok());
         app.update();
 
-        let state = app.world().resource::<ClickerState>();
+        let state = app.world().resource::<State>();
         assert_eq!(state.count, 7);
 
         let count_msgs = app.world().resource::<Messages<CountChanged>>().len();
