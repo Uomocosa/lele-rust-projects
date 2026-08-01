@@ -13,7 +13,7 @@ pub async fn screenshot(
     chat_id: Option<&str>,
 ) -> Result<CallToolResult, Error> {
     wake_screen();
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     let png = capture_png()?;
     let (width, height) = png_size(&png).unwrap_or((0, 0));
     let summary = format!(
@@ -47,10 +47,17 @@ pub async fn screenshot(
 
 fn wake_screen() {
     let display = std::env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string());
+    let _ = Command::new("cinnamon-screensaver-command")
+        .arg("--deactivate")
+        .output();
+    let _ = Command::new("gnome-screensaver-command")
+        .arg("--deactivate")
+        .output();
+    let _ = Command::new("xdg-screensaver").arg("reset").output();
     let _ = Command::new("xset")
         .args(["-display", &display, "dpms", "force", "on"])
         .output();
-    let _ = Command::new("xdg-screensaver").arg("reset").output();
+    let _ = Command::new("loginctl").arg("unlock-session").output();
 }
 
 fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
