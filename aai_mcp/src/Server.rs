@@ -13,6 +13,7 @@ use crate::{PidParam, ProcessMap, ReadOutputParams, ServerMethod, SpawnParams, W
 pub struct Server {
     pub processes: ProcessMap,
     pub next_id: Arc<AtomicU32>,
+    pub artifacts_dir: Option<String>,
 }
 
 impl Default for Server {
@@ -24,10 +25,13 @@ impl Default for Server {
 #[tool_router]
 #[rustfmt::skip]
 impl Server {
-    pub fn new() -> Self { ServerMethod::new() }
+    pub fn new() -> Self { Self::with_artifacts_dir(None) }
+
+    #[rustfmt::skip]
+    pub fn with_artifacts_dir(artifacts_dir: Option<String>) -> Self { ServerMethod::new(artifacts_dir) }
 
     #[tool(description = "Capture a screenshot of the primary monitor. Returns a PNG image plus a text summary.")]
-    async fn screenshot(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::screenshot().await.map_err(ErrorData::from) }
+    async fn screenshot(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::screenshot(self.artifacts_dir.as_deref()).await.map_err(ErrorData::from) }
 
     #[tool(description = "Spawn a subprocess. Returns a numeric process ID you can pass to read_output, write_stdin, and kill_process.")]
     async fn spawn_process(&self, Parameters(params): Parameters<SpawnParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::spawn_process(&self.processes, &self.next_id, params).await.map_err(ErrorData::from) }

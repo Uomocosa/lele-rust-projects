@@ -7,10 +7,11 @@ use tokio::sync::Mutex;
 
 use crate::Server;
 
-pub fn new() -> Server {
+pub fn new(artifacts_dir: Option<String>) -> Server {
     Server {
         processes: Arc::new(Mutex::new(HashMap::new())),
         next_id: Arc::new(AtomicU32::new(1)),
+        artifacts_dir,
     }
 }
 

@@ -29,7 +29,10 @@
       "command": [
         "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/aai_mcp/target/release/aai-mcp"
       ],
-      "enabled": true
+      "enabled": true,
+      "environment": {
+        "AAI_ARTIFACTS_DIR": "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/aai_mcp/artifacts/freenet_bevy"
+      }
     }
   },
   "provider": {

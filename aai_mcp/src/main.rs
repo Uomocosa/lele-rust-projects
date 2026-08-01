@@ -36,7 +36,10 @@ async fn main() -> anyhow::Result<()> {
         .with_writer(std::io::stderr)
         .init();
 
-    let running = Server::new().serve(stdio()).await?;
+    let artifacts_dir = std::env::var("AAI_ARTIFACTS_DIR").ok();
+    let running = Server::with_artifacts_dir(artifacts_dir)
+        .serve(stdio())
+        .await?;
     running.waiting().await?;
     Ok(())
 }

@@ -1,17 +1,28 @@
-use std::{fs, process::Command};
+use std::{fs, process::Command, time::SystemTime};
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use rmcp::model::{CallToolResult, ContentBlock};
 
 use crate::Error;
 
-pub async fn screenshot() -> Result<CallToolResult, Error> {
+pub async fn screenshot(artifacts_dir: Option<&str>) -> Result<CallToolResult, Error> {
     let png = capture_png()?;
     let (width, height) = png_size(&png).unwrap_or((0, 0));
     let summary = format!(
         "captured primary monitor PNG ({width}x{height}, {} KB)",
         png.len() / 1024
     );
+
+    if let Some(dir) = artifacts_dir {
+        let _ = fs::create_dir_all(dir);
+        let ts = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let path = format!("{dir}/{ts}.png");
+        let _ = fs::write(&path, &png);
+    }
+
     Ok(CallToolResult::success(vec![
         ContentBlock::text(summary),
         ContentBlock::image(STANDARD.encode(&png), "image/png"),
@@ -100,7 +111,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires a live X display"]
     async fn test_usage_live_display() {
-        let result = super::screenshot().await;
+        let result = super::screenshot(None).await;
         assert!(result.is_ok());
     }
 }
