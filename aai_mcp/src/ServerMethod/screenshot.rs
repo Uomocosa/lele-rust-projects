@@ -12,6 +12,8 @@ pub async fn screenshot(
     bot_token: Option<&str>,
     chat_id: Option<&str>,
 ) -> Result<CallToolResult, Error> {
+    wake_screen();
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     let png = capture_png()?;
     let (width, height) = png_size(&png).unwrap_or((0, 0));
     let summary = format!(
@@ -41,6 +43,14 @@ pub async fn screenshot(
         ContentBlock::text(summary),
         ContentBlock::image(STANDARD.encode(&png), "image/png"),
     ]))
+}
+
+fn wake_screen() {
+    let display = std::env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string());
+    let _ = Command::new("xset")
+        .args(["-display", &display, "dpms", "force", "on"])
+        .output();
+    let _ = Command::new("xdg-screensaver").arg("reset").output();
 }
 
 fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
