@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
 use super::plugin_build;
-use crate::clicker::config::Config;
+use crate::clicker;
 
 pub struct Plugin {
-    pub config: Config,
+    pub config: clicker::Config,
 }
 
 #[rustfmt::skip]

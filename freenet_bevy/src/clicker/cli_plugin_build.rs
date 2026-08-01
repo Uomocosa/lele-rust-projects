@@ -1,16 +1,16 @@
 use bevy::app::App;
 use bevy::prelude::*;
 
-use crate::clicker::cli_command::CliCommand;
+use crate::clicker;
 
 pub fn build(app: &mut App) {
-    app.add_message::<CliCommand>();
+    app.add_message::<clicker::CliCommand>();
     app.add_systems(
         Update,
         (
-            crate::clicker::systems::read_stdin::read_stdin,
-            crate::clicker::systems::handle_cli::handle_cli,
-            crate::clicker::systems::write_stdout::write_stdout,
+            clicker::bevy_systems::read_stdin,
+            clicker::bevy_systems::handle_cli,
+            clicker::bevy_systems::write_stdout,
         ),
     );
 }

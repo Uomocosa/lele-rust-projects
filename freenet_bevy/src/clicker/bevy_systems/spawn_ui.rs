@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use crate::clicker::counter_text::CounterText;
-use crate::clicker::increment_button::IncrementButton;
+use crate::clicker;
 
 pub fn spawn_ui(mut commands: Commands) {
     commands.spawn(Camera2d);
@@ -33,7 +32,7 @@ pub fn spawn_ui(mut commands: Commands) {
                     ..Default::default()
                 },
                 TextColor(Color::WHITE),
-                CounterText,
+                clicker::CounterText,
             ));
 
             parent
@@ -47,7 +46,7 @@ pub fn spawn_ui(mut commands: Commands) {
                     },
                     BorderColor::from(Color::WHITE),
                     BackgroundColor::from(Color::srgb(0.2, 0.2, 0.2)),
-                    IncrementButton,
+                    clicker::IncrementButton,
                 ))
                 .with_children(|parent| {
                     parent.spawn((

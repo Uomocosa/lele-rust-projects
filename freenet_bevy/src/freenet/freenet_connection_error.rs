@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ClientError {
+pub enum FreenetConnectionError {
     #[error("connection timed out")]
     ConnectionTimeout,
     #[error("disconnected from node")]
@@ -28,19 +28,19 @@ pub enum ClientError {
     UnexpectedResponse(String),
 }
 
-impl From<http::uri::InvalidUri> for ClientError {
+impl From<http::uri::InvalidUri> for FreenetConnectionError {
     fn from(e: http::uri::InvalidUri) -> Self {
-        ClientError::Http(http::Error::from(e))
+        FreenetConnectionError::Http(http::Error::from(e))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ClientError;
+    use super::FreenetConnectionError;
 
     #[test]
     fn test_usage() {
-        let e = ClientError::ConnectionTimeout;
+        let e = FreenetConnectionError::ConnectionTimeout;
         assert_eq!(e.to_string(), "connection timed out");
     }
 }

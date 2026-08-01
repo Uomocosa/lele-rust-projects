@@ -1,17 +1,17 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Role {
+pub enum FreenetRole {
     Publish,
     Subscribe,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Role;
+    use super::FreenetRole;
 
     #[test]
     fn test_usage() {
-        assert_ne!(Role::Publish, Role::Subscribe);
+        assert_ne!(FreenetRole::Publish, FreenetRole::Subscribe);
     }
 }

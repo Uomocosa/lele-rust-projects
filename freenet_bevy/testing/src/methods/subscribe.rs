@@ -2,9 +2,9 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 
 pub async fn subscribe(
-    client: &mut freenet_bevy::FreenetClient,
+    client: &mut freenet_bevy::freenet::FreenetClient,
     key: ContractKey,
-) -> Result<u64, freenet_bevy::ClientError> {
+) -> Result<u64, freenet_bevy::freenet::FreenetConnectionError> {
     let get_req = ContractRequest::Get {
         key: *key.id(),
         return_contract_code: false,
@@ -16,7 +16,7 @@ pub async fn subscribe(
         HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
             Ok(bincode::deserialize(state.as_ref())?)
         }
-        other => Err(freenet_bevy::ClientError::UnexpectedResponse(format!(
+        other => Err(freenet_bevy::freenet::FreenetConnectionError::UnexpectedResponse(format!(
             "{other:?}"
         ))),
     }

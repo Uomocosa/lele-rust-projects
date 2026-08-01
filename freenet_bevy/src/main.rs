@@ -4,18 +4,12 @@ use std::time::Duration;
 use bevy::DefaultPlugins;
 use bevy::MinimalPlugins;
 use bevy::app::App;
-use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
-use freenet::local_node::{NodeConfig, OperationMode};
-use freenet::run_network_node;
-use freenet::server::serve_client_api_with_listener;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 use tracing::info;
 
-use freenet_bevy::Role;
-use freenet_bevy::clicker::CliPlugin;
-use freenet_bevy::clicker::GuiPlugin;
-use freenet_bevy::clicker::{Command, Config, Event, Plugin};
+use freenet_bevy::clicker;
+use freenet_bevy::freenet;
 
 #[tokio::main]
 async fn main() {
@@ -57,35 +51,35 @@ async fn main() {
 
     info!(target: "freenet_bevy", key = %contract_key, count = initial_count, "connected, running");
 
-    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel::<Command>();
-    let (evt_tx, evt_rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
+    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel::<clicker::Command>();
+    let (evt_tx, evt_rx) = tokio::sync::mpsc::unbounded_channel::<clicker::Event>();
 
     let cmd_key = contract_key;
     tokio::spawn(async move {
         command_handler(client, cmd_key, cmd_rx, evt_tx).await;
     });
 
-    let config = Config::new(cmd_tx, evt_rx, contract_key, initial_count);
+    let config = clicker::Config::new(cmd_tx, evt_rx, contract_key, initial_count);
 
     match mode {
         Mode::Gui => {
             App::new()
                 .add_plugins(DefaultPlugins)
-                .add_plugins(Plugin { config })
-                .add_plugins(GuiPlugin)
+                .add_plugins(clicker::Plugin { config })
+                .add_plugins(clicker::GuiPlugin)
                 .run();
         }
         Mode::Cli => {
             App::new()
                 .add_plugins(MinimalPlugins)
-                .add_plugins(Plugin { config })
-                .add_plugins(CliPlugin)
+                .add_plugins(clicker::Plugin { config })
+                .add_plugins(clicker::CliPlugin)
                 .run();
         }
     }
 }
 
-async fn recv_timeout(client: &mut freenet_bevy::FreenetClient) -> Result<HostResponse, String> {
+async fn recv_timeout(client: &mut freenet::FreenetClient) -> Result<HostResponse, String> {
     match client.recv_response_timeout(Duration::from_secs(60)).await {
         Some(Ok(r)) => Ok(r),
         Some(Err(e)) => Err(format!("{e}")),
@@ -97,10 +91,10 @@ async fn setup_contract(
     host: &str,
     port: u16,
     wasm: &[u8],
-    role: Role,
-) -> Result<(freenet_bevy::FreenetClient, ContractKey, u64), String> {
+    role: freenet::FreenetRole,
+) -> Result<(freenet::FreenetClient, ContractKey, u64), String> {
     let mut client = loop {
-        match freenet_bevy::FreenetClient::connect(host, port).await {
+        match freenet::FreenetClient::connect(host, port).await {
             Ok(c) => break c,
             Err(_) => {
                 info!(target: "freenet_bevy", "connect failed, retrying in 1s");
@@ -116,7 +110,7 @@ async fn setup_contract(
     let instance_id = *contract_key.id();
 
     let initial_count = match role {
-        Role::Publish => {
+        freenet::FreenetRole::Publish => {
             let get_req = ContractRequest::Get {
                 key: instance_id,
                 return_contract_code: false,
@@ -180,7 +174,7 @@ async fn setup_contract(
                 }
             }
         }
-        Role::Subscribe => loop {
+        freenet::FreenetRole::Subscribe => loop {
             let get_req = ContractRequest::Get {
                 key: instance_id,
                 return_contract_code: false,
@@ -212,16 +206,16 @@ async fn setup_contract(
 }
 
 async fn command_handler(
-    mut client: freenet_bevy::FreenetClient,
+    mut client: freenet::FreenetClient,
     contract_key: ContractKey,
-    mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<Command>,
-    evt_tx: tokio::sync::mpsc::UnboundedSender<Event>,
+    mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<clicker::Command>,
+    evt_tx: tokio::sync::mpsc::UnboundedSender<clicker::Event>,
 ) {
     loop {
         tokio::select! {
             cmd = cmd_rx.recv() => {
                 match cmd {
-                    Some(Command::Increment { count }) => {
+                    Some(clicker::Command::Increment { count }) => {
                         let data = State::from(bincode::serialize(&count).unwrap());
                         let req = ContractRequest::Update {
                             key: contract_key,
@@ -235,14 +229,14 @@ async fn command_handler(
                                 Ok(HostResponse::ContractResponse(
                                     ContractResponse::UpdateResponse { .. },
                                 )) => {
-                                    evt_tx.send(Event::UpdateResponse { count }).ok();
+                                    evt_tx.send(clicker::Event::UpdateResponse { count }).ok();
                                     break;
                                 }
                                 Ok(HostResponse::ContractResponse(
                                     ContractResponse::UpdateNotification { update, .. },
                                 )) => {
                                     let nc = count_from_update(&update);
-                                    evt_tx.send(Event::Notification { count: nc }).ok();
+                                    evt_tx.send(clicker::Event::Notification { count: nc }).ok();
                                 }
                                 Ok(_) => continue,
                                 Err(_) => break,
@@ -258,7 +252,7 @@ async fn command_handler(
                 ))) = result
                 {
                     let count = count_from_update(&update);
-                    evt_tx.send(Event::Notification { count }).ok();
+                    evt_tx.send(clicker::Event::Notification { count }).ok();
                 }
             }
         }
@@ -282,22 +276,22 @@ async fn start_embedded_node() -> Result<(String, u16), Box<dyn std::error::Erro
 
     info!(target: "freenet_bevy", port, "starting in-process network-mode node");
 
-    let ws_config = WebsocketApiConfig {
+    let ws_config = ::freenet::config::WebsocketApiConfig {
         address: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
         port,
         ..Default::default()
     };
-    let clients = serve_client_api_with_listener(ws_config, listener).await?;
+    let clients = ::freenet::server::serve_client_api_with_listener(ws_config, listener).await?;
 
-    let config_args = ConfigArgs {
-        mode: Some(OperationMode::Network),
-        network_api: NetworkArgs {
+    let config_args = ::freenet::config::ConfigArgs {
+        mode: Some(::freenet::local_node::OperationMode::Network),
+        network_api: ::freenet::config::NetworkArgs {
             is_gateway: true,
             public_address: Some(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
             public_port: Some(p2p_port()),
             ..Default::default()
         },
-        config_paths: ConfigPathsArgs {
+        config_paths: ::freenet::config::ConfigPathsArgs {
             config_dir: Some(tmp.path().to_path_buf()),
             data_dir: Some(tmp.path().to_path_buf()),
             log_dir: Some(tmp.path().to_path_buf()),
@@ -305,11 +299,11 @@ async fn start_embedded_node() -> Result<(String, u16), Box<dyn std::error::Erro
         ..Default::default()
     };
     let config = config_args.build().await?;
-    let node_config = NodeConfig::new(config).await?;
+    let node_config = ::freenet::local_node::NodeConfig::new(config).await?;
     let node = node_config.build(clients).await?;
 
     tokio::spawn(async move {
-        if let Err(e) = run_network_node(node).await {
+        if let Err(e) = ::freenet::run_network_node(node).await {
             tracing::error!(target: "freenet_bevy", error = %e, "node exited with error");
         }
     });
@@ -357,16 +351,16 @@ fn parse_mode() -> Mode {
     Mode::Gui
 }
 
-fn parse_role() -> Role {
+fn parse_role() -> freenet::FreenetRole {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         if arg == "--role" {
             match args.next().as_deref() {
-                Some("subscribe") => return Role::Subscribe,
-                Some("publish") => return Role::Publish,
+                Some("subscribe") => return freenet::FreenetRole::Subscribe,
+                Some("publish") => return freenet::FreenetRole::Publish,
                 _ => {}
             }
         }
     }
-    Role::Publish
+    freenet::FreenetRole::Publish
 }

@@ -1,22 +1,24 @@
 use bevy::prelude::*;
 
-use crate::clicker::cli_command::CliCommand;
-use crate::clicker::state::State;
+use crate::clicker;
 
-pub fn handle_cli(mut reader: MessageReader<CliCommand>, mut state: ResMut<State>) {
+pub fn handle_cli(
+    mut reader: MessageReader<clicker::CliCommand>,
+    mut state: ResMut<clicker::State>,
+) {
     for cmd in reader.read() {
         match cmd {
-            CliCommand::Increment => {
-                crate::clicker::increment(&mut state, 1);
+            clicker::CliCommand::Increment => {
+                clicker::increment(&mut state, 1);
                 println!("> incremented to {}", state.count);
             }
-            CliCommand::Status => {
+            clicker::CliCommand::Status => {
                 println!("> current count: {}", state.count);
             }
-            CliCommand::Help => {
-                println!("{}", CliCommand::help_text());
+            clicker::CliCommand::Help => {
+                println!("{}", clicker::CliCommand::help_text());
             }
-            CliCommand::Quit => {
+            clicker::CliCommand::Quit => {
                 println!("> quitting...");
                 std::process::exit(0);
             }
@@ -32,20 +34,19 @@ mod tests {
     use tokio::sync::mpsc;
 
     use super::handle_cli;
-    use crate::clicker::cli_command::CliCommand;
-    use crate::clicker::state::State;
+    use crate::clicker;
 
     #[test]
     fn test_usage() {
         let mut app = App::new();
-        app.add_message::<CliCommand>();
+        app.add_message::<clicker::CliCommand>();
 
         let (tx, _rx) = mpsc::unbounded_channel();
         let key = freenet_stdlib::prelude::ContractKey::from_params_and_code(
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        app.insert_resource(State {
+        app.insert_resource(clicker::State {
             event_rx: Mutex::new(mpsc::unbounded_channel().1),
             cmd_tx: tx,
             contract_key: key,
@@ -55,14 +56,14 @@ mod tests {
         app.add_systems(Update, handle_cli);
 
         app.world_mut()
-            .resource_mut::<Messages<CliCommand>>()
-            .write(CliCommand::Status);
+            .resource_mut::<Messages<clicker::CliCommand>>()
+            .write(clicker::CliCommand::Status);
         app.world_mut()
-            .resource_mut::<Messages<CliCommand>>()
-            .write(CliCommand::Increment);
+            .resource_mut::<Messages<clicker::CliCommand>>()
+            .write(clicker::CliCommand::Increment);
         app.update();
 
-        let state = app.world().resource::<State>();
+        let state = app.world().resource::<clicker::State>();
         assert_eq!(state.count, 6);
     }
 }

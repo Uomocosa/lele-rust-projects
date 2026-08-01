@@ -6,8 +6,8 @@
     "auto": true
   },
   "instructions": [
-    "/root/.config/opencode/skills/lele-syntax-rs/SKILL.md",
-    "/root/.config/opencode/skills/opencode-git-workflow/SKILL.md"
+    "~/.config/opencode/skills/lele-syntax-rs/SKILL.md",
+    "~/.config/opencode/skills/opencode-git-workflow/SKILL.md"
   ],
   "permission": {
     "external_directory": {

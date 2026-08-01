@@ -1,13 +1,15 @@
 use bevy::app::App;
 use bevy::prelude::*;
 
+use crate::clicker;
+
 pub fn build(app: &mut App) {
-    app.add_systems(Startup, crate::clicker::systems::spawn_ui::spawn_ui);
+    app.add_systems(Startup, clicker::bevy_systems::spawn_ui);
     app.add_systems(
         Update,
         (
-            crate::clicker::systems::handle_increment_click::handle_increment_click,
-            crate::clicker::systems::update_counter_ui::update_counter_ui,
+            clicker::bevy_systems::handle_increment_click,
+            clicker::bevy_systems::update_counter_ui,
         ),
     );
 }

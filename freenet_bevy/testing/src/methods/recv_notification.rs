@@ -4,7 +4,7 @@ use freenet_stdlib::client_api::{ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
 pub async fn recv_notification(
-    client: &mut freenet_bevy::FreenetClient,
+    client: &mut freenet_bevy::freenet::FreenetClient,
     timeout: Duration,
 ) -> Option<u64> {
     match tokio::time::timeout(timeout, client.recv()).await {

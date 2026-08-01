@@ -1,9 +1,8 @@
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use super::config::Config;
-use crate::clicker::event::Event;
+use crate::clicker;
 
-pub fn take_evt_rx(config: &Config) -> UnboundedReceiver<Event> {
+pub fn take_evt_rx(config: &clicker::Config) -> UnboundedReceiver<clicker::Event> {
     config
         .evt_rx
         .lock()
@@ -17,7 +16,7 @@ mod tests {
     use tokio::sync::mpsc;
 
     use super::take_evt_rx;
-    use crate::clicker::Config;
+    use crate::clicker;
 
     #[test]
     fn test_usage() {
@@ -27,7 +26,7 @@ mod tests {
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        let cfg = Config::new(tx, evt_rx, key, 5);
+        let cfg = clicker::Config::new(tx, evt_rx, key, 5);
         let rx = take_evt_rx(&cfg);
         drop(rx);
     }

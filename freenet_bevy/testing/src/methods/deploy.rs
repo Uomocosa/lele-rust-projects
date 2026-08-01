@@ -4,9 +4,9 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 
 pub async fn deploy(
-    client: &mut freenet_bevy::FreenetClient,
+    client: &mut freenet_bevy::freenet::FreenetClient,
     wasm: &[u8],
-) -> Result<ContractKey, freenet_bevy::ClientError> {
+) -> Result<ContractKey, freenet_bevy::freenet::FreenetConnectionError> {
     let code = Arc::new(ContractCode::from(wasm.to_vec()));
     let params = Parameters::from(Vec::new());
     let wrapped = WrappedContract::new(code, params);
@@ -27,7 +27,7 @@ pub async fn deploy(
         }
         HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {}
         other => {
-            return Err(freenet_bevy::ClientError::UnexpectedResponse(format!(
+            return Err(freenet_bevy::freenet::FreenetConnectionError::UnexpectedResponse(format!(
                 "{other:?}"
             )))
         }
@@ -47,7 +47,7 @@ pub async fn deploy(
             ContractResponse::PutResponse { key }
             | ContractResponse::SubscribeResponse { key, .. },
         ) => Ok(key),
-        other => Err(freenet_bevy::ClientError::UnexpectedResponse(format!(
+        other => Err(freenet_bevy::freenet::FreenetConnectionError::UnexpectedResponse(format!(
             "{other:?}"
         ))),
     }

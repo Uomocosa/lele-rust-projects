@@ -3,17 +3,15 @@ use std::sync::Mutex;
 use freenet_stdlib::prelude::ContractKey;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use super::config::Config;
-use crate::clicker::command::Command;
-use crate::clicker::event::Event;
+use crate::clicker;
 
 pub fn new(
-    cmd_tx: UnboundedSender<Command>,
-    evt_rx: UnboundedReceiver<Event>,
+    cmd_tx: UnboundedSender<clicker::Command>,
+    evt_rx: UnboundedReceiver<clicker::Event>,
     contract_key: ContractKey,
     initial_count: u64,
-) -> Config {
-    Config {
+) -> clicker::Config {
+    clicker::Config {
         cmd_tx,
         evt_rx: Mutex::new(Some(evt_rx)),
         contract_key,

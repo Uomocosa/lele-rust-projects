@@ -1,14 +1,16 @@
 use tokio_tungstenite::tungstenite::Message;
 
+use crate::freenet;
+
 pub async fn send(
-    client: &crate::freenet_client::FreenetClient,
+    client: &freenet::FreenetClient,
     request: freenet_stdlib::client_api::ClientRequest<'_>,
-) -> Result<(), crate::ClientError> {
+) -> Result<(), freenet::FreenetConnectionError> {
     let bytes = bincode::serialize(&request)?;
     client
         .write
         .send(Message::Binary(bytes.into()))
-        .map_err(|_| crate::ClientError::SendError)?;
+        .map_err(|_| freenet::FreenetConnectionError::SendError)?;
     Ok(())
 }
 

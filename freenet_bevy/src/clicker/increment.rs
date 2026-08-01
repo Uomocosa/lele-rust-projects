@@ -1,9 +1,8 @@
-use crate::clicker::command::Command;
-use crate::clicker::state::State;
+use crate::clicker;
 
-pub fn increment(state: &mut State, amount: u64) {
+pub fn increment(state: &mut clicker::State, amount: u64) {
     state.count = state.count.wrapping_add(amount);
-    let cmd = Command::Increment { count: state.count };
+    let cmd = clicker::Command::Increment { count: state.count };
     let _ = state.cmd_tx.send(cmd);
 }
 
@@ -14,8 +13,7 @@ mod tests {
     use tokio::sync::mpsc;
 
     use super::increment;
-    use crate::clicker::command::Command;
-    use crate::clicker::state::State;
+    use crate::clicker;
 
     #[test]
     fn test_usage() {
@@ -24,7 +22,7 @@ mod tests {
             freenet_stdlib::prelude::Parameters::from(Vec::new()),
             freenet_stdlib::prelude::ContractCode::from(Vec::new()),
         );
-        let mut state = State {
+        let mut state = clicker::State {
             event_rx: Mutex::new(mpsc::unbounded_channel().1),
             cmd_tx: tx,
             contract_key: key,
@@ -36,7 +34,7 @@ mod tests {
 
         let cmd = rx.try_recv().unwrap();
         match cmd {
-            Command::Increment { count } => assert_eq!(count, 8),
+            clicker::Command::Increment { count } => assert_eq!(count, 8),
         }
     }
 }

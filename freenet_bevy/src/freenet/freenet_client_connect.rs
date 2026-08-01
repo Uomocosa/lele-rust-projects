@@ -4,12 +4,14 @@ use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tracing::info;
 
-use freenet_stdlib::client_api::{ClientError as FcError, HostResponse};
+use freenet_stdlib::client_api::{ClientError, HostResponse};
 
-use super::client_error::ClientError as Ce;
-use super::freenet_client::FreenetClient;
+use crate::freenet;
 
-pub async fn connect(host: &str, port: u16) -> Result<FreenetClient, Ce> {
+pub async fn connect(
+    host: &str,
+    port: u16,
+) -> Result<freenet::FreenetClient, freenet::FreenetConnectionError> {
     let url = format!("ws://{host}:{port}/v1/contract/command?encodingProtocol=native");
     info!(target: "freenet_bevy", url = %url, "connecting to freenet node");
 
@@ -20,12 +22,14 @@ pub async fn connect(host: &str, port: u16) -> Result<FreenetClient, Ce> {
         http::HeaderValue::from_static("native"),
     );
     let ws = tokio::time::timeout(Duration::from_secs(5), connect_async(request));
-    let (ws_stream, _) = ws.await.map_err(|_| Ce::ConnectionTimeout)??;
+    let (ws_stream, _) = ws
+        .await
+        .map_err(|_| freenet::FreenetConnectionError::ConnectionTimeout)??;
     let (mut ws_write, mut ws_read) = ws_stream.split();
 
     let (write_tx, mut write_rx) = tokio::sync::mpsc::unbounded_channel::<Message>();
     let (read_tx, read_rx) =
-        tokio::sync::mpsc::unbounded_channel::<Result<HostResponse, FcError>>();
+        tokio::sync::mpsc::unbounded_channel::<Result<HostResponse, ClientError>>();
 
     tokio::spawn(async move {
         while let Some(msg) = write_rx.recv().await {
@@ -40,7 +44,7 @@ pub async fn connect(host: &str, port: u16) -> Result<FreenetClient, Ce> {
         while let Some(Ok(msg)) = ws_read.next().await {
             match msg {
                 Message::Binary(data) => {
-                    match bincode::deserialize::<Result<HostResponse, FcError>>(&data) {
+                    match bincode::deserialize::<Result<HostResponse, ClientError>>(&data) {
                         Ok(result) => {
                             let _ = read_tx.send(result);
                         }
@@ -61,7 +65,7 @@ pub async fn connect(host: &str, port: u16) -> Result<FreenetClient, Ce> {
         }
     });
 
-    Ok(FreenetClient {
+    Ok(freenet::FreenetClient {
         write: write_tx,
         read: read_rx,
     })

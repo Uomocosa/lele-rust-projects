@@ -4,13 +4,12 @@ use bevy::prelude::Resource;
 use freenet_stdlib::prelude::ContractKey;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use crate::clicker::command::Command;
-use crate::clicker::event::Event;
+use crate::clicker;
 
 #[derive(Resource)]
 pub struct State {
-    pub event_rx: Mutex<UnboundedReceiver<Event>>,
-    pub cmd_tx: UnboundedSender<Command>,
+    pub event_rx: Mutex<UnboundedReceiver<clicker::Event>>,
+    pub cmd_tx: UnboundedSender<clicker::Command>,
     pub contract_key: ContractKey,
     pub count: u64,
 }

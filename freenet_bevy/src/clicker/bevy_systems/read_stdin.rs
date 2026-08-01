@@ -2,14 +2,14 @@ use std::io::{self, BufRead};
 
 use bevy::prelude::*;
 
-use crate::clicker::cli_command::CliCommand;
+use crate::clicker;
 
-pub fn read_stdin(mut writer: MessageWriter<CliCommand>) {
+pub fn read_stdin(mut writer: MessageWriter<clicker::CliCommand>) {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
 
     if let Some(Ok(line)) = lines.next() {
-        match CliCommand::parse(&line) {
+        match clicker::CliCommand::parse(&line) {
             Some(cmd) => {
                 writer.write(cmd);
             }

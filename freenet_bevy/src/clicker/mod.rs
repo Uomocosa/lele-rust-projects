@@ -1,3 +1,4 @@
+pub mod bevy_systems;
 pub mod cli_command;
 mod cli_command_help_text;
 mod cli_command_parse;
@@ -20,7 +21,6 @@ mod plugin_build;
 pub mod remote_plugin;
 mod remote_plugin_build;
 pub mod state;
-pub mod systems;
 
 pub use cli_command::CliCommand;
 pub use cli_plugin::CliPlugin;
@@ -36,10 +36,3 @@ pub use increment_button::IncrementButton;
 pub use plugin::Plugin;
 pub use remote_plugin::RemotePlugin;
 pub use state::State;
-pub use systems::handle_cli::handle_cli;
-pub use systems::handle_increment_click::handle_increment_click;
-pub use systems::poll_freenet_events::poll_freenet_events;
-pub use systems::read_stdin::read_stdin;
-pub use systems::spawn_ui::spawn_ui;
-pub use systems::update_counter_ui::update_counter_ui;
-pub use systems::write_stdout::write_stdout;
