@@ -5,7 +5,13 @@ use rmcp::model::{CallToolResult, ContentBlock};
 
 use crate::Error;
 
-pub async fn screenshot(artifacts_dir: Option<&str>) -> Result<CallToolResult, Error> {
+use super::send_to_telegram_send;
+
+pub async fn screenshot(
+    artifacts_dir: Option<&str>,
+    bot_token: Option<&str>,
+    chat_id: Option<&str>,
+) -> Result<CallToolResult, Error> {
     let png = capture_png()?;
     let (width, height) = png_size(&png).unwrap_or((0, 0));
     let summary = format!(
@@ -21,6 +27,14 @@ pub async fn screenshot(artifacts_dir: Option<&str>) -> Result<CallToolResult, E
             .as_secs();
         let path = format!("{dir}/{ts}.png");
         let _ = fs::write(&path, &png);
+    }
+
+    if let (Some(token), Some(cid)) = (bot_token, chat_id) {
+        send_to_telegram_send::send_photo_fire_and_forget(
+            token.to_string(),
+            cid.to_string(),
+            png.clone(),
+        );
     }
 
     Ok(CallToolResult::success(vec![
@@ -111,7 +125,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires a live X display"]
     async fn test_usage_live_display() {
-        let result = super::screenshot(None).await;
+        let result = super::screenshot(None, None, None).await;
         assert!(result.is_ok());
     }
 }

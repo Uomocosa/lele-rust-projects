@@ -8,10 +8,14 @@ use tokio::sync::Mutex;
 use crate::Server;
 
 pub fn new(artifacts_dir: Option<String>) -> Server {
+    let bot_token = std::env::var("TELEGRAM_BOT_TOKEN").ok();
+    let chat_id = std::env::var("TELEGRAM_CHAT_ID").ok();
     Server {
         processes: Arc::new(Mutex::new(HashMap::new())),
         next_id: Arc::new(AtomicU32::new(1)),
         artifacts_dir,
+        bot_token,
+        chat_id,
     }
 }
 

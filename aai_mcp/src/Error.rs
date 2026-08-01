@@ -12,6 +12,8 @@ pub enum Error {
     StdinClosed,
     #[error("screenshot failed: {0}")]
     Screenshot(String),
+    #[error("telegram error: {0}")]
+    Telegram(String),
 }
 
 #[rustfmt::skip]

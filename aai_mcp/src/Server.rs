@@ -7,13 +7,18 @@ use rmcp::{
     tool, tool_handler, tool_router,
 };
 
-use crate::{PidParam, ProcessMap, ReadOutputParams, ServerMethod, SpawnParams, WriteStdinParams};
+use crate::{
+    PidParam, ProcessMap, ReadOutputParams, SendToTelegramParams, ServerMethod, SpawnParams,
+    WriteStdinParams,
+};
 
 #[derive(Clone)]
 pub struct Server {
     pub processes: ProcessMap,
     pub next_id: Arc<AtomicU32>,
     pub artifacts_dir: Option<String>,
+    pub bot_token: Option<String>,
+    pub chat_id: Option<String>,
 }
 
 impl Default for Server {
@@ -31,7 +36,7 @@ impl Server {
     pub fn with_artifacts_dir(artifacts_dir: Option<String>) -> Self { ServerMethod::new(artifacts_dir) }
 
     #[tool(description = "Capture a screenshot of the primary monitor. Returns a PNG image plus a text summary.")]
-    async fn screenshot(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::screenshot(self.artifacts_dir.as_deref()).await.map_err(ErrorData::from) }
+    async fn screenshot(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::screenshot(self.artifacts_dir.as_deref(), self.bot_token.as_deref(), self.chat_id.as_deref()).await.map_err(ErrorData::from) }
 
     #[tool(description = "Spawn a subprocess. Returns a numeric process ID you can pass to read_output, write_stdin, and kill_process.")]
     async fn spawn_process(&self, Parameters(params): Parameters<SpawnParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::spawn_process(&self.processes, &self.next_id, params).await.map_err(ErrorData::from) }
@@ -47,6 +52,9 @@ impl Server {
 
     #[tool(description = "List all managed processes with their IDs, command strings, and alive status.")]
     async fn list_processes(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::list_processes(&self.processes).await.map_err(ErrorData::from) }
+
+    #[tool(description = "Send a text message and/or a base64-encoded PNG photo to a pre-configured Telegram chat.")]
+    async fn send_to_telegram(&self, Parameters(params): Parameters<SendToTelegramParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::send_to_telegram(self.bot_token.as_deref(), self.chat_id.as_deref(), params).await.map_err(ErrorData::from) }
 }
 
 #[tool_handler]
@@ -66,5 +74,7 @@ mod tests {
         let server = Server::new();
         let info = server.get_info();
         assert!(info.capabilities.tools.is_some());
+        assert!(server.bot_token.is_none());
+        assert!(server.chat_id.is_none());
     }
 }

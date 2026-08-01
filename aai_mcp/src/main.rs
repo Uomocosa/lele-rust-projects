@@ -8,6 +8,8 @@ pub mod process_handle;
 pub mod process_map;
 #[path = "ReadOutputParams.rs"]
 pub mod read_output_params;
+#[path = "SendToTelegramParams.rs"]
+pub mod send_to_telegram_params;
 #[path = "Server.rs"]
 pub mod server;
 #[path = "SpawnParams.rs"]
@@ -18,6 +20,7 @@ pub mod write_stdin_params;
 pub mod ErrorMethod;
 pub mod ServerMethod;
 
+use crate::send_to_telegram_params::SendToTelegramParams;
 pub use error::Error;
 pub use pid_param::PidParam;
 pub use process_handle::ProcessHandle;
@@ -31,6 +34,8 @@ use rmcp::{ServiceExt, transport::stdio};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let _ = dotenvy::from_filename("aai_mcp/.env").or_else(|_| dotenvy::dotenv());
+
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_writer(std::io::stderr)
