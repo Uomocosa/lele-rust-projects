@@ -125,15 +125,22 @@ syntax-level rules.
     - Only thin-delegate `impl` blocks (where every method body is a
       single delegation call) get `#[rustfmt::skip]`.
 
-**14. Logging uses tracing! macros**
-    - Log calls must use `tracing::debug!`, `tracing::info!`,
-      `tracing::warn!`, `tracing::error!`, or `tracing::trace!`.
-    - Violation: `log::debug!`, `log::info!`, `println!`, `eprintln!`,
-      `dbg!`.
+**14. Logging uses tracing! macros (deferred to skill)**
+    - This rule was removed from the linter in v1.
+    - See Non-Goals below for rationale.  The rule remains in the
+      lele-syntax-rs skill as agent guidance.
 
 ## Non-Goals (V1)
 
 Each item below is intentionally excluded from v1 with a rationale.
+
+### No `tracing!` vs `println!` enforcement
+
+**Why:** `println!`/`eprintln!`/`dbg!` have legitimate uses (CLI output,
+debugging, `main.rs` startup) that cannot be mechanically distinguished
+from logging calls.  A linter cannot know whether a given `println!` is
+"user-facing output" or "should be a tracing macro."  The rule remains
+in the lele-syntax-rs skill where an agent can apply human judgment.
 
 ### No `.unwrap()`, `.expect()`, `panic!()`, `todo!()` checks
 
@@ -238,18 +245,14 @@ lele_lint/
     config.rs                    # lele_lint.toml parsing
     checkers/
       mod.rs                     # re-exports all checkers as Vec<Box<dyn Checker>>
-      atomic_file.rs             # rule 1
       snake_case_files.rs        # rule 2
       method_visibility.rs       # rule 3
       no_cross_domain_reexport.rs # rule 4
-      bevy_systems_export.rs     # rule 5
       test_usage.rs              # rule 6
       test_inline.rs             # rule 7
-      bevy_systems_folder.rs     # rule 8 (bevy mode)
       no_positional.rs           # rule 9
       no_trivial_accessors.rs    # rule 10
       domain_import.rs           # rule 11
       thin_delegates.rs          # rule 12
       constructor_no_skip.rs     # rule 13
-      tracing_logging.rs         # rule 14
 ```

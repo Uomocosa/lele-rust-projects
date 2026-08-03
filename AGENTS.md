@@ -10,8 +10,9 @@ Read [OBJECTIVE.md](./OBJECTIVE.md) for the project's goals, constraints, and cu
 
 | Key | Command |
 |-----|---------|
-| `RUN_ALL_TESTS` | `cargo build --all-targets && cargo clippy -- -D warnings && cargo fmt -- --check && cargo test --all-targets` |
+| `RUN_ALL_TESTS` | `cargo build --all-targets && cargo clippy -- -D warnings && cargo fmt -- --check && cargo test --all-targets && cargo run --manifest-path ../lele_lint/Cargo.toml` |
 | `RUN_BUILD_CLIPPY` | `cargo build --all-targets && cargo clippy -- -D warnings` |
+| `RUN_LELE_LINT` | `cargo run --manifest-path ../lele_lint/Cargo.toml` |
 
 ## Standard Build & Verification Routine
 
@@ -21,6 +22,7 @@ cargo build --all-targets
 cargo clippy -- -D warnings
 cargo fmt -- --check
 cargo test --all-targets
+cargo run --manifest-path ../lele_lint/Cargo.toml
 ```
 
 > **Note:** The `freenet_example` project depends on `freenet` → `tikv-jemalloc-sys`,
@@ -39,5 +41,9 @@ cargo test --all-targets
 - **Delegate pattern:** Structs hold only data fields. All methods are defined as free
   functions in sibling `<struct>_<method>.rs` files. Method files are private modules
   consumed exclusively through the struct's thin delegates (`#[rustfmt::skip]`).
+
+- **`lele_lint`:** Many syntax and structure conventions are automatically checked by
+  `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`).  Run it after changes and fix any violations.
+  See the lele-syntax-rs skill for the full list of linter-enforced rules.
 
 

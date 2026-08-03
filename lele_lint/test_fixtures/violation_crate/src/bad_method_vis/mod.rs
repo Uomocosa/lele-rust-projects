@@ -1,4 +1,4 @@
-pub mod player;             // PRIVATE module declared as pub mod
-mod player_new;
+mod player;
+pub mod player_new;          // VIOLATION: method file declared as pub mod
 
 pub use player::Player;
