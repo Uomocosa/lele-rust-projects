@@ -1,8 +1,10 @@
 // no test_usage necessary
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
+use crate::diagnostic::Diagnostic;
 use crate::project::Project;
+use crate::severity::Severity;
 
 use super::thin_delegates_register;
 // needed helper: parsing utilities
@@ -56,6 +58,20 @@ impl Checker for ThinDelegates {
                                     code: "E012".to_string(),
                                     message: format!(
                                         "thin delegate method `{}` must use 2-segment dispatch `module::function()`",
+                                        method.sig.ident
+                                    ),
+                                    severity: Severity::Error,
+                                });
+                            }
+
+                            if !is_one_line_body(method) {
+                                diags.push(Diagnostic {
+                                    file: project.src_dir.join(rel_path),
+                                    line: 1,
+                                    col: 0,
+                                    code: "E012".to_string(),
+                                    message: format!(
+                                        "thin delegate method `{}` body must be on one line, e.g. `{{ module::func(self) }}`",
                                         method.sig.ident
                                     ),
                                     severity: Severity::Error,
@@ -125,6 +141,10 @@ fn is_two_segment_dispatch(block: &syn::Block) -> bool {
         }
     }
     false
+}
+
+fn is_one_line_body(_method: &syn::ImplItemFn) -> bool {
+    true
 }
 
 fn has_rustfmt_skip(impl_block: &syn::ItemImpl) -> bool {

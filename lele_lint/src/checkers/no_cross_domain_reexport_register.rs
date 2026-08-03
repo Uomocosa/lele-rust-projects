@@ -1,4 +1,3 @@
-// lele_lint: allow E001
 // no test_usage necessary
 
 use super::no_cross_domain_reexport::NoCrossDomainReexport;

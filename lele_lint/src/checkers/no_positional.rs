@@ -1,8 +1,10 @@
 use std::path::Path;
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
+use crate::diagnostic::Diagnostic;
 use crate::project::Project;
+use crate::severity::Severity;
 
 use super::no_positional_register;
 // needed helper: parsing utilities

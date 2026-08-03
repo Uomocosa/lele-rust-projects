@@ -1,8 +1,10 @@
 use std::path::Path;
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
-use crate::project::{EntryKind, Project};
+use crate::diagnostic::Diagnostic;
+use crate::project::Project;
+use crate::severity::Severity;
 
 use super::atomic_file_register;
 // needed helper: parsing utilities
@@ -25,10 +27,6 @@ impl Checker for AtomicFile {
             let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
             if is_exempt_path(rel_path, file_name) {
-                continue;
-            }
-
-            if file_allows_checker(project, rel_path, "E001") {
                 continue;
             }
 
@@ -69,25 +67,6 @@ impl AtomicFile {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
         atomic_file_register::register(checkers, config)
     }
-}
-
-fn file_allows_checker(project: &Project, rel_path: &Path, code: &str) -> bool {
-    let entry = match project
-        .entries
-        .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)
-    {
-        Some(e) => e,
-        None => return false,
-    };
-
-    let content = match std::fs::read_to_string(&entry.absolute_path) {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-
-    let pattern = format!("// lele_lint: allow {code}", code = code);
-    content.lines().any(|line| line.contains(&pattern))
 }
 
 struct PubItem {
@@ -162,7 +141,7 @@ fn check_filename_match(
     }
 
     if file_stem.contains('_') {
-        if let Some((_prefix, suffix)) = file_stem.split_once('_') {
+        if let Some((_prefix, suffix)) = file_stem.rsplit_once('_') {
             if expected.ends_with(suffix) {
                 return;
             }

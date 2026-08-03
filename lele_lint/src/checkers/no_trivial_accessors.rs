@@ -1,8 +1,10 @@
 use std::collections::HashSet;
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
+use crate::diagnostic::Diagnostic;
 use crate::project::Project;
+use crate::severity::Severity;
 
 use super::no_trivial_accessors_register;
 // needed helper: parsing utilities

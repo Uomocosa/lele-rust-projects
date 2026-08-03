@@ -2,9 +2,12 @@
 
 use std::path::Path;
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
-use crate::project::{EntryKind, Project};
+use crate::diagnostic::Diagnostic;
+use crate::entry_kind::EntryKind;
+use crate::project::Project;
+use crate::severity::Severity;
 
 use super::test_usage_register;
 // needed helper: parsing utilities

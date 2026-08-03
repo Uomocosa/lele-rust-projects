@@ -1,9 +1,12 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
-use crate::project::{EntryKind, Project};
+use crate::diagnostic::Diagnostic;
+use crate::entry_kind::EntryKind;
+use crate::project::Project;
+use crate::severity::Severity;
 
 use super::method_visibility_register;
 // needed helper: parsing utilities
@@ -102,7 +105,7 @@ fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &Project)
 }
 
 fn group_entries_by_parent_dir(
-    entries: &[crate::project::Entry],
+    entries: &[crate::entry::Entry],
 ) -> std::collections::BTreeMap<String, Vec<String>> {
     let mut map: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();

@@ -2,11 +2,12 @@ use std::path::PathBuf;
 use std::process;
 
 use clap::Parser;
-use lele_lint::checker;
 use lele_lint::checkers::build_checkers;
 use lele_lint::config;
+use lele_lint::print_checker_list::print_checker_list;
+use lele_lint::print_diagnostics::print_diagnostics;
 use lele_lint::project;
-use lele_lint::reporting::{print_checker_list, print_diagnostics};
+use lele_lint::severity;
 
 #[derive(Parser)]
 #[command(name = "lele_lint", about = "Enforce lele-syntax-rs conventions")]
@@ -45,7 +46,7 @@ fn main() {
         process::exit(1);
     }
 
-    let project = match project::discover(args.path.as_deref()) {
+    let project = match project::Project::discover(args.path.as_deref()) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("lele_lint: {e}", e = e);
@@ -71,7 +72,7 @@ fn main() {
 
     let error_count = all_diags
         .iter()
-        .filter(|d| d.severity == checker::Severity::Error)
+        .filter(|d| d.severity == severity::Severity::Error)
         .count();
 
     if error_count > 0 {

@@ -2,9 +2,11 @@
 
 use std::path::Path;
 
-use crate::checker::{Checker, Diagnostic, Severity};
+use crate::checker::Checker;
 use crate::config::Config;
+use crate::diagnostic::Diagnostic;
 use crate::project::Project;
+use crate::severity::Severity;
 
 use super::domain_import_register;
 // needed helper: parsing utilities
@@ -116,7 +118,7 @@ fn collect_use_segments(tree: &syn::UseTree) -> Vec<String> {
 }
 
 fn find_use_line(
-    entries: &[crate::project::Entry],
+    entries: &[crate::entry::Entry],
     rel_path: &Path,
     _item_use: &syn::ItemUse,
 ) -> Option<usize> {

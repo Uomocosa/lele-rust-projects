@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use lele_lint::checkers::build_checkers;
 use lele_lint::config::Config;
-use lele_lint::project;
+use lele_lint::diagnostic::Diagnostic;
+use lele_lint::project::Project;
 
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -10,8 +11,8 @@ fn fixture_path(name: &str) -> PathBuf {
         .join(name)
 }
 
-fn run_checkers(path: &str) -> Vec<lele_lint::checker::Diagnostic> {
-    let p = project::discover(Some(&fixture_path(path))).unwrap();
+fn run_checkers(path: &str) -> Vec<Diagnostic> {
+    let p = Project::discover(Some(&fixture_path(path))).unwrap();
     let config = Config::load(&p.root).unwrap_or_default();
     let checkers = build_checkers(&config);
     checkers.iter().flat_map(|c| c.check(&p)).collect()

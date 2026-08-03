@@ -1,7 +1,12 @@
-// lele_lint: allow E001
 // needed helper: syn parsing utilities for mod.rs declarations
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+use crate::entry::Entry;
+use crate::mod_decl::ModDecl;
+use crate::reexport::Reexport;
+
+use super::module_info_build;
 
 pub type ModuleInfoMap = HashMap<PathBuf, ModuleInfo>;
 
@@ -12,122 +17,46 @@ pub struct ModuleInfo {
     pub reexports: Vec<Reexport>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ModDecl {
-    pub name: String,
-    pub is_public: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Reexport {
-    pub segments: Vec<String>,
-    pub is_glob: bool,
-}
-
-pub fn build(_src_dir: &Path, entries: &[crate::project::Entry]) -> ModuleInfoMap {
-    let mut map = ModuleInfoMap::new();
-
-    for entry in entries {
-        if !is_mod_rs(&entry.relative_path) {
-            continue;
-        }
-
-        let content = match std::fs::read_to_string(&entry.absolute_path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-
-        let (declarations, reexports) = parse_mod_rs(&content);
-
-        map.insert(
-            entry.relative_path.clone(),
-            ModuleInfo {
-                rel_path: entry.relative_path.clone(),
-                declarations,
-                reexports,
-            },
-        );
-    }
-
-    map
-}
-
-fn is_mod_rs(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|n| n.to_str())
-        .is_some_and(|n| n == "mod.rs")
-}
-
-fn parse_mod_rs(content: &str) -> (Vec<ModDecl>, Vec<Reexport>) {
-    let file = match syn::parse_file(content) {
-        Ok(f) => f,
-        Err(_) => return (Vec::new(), Vec::new()),
-    };
-
-    let mut decls = Vec::new();
-    let mut reexports = Vec::new();
-
-    for item in file.items {
-        match item {
-            syn::Item::Mod(m) => {
-                decls.push(ModDecl {
-                    name: m.ident.to_string(),
-                    is_public: matches!(m.vis, syn::Visibility::Public(_)),
-                });
-            }
-            syn::Item::Use(u) => {
-                if matches!(u.vis, syn::Visibility::Public(_)) {
-                    if let Some(r) = extract_reexport(&u.tree) {
-                        reexports.push(r);
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    (decls, reexports)
-}
-
-fn extract_reexport(tree: &syn::UseTree) -> Option<Reexport> {
-    match tree {
-        syn::UseTree::Path(p) => {
-            let mut segments = vec![p.ident.to_string()];
-            if let Some(child) = extract_reexport(&p.tree) {
-                segments.extend(child.segments);
-                Some(Reexport {
-                    segments,
-                    is_glob: child.is_glob,
-                })
-            } else {
-                None
-            }
-        }
-        syn::UseTree::Name(n) => Some(Reexport {
-            segments: vec![n.ident.to_string()],
-            is_glob: false,
-        }),
-        syn::UseTree::Glob(_) => Some(Reexport {
-            segments: Vec::new(),
-            is_glob: true,
-        }),
-        syn::UseTree::Rename(r) => Some(Reexport {
-            segments: vec![r.ident.to_string()],
-            is_glob: false,
-        }),
-        syn::UseTree::Group(_) => None,
+#[rustfmt::skip]
+impl ModuleInfo {
+    pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
+        module_info_build::build(_src_dir, entries)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_mod_rs;
+    use crate::mod_decl::ModDecl;
+    use crate::reexport::Reexport;
 
     #[test]
     fn test_usage() {
-        let (decls, reexports) = parse_mod_rs(
+        let file = syn::parse_str::<syn::File>(
             "mod player;\nmod player_new;\npub mod bevy_systems;\npub use player::Player;\n",
-        );
+        )
+        .unwrap();
+
+        let mut decls = Vec::new();
+        let mut reexports = Vec::new();
+
+        for item in file.items {
+            match item {
+                syn::Item::Mod(m) => {
+                    decls.push(ModDecl {
+                        name: m.ident.to_string(),
+                        is_public: matches!(m.vis, syn::Visibility::Public(_)),
+                    });
+                }
+                syn::Item::Use(u) => {
+                    if matches!(u.vis, syn::Visibility::Public(_)) {
+                        for tree_node in walk_tree(&u.tree) {
+                            reexports.push(tree_node);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
 
         assert_eq!(decls.len(), 3);
         assert_eq!(decls[0].name, "player");
@@ -139,5 +68,30 @@ mod tests {
 
         assert_eq!(reexports.len(), 1);
         assert_eq!(reexports[0].segments, vec!["player", "Player"]);
+    }
+
+    fn walk_tree(tree: &syn::UseTree) -> Vec<Reexport> {
+        match tree {
+            syn::UseTree::Path(p) => {
+                let mut results = walk_tree(&p.tree);
+                for r in &mut results {
+                    r.segments.insert(0, p.ident.to_string());
+                }
+                results
+            }
+            syn::UseTree::Name(n) => vec![Reexport {
+                segments: vec![n.ident.to_string()],
+                is_glob: false,
+            }],
+            syn::UseTree::Glob(_) => vec![Reexport {
+                segments: Vec::new(),
+                is_glob: true,
+            }],
+            syn::UseTree::Rename(r) => vec![Reexport {
+                segments: vec![r.ident.to_string()],
+                is_glob: false,
+            }],
+            syn::UseTree::Group(_) => Vec::new(),
+        }
     }
 }

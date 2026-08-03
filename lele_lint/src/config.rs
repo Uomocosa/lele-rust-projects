@@ -1,27 +1,15 @@
-// lele_lint: allow E001
 // no test_usage necessary
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::error::Error;
+use crate::lele_lint_section::LeleLintSection;
 
 const CONFIG_FILENAME: &str = "lele_lint.toml";
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Config {
     pub lele_lint: Option<LeleLintSection>,
-}
-
-#[derive(Deserialize, Debug, Default)]
-pub struct LeleLintSection {
-    #[serde(default)]
-    pub bevy_mode: bool,
-    #[serde(default)]
-    #[allow(dead_code)]
-    pub exclude: Vec<String>,
-    #[serde(default)]
-    pub checkers: HashMap<String, bool>,
 }
 
 impl Config {
