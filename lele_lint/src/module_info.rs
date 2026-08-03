@@ -1,3 +1,5 @@
+// lele_lint: allow E001
+// needed helper: syn parsing utilities for mod.rs declarations
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 

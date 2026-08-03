@@ -1,3 +1,4 @@
+// lele_lint: allow E001
 // no test_usage necessary
 use std::collections::HashMap;
 use std::ffi::OsStr;

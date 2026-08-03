@@ -1,3 +1,4 @@
+// lele_lint: allow E001
 use crate::project::Project;
 
 #[derive(Debug, Clone)]

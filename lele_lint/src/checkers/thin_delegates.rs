@@ -1,14 +1,13 @@
+// no test_usage necessary
+
 use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::Project;
 
-pub struct ThinDelegates;
+use super::thin_delegates_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("thin_delegates") {
-        checkers.push(Box::new(ThinDelegates));
-    }
-}
+pub struct ThinDelegates;
 
 impl Checker for ThinDelegates {
     fn name(&self) -> &'static str {
@@ -69,6 +68,13 @@ impl Checker for ThinDelegates {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl ThinDelegates {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        thin_delegates_register::register(checkers, config)
     }
 }
 

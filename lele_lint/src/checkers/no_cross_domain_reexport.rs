@@ -4,13 +4,9 @@ use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::Project;
 
-pub struct NoCrossDomainReexport;
+use super::no_cross_domain_reexport_register;
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("no_cross_domain_reexport") {
-        checkers.push(Box::new(NoCrossDomainReexport));
-    }
-}
+pub struct NoCrossDomainReexport;
 
 impl Checker for NoCrossDomainReexport {
     fn name(&self) -> &'static str {
@@ -59,6 +55,13 @@ impl Checker for NoCrossDomainReexport {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl NoCrossDomainReexport {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        no_cross_domain_reexport_register::register(checkers, config)
     }
 }
 

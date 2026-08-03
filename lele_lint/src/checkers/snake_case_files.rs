@@ -2,13 +2,9 @@ use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::{EntryKind, Project};
 
-pub struct SnakeCaseFiles;
+use super::snake_case_files_register;
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("snake_case_files") {
-        checkers.push(Box::new(SnakeCaseFiles));
-    }
-}
+pub struct SnakeCaseFiles;
 
 impl Checker for SnakeCaseFiles {
     fn name(&self) -> &'static str {
@@ -48,6 +44,13 @@ impl Checker for SnakeCaseFiles {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl SnakeCaseFiles {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        snake_case_files_register::register(checkers, config)
     }
 }
 

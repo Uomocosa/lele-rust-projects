@@ -1,3 +1,4 @@
+// lele_lint: allow E001
 use thiserror::Error;
 
 #[derive(Error, Debug)]

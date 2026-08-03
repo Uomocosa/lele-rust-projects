@@ -1,14 +1,13 @@
+// no test_usage necessary
+
 use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::Project;
 
-pub struct ConstructorNoSkip;
+use super::constructor_no_skip_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("constructor_no_skip") {
-        checkers.push(Box::new(ConstructorNoSkip));
-    }
-}
+pub struct ConstructorNoSkip;
 
 impl Checker for ConstructorNoSkip {
     fn name(&self) -> &'static str {
@@ -59,6 +58,13 @@ impl Checker for ConstructorNoSkip {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl ConstructorNoSkip {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        constructor_no_skip_register::register(checkers, config)
     }
 }
 

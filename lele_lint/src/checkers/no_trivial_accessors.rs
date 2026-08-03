@@ -4,13 +4,10 @@ use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::Project;
 
-pub struct NoTrivialAccessors;
+use super::no_trivial_accessors_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("no_trivial_accessors") {
-        checkers.push(Box::new(NoTrivialAccessors));
-    }
-}
+pub struct NoTrivialAccessors;
 
 impl Checker for NoTrivialAccessors {
     fn name(&self) -> &'static str {
@@ -62,6 +59,13 @@ impl Checker for NoTrivialAccessors {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl NoTrivialAccessors {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        no_trivial_accessors_register::register(checkers, config)
     }
 }
 
@@ -132,6 +136,8 @@ fn is_self_ref(expr: &syn::Expr) -> bool {
 #[cfg(test)]
 mod tests {
     use super::is_trivial_accessor;
+    // no test_usage necessary
+
     use std::collections::HashSet;
 
     #[test]

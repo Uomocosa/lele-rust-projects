@@ -5,13 +5,10 @@ use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::{EntryKind, Project};
 
-pub struct MethodVisibility;
+use super::method_visibility_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("method_visibility") {
-        checkers.push(Box::new(MethodVisibility));
-    }
-}
+pub struct MethodVisibility;
 
 impl Checker for MethodVisibility {
     fn name(&self) -> &'static str {
@@ -74,6 +71,13 @@ impl Checker for MethodVisibility {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl MethodVisibility {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        method_visibility_register::register(checkers, config)
     }
 }
 

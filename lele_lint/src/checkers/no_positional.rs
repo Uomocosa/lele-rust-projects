@@ -4,13 +4,10 @@ use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::Project;
 
-pub struct NoPositional;
+use super::no_positional_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("no_positional") {
-        checkers.push(Box::new(NoPositional));
-    }
-}
+pub struct NoPositional;
 
 impl Checker for NoPositional {
     fn name(&self) -> &'static str {
@@ -33,6 +30,13 @@ impl Checker for NoPositional {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl NoPositional {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        no_positional_register::register(checkers, config)
     }
 }
 

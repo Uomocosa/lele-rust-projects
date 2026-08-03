@@ -1,0 +1,12 @@
+// lele_lint: allow E001
+// no test_usage necessary
+
+use super::test_inline::TestInline;
+use crate::checker::Checker;
+use crate::config::Config;
+
+pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    if config.checker_enabled("test_inline") {
+        checkers.push(Box::new(TestInline));
+    }
+}

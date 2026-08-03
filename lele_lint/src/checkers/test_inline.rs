@@ -2,13 +2,9 @@ use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::{EntryKind, Project};
 
-pub struct TestInline;
+use super::test_inline_register;
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("test_inline") {
-        checkers.push(Box::new(TestInline));
-    }
-}
+pub struct TestInline;
 
 impl Checker for TestInline {
     fn name(&self) -> &'static str {
@@ -42,6 +38,13 @@ impl Checker for TestInline {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl TestInline {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        test_inline_register::register(checkers, config)
     }
 }
 

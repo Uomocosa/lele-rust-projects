@@ -1,16 +1,15 @@
+// no test_usage necessary
+
 use std::path::Path;
 
 use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::Project;
 
-pub struct DomainImport;
+use super::domain_import_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("domain_import") {
-        checkers.push(Box::new(DomainImport));
-    }
-}
+pub struct DomainImport;
 
 impl Checker for DomainImport {
     fn name(&self) -> &'static str {
@@ -46,6 +45,13 @@ impl Checker for DomainImport {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl DomainImport {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        domain_import_register::register(checkers, config)
     }
 }
 

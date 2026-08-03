@@ -33,10 +33,21 @@ syntax-level rules.
 ### Filesystem / Structural (walkdir)
 
 **1. One primary item per file, filename matches item name**
-   - Each `.rs` file contains exactly one `pub struct`, `pub enum`, or
-     `pub fn` (the primary item).
-   - The filename is the snake_case equivalent of that item's name.
-     Example: `pub struct GameConfig` lives in `game_config.rs`.
+    - Each `.rs` file contains exactly one `pub struct`, `pub enum`, or
+      `pub fn` (the primary item).
+    - The filename is the snake_case equivalent of that item's name.
+      Example: `pub struct GameConfig` lives in `game_config.rs`.
+    - Exempt: `mod.rs`, `lib.rs`, `constants.rs`, files in `tests/`.
+    - Opt-out: add `// lele_lint: allow E001` to skip this check.
+
+**1a. Helper function limit**
+    - Maximum 2 non-`pub` helper functions at the top level (outside
+      `impl` blocks and `#[cfg(test)]` modules).
+    - Excess helpers should be extracted into `<type>_<function>.rs`
+      method files as thin delegates.  Prefer extracting pure/stateless
+      functions; keep only context-specific ones inline.
+    - Opt-out: add `// needed helper:` anywhere in the file to justify
+      keeping more than 2 helpers.
 
 **2. All filenames and directories are snake_case**
    - Every `.rs` filename and every directory under `src/` uses
@@ -239,20 +250,26 @@ lele_lint/
   Cargo.toml
   src/
     main.rs                      # CLI: args, walk src/, orchestrate
-    checker.rs                   # trait Checker
-    reporting.rs                 # Diagnostic, clippy-format output
-    walker.rs                    # fs traversal + module tree builder
+    lib.rs                       # library root
+    checker.rs                   # trait Checker, Diagnostic, Severity
+    reporting.rs                 # clippy-format + github-format output
     config.rs                    # lele_lint.toml parsing
+    project.rs                   # file discovery + parsing + module tree
+    module_info.rs               # mod.rs declaration/reexport parsing
+    error.rs                     # thiserror Error enum
     checkers/
-      mod.rs                     # re-exports all checkers as Vec<Box<dyn Checker>>
-      snake_case_files.rs        # rule 2
-      method_visibility.rs       # rule 3
-      no_cross_domain_reexport.rs # rule 4
-      test_usage.rs              # rule 6
-      test_inline.rs             # rule 7
-      no_positional.rs           # rule 9
-      no_trivial_accessors.rs    # rule 10
-      domain_import.rs           # rule 11
-      thin_delegates.rs          # rule 12
-      constructor_no_skip.rs     # rule 13
+      mod.rs                     # build_checkers() registry
+      atomic_file.rs             # rule 1 (E001)
+      snake_case_files.rs        # rule 2 (E002)
+      method_visibility.rs       # rule 3 (E003)
+      no_cross_domain_reexport.rs # rule 4 (E004)
+      test_usage.rs              # rule 6 (E006)
+      test_inline.rs             # rule 7 (E007)
+      no_positional.rs           # rule 9 (E009)
+      no_trivial_accessors.rs    # rule 10 (E010)
+      domain_import.rs           # rule 11 (E011)
+      thin_delegates.rs          # rule 12 (E012)
+      constructor_no_skip.rs     # rule 13 (E013)
+      helper_count.rs            # rule 1a (E015)
+      *_register.rs              # method files (PRIVATE, one per checker)
 ```

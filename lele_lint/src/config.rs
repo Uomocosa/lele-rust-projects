@@ -1,3 +1,4 @@
+// lele_lint: allow E001
 // no test_usage necessary
 use serde::Deserialize;
 use std::collections::HashMap;

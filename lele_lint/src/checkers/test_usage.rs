@@ -1,16 +1,15 @@
+// no test_usage necessary
+
 use std::path::Path;
 
 use crate::checker::{Checker, Diagnostic, Severity};
 use crate::config::Config;
 use crate::project::{EntryKind, Project};
 
-pub struct TestUsage;
+use super::test_usage_register;
+// needed helper: parsing utilities
 
-pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled("test_usage") {
-        checkers.push(Box::new(TestUsage));
-    }
-}
+pub struct TestUsage;
 
 impl Checker for TestUsage {
     fn name(&self) -> &'static str {
@@ -49,6 +48,13 @@ impl Checker for TestUsage {
         }
 
         diags
+    }
+}
+
+#[rustfmt::skip]
+impl TestUsage {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+        test_usage_register::register(checkers, config)
     }
 }
 
