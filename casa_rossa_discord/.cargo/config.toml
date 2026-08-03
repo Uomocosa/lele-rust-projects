@@ -1,0 +1,9 @@
+[build]
+target-dir = "/home/uomocosa/.cache/crd-build"
+
+[profile.dev]
+debug = 0
+codegen-units = 256
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
