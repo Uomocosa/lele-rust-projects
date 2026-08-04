@@ -7,6 +7,7 @@ use walkdir::WalkDir;
 
 use super::project_discover;
 use super::project_find_cargo_root;
+use super::project_get_parsed;
 use crate::entry::Entry;
 use crate::entry_kind::EntryKind;
 use crate::error::Error;
@@ -20,9 +21,10 @@ pub struct Project {
     pub parsed_files: HashMap<PathBuf, syn::File>,
 }
 
+#[rustfmt::skip]
 impl Project {
     pub fn get_parsed(&self, rel_path: &Path) -> Option<&syn::File> {
-        self.parsed_files.get(rel_path)
+        project_get_parsed::get_parsed(self, rel_path)
     }
 }
 

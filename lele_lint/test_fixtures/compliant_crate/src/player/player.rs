@@ -1,4 +1,5 @@
 use super::player_new;
+use super::player_with_name;
 
 pub struct Player {
     pub name: String,
@@ -18,7 +19,7 @@ impl Default for Player {
 impl Player {
     pub fn new() -> Self { player_new::new() }
 
-    pub fn with_name(self, name: String) -> Self { Self { name, ..self } }
+    pub fn with_name(self, name: String) -> Self { player_with_name::with_name(self, name) }
 }
 
 #[cfg(test)]

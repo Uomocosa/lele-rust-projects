@@ -6,6 +6,7 @@ pub mod bad_bevy_export;
 pub mod bad_test_missing;
 pub mod bad_positional;
 pub mod bad_getter;
+pub mod bad_single_caller;
 pub mod bad_import;
 pub mod bad_thin_delegate;
 pub mod bad_constructor_skip;

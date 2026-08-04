@@ -9,7 +9,7 @@ walkdir = "2"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-syn = { version = "2", features = ["full", "extra-traits"] }
+syn = { version = "2", features = ["full", "extra-traits", "visit"] }
 quote = "1"
 
 [dev-dependencies]

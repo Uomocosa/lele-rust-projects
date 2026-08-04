@@ -120,26 +120,46 @@ syntax-level rules.
       and `use super::function;` in `#[cfg(test)]` modules.
     - Also exempt: `pub use` re-exports in `mod.rs` and `lib.rs`.
 
-**12. Thin delegate format**
-    Thin delegate `impl` blocks must follow all of:
-    - **a.** The `impl` block is annotated with `#[rustfmt::skip]`.
-    - **b.** The file imports method modules via `use super::<module>;`.
-    - **c.** Each method body is a 2-segment dispatch:
-      `module_name::function_name(self, args)`.
+**12. Thin delegate format (strict)**
+    Every `impl` block on a file's primary type (inherent AND trait) must
+    be a thin delegate — meaning every method body is a 2-segment dispatch
+    `module::func(self, ...)`.  The only exception is `impl Default`,
+    which keeps a real body and must NOT carry `#[rustfmt::skip]` (see #13).
+    All other methods with real bodies (including constructors like
+    `fn new() -> Self { ... }`) must be extracted into `<type>_<method>.rs`
+    files.
 
-**13. Constructor impl blocks NOT `#[rustfmt::skip]`**
-    - `impl Default for Type` blocks with a real body must NOT use
+    Detects three categories of violation:
+    - **a.** (E012-nondelegate) An impl block on the primary type contains
+      real-body methods instead of 2-segment delegates.
+    - **b.** (E012-skip) A thin-delegate impl block is missing
       `#[rustfmt::skip]`.
-    - Any non-delegate `impl` block whose methods are constructors
-      (`fn() -> Self` or `fn(...) -> Self` without `self` receiver, and
-      with a real body) must NOT use `#[rustfmt::skip]`.
-    - Only thin-delegate `impl` blocks (where every method body is a
-      single delegation call) get `#[rustfmt::skip]`.
+    - **c.** (E012-dispatch) A thin-delegate method uses 3+ segments or
+      a method-call dispatch.
+    - **d.** (E012-oneline) The body spans more than one line.
+
+**13. Default impl blocks NOT `#[rustfmt::skip]`**
+    `impl Default for Type` blocks with a real body must NOT use
+    `#[rustfmt::skip]`.  (Real-body constructor impls are now covered by
+    rule 12 and must be extracted to method files.)
 
 **14. Logging uses tracing! macros (deferred to skill)**
-    - This rule was removed from the linter in v1.
-    - See Non-Goals below for rationale.  The rule remains in the
-      lele-syntax-rs skill as agent guidance.
+
+**15. Helper function limit (E015)**
+     - (unchanged, see above under rule 1a)
+
+**16. Single-caller pure types are co-located (E016)**
+     - If a struct/enum has exactly one caller file (non-test code)
+       and no thin-delegate methods, it MUST be defined in the
+       caller's file instead of its own file.
+     - Exempt: types referenced as a named field type or enum variant
+       payload of *any* other type defined in the crate, since they are
+       reachable through that type's API.
+     - Exempt: types with a thin-delegate impl block (they have methods
+       and keep their own file).
+      - This is a *heuristic*, name-based checker.  It does not perform
+        type-name resolution.  Name collisions may cause false negatives
+        (undetected violations — safe).
 
 ## Non-Goals (V1)
 
@@ -188,6 +208,12 @@ trait methods does this type have?" need rustc's HIR/MIR.  Adding this
 would require a nightly rustc dependency (via dylint or marker).  The
 v1 AST checks are scoped to what syn can reliably determine from a
 single file's syntax tree.
+
+> **Note on E016**: E016 crosses file boundaries with a name-based
+> heuristic for caller counting.  It does not perform type-name
+> resolution; name collisions produce false negatives (safe).  This is
+> an intentional trade-off to enable cross-file usage analysis without
+> rustc.
 
 ### No auto-fix suggestions
 
@@ -252,24 +278,34 @@ lele_lint/
     main.rs                      # CLI: args, walk src/, orchestrate
     lib.rs                       # library root
     checker.rs                   # trait Checker, Diagnostic, Severity
-    reporting.rs                 # clippy-format + github-format output
-    config.rs                    # lele_lint.toml parsing
-    project.rs                   # file discovery + parsing + module tree
-    module_info.rs               # mod.rs declaration/reexport parsing
+    config.rs                    # thin-delegate shell (load/bevy_mode/checker_enabled)
+    config_load.rs               # PRIVATE method file
+    config_bevy_mode.rs          # PRIVATE method file
+    config_checker_enabled.rs    # PRIVATE method file
+    diagnostic.rs                # Diagnostic struct
+    entry.rs                     # Entry struct
+    entry_kind.rs                # EntryKind enum
     error.rs                     # thiserror Error enum
+    lele_lint_section.rs         # LeleLintSection struct
+    mod_decl.rs                  # ModDecl struct
+    module_info.rs               # ModuleInfo struct + test_usage
+    module_info_build.rs         # PRIVATE method file
+    print_checker_list.rs        # public fn
+    print_diagnostics.rs         # public fn
+    project.rs                   # thin-delegate shell (discover/find_cargo_root/get_parsed)
+    project_discover.rs          # PRIVATE method file
+    project_find_cargo_root.rs   # PRIVATE method file
+    project_get_parsed.rs        # PRIVATE method file
+    reexport.rs                  # Reexport struct
+    severity.rs                  # Severity enum
     checkers/
       mod.rs                     # build_checkers() registry
-      atomic_file.rs             # rule 1 (E001)
-      snake_case_files.rs        # rule 2 (E002)
-      method_visibility.rs       # rule 3 (E003)
-      no_cross_domain_reexport.rs # rule 4 (E004)
-      test_usage.rs              # rule 6 (E006)
-      test_inline.rs             # rule 7 (E007)
-      no_positional.rs           # rule 9 (E009)
-      no_trivial_accessors.rs    # rule 10 (E010)
-      domain_import.rs           # rule 11 (E011)
-      thin_delegates.rs          # rule 12 (E012)
-      constructor_no_skip.rs     # rule 13 (E013)
-      helper_count.rs            # rule 1a (E015)
-      *_register.rs              # method files (PRIVATE, one per checker)
+      <checker>.rs               # thin-delegate shell per checker
+      <checker>_meta.rs          # PRIVATE: name() + code()
+      <checker>_check.rs         # PRIVATE: check() + helpers + test_usage
+      <checker>_register.rs      # PRIVATE: register()
+      single_caller_type.rs      # shell for rule 16 (E016)
+      single_caller_type_meta.rs # PRIVATE
+      single_caller_type_check.rs # PRIVATE
+      single_caller_type_register.rs # PRIVATE
 ```

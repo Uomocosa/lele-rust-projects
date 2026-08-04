@@ -44,6 +44,7 @@ fn violation_crate_catches_all_errors() {
         "E011", // domain_import
         "E012", // thin_delegates
         "E013", // constructor_no_skip
+        "E016", // single_caller_type
     ];
 
     for code in &expected {
