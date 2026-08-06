@@ -16,9 +16,6 @@ struct Args {
     error_format: String,
 
     #[arg(long)]
-    bevy: bool,
-
-    #[arg(long)]
     checker_list: bool,
 
     #[arg(long, value_name = "CODE")]
@@ -54,11 +51,7 @@ fn main() {
         }
     };
 
-    let mut config = config::Config::load(&project.root).unwrap_or_default();
-
-    if args.bevy {
-        config.lele_lint.get_or_insert_default().bevy_mode = true;
-    }
+    let config = config::Config::load(&project.root).unwrap_or_default();
 
     let checkers = build_checkers(&config);
 

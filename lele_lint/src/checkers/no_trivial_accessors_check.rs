@@ -5,8 +5,6 @@ use crate::diagnostic::Diagnostic;
 use crate::project::Project;
 use crate::severity::Severity;
 
-// needed helper: parsing utilities
-
 pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
@@ -50,6 +48,7 @@ pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagno
     diags
 }
 
+// needed helper: public field name collection
 fn collect_pub_fields(file: &syn::File) -> HashSet<String> {
     let mut fields = HashSet::new();
     for item in &file.items {
@@ -66,6 +65,7 @@ fn collect_pub_fields(file: &syn::File) -> HashSet<String> {
     fields
 }
 
+// needed helper: trivial accessor pattern detection
 fn is_trivial_accessor(method: &syn::ImplItemFn, pub_fields: &HashSet<String>) -> Option<String> {
     let sig = &method.sig;
 
@@ -89,6 +89,7 @@ fn is_trivial_accessor(method: &syn::ImplItemFn, pub_fields: &HashSet<String>) -
     extract_self_field(expr, pub_fields)
 }
 
+// needed helper: self.field expression extraction
 fn extract_self_field(expr: &syn::Expr, pub_fields: &HashSet<String>) -> Option<String> {
     match expr {
         syn::Expr::Field(field) => {
@@ -107,6 +108,7 @@ fn extract_self_field(expr: &syn::Expr, pub_fields: &HashSet<String>) -> Option<
     None
 }
 
+// needed helper: self-reference expression check
 fn is_self_ref(expr: &syn::Expr) -> bool {
     if let syn::Expr::Path(path) = expr {
         return path.path.segments.last().is_some_and(|s| s.ident == "self");
@@ -117,7 +119,6 @@ fn is_self_ref(expr: &syn::Expr) -> bool {
 #[cfg(test)]
 mod tests {
     use super::is_trivial_accessor;
-    // no test_usage necessary
     use std::collections::HashSet;
 
     #[test]
@@ -146,3 +147,5 @@ mod tests {
         assert!(is_trivial_accessor(&method, &fields).is_none());
     }
 }
+
+// no test_usage necessary

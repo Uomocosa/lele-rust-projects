@@ -24,7 +24,7 @@ syntax-level rules.
 - **Clippy-compatible output:** `file:line:col: error[CODE]: message`
   format for rust-analyzer and GitHub Actions.
 - **Configurable:** A `lele_lint.toml` at the project root enables
-  per-project rule toggles, bevy mode, and path exclusions.
+  per-project rule toggles and path exclusions.
 - **Fast by default:** Walks `src/` once, parses files once, runs all
   checkers.  Optional `--diff` mode for changed files only.
 
@@ -40,14 +40,24 @@ syntax-level rules.
     - Exempt: `mod.rs`, `lib.rs`, `constants.rs`, files in `tests/`.
     - Opt-out: add `// lele_lint: allow E001` to skip this check.
 
-**1a. Helper function limit**
-    - Maximum 2 non-`pub` helper functions at the top level (outside
-      `impl` blocks and `#[cfg(test)]` modules).
-    - Excess helpers should be extracted into `<type>_<function>.rs`
-      method files as thin delegates.  Prefer extracting pure/stateless
-      functions; keep only context-specific ones inline.
-    - Opt-out: add `// needed helper:` anywhere in the file to justify
-      keeping more than 2 helpers.
+**1a. Helper function limit (E015)**
+    - Every non-`pub` top-level function (outside `impl` blocks and
+      `#[cfg(test)]` modules) is a *private helper*. A file may have at
+      most 2 unannotated private helpers. Excess helpers should be
+      extracted into `<type>_<function>.rs` method files as thin
+      delegates. Prefer extracting pure/stateless functions; keep only
+      context-specific ones inline.
+    - Opt-out: add `// needed helper:` on the line directly above an
+      individual helper function (skipping blank lines and `#[...]`
+      attributes) to excuse that one function from the count. The
+      annotation only excuses the function immediately below it — it
+      does not apply file-wide.
+    - A file may have at most 1 top-level function that is `pub` or
+      `pub(crate)` — its one core function. A second `pub`/`pub(crate)`
+      function in the same file is a violation with **no opt-out**: it
+      must move to its own file. This applies even to trivial functions
+      (e.g. a `name()`/`code()` pair belongs in two separate files, not
+      one).
 
 **2. All filenames and directories are snake_case**
    - Every `.rs` filename and every directory under `src/` uses
@@ -67,13 +77,9 @@ syntax-level rules.
    - Cross-domain re-exports belong in `lib.rs` only.
 
 **5. bevy_systems/ not re-exported at domain root**
-   - When bevy mode is enabled: domains may contain a `bevy_systems/`
-     subfolder for Bevy system functions.
-   - The domain's `mod.rs` declares `pub mod bevy_systems;` but does
-     NOT `pub use` individual systems at the domain root.
-   - `bevy_systems/mod.rs` must flatten via `pub use` so the consumer
-     path is `domain::bevy_systems::system_name` (not
-     `domain::bevy_systems::system_name::system_name`).
+   - Enforced by the sibling `lele_bevy_lint` tool (checker
+     `bevy_export`, code E005), not by `lele_lint` itself — see
+     `../lele_bevy_lint/GOAL.md`.
 
 **6. test_usage present in non-exempt files**
    - Every `.rs` file whose primary item is a non-trivial function
@@ -82,18 +88,18 @@ syntax-level rules.
    - Exempt: type-only definitions (pure struct/enum with zero impl
      blocks beyond `Default`), `constants.rs`, struct files where
      `impl Default` is the only non-delegate impl block.
+   - Opt-out: add `// no test_usage necessary` as the last line of the
+     file to exempt it from this requirement.
 
 **7. Tests in same file as primary item**
    - Unit tests live in a `#[cfg(test)]` module at the bottom of the
      same file.  No separate `tests/` directories for unit tests.
    - Integration tests in `tests/` or `integration_tests/` are exempt.
 
-**8. Bevy systems in bevy_systems/ subfolder only (bevy mode)**
-   - When bevy mode is enabled: functions registered with
-     `app.add_systems()` must live in `<domain>/bevy_systems/`.
-   - A system function is identified by its signature containing Bevy
-     system parameters (`Res`, `ResMut`, `Query`, `Commands`,
-     `MessageWriter`, `MessageReader`).
+**8. Bevy systems in bevy_systems/ subfolder only**
+   - Enforced by the sibling `lele_bevy_lint` tool (checker
+     `bevy_folder`, code E008), not by `lele_lint` itself — see
+     `../lele_bevy_lint/GOAL.md`.
 
 ### AST / Syntax (syn)
 
@@ -145,10 +151,7 @@ syntax-level rules.
 
 **14. Logging uses tracing! macros (deferred to skill)**
 
-**15. Helper function limit (E015)**
-     - (unchanged, see above under rule 1a)
-
-**16. Single-caller pure types are co-located (E016)**
+**15. Single-caller pure types are co-located (E016)**
      - If a struct/enum has exactly one caller file (non-test code)
        and no thin-delegate methods, it MUST be defined in the
        caller's file instead of its own file.
@@ -238,7 +241,6 @@ cargo install lele_lint
 
 # In a project root:
 lele_lint                    # check entire src/ tree
-lele_lint --bevy             # enable bevy-specific checks
 lele_lint --diff HEAD~1      # check changed files only
 lele_lint --checker-list     # list all active checkers
 lele_lint --explain E001     # show documentation for error code E001
@@ -249,7 +251,6 @@ lele_lint --explain E001     # show documentation for error code E001
 ```toml
 # Project root
 [lele_lint]
-bevy_mode = false                # enable bevy-specific checkers
 exclude = ["src/generated/"]     # paths to skip
 
 [checkers]
@@ -269,43 +270,3 @@ no_trivial_accessors = true
 - run: lele_lint --error-format github
 ```
 
-## Crate Structure
-
-```
-lele_lint/
-  Cargo.toml
-  src/
-    main.rs                      # CLI: args, walk src/, orchestrate
-    lib.rs                       # library root
-    checker.rs                   # trait Checker, Diagnostic, Severity
-    config.rs                    # thin-delegate shell (load/bevy_mode/checker_enabled)
-    config_load.rs               # PRIVATE method file
-    config_bevy_mode.rs          # PRIVATE method file
-    config_checker_enabled.rs    # PRIVATE method file
-    diagnostic.rs                # Diagnostic struct
-    entry.rs                     # Entry struct
-    entry_kind.rs                # EntryKind enum
-    error.rs                     # thiserror Error enum
-    lele_lint_section.rs         # LeleLintSection struct
-    mod_decl.rs                  # ModDecl struct
-    module_info.rs               # ModuleInfo struct + test_usage
-    module_info_build.rs         # PRIVATE method file
-    print_checker_list.rs        # public fn
-    print_diagnostics.rs         # public fn
-    project.rs                   # thin-delegate shell (discover/find_cargo_root/get_parsed)
-    project_discover.rs          # PRIVATE method file
-    project_find_cargo_root.rs   # PRIVATE method file
-    project_get_parsed.rs        # PRIVATE method file
-    reexport.rs                  # Reexport struct
-    severity.rs                  # Severity enum
-    checkers/
-      mod.rs                     # build_checkers() registry
-      <checker>.rs               # thin-delegate shell per checker
-      <checker>_meta.rs          # PRIVATE: name() + code()
-      <checker>_check.rs         # PRIVATE: check() + helpers + test_usage
-      <checker>_register.rs      # PRIVATE: register()
-      single_caller_type.rs      # shell for rule 16 (E016)
-      single_caller_type_meta.rs # PRIVATE
-      single_caller_type_check.rs # PRIVATE
-      single_caller_type_register.rs # PRIVATE
-```

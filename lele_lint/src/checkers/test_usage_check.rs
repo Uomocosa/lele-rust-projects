@@ -1,14 +1,13 @@
-// no test_usage necessary
-
 use std::path::Path;
 
 use super::test_usage::TestUsage;
+use crate::common;
 use crate::diagnostic::Diagnostic;
 use crate::entry_kind::EntryKind;
 use crate::project::Project;
 use crate::severity::Severity;
 
-// needed helper: parsing utilities
+const OPT_OUT: &str = "// no test_usage necessary";
 
 pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -29,7 +28,7 @@ pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
                 col: 0,
                 code: "E006".to_string(),
                 message: format!(
-                    "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `// no test_usage necessary` to opt out",
+                    "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
                     rel_path.display()
                 ),
                 severity: Severity::Error,
@@ -40,6 +39,7 @@ pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
     diags
 }
 
+// needed helper: opt-out comment lookup on disk
 fn has_test_usage_opt_out(project: &Project, rel_path: &Path) -> bool {
     let entry = match project
         .entries
@@ -55,11 +55,19 @@ fn has_test_usage_opt_out(project: &Project, rel_path: &Path) -> bool {
         Err(_) => return false,
     };
 
-    content
-        .lines()
-        .any(|line| line.trim().starts_with("// no test_usage necessary"))
+    opt_out_at_end(&content)
 }
 
+// needed helper: end-of-file opt-out placement rule
+fn opt_out_at_end(content: &str) -> bool {
+    content
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| line.trim().starts_with(OPT_OUT))
+}
+
+// needed helper: file exemption rules
 fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
     let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
@@ -81,6 +89,7 @@ fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
     is_type_only(file) || is_thin_delegate_only(file)
 }
 
+// needed helper: pure module tree detection
 fn is_pure_module_tree(file: &syn::File) -> bool {
     if file.items.is_empty() {
         return true;
@@ -93,6 +102,7 @@ fn is_pure_module_tree(file: &syn::File) -> bool {
     })
 }
 
+// needed helper: type-only file detection (no non-default impls)
 fn is_type_only(file: &syn::File) -> bool {
     let has_struct_or_enum = file
         .items
@@ -117,6 +127,7 @@ fn is_type_only(file: &syn::File) -> bool {
     !has_non_default_impl
 }
 
+// needed helper: default-only impl block check
 fn is_default_only_impl(impl_block: &syn::ItemImpl) -> bool {
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
@@ -130,6 +141,7 @@ fn is_default_only_impl(impl_block: &syn::ItemImpl) -> bool {
     true
 }
 
+// needed helper: thin-delegate-only file detection
 fn is_thin_delegate_only(file: &syn::File) -> bool {
     let mut has_default = false;
     let mut delegate_impls = false;
@@ -152,6 +164,7 @@ fn is_thin_delegate_only(file: &syn::File) -> bool {
     has_default && delegate_impls
 }
 
+// needed helper: likely delegate impl detection
 fn is_likely_delegate_impl(impl_block: &syn::ItemImpl) -> bool {
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
@@ -163,6 +176,7 @@ fn is_likely_delegate_impl(impl_block: &syn::ItemImpl) -> bool {
     !impl_block.items.is_empty()
 }
 
+// needed helper: single-call body pattern
 fn is_single_call_body(block: &syn::Block) -> bool {
     if block.stmts.len() != 1 {
         return false;
@@ -170,10 +184,11 @@ fn is_single_call_body(block: &syn::Block) -> bool {
     matches!(&block.stmts[0], syn::Stmt::Expr(_, _))
 }
 
+// needed helper: test_usage function presence in cfg(test) module
 fn has_test_usage(file: &syn::File) -> bool {
     for item in &file.items {
         if let syn::Item::Mod(module) = item {
-            if is_cfg_test(module) {
+            if common::is_cfg_test_mod(module) {
                 if let Some((_, items)) = &module.content {
                     for inner in items {
                         if let syn::Item::Fn(func) = inner {
@@ -189,20 +204,9 @@ fn has_test_usage(file: &syn::File) -> bool {
     false
 }
 
-fn is_cfg_test(module: &syn::ItemMod) -> bool {
-    module.attrs.iter().any(|attr| {
-        if attr.path().is_ident("cfg") {
-            if let syn::Meta::List(list) = &attr.meta {
-                return list.tokens.to_string().contains("test");
-            }
-        }
-        false
-    })
-}
-
 #[cfg(test)]
 mod tests {
-    use super::has_test_usage;
+    use super::{has_test_usage, opt_out_at_end};
 
     #[test]
     fn test_usage_finds_test_usage() {
@@ -217,4 +221,17 @@ mod tests {
         let file: syn::File = syn::parse_str("pub fn compute(x: u32) -> u32 { x * 2 }").unwrap();
         assert!(!has_test_usage(&file));
     }
+
+    #[test]
+    fn test_usage_opt_out_only_at_end() {
+        assert!(!opt_out_at_end(
+            "// no test_usage necessary\n\npub fn compute() {}\n"
+        ));
+        assert!(opt_out_at_end(
+            "pub fn compute() {}\n\n// no test_usage necessary\n"
+        ));
+        assert!(!opt_out_at_end("pub fn compute() {}\n"));
+    }
 }
+
+// no test_usage necessary

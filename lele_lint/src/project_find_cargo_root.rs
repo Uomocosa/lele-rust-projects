@@ -1,4 +1,3 @@
-// no test_usage necessary
 use crate::error::Error;
 use std::path::{Path, PathBuf};
 
@@ -14,3 +13,5 @@ pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {
         }
     }
 }
+
+// no test_usage necessary

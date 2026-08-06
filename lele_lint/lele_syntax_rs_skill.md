@@ -230,7 +230,7 @@ Counterexamples: `Config::new()` — generic constructor; `Config::with_auto_acc
 
 **Feature gating convention:** Do not add feature flags unless explicitly requested.
 
-**Helper exception:** Small private helper functions used **exclusively by the file's single primary item** are permitted in the same file.
+**Helper exception:** A few small private helper functions used **exclusively by the file's single primary item** are permitted in the same file (up to 2 unannotated). Beyond that, annotate the ones that must stay with `// needed helper:` on the line directly above each individual function (skipping blank lines and `#[...]` attributes) — the annotation only excuses that one function, not the whole file. A file may have at most 1 top-level function that is `pub` or `pub(crate)` — its single core function. A second `pub`/`pub(crate)` function in the same file has no opt-out and must move to its own file, even for trivial one-liners.
 
 ### Constants
 
@@ -439,6 +439,8 @@ Every file whose primary item is a non-trivial function (branching, arithmetic, 
 **Exemption — trivial methods:** One-liner accessor/delegating methods with no branching, arithmetic, or I/O are exempt.
 
 **Exemption — constant-only definitions:** `constants.rs` is exempt.
+
+**Opt-out:** Add `// no test_usage necessary` as the last line of the file to exempt it from this requirement.
 
 **Context-dependent items (e.g., framework systems):** Construct a minimal working context inside the test. See framework-specific skills for patterns.
 

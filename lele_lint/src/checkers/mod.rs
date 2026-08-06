@@ -1,55 +1,67 @@
-// no test_usage necessary
 mod atomic_file;
 mod atomic_file_check;
-mod atomic_file_meta;
+mod atomic_file_code;
+mod atomic_file_name;
 mod atomic_file_register;
 mod constructor_no_skip;
 mod constructor_no_skip_check;
-mod constructor_no_skip_meta;
+mod constructor_no_skip_code;
+mod constructor_no_skip_name;
 mod constructor_no_skip_register;
 mod domain_import;
 mod domain_import_check;
-mod domain_import_meta;
+mod domain_import_code;
+mod domain_import_name;
 mod domain_import_register;
 mod helper_count;
 mod helper_count_check;
-mod helper_count_meta;
+mod helper_count_code;
+mod helper_count_name;
 mod helper_count_register;
 mod method_visibility;
 mod method_visibility_check;
-mod method_visibility_meta;
+mod method_visibility_code;
+mod method_visibility_name;
 mod method_visibility_register;
 mod no_cross_domain_reexport;
 mod no_cross_domain_reexport_check;
-mod no_cross_domain_reexport_meta;
+mod no_cross_domain_reexport_code;
+mod no_cross_domain_reexport_name;
 mod no_cross_domain_reexport_register;
 mod no_positional;
 mod no_positional_check;
-mod no_positional_meta;
+mod no_positional_code;
+mod no_positional_name;
 mod no_positional_register;
 mod no_trivial_accessors;
 mod no_trivial_accessors_check;
-mod no_trivial_accessors_meta;
+mod no_trivial_accessors_code;
+mod no_trivial_accessors_name;
 mod no_trivial_accessors_register;
 mod single_caller_type;
 mod single_caller_type_check;
-mod single_caller_type_meta;
+mod single_caller_type_code;
+mod single_caller_type_name;
 mod single_caller_type_register;
 mod snake_case_files;
 mod snake_case_files_check;
-mod snake_case_files_meta;
+mod snake_case_files_code;
+mod snake_case_files_name;
 mod snake_case_files_register;
 mod test_inline;
 mod test_inline_check;
-mod test_inline_meta;
+mod test_inline_code;
+mod test_inline_name;
 mod test_inline_register;
 mod test_usage;
 mod test_usage_check;
-mod test_usage_meta;
+mod test_usage_code;
+mod test_usage_name;
 mod test_usage_register;
 mod thin_delegates;
 mod thin_delegates_check;
-mod thin_delegates_meta;
+mod thin_delegates_code;
+mod thin_delegates_name;
 mod thin_delegates_register;
 
 use crate::checker::Checker;
@@ -72,3 +84,5 @@ pub fn build_checkers(config: &Config) -> Vec<Box<dyn Checker>> {
     single_caller_type::SingleCallerType::register(&mut checkers, config);
     checkers
 }
+
+// no test_usage necessary

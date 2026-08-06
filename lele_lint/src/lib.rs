@@ -1,7 +1,7 @@
 pub mod checker;
 pub mod checkers;
+mod common;
 pub mod config;
-mod config_bevy_mode;
 mod config_checker_enabled;
 mod config_load;
 pub mod diagnostic;
@@ -18,5 +18,7 @@ pub mod project;
 mod project_discover;
 mod project_find_cargo_root;
 mod project_get_parsed;
+mod project_parse_source_files;
+mod project_walk_entries;
 pub mod reexport;
 pub mod severity;

@@ -1,12 +1,8 @@
-// no test_usage necessary
-
 use std::path::Path;
 
 use super::domain_import::DomainImport;
 use crate::diagnostic::Diagnostic;
 use crate::project::Project;
-
-// needed helper: parsing utilities
 
 pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -35,6 +31,7 @@ pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> 
     diags
 }
 
+// needed helper: struct-file detection for import exemption
 fn is_struct_delegate_file(file: &syn::File) -> bool {
     for item in &file.items {
         if let syn::Item::Impl(impl_block) = item {
@@ -48,6 +45,7 @@ fn is_struct_delegate_file(file: &syn::File) -> bool {
     false
 }
 
+// needed helper: import style validation
 fn check_import(item_use: &syn::ItemUse, is_struct_file: bool) -> Option<String> {
     let segments = collect_use_segments(&item_use.tree);
     if segments.is_empty() {
@@ -77,10 +75,12 @@ fn check_import(item_use: &syn::ItemUse, is_struct_file: bool) -> Option<String>
     None
 }
 
+// needed helper: visibility check
 fn is_pub_use(item_use: &syn::ItemUse) -> bool {
     matches!(item_use.vis, syn::Visibility::Public(_))
 }
 
+// needed helper: use tree segment collection
 fn collect_use_segments(tree: &syn::UseTree) -> Vec<String> {
     match tree {
         syn::UseTree::Path(p) => {
@@ -95,6 +95,7 @@ fn collect_use_segments(tree: &syn::UseTree) -> Vec<String> {
     }
 }
 
+// needed helper: source line lookup for use statements
 fn find_use_line(
     entries: &[crate::entry::Entry],
     rel_path: &Path,
@@ -141,3 +142,5 @@ mod tests {
         assert!(is_pub_use(&u));
     }
 }
+
+// no test_usage necessary

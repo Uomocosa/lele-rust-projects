@@ -1,4 +1,3 @@
-// no test_usage necessary
 use super::config::Config;
 
 pub(crate) fn checker_enabled(config: &Config, name: &str) -> bool {
@@ -9,3 +8,5 @@ pub(crate) fn checker_enabled(config: &Config, name: &str) -> bool {
         .copied()
         .unwrap_or(true)
 }
+
+// no test_usage necessary

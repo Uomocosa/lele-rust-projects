@@ -7,8 +7,6 @@ use crate::entry_kind::EntryKind;
 use crate::project::Project;
 use crate::severity::Severity;
 
-// needed helper: parsing utilities
-
 pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
@@ -63,6 +61,7 @@ pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnost
     diags
 }
 
+// needed helper: method-file classification (no type definition)
 fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &Project) -> bool {
     let rel_path = if parent_dir.is_empty() {
         Path::new(file_name).to_path_buf()
@@ -83,6 +82,7 @@ fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &Project)
     !has_type_definition
 }
 
+// needed helper: directory-grouped entry map
 fn group_entries_by_parent_dir(
     entries: &[crate::entry::Entry],
 ) -> std::collections::BTreeMap<String, Vec<String>> {
@@ -109,6 +109,7 @@ fn group_entries_by_parent_dir(
     map
 }
 
+// needed helper: struct name set from file listing
 fn collect_struct_names(file_names: &[String]) -> HashSet<String> {
     let mut names = HashSet::new();
     for f in file_names {
@@ -121,6 +122,7 @@ fn collect_struct_names(file_names: &[String]) -> HashSet<String> {
     names
 }
 
+// needed helper: method-file name pattern matching
 fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<String> {
     let stem = file_name.strip_suffix(".rs")?;
     if let Some(pos) = stem.find('_') {
@@ -132,6 +134,7 @@ fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<Str
     None
 }
 
+// needed helper: pub mod declaration check
 fn declared_as_pub_mod(
     module_info: &crate::module_info::ModuleInfoMap,
     parent_dir: &str,
@@ -153,6 +156,7 @@ fn declared_as_pub_mod(
     None
 }
 
+// needed helper: pub use re-export check
 fn reexported_in_pub_use(
     module_info: &crate::module_info::ModuleInfoMap,
     parent_dir: &str,

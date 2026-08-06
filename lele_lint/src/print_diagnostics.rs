@@ -1,4 +1,3 @@
-// no test_usage necessary
 use crate::diagnostic::Diagnostic;
 use crate::severity::Severity;
 use std::io::Write;
@@ -46,3 +45,5 @@ fn print_github(d: &Diagnostic, w: &mut impl Write) {
         message = d.message
     );
 }
+
+// no test_usage necessary

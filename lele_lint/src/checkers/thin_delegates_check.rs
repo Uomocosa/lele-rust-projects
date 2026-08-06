@@ -1,11 +1,8 @@
-// no test_usage necessary
-
 use super::thin_delegates::ThinDelegates;
+use crate::common;
 use crate::diagnostic::Diagnostic;
 use crate::project::Project;
 use crate::severity::Severity;
-
-// needed helper: parsing utilities
 
 pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -23,11 +20,11 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
                 continue;
             };
 
-            if self_type_name(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
+            if common::self_type_last(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
                 continue;
             }
 
-            if is_default_impl(impl_block) {
+            if common::is_default_impl(impl_block) {
                 continue;
             }
 
@@ -50,7 +47,7 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
                 continue;
             }
 
-            if !has_rustfmt_skip(impl_block) {
+            if !common::has_rustfmt_skip(impl_block) {
                 diags.push(Diagnostic {
                     file: project.src_dir.join(rel_path),
                     line: 1,
@@ -63,7 +60,7 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
 
             for impl_item in &impl_block.items {
                 if let syn::ImplItem::Fn(method) = impl_item {
-                    if !is_two_segment_dispatch(&method.block) {
+                    if !common::is_two_segment_dispatch(&method.block) {
                         diags.push(Diagnostic {
                             file: project.src_dir.join(rel_path),
                             line: 1,
@@ -98,6 +95,7 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
     diags
 }
 
+// needed helper: primary type name from file stem
 fn primary_type_name(file: &syn::File, file_stem: &str) -> Option<String> {
     file.items.iter().find_map(|item| {
         let ident = match item {
@@ -106,7 +104,7 @@ fn primary_type_name(file: &syn::File, file_stem: &str) -> Option<String> {
             _ => return None,
         };
         let name = ident.to_string();
-        if to_snake_case(&name) == file_stem {
+        if common::to_snake_case(&name) == file_stem {
             Some(name)
         } else {
             None
@@ -114,23 +112,7 @@ fn primary_type_name(file: &syn::File, file_stem: &str) -> Option<String> {
     })
 }
 
-fn self_type_name(ty: &syn::Type) -> Option<String> {
-    if let syn::Type::Path(tp) = ty {
-        return tp.path.segments.last().map(|s| s.ident.to_string());
-    }
-    None
-}
-
-fn is_default_impl(impl_block: &syn::ItemImpl) -> bool {
-    if let Some((_, trait_path, _)) = &impl_block.trait_ {
-        return trait_path
-            .segments
-            .last()
-            .is_some_and(|s| s.ident == "Default");
-    }
-    false
-}
-
+// needed helper: method presence check in impl block
 fn has_any_method(impl_block: &syn::ItemImpl) -> bool {
     impl_block
         .items
@@ -138,6 +120,7 @@ fn has_any_method(impl_block: &syn::ItemImpl) -> bool {
         .any(|item| matches!(item, syn::ImplItem::Fn(_)))
 }
 
+// needed helper: all-methods-are-delegates check
 fn is_all_delegate_methods(impl_block: &syn::ItemImpl) -> bool {
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
@@ -161,6 +144,7 @@ fn is_all_delegate_methods(impl_block: &syn::ItemImpl) -> bool {
     has_any_method(impl_block)
 }
 
+// needed helper: non-delegate method name listing
 fn non_delegate_method_names(impl_block: &syn::ItemImpl) -> Vec<String> {
     impl_block
         .items
@@ -172,72 +156,15 @@ fn non_delegate_method_names(impl_block: &syn::ItemImpl) -> Vec<String> {
         .collect()
 }
 
-fn is_two_segment_dispatch(block: &syn::Block) -> bool {
-    if block.stmts.len() != 1 {
-        return false;
-    }
-    if let syn::Stmt::Expr(syn::Expr::Call(call), _) = &block.stmts[0] {
-        if let syn::Expr::Path(path) = call.func.as_ref() {
-            return path.path.segments.len() == 2;
-        }
-    }
-    false
-}
-
+// needed helper: one-line body check (placeholder)
 fn is_one_line_body(_method: &syn::ImplItemFn) -> bool {
     true
 }
 
-fn has_rustfmt_skip(impl_block: &syn::ItemImpl) -> bool {
-    impl_block.attrs.iter().any(|a| {
-        let segs: Vec<_> = a.path().segments.iter().collect();
-        segs.len() == 2 && segs[0].ident == "rustfmt" && segs[1].ident == "skip"
-    })
-}
-
-fn to_snake_case(pascal: &str) -> String {
-    let mut result = String::new();
-    let chars: Vec<char> = pascal.chars().collect();
-    let len = chars.len();
-
-    for (i, &c) in chars.iter().enumerate() {
-        if c.is_uppercase() {
-            let preceded_by_lower = i > 0 && chars[i - 1].is_lowercase();
-            let followed_by_lower = i + 1 < len && chars[i + 1].is_lowercase();
-            let preceded_by_upper = i > 0 && chars[i - 1].is_uppercase();
-
-            if preceded_by_lower || (followed_by_lower && preceded_by_upper) {
-                result.push('_');
-            }
-            result.push(c.to_ascii_lowercase());
-        } else {
-            result.push(c);
-        }
-    }
-
-    result
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{has_rustfmt_skip, is_all_delegate_methods, primary_type_name, to_snake_case};
+    use super::{is_all_delegate_methods, primary_type_name};
     use syn::ItemImpl;
-
-    #[test]
-    fn test_usage_no_skip_detected() {
-        let parsed: ItemImpl =
-            syn::parse_str("impl Foo { pub fn new() -> Self { config_new::new() } }").unwrap();
-        assert!(!has_rustfmt_skip(&parsed));
-    }
-
-    #[test]
-    fn test_usage_skip_detected() {
-        let parsed: ItemImpl = syn::parse_str(
-            "#[rustfmt::skip] impl Foo { pub fn new() -> Self { config_new::new() } }",
-        )
-        .unwrap();
-        assert!(has_rustfmt_skip(&parsed));
-    }
 
     #[test]
     fn test_usage_delegate_dispatch() {
@@ -278,10 +205,6 @@ mod tests {
         let file: syn::File = syn::parse_str("pub struct Args;\n").unwrap();
         assert_eq!(primary_type_name(&file, "main"), None);
     }
-
-    #[test]
-    fn test_usage_snake_case_roundtrip() {
-        assert_eq!(to_snake_case("ConstructorNoSkip"), "constructor_no_skip");
-        assert_eq!(to_snake_case("DomainImport"), "domain_import");
-    }
 }
+
+// no test_usage necessary

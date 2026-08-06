@@ -1,7 +1,7 @@
-// needed helper: parsing utilities
 use std::path::Path;
 
 use super::atomic_file::AtomicFile;
+use crate::common;
 use crate::diagnostic::Diagnostic;
 use crate::project::Project;
 use crate::severity::Severity;
@@ -68,6 +68,7 @@ impl PubItemKind {
     }
 }
 
+// needed helper: path exemption logic
 fn is_exempt_path(rel_path: &Path, file_name: &str) -> bool {
     if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
         return true;
@@ -77,6 +78,7 @@ fn is_exempt_path(rel_path: &Path, file_name: &str) -> bool {
         .any(|c| c.as_os_str().to_str() == Some("tests"))
 }
 
+// needed helper: pub item collection
 fn collect_pub_items(file: &syn::File) -> Vec<PubItem> {
     let mut items = Vec::new();
     for item in &file.items {
@@ -105,6 +107,7 @@ fn collect_pub_items(file: &syn::File) -> Vec<PubItem> {
     items
 }
 
+// needed helper: filename validation against snake_case
 fn check_filename_match(
     name: &str,
     file_stem: &str,
@@ -112,7 +115,7 @@ fn check_filename_match(
     project: &Project,
     diags: &mut Vec<Diagnostic>,
 ) {
-    let expected = to_snake_case(name);
+    let expected = common::to_snake_case(name);
 
     if expected == file_stem {
         return;
@@ -136,40 +139,24 @@ fn check_filename_match(
     });
 }
 
-fn to_snake_case(pascal: &str) -> String {
-    let mut result = String::new();
-    let chars: Vec<char> = pascal.chars().collect();
-    let len = chars.len();
-
-    for (i, &c) in chars.iter().enumerate() {
-        if c.is_uppercase() {
-            let preceded_by_lower = i > 0 && chars[i - 1].is_lowercase();
-            let followed_by_lower = i + 1 < len && chars[i + 1].is_lowercase();
-            let preceded_by_upper = i > 0 && chars[i - 1].is_uppercase();
-
-            if preceded_by_lower || (followed_by_lower && preceded_by_upper) {
-                result.push('_');
-            }
-            result.push(c.to_ascii_lowercase());
-        } else {
-            result.push(c);
-        }
-    }
-
-    result
-}
-
 #[cfg(test)]
 mod tests {
-    use super::to_snake_case;
+    use super::{collect_pub_items, is_exempt_path};
+    use std::path::Path;
 
     #[test]
     fn test_usage() {
-        assert_eq!(to_snake_case("ConstructorNoSkip"), "constructor_no_skip");
-        assert_eq!(to_snake_case("DomainImport"), "domain_import");
-        assert_eq!(to_snake_case("SnakeCaseFiles"), "snake_case_files");
-        assert_eq!(to_snake_case("NoPositional"), "no_positional");
-        assert_eq!(to_snake_case("Player"), "player");
-        assert_eq!(to_snake_case("PlayerEvent"), "player_event");
+        let file: syn::File =
+            syn::parse_str("pub struct AtomicFile;\npub fn helper() {}\nfn private() {}").unwrap();
+        let items = collect_pub_items(&file);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].name, "AtomicFile");
+        assert_eq!(items[1].name, "helper");
+
+        assert!(is_exempt_path(Path::new("checkers/mod.rs"), "mod.rs"));
+        assert!(!is_exempt_path(
+            Path::new("checkers/atomic_file.rs"),
+            "atomic_file.rs"
+        ));
     }
 }

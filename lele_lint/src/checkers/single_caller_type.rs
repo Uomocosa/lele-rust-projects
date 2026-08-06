@@ -1,18 +1,17 @@
-// no test_usage necessary
-
 use crate::checker::Checker;
 use crate::config::Config;
 
 use super::single_caller_type_check;
-use super::single_caller_type_meta;
+use super::single_caller_type_code;
+use super::single_caller_type_name;
 use super::single_caller_type_register;
 
 pub struct SingleCallerType;
 
 #[rustfmt::skip]
 impl Checker for SingleCallerType {
-    fn name(&self) -> &'static str { single_caller_type_meta::name(self) }
-    fn code(&self) -> &'static str { single_caller_type_meta::code(self) }
+    fn name(&self) -> &'static str { single_caller_type_name::name(self) }
+    fn code(&self) -> &'static str { single_caller_type_code::code(self) }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { single_caller_type_check::check(self, project) }
 }
 
@@ -22,3 +21,5 @@ impl SingleCallerType {
         single_caller_type_register::register(checkers, config)
     }
 }
+
+// no test_usage necessary

@@ -1,5 +1,3 @@
-// no test_usage necessary
-// needed helper: mod_rs parsing utilities
 use std::path::Path;
 
 use super::module_info::{ModuleInfo, ModuleInfoMap};
@@ -35,12 +33,14 @@ pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
     map
 }
 
+// needed helper: mod.rs filename check
 fn is_mod_rs(path: &Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|n| n == "mod.rs")
 }
 
+// needed helper: mod.rs AST parsing for declarations and re-exports
 fn parse_mod_rs(content: &str) -> (Vec<ModDecl>, Vec<Reexport>) {
     let file = match syn::parse_file(content) {
         Ok(f) => f,
@@ -72,6 +72,7 @@ fn parse_mod_rs(content: &str) -> (Vec<ModDecl>, Vec<Reexport>) {
     (decls, reexports)
 }
 
+// needed helper: re-export path extraction from use tree
 fn extract_reexport(tree: &syn::UseTree) -> Option<Reexport> {
     match tree {
         syn::UseTree::Path(p) => {
@@ -101,3 +102,5 @@ fn extract_reexport(tree: &syn::UseTree) -> Option<Reexport> {
         syn::UseTree::Group(_) => None,
     }
 }
+
+// no test_usage necessary

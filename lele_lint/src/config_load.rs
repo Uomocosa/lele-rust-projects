@@ -1,4 +1,3 @@
-// no test_usage necessary
 use std::path::Path;
 
 use super::config::Config;
@@ -13,3 +12,5 @@ pub(crate) fn load(project_root: &Path) -> Result<Config, Error> {
         Ok(Config::default())
     }
 }
+
+// no test_usage necessary

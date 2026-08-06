@@ -1,16 +1,13 @@
-// no test_usage necessary
-
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use syn::visit::Visit;
 
 use super::single_caller_type::SingleCallerType;
+use crate::common;
 use crate::diagnostic::Diagnostic;
 use crate::project::Project;
 use crate::severity::Severity;
-
-// needed helper: parsing utilities
 
 pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -57,6 +54,7 @@ pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnost
     diags
 }
 
+// needed helper: type definition collection across all files
 fn collect_defined_types(parsed_files: &HashMap<PathBuf, syn::File>) -> Vec<(String, PathBuf)> {
     let mut types = Vec::new();
     for (rel_path, file) in parsed_files {
@@ -74,6 +72,7 @@ fn collect_defined_types(parsed_files: &HashMap<PathBuf, syn::File>) -> Vec<(Str
     types
 }
 
+// needed helper: path exemption for mod.rs/lib.rs
 fn is_exempt_path(rel_path: &Path) -> bool {
     let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     file_name == "mod.rs"
@@ -84,6 +83,7 @@ fn is_exempt_path(rel_path: &Path) -> bool {
             .any(|c| c.as_os_str().to_str() == Some("tests"))
 }
 
+// needed helper: embedded type name collection from field types
 fn collect_embedded_type_names(parsed_files: &HashMap<PathBuf, syn::File>) -> HashSet<String> {
     let mut names = HashSet::new();
     for file in parsed_files.values() {
@@ -108,6 +108,7 @@ fn collect_embedded_type_names(parsed_files: &HashMap<PathBuf, syn::File>) -> Ha
     names
 }
 
+// needed helper: type path visitor
 fn collect_type_paths(ty: &syn::Type, names: &mut HashSet<String>) {
     struct Collect<'a>(&'a mut HashSet<String>);
     impl<'ast> syn::visit::Visit<'ast> for Collect<'_> {
@@ -121,25 +122,20 @@ fn collect_type_paths(ty: &syn::Type, names: &mut HashSet<String>) {
     Collect(names).visit_type(ty);
 }
 
+// needed helper: thin delegate method presence check
 fn has_thin_delegate(file: &syn::File, type_name: &str) -> bool {
     file.items.iter().any(|item| {
         let syn::Item::Impl(impl_block) = item else {
             return false;
         };
-        if self_type_last(&impl_block.self_ty).as_deref() != Some(type_name) {
+        if common::self_type_last(&impl_block.self_ty).as_deref() != Some(type_name) {
             return false;
         }
         impl_is_all_delegate(impl_block)
     })
 }
 
-fn self_type_last(ty: &syn::Type) -> Option<String> {
-    if let syn::Type::Path(tp) = ty {
-        return tp.path.segments.last().map(|s| s.ident.to_string());
-    }
-    None
-}
-
+// needed helper: all-delegate impl block verification
 fn impl_is_all_delegate(impl_block: &syn::ItemImpl) -> bool {
     let mut has_fn = false;
     for item in &impl_block.items {
@@ -162,6 +158,7 @@ fn impl_is_all_delegate(impl_block: &syn::ItemImpl) -> bool {
     has_fn
 }
 
+// needed helper: per-file type reference collector
 fn collect_file_references(
     parsed_files: &HashMap<PathBuf, syn::File>,
     defined: &HashSet<String>,
@@ -175,6 +172,7 @@ fn collect_file_references(
     per_file
 }
 
+// needed helper: item-level reference collection with cfg(test) skip
 fn collect_refs_from_items(
     items: &[syn::Item],
     defined: &HashSet<String>,
@@ -186,7 +184,7 @@ fn collect_refs_from_items(
     }
     impl<'ast> syn::visit::Visit<'ast> for RefCollector<'_> {
         fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
-            if is_cfg_test_mod(node) {
+            if crate::common::is_cfg_test_mod(node) {
                 return;
             }
             syn::visit::visit_item_mod(self, node);
@@ -213,17 +211,6 @@ fn collect_refs_from_items(
     for item in items {
         collector.visit_item(item);
     }
-}
-
-fn is_cfg_test_mod(node: &syn::ItemMod) -> bool {
-    node.attrs.iter().any(|attr| {
-        if attr.path().is_ident("cfg") {
-            if let syn::Meta::List(list) = &attr.meta {
-                return list.tokens.to_string().contains("test");
-            }
-        }
-        false
-    })
 }
 
 #[cfg(test)]
@@ -283,3 +270,5 @@ mod tests {
         assert!(!has_thin_delegate(&file, "Foo"));
     }
 }
+
+// no test_usage necessary

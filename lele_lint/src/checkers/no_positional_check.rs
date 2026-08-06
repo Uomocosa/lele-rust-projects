@@ -5,8 +5,6 @@ use crate::diagnostic::Diagnostic;
 use crate::project::Project;
 use crate::severity::Severity;
 
-// needed helper: parsing utilities
-
 pub(crate) fn check(_self: &NoPositional, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
@@ -21,6 +19,7 @@ pub(crate) fn check(_self: &NoPositional, project: &Project) -> Vec<Diagnostic> 
     diags
 }
 
+// needed helper: positional type presence check
 fn has_positional_types(file: &syn::File) -> bool {
     file.items.iter().any(|item| {
         if let syn::Item::Struct(s) = item {
@@ -30,6 +29,7 @@ fn has_positional_types(file: &syn::File) -> bool {
     })
 }
 
+// needed helper: recursive item block scanner
 fn scan_block_for_positional(
     items: &[syn::Item],
     rel_path: &Path,
@@ -58,6 +58,7 @@ fn scan_block_for_positional(
     }
 }
 
+// needed helper: statement-level scanner
 fn scan_stmts(
     stmts: &[syn::Stmt],
     rel_path: &Path,
@@ -91,6 +92,7 @@ fn scan_stmts(
     }
 }
 
+// needed helper: expression-level position access checker
 fn scan_expr(expr: &syn::Expr, rel_path: &Path, project: &Project, diags: &mut Vec<Diagnostic>) {
     if let syn::Expr::Field(field) = expr {
         if matches!(&field.member, syn::Member::Unnamed(_)) {
@@ -106,6 +108,7 @@ fn scan_expr(expr: &syn::Expr, rel_path: &Path, project: &Project, diags: &mut V
     }
 }
 
+// needed helper: macro token string scan for .0/.1 access
 fn has_positional_access(content: &str) -> bool {
     content.contains(".0") || content.contains(".1")
 }

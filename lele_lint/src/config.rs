@@ -1,9 +1,7 @@
-// no test_usage necessary
 use std::path::Path;
 
 use serde::Deserialize;
 
-use super::config_bevy_mode;
 use super::config_checker_enabled;
 use super::config_load;
 use crate::error::Error;
@@ -22,11 +20,9 @@ impl Config {
         config_load::load(project_root)
     }
 
-    pub fn bevy_mode(&self) -> bool {
-        config_bevy_mode::bevy_mode(self)
-    }
-
     pub fn checker_enabled(&self, name: &str) -> bool {
         config_checker_enabled::checker_enabled(self, name)
     }
 }
+
+// no test_usage necessary

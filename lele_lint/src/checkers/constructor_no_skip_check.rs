@@ -1,11 +1,8 @@
-// no test_usage necessary
-
 use super::constructor_no_skip::ConstructorNoSkip;
+use crate::common;
 use crate::diagnostic::Diagnostic;
 use crate::project::Project;
 use crate::severity::Severity;
-
-// needed helper: parsing utilities
 
 pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -13,11 +10,11 @@ pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnos
     for (rel_path, file) in &project.parsed_files {
         for item in &file.items {
             if let syn::Item::Impl(impl_block) = item {
-                if impl_block.trait_.is_some() && !is_default_impl(impl_block) {
+                if impl_block.trait_.is_some() && !common::is_default_impl(impl_block) {
                     continue;
                 }
 
-                if !has_rustfmt_skip(impl_block) {
+                if !common::has_rustfmt_skip(impl_block) {
                     continue;
                 }
 
@@ -26,7 +23,7 @@ pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnos
                 }
 
                 let type_name = type_name_string(&impl_block.self_ty);
-                let blurb = if is_default_impl(impl_block) {
+                let blurb = if common::is_default_impl(impl_block) {
                     format!("impl Default for {type_name}")
                 } else if has_any_real_constructor(impl_block) {
                     format!("constructor impl for {type_name}")
@@ -49,13 +46,7 @@ pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnos
     diags
 }
 
-fn has_rustfmt_skip(impl_block: &syn::ItemImpl) -> bool {
-    impl_block.attrs.iter().any(|a| {
-        let segs: Vec<_> = a.path().segments.iter().collect();
-        segs.len() == 2 && segs[0].ident == "rustfmt" && segs[1].ident == "skip"
-    })
-}
-
+// needed helper: type name string extraction
 fn type_name_string(ty: &syn::Type) -> String {
     if let syn::Type::Path(tp) = ty {
         return tp
@@ -69,23 +60,14 @@ fn type_name_string(ty: &syn::Type) -> String {
     quote::quote!(#ty).to_string()
 }
 
-fn is_default_impl(impl_block: &syn::ItemImpl) -> bool {
-    if let Some((_, trait_path, _)) = &impl_block.trait_ {
-        return trait_path
-            .segments
-            .last()
-            .is_some_and(|s| s.ident == "Default");
-    }
-    false
-}
-
+// needed helper: thin delegate body detection
 fn is_thin_delegate(impl_block: &syn::ItemImpl) -> bool {
     if impl_block.items.is_empty() {
         return false;
     }
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
-            if !is_single_delegate_call(&method.block) {
+            if !common::is_two_segment_dispatch(&method.block) {
                 return false;
             }
         }
@@ -93,18 +75,7 @@ fn is_thin_delegate(impl_block: &syn::ItemImpl) -> bool {
     true
 }
 
-fn is_single_delegate_call(block: &syn::Block) -> bool {
-    if block.stmts.len() != 1 {
-        return false;
-    }
-    if let syn::Stmt::Expr(syn::Expr::Call(call), _) = &block.stmts[0] {
-        if let syn::Expr::Path(path) = call.func.as_ref() {
-            return path.path.segments.len() == 2;
-        }
-    }
-    false
-}
-
+// needed helper: real constructor detection (non-delegate static method)
 fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
@@ -115,7 +86,7 @@ fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
             if matches!(sig.output, syn::ReturnType::Default) {
                 continue;
             }
-            if is_single_delegate_call(&method.block) {
+            if common::is_two_segment_dispatch(&method.block) {
                 continue;
             }
             return true;
@@ -126,7 +97,7 @@ fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_any_real_constructor, is_default_impl, is_thin_delegate};
+    use super::{has_any_real_constructor, is_thin_delegate};
     use syn::ItemImpl;
 
     #[test]
@@ -134,7 +105,6 @@ mod tests {
         let code =
             "#[rustfmt::skip] impl Default for Bar { fn default() -> Self { Bar { x: 1 } } }";
         let parsed: ItemImpl = syn::parse_str(code).unwrap();
-        assert!(is_default_impl(&parsed));
         assert!(!is_thin_delegate(&parsed));
     }
 
@@ -154,3 +124,5 @@ mod tests {
         assert!(is_thin_delegate(&parsed));
     }
 }
+
+// no test_usage necessary
