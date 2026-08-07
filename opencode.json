@@ -7,6 +7,7 @@
   },
   "instructions": [
     "~/.config/opencode/skills/lele-syntax-rs/SKILL.md",
+    "~/.config/opencode/skills/lele-lint-rs/SKILL.md",
     "~/.config/opencode/skills/opencode-git-workflow/SKILL.md"
   ],
   "permission": {

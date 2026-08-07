@@ -44,6 +44,6 @@ cargo run --manifest-path ../lele_lint/Cargo.toml
 
 - **`lele_lint`:** Many syntax and structure conventions are automatically checked by
   `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`).  Run it after changes and fix any violations.
-  See the lele-syntax-rs skill for the full list of linter-enforced rules.
+  See the lele-lint-rs skill for the full error code reference.
 
 
