@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use super::method_visibility::MethodVisibility;
+use crate::common;
 use crate::diagnostic::Diagnostic;
 use crate::entry_kind::EntryKind;
 use crate::project::Project;
@@ -13,7 +14,7 @@ pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnost
     let dir_groups = group_entries_by_parent_dir(&project.entries);
 
     for (parent_dir, files) in &dir_groups {
-        let struct_names = collect_struct_names(files);
+        let struct_names = collect_struct_names(files, parent_dir, project);
 
         for file_name in files.iter().filter(|f| f.ends_with(".rs")) {
             if let Some(struct_name) = is_method_file(file_name, &struct_names) {
@@ -109,23 +110,37 @@ fn group_entries_by_parent_dir(
     map
 }
 
-// needed helper: struct name set from file listing
-fn collect_struct_names(file_names: &[String]) -> HashSet<String> {
+// needed helper: struct name set from file listing via AST type detection
+fn collect_struct_names(
+    file_names: &[String],
+    parent_dir: &str,
+    project: &Project,
+) -> HashSet<String> {
     let mut names = HashSet::new();
     for f in file_names {
-        if let Some(stem) = f.strip_suffix(".rs") {
-            if !stem.contains('_') {
-                names.insert(stem.to_string());
-            }
+        let Some(stem) = f.strip_suffix(".rs") else {
+            continue;
+        };
+        let rel_path = if parent_dir.is_empty() {
+            Path::new(f).to_path_buf()
+        } else {
+            Path::new(parent_dir).join(f)
+        };
+        let Some(parsed) = project.get_parsed(&rel_path) else {
+            continue;
+        };
+        if common::primary_type_name(parsed, stem).is_some() {
+            names.insert(stem.to_string());
         }
     }
     names
 }
 
-// needed helper: method-file name pattern matching
+// needed helper: method-file name pattern matching (longest prefix)
 fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<String> {
     let stem = file_name.strip_suffix(".rs")?;
-    if let Some(pos) = stem.find('_') {
+    let underscores: Vec<usize> = stem.match_indices('_').map(|(i, _)| i).collect();
+    for &pos in underscores.iter().rev() {
         let prefix = &stem[..pos];
         if struct_names.contains(prefix) {
             return Some(prefix.to_string());
@@ -183,35 +198,25 @@ fn reexported_in_pub_use(
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_struct_names, is_method_file};
     use std::collections::HashSet;
+
+    use super::is_method_file;
 
     #[test]
     fn test_usage() {
-        let files = vec![
-            "player.rs".to_string(),
-            "config.rs".to_string(),
-            "player_new.rs".to_string(),
-            "config_coop.rs".to_string(),
-            "spawn.rs".to_string(),
-        ];
-        let struct_names = collect_struct_names(&files);
-
-        assert_eq!(struct_names.len(), 3);
-        assert!(struct_names.contains("player"));
-        assert!(struct_names.contains("config"));
-        assert!(struct_names.contains("spawn"));
+        let mut struct_names = HashSet::new();
+        struct_names.insert("player".to_string());
+        struct_names.insert("config".to_string());
+        struct_names.insert("freenet_client".to_string());
 
         assert_eq!(
             is_method_file("player_new.rs", &struct_names),
             Some("player".to_string())
         );
         assert_eq!(
-            is_method_file("config_coop.rs", &struct_names),
-            Some("config".to_string())
+            is_method_file("freenet_client_connect.rs", &struct_names),
+            Some("freenet_client".to_string())
         );
-        assert_eq!(is_method_file("spawn.rs", &struct_names), None);
-        assert_eq!(is_method_file("player.rs", &struct_names), None);
-        assert_eq!(is_method_file("bevy_systems.rs", &HashSet::new()), None);
+        assert_eq!(is_method_file("bevy_systems.rs", &struct_names), None);
     }
 }

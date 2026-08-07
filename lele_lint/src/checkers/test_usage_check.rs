@@ -71,6 +71,10 @@ fn opt_out_at_end(content: &str) -> bool {
 fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
     let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
+    if file_name == "main.rs" {
+        return true;
+    }
+
     if (file_name == "mod.rs" || file_name == "lib.rs") && is_pure_module_tree(file) {
         return true;
     }
@@ -168,20 +172,12 @@ fn is_thin_delegate_only(file: &syn::File) -> bool {
 fn is_likely_delegate_impl(impl_block: &syn::ItemImpl) -> bool {
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
-            if !is_single_call_body(&method.block) {
+            if !common::is_short_body(&method.block) {
                 return false;
             }
         }
     }
     !impl_block.items.is_empty()
-}
-
-// needed helper: single-call body pattern
-fn is_single_call_body(block: &syn::Block) -> bool {
-    if block.stmts.len() != 1 {
-        return false;
-    }
-    matches!(&block.stmts[0], syn::Stmt::Expr(_, _))
 }
 
 // needed helper: test_usage function presence in cfg(test) module
