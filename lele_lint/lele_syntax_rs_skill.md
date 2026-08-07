@@ -566,7 +566,7 @@ impl {{Type}} {
 }
 ```
 
-The dispatch call is always `module_name::function_name(self, ...)` — 2 segments.
+The dispatch call is typically `module_name::function_name(self, ...)`, but any method body of at most 3 statements may stay inline in the type's own file instead — any shape (const access, a short struct literal, brief control flow, etc.), not just a dispatch call. Bodies longer than 3 statements must be extracted into their own method file. Either way, the impl block containing them stays inside a `#[rustfmt::skip]` block.
 
 ### Test modules — `super::` allowed for same-file access
 

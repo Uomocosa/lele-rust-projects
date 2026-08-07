@@ -2,16 +2,19 @@ use crate::checker::Checker;
 use crate::config::Config;
 
 use super::helper_count_check;
-use super::helper_count_code;
-use super::helper_count_name;
 use super::helper_count_register;
 
 pub struct HelperCount;
 
+impl HelperCount {
+    pub const NAME: &'static str = "helper_count";
+    pub const CODE: &'static str = "E015";
+}
+
 #[rustfmt::skip]
 impl Checker for HelperCount {
-    fn name(&self) -> &'static str { helper_count_name::name(self) }
-    fn code(&self) -> &'static str { helper_count_code::code(self) }
+    fn name(&self) -> &'static str { Self::NAME }
+    fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { helper_count_check::check(self, project) }
 }
 

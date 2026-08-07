@@ -65,9 +65,12 @@ fn is_thin_delegate(impl_block: &syn::ItemImpl) -> bool {
     if impl_block.items.is_empty() {
         return false;
     }
+    if common::is_default_impl(impl_block) {
+        return false;
+    }
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
-            if !common::is_two_segment_dispatch(&method.block) {
+            if !common::is_short_body(&method.block) {
                 return false;
             }
         }
@@ -86,7 +89,7 @@ fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
             if matches!(sig.output, syn::ReturnType::Default) {
                 continue;
             }
-            if common::is_two_segment_dispatch(&method.block) {
+            if common::is_short_body(&method.block) {
                 continue;
             }
             return true;
@@ -110,8 +113,10 @@ mod tests {
 
     #[test]
     fn test_usage_constructor_detection() {
-        let parsed: ItemImpl =
-            syn::parse_str("impl Foo { fn production() -> Self { Foo { x: 1 } } }").unwrap();
+        let parsed: ItemImpl = syn::parse_str(
+            "impl Foo { fn production() -> Self { let a = 1; let b = 2; let c = 3; Foo { x: a + b + c } } }",
+        )
+        .unwrap();
         assert!(has_any_real_constructor(&parsed));
         assert!(!is_thin_delegate(&parsed));
     }

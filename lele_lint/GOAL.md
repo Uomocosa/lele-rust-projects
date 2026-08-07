@@ -126,28 +126,28 @@ syntax-level rules.
       and `use super::function;` in `#[cfg(test)]` modules.
     - Also exempt: `pub use` re-exports in `mod.rs` and `lib.rs`.
 
-**12. Thin delegate format (strict)**
+**12. Short inline methods (E012)**
     Every `impl` block on a file's primary type (inherent AND trait) must
-    be a thin delegate — meaning every method body is a 2-segment dispatch
-    `module::func(self, ...)`.  The only exception is `impl Default`,
-    which keeps a real body and must NOT carry `#[rustfmt::skip]` (see #13).
-    All other methods with real bodies (including constructors like
-    `fn new() -> Self { ... }`) must be extracted into `<type>_<method>.rs`
-    files.
+    have every method body at most 3 statements long — of any shape
+    (calls, const access, struct literals, control flow, whatever).
+    Bodies within that cap may stay inline in the primary type's own file;
+    no dispatch-call convention is required. The only exception is `impl
+    Default`, which keeps a real body regardless of length and must NOT
+    carry `#[rustfmt::skip]` (see #13). Methods whose bodies exceed 3
+    statements must be extracted into `<type>_<method>.rs` files.
 
-    Detects three categories of violation:
+    Detects two categories of violation:
     - **a.** (E012-nondelegate) An impl block on the primary type contains
-      real-body methods instead of 2-segment delegates.
-    - **b.** (E012-skip) A thin-delegate impl block is missing
-      `#[rustfmt::skip]`.
-    - **c.** (E012-dispatch) A thin-delegate method uses 3+ segments or
-      a method-call dispatch.
-    - **d.** (E012-oneline) The body spans more than one line.
+      a method body with more than 3 statements.
+    - **b.** (E012-skip) An impl block whose bodies are all within the cap
+      is missing `#[rustfmt::skip]`.
 
 **13. Default impl blocks NOT `#[rustfmt::skip]`**
     `impl Default for Type` blocks with a real body must NOT use
-    `#[rustfmt::skip]`.  (Real-body constructor impls are now covered by
-    rule 12 and must be extracted to method files.)
+    `#[rustfmt::skip]`, regardless of body length — Default is never
+    thin-delegate-classified under rule 12.  (Non-Default constructor
+    impls that exceed rule 12's 3-statement cap must be extracted to
+    method files instead.)
 
 **14. Logging uses tracing! macros (deferred to skill)**
 

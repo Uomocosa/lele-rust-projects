@@ -1,12 +1,8 @@
 mod bevy_export;
 mod bevy_export_check;
-mod bevy_export_code;
-mod bevy_export_name;
 mod bevy_export_register;
 mod bevy_folder;
 mod bevy_folder_check;
-mod bevy_folder_code;
-mod bevy_folder_name;
 mod bevy_folder_register;
 
 use lele_lint::checker::Checker;

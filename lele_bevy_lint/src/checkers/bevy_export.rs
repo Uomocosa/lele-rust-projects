@@ -2,16 +2,19 @@ use lele_lint::checker::Checker;
 use lele_lint::config::Config;
 
 use super::bevy_export_check;
-use super::bevy_export_code;
-use super::bevy_export_name;
 use super::bevy_export_register;
 
 pub struct BevyExport;
 
+impl BevyExport {
+    pub const NAME: &'static str = "bevy_export";
+    pub const CODE: &'static str = "E005";
+}
+
 #[rustfmt::skip]
 impl Checker for BevyExport {
-    fn name(&self) -> &'static str { bevy_export_name::name(self) }
-    fn code(&self) -> &'static str { bevy_export_code::code(self) }
+    fn name(&self) -> &'static str { Self::NAME }
+    fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &lele_lint::project::Project) -> Vec<lele_lint::diagnostic::Diagnostic> { bevy_export_check::check(self, project) }
 }
 

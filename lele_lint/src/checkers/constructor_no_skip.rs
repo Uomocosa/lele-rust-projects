@@ -2,16 +2,19 @@ use crate::checker::Checker;
 use crate::config::Config;
 
 use super::constructor_no_skip_check;
-use super::constructor_no_skip_code;
-use super::constructor_no_skip_name;
 use super::constructor_no_skip_register;
 
 pub struct ConstructorNoSkip;
 
+impl ConstructorNoSkip {
+    pub const NAME: &'static str = "constructor_no_skip";
+    pub const CODE: &'static str = "E013";
+}
+
 #[rustfmt::skip]
 impl Checker for ConstructorNoSkip {
-    fn name(&self) -> &'static str { constructor_no_skip_name::name(self) }
-    fn code(&self) -> &'static str { constructor_no_skip_code::code(self) }
+    fn name(&self) -> &'static str { Self::NAME }
+    fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { constructor_no_skip_check::check(self, project) }
 }
 

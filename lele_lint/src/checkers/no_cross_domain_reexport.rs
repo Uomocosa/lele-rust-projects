@@ -2,16 +2,19 @@ use crate::checker::Checker;
 use crate::config::Config;
 
 use super::no_cross_domain_reexport_check;
-use super::no_cross_domain_reexport_code;
-use super::no_cross_domain_reexport_name;
 use super::no_cross_domain_reexport_register;
 
 pub struct NoCrossDomainReexport;
 
+impl NoCrossDomainReexport {
+    pub const NAME: &'static str = "no_cross_domain_reexport";
+    pub const CODE: &'static str = "E004";
+}
+
 #[rustfmt::skip]
 impl Checker for NoCrossDomainReexport {
-    fn name(&self) -> &'static str { no_cross_domain_reexport_name::name(self) }
-    fn code(&self) -> &'static str { no_cross_domain_reexport_code::code(self) }
+    fn name(&self) -> &'static str { Self::NAME }
+    fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { no_cross_domain_reexport_check::check(self, project) }
 }
 

@@ -16,9 +16,12 @@ impl Default for Defaults {
 #[rustfmt::skip]                          // VIOLATION: constructor with selfless New type
 impl Defaults {
     pub fn production() -> Self {
+        let timeout = 5;
+        let retries = 1;
+        let combined = timeout + retries;
         Self {
-            timeout: 5,
-            retries: 1,
+            timeout,
+            retries: combined - timeout,
         }
     }
 }

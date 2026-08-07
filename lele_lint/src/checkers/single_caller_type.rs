@@ -2,16 +2,19 @@ use crate::checker::Checker;
 use crate::config::Config;
 
 use super::single_caller_type_check;
-use super::single_caller_type_code;
-use super::single_caller_type_name;
 use super::single_caller_type_register;
 
 pub struct SingleCallerType;
 
+impl SingleCallerType {
+    pub const NAME: &'static str = "single_caller_type";
+    pub const CODE: &'static str = "E016";
+}
+
 #[rustfmt::skip]
 impl Checker for SingleCallerType {
-    fn name(&self) -> &'static str { single_caller_type_name::name(self) }
-    fn code(&self) -> &'static str { single_caller_type_code::code(self) }
+    fn name(&self) -> &'static str { Self::NAME }
+    fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { single_caller_type_check::check(self, project) }
 }
 
