@@ -1,17 +1,17 @@
 use crate::freenet;
 
-pub fn parse_role() -> Option<freenet::FreenetRole> {
+pub fn parse_role() -> freenet::FreenetRole {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         if arg == "--role" {
             match args.next().as_deref() {
-                Some("subscribe") => return Some(freenet::FreenetRole::Subscribe),
-                Some("publish") => return Some(freenet::FreenetRole::Publish),
+                Some("subscribe") => return freenet::FreenetRole::Subscribe,
+                Some("publish") => return freenet::FreenetRole::Publish,
                 _ => {}
             }
         }
     }
-    None
+    freenet::FreenetRole::default()
 }
 
 #[cfg(test)]

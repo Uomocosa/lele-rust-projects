@@ -11,7 +11,7 @@ pub fn parse_mode() -> Mode {
             }
         }
     }
-    Mode::Gui
+    Mode::default()
 }
 
 #[cfg(test)]

@@ -2,12 +2,14 @@ use crate::freenet;
 
 use super::cli_parse;
 use super::cli_parse_mode;
+use super::cli_parse_node;
 use super::cli_parse_p2p_port;
 use super::cli_parse_role;
 
 pub struct Cli {
     pub mode: super::Mode,
-    pub role: Option<freenet::FreenetRole>,
+    pub freenet_role: freenet::FreenetRole,
+    pub node: freenet::FreenetNode,
     pub p2p_port: u16,
 }
 
@@ -19,7 +21,10 @@ impl Cli {
     pub fn parse_mode() -> super::Mode {
         cli_parse_mode::parse_mode()
     }
-    pub fn parse_role() -> Option<freenet::FreenetRole> {
+    pub fn parse_node() -> freenet::FreenetNode {
+        cli_parse_node::parse_node()
+    }
+    pub fn parse_role() -> freenet::FreenetRole {
         cli_parse_role::parse_role()
     }
     pub fn parse_p2p_port() -> u16 {

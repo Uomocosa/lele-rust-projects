@@ -2,6 +2,7 @@
 pub mod cli;
 mod cli_parse;
 mod cli_parse_mode;
+mod cli_parse_node;
 mod cli_parse_p2p_port;
 mod cli_parse_role;
 pub mod mode;
