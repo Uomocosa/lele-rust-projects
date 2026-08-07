@@ -21,10 +21,9 @@ async fn main() {
     let cli = cli::Cli::parse();
     let mode = cli.mode;
     let role = cli.role;
-    let has_role = cli.has_role;
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
 
-    let (node_host, node_port) = if has_role {
+    let (node_host, node_port) = if role.is_some() {
         let host = std::env::var("FREENET_HOST").unwrap_or_else(|_| "127.0.0.1".into());
         let port: u16 = std::env::var("FREENET_PORT")
             .ok()
@@ -40,6 +39,8 @@ async fn main() {
             }
         }
     };
+
+    let role = role.unwrap_or(freenet::FreenetRole::Publish);
 
     let (client, contract_key, initial_count) =
         match setup_contract(&node_host, node_port, &contract_wasm, role).await {
@@ -310,4 +311,3 @@ async fn start_embedded_node(p2p_port: u16) -> Result<(String, u16), Box<dyn std
     Ok(("127.0.0.1".to_string(), port))
 }
 // no test_usage necessary
-
