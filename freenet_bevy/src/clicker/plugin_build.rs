@@ -17,3 +17,4 @@ pub fn build(plugin: &clicker::Plugin, app: &mut App) {
 
     app.add_systems(Update, clicker::bevy_systems::poll_freenet_events);
 }
+// no test_usage necessary

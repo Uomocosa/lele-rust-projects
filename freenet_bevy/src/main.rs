@@ -8,6 +8,7 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 use tracing::info;
 
+use freenet_bevy::cli;
 use freenet_bevy::clicker;
 use freenet_bevy::freenet;
 
@@ -17,10 +18,10 @@ async fn main() {
         .with_writer(std::io::stdout)
         .init();
 
-    let args: Vec<String> = std::env::args().collect();
-    let has_role = args.iter().any(|a| a == "--role");
-    let mode = parse_mode();
-    let role = parse_role();
+    let cli = cli::Cli::parse();
+    let mode = cli.mode;
+    let role = cli.role;
+    let has_role = cli.has_role;
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
 
     let (node_host, node_port) = if has_role {
@@ -31,7 +32,7 @@ async fn main() {
             .unwrap_or(7509);
         (host, port)
     } else {
-        match start_embedded_node().await {
+        match start_embedded_node(cli.p2p_port).await {
             Ok((host, port)) => (host, port),
             Err(e) => {
                 eprintln!("Error starting embedded node: {e}");
@@ -62,14 +63,14 @@ async fn main() {
     let config = clicker::Config::new(cmd_tx, evt_rx, contract_key, initial_count);
 
     match mode {
-        Mode::Gui => {
+        cli::Mode::Gui => {
             App::new()
                 .add_plugins(DefaultPlugins)
                 .add_plugins(clicker::Plugin { config })
                 .add_plugins(clicker::GuiPlugin)
                 .run();
         }
-        Mode::Cli => {
+        cli::Mode::Cli => {
             App::new()
                 .add_plugins(MinimalPlugins)
                 .add_plugins(clicker::Plugin { config })
@@ -79,6 +80,7 @@ async fn main() {
     }
 }
 
+// needed helper:
 async fn recv_timeout(client: &mut freenet::FreenetClient) -> Result<HostResponse, String> {
     match client.recv_response_timeout(Duration::from_secs(60)).await {
         Some(Ok(r)) => Ok(r),
@@ -87,6 +89,7 @@ async fn recv_timeout(client: &mut freenet::FreenetClient) -> Result<HostRespons
     }
 }
 
+// needed helper:
 async fn setup_contract(
     host: &str,
     port: u16,
@@ -205,6 +208,7 @@ async fn setup_contract(
     Ok((client, contract_key, initial_count))
 }
 
+// needed helper:
 async fn command_handler(
     mut client: freenet::FreenetClient,
     contract_key: ContractKey,
@@ -235,7 +239,7 @@ async fn command_handler(
                                 Ok(HostResponse::ContractResponse(
                                     ContractResponse::UpdateNotification { update, .. },
                                 )) => {
-                                    let nc = count_from_update(&update);
+                                    let nc = clicker::count_from_update(&update);
                                     evt_tx.send(clicker::Event::Notification { count: nc }).ok();
                                 }
                                 Ok(_) => continue,
@@ -251,7 +255,7 @@ async fn command_handler(
                     ContractResponse::UpdateNotification { update, .. },
                 ))) = result
                 {
-                    let count = count_from_update(&update);
+                    let count = clicker::count_from_update(&update);
                     evt_tx.send(clicker::Event::Notification { count }).ok();
                 }
             }
@@ -259,15 +263,8 @@ async fn command_handler(
     }
 }
 
-fn count_from_update(update: &UpdateData) -> u64 {
-    match update {
-        UpdateData::State(s) => bincode::deserialize(s.as_ref()).unwrap_or(0),
-        UpdateData::Delta(d) => bincode::deserialize(d.as_ref()).unwrap_or(0),
-        _ => 0,
-    }
-}
-
-async fn start_embedded_node() -> Result<(String, u16), Box<dyn std::error::Error>> {
+// needed helper:
+async fn start_embedded_node(p2p_port: u16) -> Result<(String, u16), Box<dyn std::error::Error>> {
     let tmp = tempfile::tempdir()?;
 
     let listener =
@@ -288,7 +285,7 @@ async fn start_embedded_node() -> Result<(String, u16), Box<dyn std::error::Erro
         network_api: ::freenet::config::NetworkArgs {
             is_gateway: true,
             public_address: Some(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
-            public_port: Some(p2p_port()),
+            public_port: Some(p2p_port),
             ..Default::default()
         },
         config_paths: ::freenet::config::ConfigPathsArgs {
@@ -312,55 +309,5 @@ async fn start_embedded_node() -> Result<(String, u16), Box<dyn std::error::Erro
 
     Ok(("127.0.0.1".to_string(), port))
 }
+// no test_usage necessary
 
-fn p2p_port() -> u16 {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--p2p-port"
-            && let Some(val) = args.next()
-            && let Ok(port) = val.parse::<u16>()
-        {
-            return port;
-        }
-    }
-    let socket =
-        std::net::UdpSocket::bind((std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), 0))
-            .expect("failed to probe an available UDP port");
-    socket
-        .local_addr()
-        .expect("failed to read assigned port")
-        .port()
-}
-
-enum Mode {
-    Gui,
-    Cli,
-}
-
-fn parse_mode() -> Mode {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--mode" {
-            match args.next().as_deref() {
-                Some("cli") => return Mode::Cli,
-                Some("gui") => return Mode::Gui,
-                _ => {}
-            }
-        }
-    }
-    Mode::Gui
-}
-
-fn parse_role() -> freenet::FreenetRole {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--role" {
-            match args.next().as_deref() {
-                Some("subscribe") => return freenet::FreenetRole::Subscribe,
-                Some("publish") => return freenet::FreenetRole::Publish,
-                _ => {}
-            }
-        }
-    }
-    freenet::FreenetRole::Publish
-}

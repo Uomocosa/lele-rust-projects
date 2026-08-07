@@ -28,3 +28,4 @@ impl Config {
         config_take_evt_rx::take_evt_rx(self)
     }
 }
+// no test_usage necessary

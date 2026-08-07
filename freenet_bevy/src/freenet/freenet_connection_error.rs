@@ -28,6 +28,7 @@ pub enum FreenetConnectionError {
     UnexpectedResponse(String),
 }
 
+#[rustfmt::skip]
 impl From<http::uri::InvalidUri> for FreenetConnectionError {
     fn from(e: http::uri::InvalidUri) -> Self {
         FreenetConnectionError::Http(http::Error::from(e))

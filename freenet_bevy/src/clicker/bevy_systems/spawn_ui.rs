@@ -69,3 +69,4 @@ pub fn spawn_ui(mut commands: Commands) {
             ));
         });
 }
+// no test_usage necessary
