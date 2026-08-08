@@ -10,7 +10,7 @@ use tokio::{
     sync::{Mutex, oneshot},
 };
 
-use crate::{Error, ProcessHandle, ProcessMap, SpawnParams};
+use crate::{Error, OutputBuffer, ProcessHandle, ProcessMap, SpawnParams};
 
 pub async fn spawn_process(
     processes: &ProcessMap,
@@ -39,26 +39,29 @@ pub async fn spawn_process(
 
     let mut child = builder.spawn().map_err(Error::Spawn)?;
 
+    // Must be read before `child` is moved into the waiter task below.
+    let os_pid = child.id();
+
     let stdout = child.stdout.take().ok_or(Error::PipeUnavailable)?;
     let stderr = child.stderr.take().ok_or(Error::PipeUnavailable)?;
     let stdin = child.stdin.take().ok_or(Error::PipeUnavailable)?;
 
-    let output_buf: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    let output: Arc<Mutex<OutputBuffer>> = Arc::new(Mutex::new(OutputBuffer::default()));
     let alive = Arc::new(AtomicBool::new(true));
 
-    let buf = output_buf.clone();
+    let buf = output.clone();
     tokio::spawn(async move {
         let mut lines = BufReader::new(stdout).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            buf.lock().await.push_str(&format!("[OUT] {line}\n"));
+            buf.lock().await.push(&format!("[OUT] {line}\n"));
         }
     });
 
-    let buf = output_buf.clone();
+    let buf = output.clone();
     tokio::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            buf.lock().await.push_str(&format!("[ERR] {line}\n"));
+            buf.lock().await.push(&format!("[ERR] {line}\n"));
         }
     });
 
@@ -85,15 +88,20 @@ pub async fn spawn_process(
     let id = next_id.fetch_add(1, Ordering::Relaxed);
     let handle = ProcessHandle {
         cmd: format!("{cmd} {}", args.join(" ")),
-        output_buf,
+        os_pid,
+        output,
         stdin_tx: Some(stdin_tx),
         alive,
         kill_tx: Some(kill_tx),
     };
     processes.lock().await.insert(id, handle);
 
+    let os_pid_text = match os_pid {
+        Some(p) => format!(" (os_pid {p})"),
+        None => String::new(),
+    };
     Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-        "spawned process {id}"
+        "spawned process {id}{os_pid_text}"
     ))]))
 }
 

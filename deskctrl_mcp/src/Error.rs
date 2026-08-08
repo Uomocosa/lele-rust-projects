@@ -14,6 +14,8 @@ pub enum Error {
     Screenshot(String),
     #[error("telegram error: {0}")]
     Telegram(String),
+    #[error("window error: {0}")]
+    Window(String),
 }
 
 #[rustfmt::skip]

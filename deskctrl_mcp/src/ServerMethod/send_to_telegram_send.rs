@@ -59,10 +59,10 @@ pub fn send_photo_fire_and_forget(bot_token: String, chat_id: String, png: Vec<u
     tokio::spawn(async move {
         match send(&bot_token, &chat_id, None, Some(&png)).await {
             Ok(summary) => {
-                tracing::info!(target: "aai_mcp::telegram", "{summary}");
+                tracing::info!(target: "deskctrl_mcp::telegram", "{summary}");
             }
             Err(e) => {
-                tracing::warn!(target: "aai_mcp::telegram", "telegram photo send failed: {e}");
+                tracing::warn!(target: "deskctrl_mcp::telegram", "telegram photo send failed: {e}");
             }
         }
     });

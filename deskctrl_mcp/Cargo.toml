@@ -1,10 +1,10 @@
 [package]
-name = "aai-mcp"
+name = "deskctrl-mcp"
 version = "0.2.0"
 edition = "2024"
 
 [[bin]]
-name = "aai-mcp"
+name = "deskctrl-mcp"
 path = "src/main.rs"
 
 [dependencies]
@@ -20,6 +20,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["multipart", "rustls-tls", "json"] }
 dotenvy = "0.15"
+x11rb = { version = "0.14.0", features = ["xtest"] }
 
 [lints.rust]
 non_snake_case = "allow"

@@ -8,8 +8,8 @@ use rmcp::{
 };
 
 use crate::{
-    PidParam, ProcessMap, ReadOutputParams, SendToTelegramParams, ServerMethod, SpawnParams,
-    WriteStdinParams,
+    ClickParams, PidParam, ProcessMap, ReadOutputParams, ScreenshotParams, SendToTelegramParams,
+    ServerMethod, SpawnParams, WaitForOutputParams, WriteStdinParams,
 };
 
 #[derive(Clone)]
@@ -35,8 +35,8 @@ impl Server {
     #[rustfmt::skip]
     pub fn with_artifacts_dir(artifacts_dir: Option<String>) -> Self { ServerMethod::new(artifacts_dir) }
 
-    #[tool(description = "Capture a screenshot of the primary monitor. Returns a PNG image plus a text summary.")]
-    async fn screenshot(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::screenshot(self.artifacts_dir.as_deref(), self.bot_token.as_deref(), self.chat_id.as_deref()).await.map_err(ErrorData::from) }
+    #[tool(description = "Capture a screenshot. With no arguments, captures the whole screen; pass window_id (from list_windows), pid, or title to capture only that window. Returns a PNG image plus a text summary.")]
+    async fn screenshot(&self, Parameters(params): Parameters<ScreenshotParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::screenshot(params, self.artifacts_dir.as_deref(), self.bot_token.as_deref(), self.chat_id.as_deref()).await.map_err(ErrorData::from) }
 
     #[tool(description = "Spawn a subprocess. Returns a numeric process ID you can pass to read_output, write_stdin, and kill_process.")]
     async fn spawn_process(&self, Parameters(params): Parameters<SpawnParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::spawn_process(&self.processes, &self.next_id, params).await.map_err(ErrorData::from) }
@@ -52,6 +52,15 @@ impl Server {
 
     #[tool(description = "List all managed processes with their IDs, command strings, and alive status.")]
     async fn list_processes(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::list_processes(&self.processes).await.map_err(ErrorData::from) }
+
+    #[tool(description = "Block until a spawned process prints a line containing the given substring, or the timeout expires. Scans all output since spawn, including lines already returned by read_output. Timeout is capped at 120s — call again to keep waiting.")]
+    async fn wait_for_output(&self, Parameters(params): Parameters<WaitForOutputParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::wait_for_output(&self.processes, params).await.map_err(ErrorData::from) }
+
+    #[tool(description = "List the open desktop windows with their window IDs, owning PIDs, geometry, and titles. Pass a window_id to screenshot to capture just that window.")]
+    async fn list_windows(&self) -> Result<CallToolResult, ErrorData> { ServerMethod::list_windows().await.map_err(ErrorData::from) }
+
+    #[tool(description = "Click inside a window at coordinates relative to its top-left corner (same coordinates as a screenshot of that window). Raises the window first, so it steals focus. Screenshot the window afterwards to confirm the click landed.")]
+    async fn click_window(&self, Parameters(params): Parameters<ClickParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::click_window(params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Send a text message and/or a base64-encoded PNG photo to a pre-configured Telegram chat.")]
     async fn send_to_telegram(&self, Parameters(params): Parameters<SendToTelegramParams>) -> Result<CallToolResult, ErrorData> { ServerMethod::send_to_telegram(self.bot_token.as_deref(), self.chat_id.as_deref(), params).await.map_err(ErrorData::from) }

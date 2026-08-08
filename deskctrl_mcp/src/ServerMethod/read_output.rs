@@ -18,9 +18,9 @@ pub async fn read_output(
             let map = processes.lock().await;
             let handle = map.get(&pid).ok_or(Error::UnknownPid(pid))?;
             let alive = handle.alive.load(Ordering::Relaxed);
-            let mut buf = handle.output_buf.lock().await;
-            if !buf.is_empty() || !alive || std::time::Instant::now() >= deadline {
-                break (buf.drain(..).collect::<String>(), alive);
+            let mut buf = handle.output.lock().await;
+            if buf.cursor < buf.end() || !alive || std::time::Instant::now() >= deadline {
+                break (buf.take_new(), alive);
             }
         }
         tokio::time::sleep(std::time::Duration::from_millis(POLL_MS)).await;

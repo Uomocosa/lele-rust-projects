@@ -23,9 +23,14 @@ async fn main() {
     let freenet_role = cli.freenet_role;
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
 
+    // Held for the whole process: dropping it deletes the running node's config/data/log dirs.
+    let _node_dir;
     let (node_host, node_port) = match cli.node {
         freenet::FreenetNode::Local => match start_embedded_node(cli.p2p_port).await {
-            Ok((host, port)) => (host, port),
+            Ok((host, port, dir)) => {
+                _node_dir = dir;
+                (host, port)
+            }
             Err(e) => {
                 eprintln!("Error starting embedded node: {e}");
                 return;
@@ -257,7 +262,11 @@ async fn command_handler(
 }
 
 // needed helper:
-async fn start_embedded_node(p2p_port: u16) -> Result<(String, u16), Box<dyn std::error::Error>> {
+/// Returns the `TempDir` so the caller can keep it alive: it backs the node's config, data and
+/// log dirs, and dropping it deletes them out from under the still-running node.
+async fn start_embedded_node(
+    p2p_port: u16,
+) -> Result<(String, u16, tempfile::TempDir), Box<dyn std::error::Error>> {
     let tmp = tempfile::tempdir()?;
 
     let listener =
@@ -300,6 +309,6 @@ async fn start_embedded_node(p2p_port: u16) -> Result<(String, u16), Box<dyn std
 
     tokio::time::sleep(Duration::from_secs(20)).await;
 
-    Ok(("127.0.0.1".to_string(), port))
+    Ok(("127.0.0.1".to_string(), port, tmp))
 }
 // no test_usage necessary

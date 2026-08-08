@@ -12,6 +12,7 @@ pub async fn list_processes(processes: &ProcessMap) -> Result<CallToolResult, Er
         .map(|(id, handle)| {
             json!({
                 "pid": id,
+                "os_pid": handle.os_pid,
                 "cmd": handle.cmd,
                 "alive": handle.alive.load(Ordering::Relaxed),
             })
