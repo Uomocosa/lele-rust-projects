@@ -7,10 +7,13 @@ pub fn get_info() -> ServerInfo {
             env!("CARGO_PKG_VERSION"),
         ))
         .with_instructions(
-            "deskctrl: desktop and process control. list_windows (open windows with their \
-             IDs), screenshot (whole screen, or one window via window_id/pid/title), \
-             spawn_process, read_output, write_stdin, kill_process, list_processes \
-             (managed subprocesses only), send_to_telegram.",
+            "deskctrl: desktop and process control. Windows: list_windows (open windows \
+             with their IDs), screenshot (whole screen, or one window via \
+             window_id/pid/title), click_window (click at window-relative coordinates). \
+             Processes: spawn_process (returns an os_pid that matches list_windows, so a \
+             GUI app you spawned can be screenshotted and clicked), read_output, \
+             wait_for_output (block until a line appears), write_stdin, kill_process, \
+             list_processes (managed subprocesses only). Also send_to_telegram.",
         )
 }
 
@@ -22,7 +25,22 @@ mod tests {
     fn test_usage() {
         let info = get_info();
         assert!(info.capabilities.tools.is_some());
-        assert!(info.instructions.is_some_and(|i| i.contains("screenshot")));
+        // Every tool must be named here; this is the description clients surface.
+        let instructions = info.instructions.unwrap_or_default();
+        for tool in [
+            "list_windows",
+            "screenshot",
+            "click_window",
+            "spawn_process",
+            "read_output",
+            "wait_for_output",
+            "write_stdin",
+            "kill_process",
+            "list_processes",
+            "send_to_telegram",
+        ] {
+            assert!(instructions.contains(tool), "instructions omit {tool}");
+        }
         assert_eq!(info.server_info.name, "deskctrl-mcp");
     }
 }

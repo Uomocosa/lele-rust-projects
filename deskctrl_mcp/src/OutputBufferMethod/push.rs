@@ -4,15 +4,21 @@ use crate::{OutputBuffer, output_buffer::MAX_BYTES};
 pub fn push(buf: &mut OutputBuffer, line: &str) {
     buf.text.push_str(line);
 
-    while buf.text.len() > MAX_BYTES {
-        // Trim whole lines so the retained text never starts mid-line.
-        let cut = match buf.text.find('\n') {
-            Some(i) => i + 1,
-            None => buf.text.len(),
-        };
-        buf.text.drain(..cut);
-        buf.dropped += cut;
+    if buf.text.len() <= MAX_BYTES {
+        return;
     }
+
+    // Trim down to 75% in a single drain. Trimming just enough would memmove the whole buffer
+    // on every subsequent line, which is exactly the sustained-output case this bound exists for.
+    let target = MAX_BYTES * 3 / 4;
+    let cut = buf.text.len() - target;
+    // Cut at a line boundary so the retained text never starts mid-line.
+    let cut = match buf.text[cut..].find('\n') {
+        Some(i) => cut + i + 1,
+        None => buf.text.len(),
+    };
+    buf.text.drain(..cut);
+    buf.dropped += cut;
 }
 
 #[cfg(test)]

@@ -10,7 +10,11 @@ pub async fn read_output(
     processes: &ProcessMap,
     params: ReadOutputParams,
 ) -> Result<CallToolResult, Error> {
-    let ReadOutputParams { pid, timeout_ms } = params;
+    let ReadOutputParams {
+        pid,
+        timeout_ms,
+        max_bytes,
+    } = params;
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
     let (text, alive) = loop {
@@ -26,13 +30,47 @@ pub async fn read_output(
         tokio::time::sleep(std::time::Duration::from_millis(POLL_MS)).await;
     };
 
+    let text = tail(&text, max_bytes);
+
     Ok(CallToolResult::success(vec![ContentBlock::text(format!(
         "alive={alive}\n{text}"
     ))]))
 }
 
+/// Keep the most recent `max_bytes`, starting at a line boundary, noting what was dropped.
+// needed helper:
+fn tail(text: &str, max_bytes: usize) -> String {
+    if text.len() <= max_bytes {
+        return text.to_string();
+    }
+    let cut = text.len() - max_bytes;
+    let start = match text[cut..].find('\n') {
+        Some(i) => cut + i + 1,
+        None => cut,
+    };
+    format!(
+        "...dropped {} earlier bytes; raise max_bytes to see them...\n{}",
+        start,
+        &text[start..]
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_usage_tail() {
+        assert_eq!(super::tail("short\n", 100), "short\n");
+        // Keeps the most recent whole lines that fit; a line straddling the cut is dropped.
+        let long = "aaaa\nbbbb\ncccc\ndddd\n";
+        let out = super::tail(long, 10);
+        assert!(out.contains("dropped 15 earlier bytes"));
+        assert!(out.ends_with("dddd\n"));
+        assert!(!out.contains("aaaa"));
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
     use std::{
         collections::HashMap,
         sync::{Arc, atomic::AtomicU32},
@@ -61,6 +99,7 @@ mod tests {
             ReadOutputParams {
                 pid: 1,
                 timeout_ms: 500,
+                max_bytes: 32 * 1024,
             },
         )
         .await;
@@ -89,6 +128,7 @@ mod tests {
             ReadOutputParams {
                 pid: 1,
                 timeout_ms: 20_000,
+                max_bytes: 32 * 1024,
             },
         )
         .await;

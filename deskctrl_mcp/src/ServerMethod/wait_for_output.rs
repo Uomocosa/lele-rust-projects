@@ -114,6 +114,7 @@ mod tests {
             ReadOutputParams {
                 pid: 1,
                 timeout_ms: 5_000,
+                max_bytes: 32 * 1024,
             },
         )
         .await
