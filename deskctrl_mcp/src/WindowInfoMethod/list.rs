@@ -3,7 +3,21 @@ use std::process::Command;
 use crate::{Error, WindowInfo, WindowInfoMethod::parse_output};
 
 /// All open desktop windows, via `wmctrl -l -p -G`.
+///
+/// A window closing between wmctrl's enumeration and its property query races the X server and
+/// makes wmctrl exit nonzero (BadWindow); retry once after a brief settle rather than surfacing
+/// a spurious failure for a window the caller never cared about.
 pub fn list() -> Result<Vec<WindowInfo>, Error> {
+    match run() {
+        Ok(windows) => Ok(windows),
+        Err(_) => {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            run()
+        }
+    }
+}
+
+fn run() -> Result<Vec<WindowInfo>, Error> {
     let out = Command::new("wmctrl")
         .args(["-l", "-p", "-G"])
         .output()
@@ -22,8 +36,10 @@ pub fn list() -> Result<Vec<WindowInfo>, Error> {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[ignore = "requires a live X display"]
     fn test_usage_live_display() {
+        crate::test_support::assert_live_display();
+        let _guard = crate::test_support::live_test_lock().blocking_lock();
+
         assert!(super::list().is_ok());
     }
 }

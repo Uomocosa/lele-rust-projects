@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, atomic::AtomicU32},
+    sync::{Arc, Mutex as StdMutex, atomic::AtomicU32},
 };
 
 use tokio::sync::Mutex;
@@ -16,6 +16,8 @@ pub fn new(artifacts_dir: Option<String>) -> Server {
         artifacts_dir,
         bot_token,
         chat_id,
+        action_log: Arc::new(StdMutex::new(Vec::new())),
+        last_screenshot: Arc::new(StdMutex::new(None)),
     }
 }
 

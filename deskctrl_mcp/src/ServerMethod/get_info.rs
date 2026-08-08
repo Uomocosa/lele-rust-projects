@@ -13,7 +13,10 @@ pub fn get_info() -> ServerInfo {
              Processes: spawn_process (returns an os_pid that matches list_windows, so a \
              GUI app you spawned can be screenshotted and clicked), read_output, \
              wait_for_output (block until a line appears), write_stdin, kill_process, \
-             list_processes (managed subprocesses only). Also send_to_telegram.",
+             list_processes (managed subprocesses only). Also send_to_telegram, and \
+             send_action_summary (sends a formatted Telegram message listing the clicks, \
+             spawned processes, stdin writes, and kills done this session — call it when \
+             wrapping up a task).",
         )
 }
 
@@ -38,6 +41,7 @@ mod tests {
             "kill_process",
             "list_processes",
             "send_to_telegram",
+            "send_action_summary",
         ] {
             assert!(instructions.contains(tool), "instructions omit {tool}");
         }

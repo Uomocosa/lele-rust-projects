@@ -29,9 +29,14 @@ pub async fn list_windows() -> Result<CallToolResult, Error> {
 #[cfg(test)]
 mod tests {
     #[tokio::test]
-    #[ignore = "requires a live X display"]
     async fn test_usage_live_display() {
-        assert!(super::list_windows().await.is_ok());
+        crate::test_support::assert_live_display();
+        let _guard = crate::test_support::live_test_lock().lock().await;
+
+        let result = super::list_windows().await.unwrap();
+        let text = format!("{result:?}");
+        // There is always at least this test runner's terminal/editor open.
+        assert!(text.contains("window_id") && text.contains("pid"));
     }
 }
 // no test_usage necessary: shells out to wmctrl, so it cannot run without an X display

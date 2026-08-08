@@ -20,6 +20,9 @@ pub mod send_to_telegram_params;
 pub mod server;
 #[path = "SpawnParams.rs"]
 pub mod spawn_params;
+#[cfg(test)]
+#[path = "TestSupport.rs"]
+pub mod test_support;
 #[path = "WaitForOutputParams.rs"]
 pub mod wait_for_output_params;
 #[path = "WindowInfo.rs"]

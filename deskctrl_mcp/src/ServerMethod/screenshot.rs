@@ -1,4 +1,9 @@
-use std::{fs, process::Command, time::SystemTime};
+use std::{
+    fs,
+    process::Command,
+    sync::Mutex,
+    time::SystemTime,
+};
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use rmcp::model::{CallToolResult, ContentBlock};
@@ -12,6 +17,7 @@ pub async fn screenshot(
     artifacts_dir: Option<&str>,
     bot_token: Option<&str>,
     chat_id: Option<&str>,
+    last_screenshot: Option<&Mutex<Option<Vec<u8>>>>,
 ) -> Result<CallToolResult, Error> {
     let target = resolve_target(&params)?;
 
@@ -57,6 +63,10 @@ pub async fn screenshot(
             cid.to_string(),
             png.clone(),
         );
+    }
+
+    if let Some(last) = last_screenshot {
+        *last.lock().unwrap() = Some(png.clone());
     }
 
     Ok(CallToolResult::success(vec![
@@ -285,9 +295,46 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires a live X display"]
     async fn test_usage_live_display() {
-        let result = super::screenshot(ScreenshotParams::default(), None, None, None).await;
+        crate::test_support::assert_live_display();
+        let _guard = crate::test_support::live_test_lock().lock().await;
+
+        let result = super::screenshot(ScreenshotParams::default(), None, None, None, None).await;
         assert!(result.is_ok());
+    }
+
+    /// Spawns a real xterm and screenshots it by pid, asserting the returned PNG has a nonzero
+    /// size.
+    #[tokio::test]
+    async fn test_usage_live_window_capture() {
+        crate::test_support::assert_live_display();
+        let _guard = crate::test_support::live_test_lock().lock().await;
+
+        let mut child = std::process::Command::new("xterm")
+            .spawn()
+            .expect("spawning xterm for live screenshot test");
+        std::thread::sleep(std::time::Duration::from_millis(800));
+
+        let params = ScreenshotParams {
+            pid: Some(child.id()),
+            ..Default::default()
+        };
+        let result = super::screenshot(params, None, None, None, None).await;
+
+        let _ = child.kill();
+        let _ = child.wait();
+
+        let result = result.expect("live window screenshot");
+        let png_content = result
+            .content
+            .iter()
+            .find_map(|c| c.as_image())
+            .expect("screenshot result missing image content");
+        use base64::Engine;
+        let png = base64::engine::general_purpose::STANDARD
+            .decode(&png_content.data)
+            .expect("decoding screenshot base64");
+        let (w, h) = png_size(&png).expect("parsing PNG header");
+        assert!(w > 0 && h > 0, "expected nonzero window screenshot, got {w}x{h}");
     }
 }

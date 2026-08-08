@@ -99,4 +99,39 @@ mod tests {
         .await;
         assert!(matches!(bad_button, Err(Error::Window(_))));
     }
+
+    /// Spawns a real xterm, finds its window, and clicks inside it. No pixel-diffing (too
+    /// flaky) — this only confirms the full X connect / translate_coordinates / xtest_fake_input
+    /// path doesn't error against a real window.
+    #[tokio::test]
+    async fn test_usage_live_display() {
+        use crate::WindowInfoMethod;
+
+        crate::test_support::assert_live_display();
+        let _guard = crate::test_support::live_test_lock().lock().await;
+
+        let mut child = std::process::Command::new("xterm")
+            .spawn()
+            .expect("spawning xterm for live click test");
+        std::thread::sleep(std::time::Duration::from_millis(800));
+
+        let windows = WindowInfoMethod::list().expect("list_windows for live click test");
+        let window = windows
+            .iter()
+            .find(|w| w.pid == child.id())
+            .expect("xterm window not found by pid");
+
+        let result = click_window(ClickParams {
+            window_id: window.id.clone(),
+            x: 10,
+            y: 10,
+            button: 1,
+        })
+        .await;
+
+        let _ = child.kill();
+        let _ = child.wait();
+
+        assert!(result.is_ok(), "{result:?}");
+    }
 }
