@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::method_file_co_location_check;
 use super::method_file_co_location_register;
@@ -12,7 +12,7 @@ impl MethodFileCoLocation {
 }
 
 #[rustfmt::skip]
-impl Checker for MethodFileCoLocation {
+impl checker::Checker for MethodFileCoLocation {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { method_file_co_location_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for MethodFileCoLocation {
 
 #[rustfmt::skip]
 impl MethodFileCoLocation {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         method_file_co_location_register::register(checkers, config)
     }
 }

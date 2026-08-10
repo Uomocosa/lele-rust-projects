@@ -11,3 +11,4 @@ pub mod bad_thin_delegate;
 pub mod bad_constructor_skip;
 pub mod bad_logging;
 pub mod bad_test_inline;
+pub mod bad_single_field;

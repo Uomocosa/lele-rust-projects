@@ -1,11 +1,14 @@
 use std::path::Path;
 
 use super::no_cross_domain_reexport::NoCrossDomainReexport;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &NoCrossDomainReexport, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &NoCrossDomainReexport,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (mod_rs_path, info) in &project.module_info {
@@ -25,7 +28,7 @@ pub(crate) fn check(_self: &NoCrossDomainReexport, project: &Project) -> Vec<Dia
                         .find(|e| e.relative_path == *mod_rs_path)
                         .map(|e| e.absolute_path.clone());
 
-                    diags.push(Diagnostic {
+                    diags.push(diagnostic::Diagnostic {
                         file: module_file
                             .unwrap_or_else(|| project.root.join("src").join(mod_rs_path)),
                         line: 1,
@@ -35,7 +38,7 @@ pub(crate) fn check(_self: &NoCrossDomainReexport, project: &Project) -> Vec<Dia
                             "cross-domain re-export `pub use {}` in mod.rs, move to lib.rs",
                             reexported_path
                         ),
-                        severity: Severity::Error,
+                        severity: severity::Severity::Error,
                     });
                 }
             }

@@ -3,16 +3,19 @@ use std::path::Path;
 use syn::spanned::Spanned;
 
 use super::helper_count::HelperCount;
-use crate::diagnostic::Diagnostic;
-use crate::entry_kind::EntryKind;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::entry_kind;
+use crate::project;
+use crate::severity;
 
 const MAX_PRIVATE_HELPERS: usize = 2;
 
 const ANNOTATION: &str = "// needed helper:";
 
-pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &HelperCount,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -36,7 +39,7 @@ pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
         let private_count = count_unannotated_private_helpers(file, &source);
 
         if private_count > MAX_PRIVATE_HELPERS {
-            diags.push(Diagnostic {
+            diags.push(diagnostic::Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
@@ -47,7 +50,7 @@ pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
                     MAX_PRIVATE_HELPERS,
                     ANNOTATION
                 ),
-                severity: Severity::Error,
+                severity: severity::Severity::Error,
             });
         }
 
@@ -55,7 +58,7 @@ pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
 
         if pub_like_fns.len() > 1 {
             for func in &pub_like_fns {
-                diags.push(Diagnostic {
+                diags.push(diagnostic::Diagnostic {
                     file: project.src_dir.join(rel_path),
                     line: func.sig.fn_token.span().start().line,
                     col: 0,
@@ -65,7 +68,7 @@ pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
                         pub_like_fns.len(),
                         func.sig.ident
                     ),
-                    severity: Severity::Error,
+                    severity: severity::Severity::Error,
                 });
             }
         }
@@ -74,11 +77,11 @@ pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
     diags
 }
 
-fn read_source(project: &Project, rel_path: &Path) -> Option<String> {
+fn read_source(project: &project::Project, rel_path: &Path) -> Option<String> {
     let entry = project
         .entries
         .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)?;
+        .find(|e| e.relative_path == rel_path && e.kind == entry_kind::EntryKind::File)?;
 
     std::fs::read_to_string(&entry.absolute_path).ok()
 }

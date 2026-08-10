@@ -1,10 +1,13 @@
 use super::thin_delegates::ThinDelegates;
 use crate::common;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &ThinDelegates,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -52,7 +55,7 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
 
             if !methods_over_three.is_empty() && !is_trait_impl {
                 let names = names_str(&methods_over_three);
-                diags.push(Diagnostic {
+                diags.push(diagnostic::Diagnostic {
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
@@ -60,7 +63,7 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
                     message: format!(
                         "method(s) `{names}` have >3 statements — extract each into `<type>_<method>.rs`"
                     ),
-                    severity: Severity::Error,
+                    severity: severity::Severity::Error,
                 });
                 continue;
             }
@@ -83,8 +86,12 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
 
             if !one_liners.is_empty() {
                 if !common::has_rustfmt_skip(impl_block) {
-                    let names = one_liners.iter().map(|m| m.sig.ident.to_string()).collect::<Vec<_>>().join(", ");
-                    diags.push(Diagnostic {
+                    let names = one_liners
+                        .iter()
+                        .map(|m| m.sig.ident.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    diags.push(diagnostic::Diagnostic {
                         file: project.src_dir.join(rel_path),
                         line: 1,
                         col: 0,
@@ -92,13 +99,13 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
                         message: format!(
                             "one-liner method(s) `{names}` require `#[rustfmt::skip]` on the impl block"
                         ),
-                        severity: Severity::Error,
+                        severity: severity::Severity::Error,
                     });
                 }
 
                 for method in &one_liners {
                     if !is_one_line_body(method) {
-                        diags.push(Diagnostic {
+                        diags.push(diagnostic::Diagnostic {
                             file: project.src_dir.join(rel_path),
                             line: 1,
                             col: 0,
@@ -107,7 +114,7 @@ pub(crate) fn check(_self: &ThinDelegates, project: &Project) -> Vec<Diagnostic>
                                 "one-liner method `{}` body must be on one line, e.g. `{{ module::func(self) }}`",
                                 method.sig.ident
                             ),
-                            severity: Severity::Error,
+                            severity: severity::Severity::Error,
                         });
                     }
                 }
@@ -138,14 +145,6 @@ fn names_str(idents: &[&syn::Ident]) -> String {
 // needed helper: one-line body check (placeholder)
 fn is_one_line_body(_method: &syn::ImplItemFn) -> bool {
     true
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_usage_builds() {
-        assert!(true);
-    }
 }
 
 // no test_usage necessary

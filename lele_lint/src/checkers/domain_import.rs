@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::domain_import_check;
 use super::domain_import_register;
@@ -12,7 +12,7 @@ impl DomainImport {
 }
 
 #[rustfmt::skip]
-impl Checker for DomainImport {
+impl checker::Checker for DomainImport {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { domain_import_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for DomainImport {
 
 #[rustfmt::skip]
 impl DomainImport {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         domain_import_register::register(checkers, config)
     }
 }

@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::no_cross_domain_reexport_check;
 use super::no_cross_domain_reexport_register;
@@ -12,7 +12,7 @@ impl NoCrossDomainReexport {
 }
 
 #[rustfmt::skip]
-impl Checker for NoCrossDomainReexport {
+impl checker::Checker for NoCrossDomainReexport {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { no_cross_domain_reexport_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for NoCrossDomainReexport {
 
 #[rustfmt::skip]
 impl NoCrossDomainReexport {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         no_cross_domain_reexport_register::register(checkers, config)
     }
 }

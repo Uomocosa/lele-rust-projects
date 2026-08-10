@@ -45,6 +45,7 @@ fn violation_crate_catches_all_errors() {
         "E012", // thin_delegates
         "E013", // constructor_no_skip
         "E016", // single_caller_type
+        "E018", // single_field_newtype
     ];
 
     for code in &expected {

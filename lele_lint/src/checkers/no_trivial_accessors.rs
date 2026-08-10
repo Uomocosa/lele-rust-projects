@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::no_trivial_accessors_check;
 use super::no_trivial_accessors_register;
@@ -12,7 +12,7 @@ impl NoTrivialAccessors {
 }
 
 #[rustfmt::skip]
-impl Checker for NoTrivialAccessors {
+impl checker::Checker for NoTrivialAccessors {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { no_trivial_accessors_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for NoTrivialAccessors {
 
 #[rustfmt::skip]
 impl NoTrivialAccessors {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         no_trivial_accessors_register::register(checkers, config)
     }
 }

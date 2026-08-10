@@ -1,8 +1,8 @@
-use crate::diagnostic::Diagnostic;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::severity;
 use std::io::Write;
 
-pub fn print_diagnostics(diags: &[Diagnostic], error_format: &str) {
+pub fn print_diagnostics(diags: &[diagnostic::Diagnostic], error_format: &str) {
     let mut stderr = std::io::stderr().lock();
     for d in diags {
         match error_format {
@@ -12,10 +12,10 @@ pub fn print_diagnostics(diags: &[Diagnostic], error_format: &str) {
     }
 }
 
-fn print_clippy(d: &Diagnostic, w: &mut impl Write) {
+fn print_clippy(d: &diagnostic::Diagnostic, w: &mut impl Write) {
     let level = match d.severity {
-        Severity::Error => "error",
-        Severity::Warning => "warning",
+        severity::Severity::Error => "error",
+        severity::Severity::Warning => "warning",
     };
     let _ = writeln!(
         w,
@@ -29,10 +29,10 @@ fn print_clippy(d: &Diagnostic, w: &mut impl Write) {
     );
 }
 
-fn print_github(d: &Diagnostic, w: &mut impl Write) {
+fn print_github(d: &diagnostic::Diagnostic, w: &mut impl Write) {
     let level = match d.severity {
-        Severity::Error => "error",
-        Severity::Warning => "warning",
+        severity::Severity::Error => "error",
+        severity::Severity::Warning => "warning",
     };
     let _ = writeln!(
         w,

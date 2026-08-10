@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::snake_case_files_check;
 use super::snake_case_files_register;
@@ -12,7 +12,7 @@ impl SnakeCaseFiles {
 }
 
 #[rustfmt::skip]
-impl Checker for SnakeCaseFiles {
+impl checker::Checker for SnakeCaseFiles {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { snake_case_files_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for SnakeCaseFiles {
 
 #[rustfmt::skip]
 impl SnakeCaseFiles {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         snake_case_files_register::register(checkers, config)
     }
 }

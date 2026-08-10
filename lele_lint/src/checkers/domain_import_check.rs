@@ -1,10 +1,13 @@
 use std::path::Path;
 
 use super::domain_import::DomainImport;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
+use crate::diagnostic;
+use crate::project;
 
-pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &DomainImport,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -14,7 +17,7 @@ pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> 
             if let syn::Item::Use(item_use) = item {
                 if let Some(msg) = check_import(item_use, is_struct_file) {
                     if let Some(line) = find_use_line(&project.entries, rel_path, item_use) {
-                        diags.push(Diagnostic {
+                        diags.push(diagnostic::Diagnostic {
                             file: project.src_dir.join(rel_path),
                             line,
                             col: 0,
@@ -96,6 +99,8 @@ fn collect_use_segments(tree: &syn::UseTree) -> Vec<String> {
 }
 
 // needed helper: source line lookup for use statements
+// Known limitation: reports the first `use crate::` line in the file, not the line
+// of the specific import — diagnostics on multi-import files point at the wrong line.
 fn find_use_line(
     entries: &[crate::entry::Entry],
     rel_path: &Path,

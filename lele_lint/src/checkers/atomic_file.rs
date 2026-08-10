@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::atomic_file_check;
 use super::atomic_file_register;
@@ -12,7 +12,7 @@ impl AtomicFile {
 }
 
 #[rustfmt::skip]
-impl Checker for AtomicFile {
+impl checker::Checker for AtomicFile {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { atomic_file_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for AtomicFile {
 
 #[rustfmt::skip]
 impl AtomicFile {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         atomic_file_register::register(checkers, config)
     }
 }

@@ -2,11 +2,11 @@ use std::path::Path;
 
 use super::atomic_file::AtomicFile;
 use crate::common;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &AtomicFile, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(_self: &AtomicFile, project: &project::Project) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -28,7 +28,7 @@ pub(crate) fn check(_self: &AtomicFile, project: &Project) -> Vec<Diagnostic> {
 
         for extra in &pub_items[1..] {
             let suggested_file = format!("{}_{}.rs", file_stem, extra.name);
-            diags.push(Diagnostic {
+            diags.push(diagnostic::Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
@@ -39,7 +39,7 @@ pub(crate) fn check(_self: &AtomicFile, project: &Project) -> Vec<Diagnostic> {
                     extra.name,
                     suggested_file
                 ),
-                severity: Severity::Error,
+                severity: severity::Severity::Error,
             });
         }
     }
@@ -112,8 +112,8 @@ fn check_filename_match(
     name: &str,
     file_stem: &str,
     rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
+    project: &project::Project,
+    diags: &mut Vec<diagnostic::Diagnostic>,
 ) {
     let expected = common::to_snake_case(name);
 
@@ -129,13 +129,13 @@ fn check_filename_match(
         }
     }
 
-    diags.push(Diagnostic {
+    diags.push(diagnostic::Diagnostic {
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
         code: "E001".to_string(),
         message: format!("filename mismatch — `{file_stem}.rs` should be `{expected}.rs`"),
-        severity: Severity::Error,
+        severity: severity::Severity::Error,
     });
 }
 

@@ -1,10 +1,13 @@
 use super::constructor_no_skip::ConstructorNoSkip;
 use crate::common;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &ConstructorNoSkip,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -31,13 +34,13 @@ pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnos
                     continue;
                 };
 
-                diags.push(Diagnostic {
+                diags.push(diagnostic::Diagnostic {
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
                     code: "E013".to_string(),
                     message: format!("{blurb} must not have #[rustfmt::skip]",),
-                    severity: Severity::Error,
+                    severity: severity::Severity::Error,
                 });
             }
         }

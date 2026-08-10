@@ -23,14 +23,21 @@ mod tests {
         let file: syn::File =
             syn::parse_str("pub struct AtomicFile;\nimpl AtomicFile { pub fn check(&self) {} }")
                 .unwrap();
-        assert_eq!(primary_type_name(&file, "atomic_file"), Some("AtomicFile".to_string()));
+        assert_eq!(
+            primary_type_name(&file, "atomic_file"),
+            Some("AtomicFile".to_string())
+        );
 
         let file2: syn::File = syn::parse_str("pub struct Args;\n").unwrap();
         assert_eq!(primary_type_name(&file2, "main"), None);
 
-        let file3: syn::File =
-            syn::parse_str("pub struct FreenetClient;\nimpl FreenetClient { pub fn connect(&self) {} }")
-                .unwrap();
-        assert_eq!(primary_type_name(&file3, "freenet_client"), Some("FreenetClient".to_string()));
+        let file3: syn::File = syn::parse_str(
+            "pub struct FreenetClient;\nimpl FreenetClient { pub fn connect(&self) {} }",
+        )
+        .unwrap();
+        assert_eq!(
+            primary_type_name(&file3, "freenet_client"),
+            Some("FreenetClient".to_string())
+        );
     }
 }

@@ -42,6 +42,11 @@ cargo run --manifest-path ../lele_lint/Cargo.toml
   functions in sibling `<struct>_<method>.rs` files. Method files are private modules
   consumed exclusively through the struct's thin delegates (`#[rustfmt::skip]`).
 
+- **Struct field shape (E018):** A struct with exactly one field must be a **tuple newtype**
+  `pub struct X(T)` with `#[derive(Deref)]` (from `derive_more`), accessed via deref.
+  `DerefMut` is optional. A struct with two or more fields must use **named fields**
+  `{ a: A, b: B }`. Positional access (`.0`, `.1`) is banned (E009).
+
 - **`lele_lint`:** Many syntax and structure conventions are automatically checked by
   `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`).  Run it after changes and fix any violations.
   See the lele-lint-rs skill for the full error code reference.

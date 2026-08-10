@@ -1,24 +1,30 @@
 // needed helper: parsing utilities
 
 use super::snake_case_files::SnakeCaseFiles;
-use crate::diagnostic::Diagnostic;
-use crate::entry_kind::EntryKind;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::entry_kind;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &SnakeCaseFiles, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &SnakeCaseFiles,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for entry in &project.entries {
-        let name = extract_name(&entry.relative_path, entry.kind == EntryKind::Directory);
+        let name = extract_name(
+            &entry.relative_path,
+            entry.kind == entry_kind::EntryKind::Directory,
+        );
         if let Some(name) = name {
             if !is_snake_case(name) {
-                let kind = if entry.kind == EntryKind::Directory {
+                let kind = if entry.kind == entry_kind::EntryKind::Directory {
                     "directory"
                 } else {
                     "filename"
                 };
-                diags.push(Diagnostic {
+                diags.push(diagnostic::Diagnostic {
                     file: entry.absolute_path.clone(),
                     line: 1,
                     col: 0,
@@ -28,7 +34,7 @@ pub(crate) fn check(_self: &SnakeCaseFiles, project: &Project) -> Vec<Diagnostic
                         kind = kind,
                         name = name
                     ),
-                    severity: Severity::Error,
+                    severity: severity::Severity::Error,
                 });
             }
         }

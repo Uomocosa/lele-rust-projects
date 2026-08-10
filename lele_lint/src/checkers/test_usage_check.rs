@@ -2,14 +2,14 @@ use std::path::Path;
 
 use super::test_usage::TestUsage;
 use crate::common;
-use crate::diagnostic::Diagnostic;
-use crate::entry_kind::EntryKind;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::entry_kind;
+use crate::project;
+use crate::severity;
 
 const OPT_OUT: &str = "// no test_usage necessary";
 
-pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(_self: &TestUsage, project: &project::Project) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -22,7 +22,7 @@ pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
         }
 
         if !has_test_usage(file) {
-            diags.push(Diagnostic {
+            diags.push(diagnostic::Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
@@ -31,7 +31,7 @@ pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
                     "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
                     rel_path.display()
                 ),
-                severity: Severity::Error,
+                severity: severity::Severity::Error,
             });
         }
     }
@@ -40,11 +40,11 @@ pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
 }
 
 // needed helper: opt-out comment lookup on disk
-fn has_test_usage_opt_out(project: &Project, rel_path: &Path) -> bool {
+fn has_test_usage_opt_out(project: &project::Project, rel_path: &Path) -> bool {
     let entry = match project
         .entries
         .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)
+        .find(|e| e.relative_path == rel_path && e.kind == entry_kind::EntryKind::File)
     {
         Some(e) => e,
         None => return false,

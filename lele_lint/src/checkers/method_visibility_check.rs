@@ -3,12 +3,15 @@ use std::path::Path;
 
 use super::method_visibility::MethodVisibility;
 use crate::common;
-use crate::diagnostic::Diagnostic;
-use crate::entry_kind::EntryKind;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::entry_kind;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &MethodVisibility,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     let dir_groups = group_entries_by_parent_dir(&project.entries);
@@ -27,7 +30,7 @@ pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnost
                 if let Some(declared_pub) =
                     declared_as_pub_mod(&project.module_info, parent_dir, method_mod_name)
                 {
-                    diags.push(Diagnostic {
+                    diags.push(diagnostic::Diagnostic {
                         file: declared_pub,
                         line: 1,
                         col: 0,
@@ -36,14 +39,14 @@ pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnost
                             "method file `{}` of struct `{}` must be declared with `mod` (private), not `pub mod`",
                             file_name, struct_name
                         ),
-                        severity: Severity::Error,
+                        severity: severity::Severity::Error,
                     });
                 }
 
                 if let Some(reexported_at) =
                     reexported_in_pub_use(&project.module_info, parent_dir, method_mod_name)
                 {
-                    diags.push(Diagnostic {
+                    diags.push(diagnostic::Diagnostic {
                         file: reexported_at,
                         line: 1,
                         col: 0,
@@ -52,7 +55,7 @@ pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnost
                             "method file `{}` of struct `{}` must not appear in a `pub use` re-export",
                             file_name, struct_name
                         ),
-                        severity: Severity::Error,
+                        severity: severity::Severity::Error,
                     });
                 }
             }
@@ -63,7 +66,7 @@ pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnost
 }
 
 // needed helper: method-file classification (no type definition)
-fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &Project) -> bool {
+fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &project::Project) -> bool {
     let rel_path = if parent_dir.is_empty() {
         Path::new(file_name).to_path_buf()
     } else {
@@ -80,7 +83,14 @@ fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &Project)
         .iter()
         .any(|item| matches!(item, syn::Item::Struct(_) | syn::Item::Enum(_)));
 
-    !has_type_definition
+    if has_type_definition {
+        return false;
+    }
+
+    parsed
+        .items
+        .iter()
+        .any(|item| matches!(item, syn::Item::Fn(_)))
 }
 
 // needed helper: directory-grouped entry map
@@ -90,7 +100,7 @@ fn group_entries_by_parent_dir(
     let mut map: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
     for entry in entries {
-        if entry.kind != EntryKind::File {
+        if entry.kind != entry_kind::EntryKind::File {
             continue;
         }
         let parent = entry
@@ -114,7 +124,7 @@ fn group_entries_by_parent_dir(
 fn collect_struct_names(
     file_names: &[String],
     parent_dir: &str,
-    project: &Project,
+    project: &project::Project,
 ) -> HashSet<String> {
     let mut names = HashSet::new();
     for f in file_names {

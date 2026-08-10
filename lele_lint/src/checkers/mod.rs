@@ -28,6 +28,9 @@ mod no_trivial_accessors_register;
 mod single_caller_type;
 mod single_caller_type_check;
 mod single_caller_type_register;
+mod single_field_newtype;
+mod single_field_newtype_check;
+mod single_field_newtype_register;
 mod snake_case_files;
 mod snake_case_files_check;
 mod snake_case_files_register;
@@ -41,11 +44,11 @@ mod thin_delegates;
 mod thin_delegates_check;
 mod thin_delegates_register;
 
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
-pub fn build_checkers(config: &Config) -> Vec<Box<dyn Checker>> {
-    let mut checkers: Vec<Box<dyn Checker>> = Vec::new();
+pub fn build_checkers(config: &config::Config) -> Vec<Box<dyn checker::Checker>> {
+    let mut checkers: Vec<Box<dyn checker::Checker>> = Vec::new();
     atomic_file::AtomicFile::register(&mut checkers, config);
     snake_case_files::SnakeCaseFiles::register(&mut checkers, config);
     method_file_co_location::MethodFileCoLocation::register(&mut checkers, config);
@@ -59,6 +62,7 @@ pub fn build_checkers(config: &Config) -> Vec<Box<dyn Checker>> {
     thin_delegates::ThinDelegates::register(&mut checkers, config);
     constructor_no_skip::ConstructorNoSkip::register(&mut checkers, config);
     helper_count::HelperCount::register(&mut checkers, config);
+    single_field_newtype::SingleFieldNewtype::register(&mut checkers, config);
     single_caller_type::SingleCallerType::register(&mut checkers, config);
     checkers
 }

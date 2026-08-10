@@ -5,11 +5,14 @@ use syn::visit::Visit;
 
 use super::single_caller_type::SingleCallerType;
 use crate::common;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &SingleCallerType,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
     let defined_types = collect_defined_types(&project.parsed_files);
     let defined_names: HashSet<String> = defined_types.iter().map(|(n, _)| n.clone()).collect();
@@ -37,7 +40,7 @@ pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnost
             .collect();
 
         if callers.len() == 1 {
-            diags.push(Diagnostic {
+            diags.push(diagnostic::Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
@@ -46,7 +49,7 @@ pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnost
                     "type `{name}` has exactly one caller in `{}` and no thin-delegate methods — define it in the caller's file instead of its own file",
                     callers[0].display()
                 ),
-                severity: Severity::Error,
+                severity: severity::Severity::Error,
             });
         }
     }

@@ -1,11 +1,14 @@
 use std::path::Path;
 
 use super::no_positional::NoPositional;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &NoPositional, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &NoPositional,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -33,8 +36,8 @@ fn has_positional_types(file: &syn::File) -> bool {
 fn scan_block_for_positional(
     items: &[syn::Item],
     rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
+    project: &project::Project,
+    diags: &mut Vec<diagnostic::Diagnostic>,
 ) {
     for item in items {
         match item {
@@ -62,8 +65,8 @@ fn scan_block_for_positional(
 fn scan_stmts(
     stmts: &[syn::Stmt],
     rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
+    project: &project::Project,
+    diags: &mut Vec<diagnostic::Diagnostic>,
 ) {
     for stmt in stmts {
         match stmt {
@@ -76,14 +79,14 @@ fn scan_stmts(
             syn::Stmt::Macro(m) => {
                 let content = m.mac.tokens.to_string();
                 if has_positional_access(&content) {
-                    diags.push(Diagnostic {
+                    diags.push(diagnostic::Diagnostic {
                         file: project.src_dir.join(rel_path),
                         line: 1,
                         col: 0,
                         code: "E009".to_string(),
                         message: "positional field access like `.0` or `.1` is not allowed — define the struct with named fields instead"
                             .to_string(),
-                        severity: Severity::Error,
+                        severity: severity::Severity::Error,
                     });
                 }
             }
@@ -93,16 +96,21 @@ fn scan_stmts(
 }
 
 // needed helper: expression-level position access checker
-fn scan_expr(expr: &syn::Expr, rel_path: &Path, project: &Project, diags: &mut Vec<Diagnostic>) {
+fn scan_expr(
+    expr: &syn::Expr,
+    rel_path: &Path,
+    project: &project::Project,
+    diags: &mut Vec<diagnostic::Diagnostic>,
+) {
     if let syn::Expr::Field(field) = expr {
         if matches!(&field.member, syn::Member::Unnamed(_)) {
-            diags.push(Diagnostic {
+            diags.push(diagnostic::Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
                 code: "E009".to_string(),
                 message: "positional field access is not allowed, use named fields".to_string(),
-                severity: Severity::Error,
+                severity: severity::Severity::Error,
             });
         }
     }

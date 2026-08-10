@@ -1,11 +1,14 @@
 use std::collections::HashSet;
 
 use super::no_trivial_accessors::NoTrivialAccessors;
-use crate::diagnostic::Diagnostic;
-use crate::project::Project;
-use crate::severity::Severity;
+use crate::diagnostic;
+use crate::project;
+use crate::severity;
 
-pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &NoTrivialAccessors,
+    project: &project::Project,
+) -> Vec<diagnostic::Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -27,7 +30,7 @@ pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagno
                 for impl_item in &impl_block.items {
                     if let syn::ImplItem::Fn(method) = impl_item {
                         if let Some(field) = is_trivial_accessor(method, &pub_fields) {
-                            diags.push(Diagnostic {
+                            diags.push(diagnostic::Diagnostic {
                                 file: project.src_dir.join(rel_path),
                                 line: 1,
                                 col: 0,
@@ -36,7 +39,7 @@ pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagno
                                     "trivial accessor `{}` reads pub field `{field}`, access the field directly",
                                     method.sig.ident
                                 ),
-                                severity: Severity::Error,
+                                severity: severity::Severity::Error,
                             });
                         }
                     }

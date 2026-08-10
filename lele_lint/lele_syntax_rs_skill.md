@@ -1,6 +1,6 @@
 ---
 name: lele-syntax-rs
-description: Use for Rust code in this project. Enforces atomic file structure (snake_case files everywhere, co-located domain folders), module flattening, thiserror error handling, inline testing, domain-prefix imports, no trivial accessors, and no positional fields.
+description: Use for Rust code in this project. Enforces atomic file structure (snake_case files everywhere, co-located domain folders), module flattening, thiserror error handling, inline testing, domain-prefix imports, no trivial accessors, and struct field shape (single-field structs are tuple newtypes with #[derive(Deref)]; multi-field structs use named fields).
 ---
 
 # SYNTAX & ARCHITECTURE GUIDELINES
@@ -614,18 +614,37 @@ impl Deref for Wrapper {
 fn with_timeout(self, ms: u64) -> Self { Self { timeout: ms, ..self } }
 ```
 
-## 13. No Positional Struct Field Access
+## 13. Struct Field Shape (E018 + E009)
 
-Never access struct fields by position (`.0`, `.1`, ...). All struct definitions MUST use named fields.
+Field arity decides struct shape (enforced by `single_field_newtype`, E018):
+
+- **Exactly one field** → MUST be a **tuple newtype** `pub struct X(T)` **with `#[derive(…, Deref)]`** (from `derive_more`). Access the value through deref (`*x`, method calls), never `.0`.
+- **Two or more fields** → MUST use **named fields** `{ a: A, b: B }`. Tuple structs with ≥2 fields are forbidden.
+- **`DerefMut`** is optional — added only when the type needs mutation through deref (`*counter += 1`). Never required.
+
+Positional field access (`.0`, `.1`, ...) is banned everywhere (E009); `Deref` makes it unnecessary.
 
 ### Exceptions
 - Types from **external crates** (not under your control).
 - **Anonymous tuples** — inherently positional.
 
 ```
-// ✓ CORRECT — named field is self-documenting
+// ✓ CORRECT — single field → tuple newtype with Deref
+#[derive(Clone, Deref)]
+pub struct PlayerId(pub u64);
+fn check(id: &PlayerId) -> bool { *id == 0 }
+
+// ✓ CORRECT — two fields → named
+pub struct Player { pub id: PlayerId, pub health: u32 }
+
+// ✗ WRONG — single field with a redundant name
 pub struct PlayerId { pub value: u64 }
-fn check(id: &PlayerId) -> bool { id.value == 0 }
+
+// ✗ WRONG — single-field tuple newtype without Deref
+pub struct PlayerId(pub u64);
+
+// ✗ WRONG — two-field tuple
+pub struct Pair(pub String, pub u32);
 
 // ✓ OK — external crate
 text.0 = format!("{}", count);

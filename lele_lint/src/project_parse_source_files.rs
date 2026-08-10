@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::entry::Entry;
-use crate::entry_kind::EntryKind;
+use crate::entry;
+use crate::entry_kind;
 
 pub(crate) fn parse_source_files(
     _src_dir: &Path,
-    entries: &[Entry],
+    entries: &[entry::Entry],
 ) -> HashMap<PathBuf, syn::File> {
     let mut map = HashMap::new();
     for entry in entries {
-        if entry.kind != EntryKind::File {
+        if entry.kind != entry_kind::EntryKind::File {
             continue;
         }
         let content = match std::fs::read_to_string(&entry.absolute_path) {

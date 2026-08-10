@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use super::config::Config;
-use crate::error::Error;
+use crate::error;
 
-pub(crate) fn load(project_root: &Path) -> Result<Config, Error> {
+pub(crate) fn load(project_root: &Path) -> Result<Config, error::Error> {
     let config_path = project_root.join("lele_lint.toml");
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;

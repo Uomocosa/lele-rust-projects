@@ -1,5 +1,5 @@
-use crate::checker::Checker;
-use crate::config::Config;
+use crate::checker;
+use crate::config;
 
 use super::single_caller_type_check;
 use super::single_caller_type_register;
@@ -12,7 +12,7 @@ impl SingleCallerType {
 }
 
 #[rustfmt::skip]
-impl Checker for SingleCallerType {
+impl checker::Checker for SingleCallerType {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
     fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { single_caller_type_check::check(self, project) }
@@ -20,7 +20,7 @@ impl Checker for SingleCallerType {
 
 #[rustfmt::skip]
 impl SingleCallerType {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
         single_caller_type_register::register(checkers, config)
     }
 }

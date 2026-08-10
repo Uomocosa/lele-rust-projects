@@ -2,11 +2,11 @@ use std::ffi::OsStr;
 use std::path::Path;
 use walkdir::WalkDir;
 
-use crate::entry::Entry;
-use crate::entry_kind::EntryKind;
-use crate::error::Error;
+use crate::entry;
+use crate::entry_kind;
+use crate::error;
 
-pub(crate) fn walk_entries(src_dir: &Path) -> Result<Vec<Entry>, Error> {
+pub(crate) fn walk_entries(src_dir: &Path) -> Result<Vec<entry::Entry>, error::Error> {
     let mut entries = Vec::new();
     for result in WalkDir::new(src_dir).min_depth(1) {
         let entry = result?;
@@ -16,16 +16,16 @@ pub(crate) fn walk_entries(src_dir: &Path) -> Result<Vec<Entry>, Error> {
             .expect("entry under src_dir")
             .to_path_buf();
         if entry.file_type().is_dir() {
-            entries.push(Entry {
+            entries.push(entry::Entry {
                 relative_path,
                 absolute_path,
-                kind: EntryKind::Directory,
+                kind: entry_kind::EntryKind::Directory,
             });
         } else if entry.path().extension() == Some(OsStr::new("rs")) {
-            entries.push(Entry {
+            entries.push(entry::Entry {
                 relative_path,
                 absolute_path,
-                kind: EntryKind::File,
+                kind: entry_kind::EntryKind::File,
             });
         }
     }
