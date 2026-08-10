@@ -1,10 +1,25 @@
+[tasks.build-contract]
+description = "Build the roster contract WASM"
+command = "cargo"
+args = ["build", "--release", "--target", "wasm32-unknown-unknown"]
+cwd = "./contract"
+
+[tasks.copy-wasm]
+description = "Copy WASM to repo root for include_bytes!"
+command = "cp"
+args = ["target/wasm32-unknown-unknown/release/roster_contract.wasm", "../contract/roster_contract.wasm"]
+cwd = "./contract"
+dependencies = ["build-contract"]
+
 [tasks.test]
-description = "Run all tests"
+description = "Build contract WASM then run all tests"
+dependencies = ["copy-wasm"]
 command = "cargo"
 args = ["test", "--", "--nocapture"]
 
 [tasks.pre-push]
 description = "Full verification before push"
+dependencies = ["copy-wasm"]
 script = """
 set -e
 cargo build --all-targets
@@ -17,5 +32,5 @@ echo "ALL CHECKS PASSED"
 
 [tasks.clean]
 description = "Clean all build artifacts"
-command = "cargo"
-args = ["clean"]
+command = "bash"
+args = ["-c", "cargo clean && cd contract && cargo clean"]

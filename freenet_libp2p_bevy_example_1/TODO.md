@@ -128,29 +128,75 @@ actually searches. (Confirmed by correlating `Registered transaction` →
       `test_usage` tests (no way to synthesize real key events through the
       desktop-control tooling available in this session).
 
-### M2 — Roster contract on Freenet
-- [ ] `contract/src/lib.rs`: state = `BTreeMap<PlayerId, PeerEntry>` where
+### M2 — Roster contract on Freenet ✅ DONE 2026-08-10
+Full writeup and design rationale: `M2_STEP.md`.
+
+- [x] `contract/src/lib.rs`: state = `BTreeMap<PlayerId, PeerEntry>` where
       `PeerEntry { peer_id: String, addrs: Vec<String>, updated_at: u64 }`
       — `addrs` is plural: a peer publishes its LAN addr, its observed public
       addr (from `identify`), and its `/p2p-circuit` relay addr, and the
       dialer tries all of them
-- [ ] `update_state` = merge: union keys, on collision keep higher
+- [x] `update_state` = merge: union keys, on collision keep higher
       `updated_at`. Unit-test commutativity + idempotence + associativity
       explicitly (apply A then B == B then A == both twice)
-- [ ] `validate_state`, `summarize_state`, `get_state_delta` (delta = the
-      entries the peer is missing, not the whole state)
-- [ ] Reuse `src/freenet/*` from example_2 verbatim (websocket client, error
-      enum) — it needs no changes
-- [ ] Embedded node startup: replace the hardcoded 20 s sleep with a **real
+- [x] `validate_state`, `summarize_state`, `get_state_delta` — delta
+      currently returns the full state (mirrors the clicker contract's
+      approach and the M2_STEP.md plan); "delta = only the missing
+      entries" is a possible follow-up optimization, not required for the
+      checkpoint
+- [x] `build.rs` + `Makefile.toml` `build-contract`/`copy-wasm` tasks
+      restored (deferred in M0 since no `contract/` existed yet). Found and
+      fixed a real bug while wiring this up: the nested `cargo build
+      --target wasm32-unknown-unknown` inherited `RUSTFLAGS`/
+      `CARGO_ENCODED_RUSTFLAGS` from the outer build (mold linker, meant
+      only for the host `x86_64-unknown-linux-gnu` target per
+      `.cargo/config.toml`), and env-var rustflags apply to every rustc
+      invocation regardless of target — broke the wasm link with
+      `unknown argument: -fuse-ld=mold`. Fixed via `.env_remove(...)` on
+      the child `Command`. **`freenet_bevy_example_2/build.rs` has this
+      same latent bug** (reproduced there too) — not fixed, out of scope
+      for this project, but worth flagging upstream.
+- [x] Reuse `src/freenet/*` from example_2 verbatim (websocket client, error
+      enum) — copied as-is, added the missing `futures-util`/`http`/
+      `tempfile` deps it needs; no logic changes
+- [x] Embedded node startup: replace the hardcoded 20 s sleep with a **real
       readiness check on ring/connection state**. See the M0.5 finding — a
       successful Get is not readiness, and an empty roster read during startup
-      is indistinguishable from "nobody is online"
-- [ ] `roster.rs` resource; `poll_freenet_events` that **fully drains** the
-      channel each frame (example_2 returns after one event — do not copy)
-- [ ] `testing/` crate + integration test: two nodes, both join, both see a
-      2-entry roster
-- [ ] **Checkpoint: two app instances each see the other in the roster; boxes
-      spawn for every roster entry but do not move.**
+      is indistinguishable from "nobody is online". Implemented as
+      `FreenetClient::wait_ready(min_active_connections, timeout)` in
+      `src/freenet/freenet_client_wait_ready.rs`, polling
+      `ClientRequest::NodeQueries(NodeQuery::NodeDiagnostics{
+      config: NodeDiagnosticsConfig::basic_status() })` until `node_info` is
+      populated and `network_info.active_connections >= min_active_connections`
+- [x] `roster.rs` resource (`src/roster/roster_resource.rs` — renamed from
+      the planned `roster.rs` to avoid clippy's `module_inception` lint
+      against `roster::roster::Roster`); `poll_freenet_events` **fully
+      drains** the channel each frame via `while let Ok(event) =
+      events.receiver.try_recv()` (example_2 returns after one event — did
+      not copy that bug)
+- [x] `testing/` crate + integration test: two nodes, both join, both see a
+      2-entry roster. New work (example_2's `testing::TestNode` never
+      actually joined two nodes — each test always started an isolated
+      single-node network): `TestNode::start_gateway`/`start_peer`, the
+      peer's `--gateway "ip:port,hex-pubkey"` built from the gateway's
+      `TransportKeypair::public()` via `hex::encode`. Found and fixed a
+      real bug along the way: `NetworkArgs` has *two* port fields —
+      `public_port` (advertised) and `network_port` (actually bound
+      locally, defaults to 31337) — setting only `public_port` left every
+      test node binding the same default `network_port` and NAT traversal
+      failed with "max connection attempts reached". Fixed by setting
+      `network_port: Some(public_port)` too, in both `testing/` and
+      `roster::start_embedded_node`. Test:
+      `testing/tests/two_node_roster.rs`
+- [x] **Checkpoint: two app instances each see the other in the roster; boxes
+      spawn for every roster entry but do not move.** Roster→roster
+      verified live in `testing/tests/two_node_roster.rs`. Box-spawning
+      added as `roster::bevy_systems::spawn_roster_boxes` (chained after
+      `poll_freenet_events`): spawns a non-local `boxes::spawn_box` for
+      every roster entry not already represented by a `boxes::Player`
+      entity — not yet exercised by a live two-Bevy-app run (no GUI
+      harness for that in this session), but covered by a headless `App`
+      test
 
 ### M3 — libp2p real-time sync (same-machine / LAN first)
 - [ ] `src/p2p/swarm.rs`: `SwarmBuilder::with_new_identity().with_tokio()

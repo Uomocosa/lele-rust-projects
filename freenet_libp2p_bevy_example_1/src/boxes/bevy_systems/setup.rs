@@ -18,9 +18,7 @@ pub fn setup(mut commands: Commands) {
 
     boxes::spawn_box(
         &mut commands,
-        boxes::Player {
-            id: boxes::PlayerId { value: 0 },
-        },
+        boxes::Player(boxes::PlayerId(0)),
         Vec2::new(0.0, boxes::GROUND_Y + boxes::BOX_SIZE),
         true,
     );

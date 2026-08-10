@@ -19,13 +19,13 @@ Bevy App
 
 ## Current Status
 
-M0 scaffolding complete: old `src/` removed, `Cargo.toml` pinned to bevy
-0.19 / avian2d 0.7 / freenet 0.2 / freenet-stdlib 0.8 / the full libp2p
-feature set (quic, relay, dcutr, autonat, etc.), `.cargo/config.toml` and
-`Makefile.toml` copied from `freenet_bevy_example_2` (with the
-`run-publisher`/`run-subscriber` tasks dropped). `cargo build --all-targets`
-is green against a placeholder `src/lib.rs`. `build.rs` (contract WASM
-build) is deferred to M2, which is when `contract/` first exists.
+M0 (scaffolding), M1 (local avian2d physics game, no networking), and M2
+(roster contract on Freenet) are done. The game has a `contract/` crate
+with a commutative-merge roster (`BTreeMap<PlayerId, PeerEntry>`), an
+embedded Freenet node with a real readiness check (no blind sleeps), a
+`roster` domain that spawns a box for every roster entry, and a `testing/`
+crate whose `two_node_roster` test proves two separate embedded nodes
+actually join and converge on the same 2-entry roster. See `TODO.md` for
+the full milestone plan and `M2_STEP.md` for the M2 design writeup.
 
-See `TODO.md` for the full milestone plan. Next: M1 — local game, no
-networking (avian2d physics, keyboard-controlled box).
+Next: M3 — libp2p real-time position sync (same-machine/LAN first).

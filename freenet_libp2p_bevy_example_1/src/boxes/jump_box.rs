@@ -6,7 +6,7 @@ pub fn jump_box(velocity: &mut LinearVelocity, grounded: bool) -> bool {
     if !grounded {
         return false;
     }
-    velocity.0.y = boxes::JUMP_SPEED;
+    velocity.y = boxes::JUMP_SPEED;
     true
 }
 
@@ -21,9 +21,9 @@ mod tests {
         let mut velocity = LinearVelocity::ZERO;
 
         assert!(!jump_box(&mut velocity, false));
-        assert_eq!(velocity.0.y, 0.0);
+        assert_eq!(velocity.y, 0.0);
 
         assert!(jump_box(&mut velocity, true));
-        assert!(velocity.0.y > 0.0);
+        assert!(velocity.y > 0.0);
     }
 }

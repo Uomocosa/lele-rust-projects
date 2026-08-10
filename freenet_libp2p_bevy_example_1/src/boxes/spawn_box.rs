@@ -9,7 +9,7 @@ pub fn spawn_box(
     position: Vec2,
     is_local: bool,
 ) -> Entity {
-    let hue = (player.id.value % 360) as f32;
+    let hue = (**player % 360) as f32;
     let color = Color::hsl(hue, 0.7, 0.5);
 
     let mut entity = commands.spawn((
@@ -45,9 +45,7 @@ mod tests {
 
         let entity = spawn_box(
             &mut commands,
-            boxes::Player {
-                id: boxes::PlayerId { value: 1 },
-            },
+            boxes::Player(boxes::PlayerId(1)),
             Vec2::ZERO,
             true,
         );

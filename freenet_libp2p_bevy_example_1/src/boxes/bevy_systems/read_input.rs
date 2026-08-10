@@ -56,9 +56,7 @@ mod tests {
             .world_mut()
             .spawn((
                 boxes::LocalPlayer,
-                boxes::Player {
-                    id: boxes::PlayerId { value: 0 },
-                },
+                boxes::Player(boxes::PlayerId(0)),
                 RigidBody::Dynamic,
                 Collider::rectangle(boxes::BOX_SIZE, boxes::BOX_SIZE),
                 LinearVelocity::ZERO,
