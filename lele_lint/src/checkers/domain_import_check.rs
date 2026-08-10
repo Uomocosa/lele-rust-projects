@@ -11,11 +11,9 @@ pub(crate) fn check(
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
-        let is_struct_file = is_struct_delegate_file(file);
-
         for item in &file.items {
             if let syn::Item::Use(item_use) = item {
-                if let Some(msg) = check_import(item_use, is_struct_file) {
+                if let Some(msg) = check_import(item_use) {
                     if let Some(line) = find_use_line(&project.entries, rel_path, item_use) {
                         diags.push(diagnostic::Diagnostic {
                             file: project.src_dir.join(rel_path),
@@ -34,22 +32,8 @@ pub(crate) fn check(
     diags
 }
 
-// needed helper: struct-file detection for import exemption
-fn is_struct_delegate_file(file: &syn::File) -> bool {
-    for item in &file.items {
-        if let syn::Item::Impl(impl_block) = item {
-            for attr in &impl_block.attrs {
-                if attr.path().is_ident("rustfmt") {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
 // needed helper: import style validation
-fn check_import(item_use: &syn::ItemUse, is_struct_file: bool) -> Option<String> {
+fn check_import(item_use: &syn::ItemUse) -> Option<String> {
     let segments = collect_use_segments(&item_use.tree);
     if segments.is_empty() {
         return None;
@@ -62,16 +46,6 @@ fn check_import(item_use: &syn::ItemUse, is_struct_file: bool) -> Option<String>
                 "use `use crate::{};` instead of `use {};`",
                 segments[1], direct
             ));
-        }
-    }
-
-    if is_struct_file {
-        return None;
-    }
-
-    for seg in &segments {
-        if seg == "super" && segments.len() >= 2 {
-            return None;
         }
     }
 
@@ -125,20 +99,25 @@ mod tests {
     #[test]
     fn test_usage_flags_direct_type_import() {
         let u: syn::ItemUse = parse_quote! { use crate::player::Player; };
-        assert!(check_import(&u, false).is_some());
+        assert!(check_import(&u).is_some());
     }
 
     #[test]
     fn test_usage_allows_domain_import() {
         let u: syn::ItemUse = parse_quote! { use crate::player; };
-        assert!(check_import(&u, false).is_none());
+        assert!(check_import(&u).is_none());
     }
 
     #[test]
-    fn test_usage_allows_super_in_struct_file() {
+    fn test_usage_flags_subfolder_import() {
+        let u: syn::ItemUse = parse_quote! { use crate::clicker::plugin::ClickerPlugin; };
+        assert!(check_import(&u).is_some());
+    }
+
+    #[test]
+    fn test_usage_allows_super_import() {
         let u: syn::ItemUse = parse_quote! { use super::player_new; };
-        let result = check_import(&u, true);
-        assert!(result.is_none());
+        assert!(check_import(&u).is_none());
     }
 
     #[test]
