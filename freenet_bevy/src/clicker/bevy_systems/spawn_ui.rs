@@ -66,6 +66,7 @@ pub fn spawn_ui(mut commands: Commands) {
                     ..Default::default()
                 },
                 TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                clicker::SubtitleText,
             ));
         });
 }

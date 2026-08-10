@@ -5,6 +5,7 @@ use crate::clicker;
 pub fn poll_freenet_events(
     state: ResMut<clicker::State>,
     mut count_writer: MessageWriter<clicker::CountChanged>,
+    mut connection_writer: MessageWriter<clicker::ConnectionChanged>,
 ) {
     let mut rx = state.event_rx.lock().unwrap();
     while let Ok(event) = rx.try_recv() {
@@ -23,7 +24,15 @@ pub fn poll_freenet_events(
                 count_writer.write(clicker::CountChanged { count });
                 return;
             }
-            clicker::Event::Init { .. } => {}
+            clicker::Event::Init { count, .. } => {
+                drop(rx);
+                let mut s = state;
+                s.connected = true;
+                s.count = count;
+                connection_writer.write(clicker::ConnectionChanged { connected: true });
+                count_writer.write(clicker::CountChanged { count });
+                return;
+            }
         }
     }
 }
@@ -40,6 +49,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_message::<clicker::CountChanged>();
+        app.add_message::<clicker::ConnectionChanged>();
 
         let (evt_tx, evt_rx) = mpsc::unbounded_channel();
         let (cmd_tx, _cmd_rx) = mpsc::unbounded_channel();
@@ -52,6 +62,7 @@ mod tests {
             cmd_tx,
             contract_key: key,
             count: 0,
+            connected: false,
         });
 
         app.add_systems(Update, poll_freenet_events);

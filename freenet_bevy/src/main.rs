@@ -53,6 +53,13 @@ async fn main() {
     let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel::<clicker::Command>();
     let (evt_tx, evt_rx) = tokio::sync::mpsc::unbounded_channel::<clicker::Event>();
 
+    evt_tx
+        .send(clicker::Event::Init {
+            contract_key,
+            count: initial_count,
+        })
+        .ok();
+
     let cmd_key = contract_key;
     tokio::spawn(async move {
         command_handler(client, cmd_key, cmd_rx, evt_tx).await;

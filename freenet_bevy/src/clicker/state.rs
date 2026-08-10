@@ -12,6 +12,7 @@ pub struct State {
     pub cmd_tx: UnboundedSender<clicker::Command>,
     pub contract_key: ContractKey,
     pub count: u64,
+    pub connected: bool,
 }
 
 #[cfg(test)]
@@ -34,6 +35,7 @@ mod tests {
             cmd_tx,
             contract_key: key,
             count: 42,
+            connected: false,
         };
     }
 }

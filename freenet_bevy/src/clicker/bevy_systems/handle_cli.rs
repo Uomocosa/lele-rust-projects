@@ -51,6 +51,7 @@ mod tests {
             cmd_tx: tx,
             contract_key: key,
             count: 5,
+            connected: false,
         });
 
         app.add_systems(Update, handle_cli);

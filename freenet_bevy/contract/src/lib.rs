@@ -52,10 +52,10 @@ impl ContractInterface for ClickerContract {
 
     fn get_state_delta(
         _parameters: Parameters<'static>,
-        _state: State<'static>,
+        state: State<'static>,
         _summary: StateSummary<'static>,
     ) -> Result<StateDelta<'static>, ContractError> {
-        Ok(StateDelta::from(vec![]))
+        Ok(StateDelta::from(state.as_ref().to_vec()))
     }
 }
 
@@ -86,6 +86,23 @@ mod tests {
             State::from(bincode::serialize(&42u64).unwrap()),
         );
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_state_delta_carries_the_count() {
+        // Regression test: `get_state_delta` used to unconditionally return an empty delta
+        // (`StateDelta::from(vec![])`), which silently broke state sync for peers catching up
+        // via delta rather than a full `Get` — the delta bytes must actually decode back to
+        // the contract's count.
+        let params = Parameters::from(Vec::new());
+        let state = State::from(bincode::serialize(&42u64).unwrap());
+        let summary = ClickerContract::summarize_state(params.clone(), state.clone()).unwrap();
+
+        let delta = ClickerContract::get_state_delta(params, state, summary).unwrap();
+        assert!(!delta.as_ref().is_empty(), "get_state_delta returned an empty delta");
+
+        let count: u64 = bincode::deserialize(delta.as_ref()).unwrap();
+        assert_eq!(count, 42);
     }
 
     #[test]

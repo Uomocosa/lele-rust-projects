@@ -10,6 +10,7 @@ pub fn build(app: &mut App) {
         (
             clicker::bevy_systems::handle_increment_click,
             clicker::bevy_systems::update_counter_ui,
+            clicker::bevy_systems::update_subtitle_ui,
         ),
     );
 }

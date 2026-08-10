@@ -35,6 +35,7 @@ mod tests {
             cmd_tx: tx,
             contract_key: key,
             count: 5,
+            connected: false,
         });
 
         app.world_mut()
