@@ -1,0 +1,59 @@
+[tasks.build-contract]
+description = "Build the clicker contract WASM"
+command = "cargo"
+args = ["build", "--release", "--target", "wasm32-unknown-unknown"]
+cwd = "./contract"
+
+[tasks.copy-wasm]
+description = "Copy WASM to repo root for include_bytes!"
+command = "cp"
+args = ["target/wasm32-unknown-unknown/release/clicker_contract.wasm", "../contract/clicker_contract.wasm"]
+cwd = "./contract"
+dependencies = ["build-contract"]
+
+[tasks.run-publisher]
+description = "Connect to an existing node as publisher"
+command = "cargo"
+args = ["run", "--", "--role", "publish"]
+
+[tasks.run-subscriber]
+description = "Connect to an existing node as subscriber"
+command = "cargo"
+args = ["run", "--", "--role", "subscribe"]
+
+[tasks.run-cli]
+description = "Run CLI mode (no window, interactive stdin/stdout)"
+command = "cargo"
+args = ["run", "--", "--mode", "cli"]
+
+[tasks.test]
+description = "Build contract WASM then run all tests"
+dependencies = ["copy-wasm"]
+command = "cargo"
+args = ["test", "--", "--nocapture"]
+
+[tasks.e2e]
+description = "Run end-to-end tests only"
+dependencies = ["copy-wasm"]
+script = """
+cargo build --release
+cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture --test-threads=1
+"""
+
+[tasks.pre-push]
+description = "Full verification before push"
+dependencies = ["copy-wasm"]
+script = """
+set -e
+cargo build --all-targets --release
+cargo clippy --all-targets --release -- -D warnings
+cargo fmt -- --check
+cargo test --all-targets --release -- --nocapture
+cargo test --manifest-path e2e_tests/Cargo.toml --release -- --nocapture --test-threads=1
+echo "ALL CHECKS PASSED"
+"""
+
+[tasks.clean]
+description = "Clean all build artifacts"
+command = "bash"
+args = ["-c", "cargo clean && cd contract && cargo clean && cd ../e2e_tests && cargo clean"]
