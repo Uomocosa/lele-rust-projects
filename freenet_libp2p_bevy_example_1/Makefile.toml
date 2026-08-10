@@ -1,0 +1,21 @@
+[tasks.test]
+description = "Run all tests"
+command = "cargo"
+args = ["test", "--", "--nocapture"]
+
+[tasks.pre-push]
+description = "Full verification before push"
+script = """
+set -e
+cargo build --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo fmt -- --check
+cargo test --all-targets -- --nocapture
+cargo run --manifest-path ../lele_lint/Cargo.toml
+echo "ALL CHECKS PASSED"
+"""
+
+[tasks.clean]
+description = "Clean all build artifacts"
+command = "cargo"
+args = ["clean"]

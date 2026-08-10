@@ -1,0 +1,31 @@
+[package]
+name = "bevy_freenet"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[[bin]]
+name = "bevy_freenet"
+path = "src/main.rs"
+
+[dependencies]
+bevy = "0.19"
+avian2d = "0.7"
+freenet = "0.2"
+freenet-stdlib = { version = "0.8", features = ["net"] }
+libp2p = { version = "0.56", features = [
+    "tokio", "quic", "tcp", "noise", "yamux", "dns",
+    "identify", "ping", "autonat", "relay", "dcutr",
+    "request-response", "macros",
+] }
+tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread"] }
+tokio-tungstenite = "0.27"
+thiserror = "2"
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+futures = "0.3"
+
+[dev-dependencies]

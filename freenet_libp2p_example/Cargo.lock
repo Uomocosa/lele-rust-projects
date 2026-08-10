@@ -1799,11 +1799,17 @@ dependencies = [
 name = "freenet_libp2p_example"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "freenet",
+ "freenet-stdlib",
  "futures",
+ "futures-util",
+ "http",
  "libp2p",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-tungstenite 0.27.0",
  "tracing",
  "tracing-subscriber",
 ]
