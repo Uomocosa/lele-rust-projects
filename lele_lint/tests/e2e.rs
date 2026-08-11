@@ -47,6 +47,7 @@ fn violation_crate_catches_all_errors() {
         "E016", // single_caller_type
         "E018", // single_field_newtype
         "E019", // mod_rs_purity
+        "E020", // no_crate_paths
     ];
 
     for code in &expected {

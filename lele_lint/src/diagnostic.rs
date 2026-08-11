@@ -1,3 +1,5 @@
+use crate::severity;
+
 #[derive(Debug)]
 pub struct Diagnostic {
     pub file: std::path::PathBuf,
@@ -5,5 +7,5 @@ pub struct Diagnostic {
     pub col: usize,
     pub code: String,
     pub message: String,
-    pub severity: crate::severity::Severity,
+    pub severity: severity::Severity,
 }

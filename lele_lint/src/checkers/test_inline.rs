@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::test_inline_check;
 use super::test_inline_register;
@@ -15,7 +17,7 @@ impl TestInline {
 impl checker::Checker for TestInline {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { test_inline_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { test_inline_check::check(self, project) }
 }
 
 #[rustfmt::skip]

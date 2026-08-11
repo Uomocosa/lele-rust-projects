@@ -2,7 +2,9 @@ use std::path::Path;
 
 use super::domain_import::DomainImport;
 use crate::diagnostic;
+use crate::entry;
 use crate::project;
+use crate::severity;
 
 pub(crate) fn check(
     _self: &DomainImport,
@@ -21,7 +23,7 @@ pub(crate) fn check(
                             col: 0,
                             code: "E011".to_string(),
                             message: msg,
-                            severity: crate::severity::Severity::Error,
+                            severity: severity::Severity::Error,
                         });
                     }
                 }
@@ -76,7 +78,7 @@ fn collect_use_segments(tree: &syn::UseTree) -> Vec<String> {
 // Known limitation: reports the first `use crate::` line in the file, not the line
 // of the specific import — diagnostics on multi-import files point at the wrong line.
 fn find_use_line(
-    entries: &[crate::entry::Entry],
+    entries: &[entry::Entry],
     rel_path: &Path,
     _item_use: &syn::ItemUse,
 ) -> Option<usize> {

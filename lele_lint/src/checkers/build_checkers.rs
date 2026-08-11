@@ -5,6 +5,7 @@ use super::helper_count;
 use super::method_file_co_location;
 use super::method_visibility;
 use super::mod_rs_purity;
+use super::no_crate_paths;
 use super::no_cross_domain_reexport;
 use super::no_positional;
 use super::no_trivial_accessors;
@@ -34,6 +35,7 @@ pub fn build_checkers(config: &config::Config) -> Vec<Box<dyn checker::Checker>>
     helper_count::HelperCount::register(&mut checkers, config);
     single_field_newtype::SingleFieldNewtype::register(&mut checkers, config);
     mod_rs_purity::ModRsPurity::register(&mut checkers, config);
+    no_crate_paths::NoCratePaths::register(&mut checkers, config);
     single_caller_type::SingleCallerType::register(&mut checkers, config);
     checkers
 }

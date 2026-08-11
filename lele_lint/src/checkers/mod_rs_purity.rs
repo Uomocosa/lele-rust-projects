@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::mod_rs_purity_check;
 use super::mod_rs_purity_register;
@@ -15,7 +17,7 @@ impl ModRsPurity {
 impl checker::Checker for ModRsPurity {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { mod_rs_purity_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { mod_rs_purity_check::check(self, project) }
 }
 
 #[rustfmt::skip]

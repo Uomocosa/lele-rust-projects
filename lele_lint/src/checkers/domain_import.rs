@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::domain_import_check;
 use super::domain_import_register;
@@ -15,7 +17,7 @@ impl DomainImport {
 impl checker::Checker for DomainImport {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { domain_import_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { domain_import_check::check(self, project) }
 }
 
 #[rustfmt::skip]

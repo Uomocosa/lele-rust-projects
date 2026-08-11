@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::single_caller_type_check;
 use super::single_caller_type_register;
@@ -15,7 +17,7 @@ impl SingleCallerType {
 impl checker::Checker for SingleCallerType {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { single_caller_type_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { single_caller_type_check::check(self, project) }
 }
 
 #[rustfmt::skip]

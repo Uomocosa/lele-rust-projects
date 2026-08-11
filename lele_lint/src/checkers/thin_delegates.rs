@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::thin_delegates_check;
 use super::thin_delegates_register;
@@ -15,7 +17,7 @@ impl ThinDelegates {
 impl checker::Checker for ThinDelegates {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { thin_delegates_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { thin_delegates_check::check(self, project) }
 }
 
 #[rustfmt::skip]

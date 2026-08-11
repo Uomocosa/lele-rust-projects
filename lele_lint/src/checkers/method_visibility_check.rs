@@ -4,7 +4,9 @@ use std::path::Path;
 use super::method_visibility::MethodVisibility;
 use crate::common;
 use crate::diagnostic;
+use crate::entry;
 use crate::entry_kind;
+use crate::module_info;
 use crate::project;
 use crate::severity;
 
@@ -95,7 +97,7 @@ fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &project:
 
 // needed helper: directory-grouped entry map
 fn group_entries_by_parent_dir(
-    entries: &[crate::entry::Entry],
+    entries: &[entry::Entry],
 ) -> std::collections::BTreeMap<String, Vec<String>> {
     let mut map: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
@@ -161,7 +163,7 @@ fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<Str
 
 // needed helper: pub mod declaration check
 fn declared_as_pub_mod(
-    module_info: &crate::module_info::ModuleInfoMap,
+    module_info: &module_info::ModuleInfoMap,
     parent_dir: &str,
     mod_name: &str,
 ) -> Option<std::path::PathBuf> {
@@ -183,7 +185,7 @@ fn declared_as_pub_mod(
 
 // needed helper: pub use re-export check
 fn reexported_in_pub_use(
-    module_info: &crate::module_info::ModuleInfoMap,
+    module_info: &module_info::ModuleInfoMap,
     parent_dir: &str,
     mod_name: &str,
 ) -> Option<std::path::PathBuf> {

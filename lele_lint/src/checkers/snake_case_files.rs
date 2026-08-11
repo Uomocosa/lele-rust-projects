@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::snake_case_files_check;
 use super::snake_case_files_register;
@@ -15,7 +17,7 @@ impl SnakeCaseFiles {
 impl checker::Checker for SnakeCaseFiles {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { snake_case_files_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { snake_case_files_check::check(self, project) }
 }
 
 #[rustfmt::skip]

@@ -187,7 +187,7 @@ fn collect_refs_from_items(
     }
     impl<'ast> syn::visit::Visit<'ast> for RefCollector<'_> {
         fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
-            if crate::common::is_cfg_test_mod(node) {
+            if common::is_cfg_test_mod(node) {
                 return;
             }
             syn::visit::visit_item_mod(self, node);

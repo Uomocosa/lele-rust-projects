@@ -1,5 +1,7 @@
 use crate::checker;
 use crate::config;
+use crate::diagnostic;
+use crate::project;
 
 use super::method_file_co_location_check;
 use super::method_file_co_location_register;
@@ -15,7 +17,7 @@ impl MethodFileCoLocation {
 impl checker::Checker for MethodFileCoLocation {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &crate::project::Project) -> Vec<crate::diagnostic::Diagnostic> { method_file_co_location_check::check(self, project) }
+    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { method_file_co_location_check::check(self, project) }
 }
 
 #[rustfmt::skip]

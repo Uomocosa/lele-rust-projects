@@ -13,3 +13,4 @@ pub mod bad_logging;
 pub mod bad_test_inline;
 pub mod bad_single_field;
 pub mod bad_modrs_purity;
+pub mod bad_crate_path;
