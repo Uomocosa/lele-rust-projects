@@ -31,11 +31,21 @@ pub fn spawn_roster_boxes(
 
 #[cfg(test)]
 mod tests {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use avian2d::prelude::RigidBody;
     use bevy::prelude::*;
 
     use super::spawn_roster_boxes;
     use crate::boxes;
     use crate::roster;
+
+    fn now() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    }
 
     #[test]
     fn test_usage() {
@@ -55,5 +65,88 @@ mod tests {
 
         let mut query = app.world_mut().query::<&boxes::Player>();
         assert_eq!(query.iter(app.world()).count(), 1);
+    }
+
+    fn entry(peer_id: &str, updated_at: u64) -> roster::PeerEntry {
+        roster::PeerEntry {
+            peer_id: peer_id.to_string(),
+            addrs: vec![],
+            updated_at,
+        }
+    }
+
+    fn build_app(
+        own_id: boxes::PlayerId,
+        entries: roster::RosterState,
+    ) -> (App, tokio::sync::mpsc::UnboundedSender<roster::Event>) {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tx.send(roster::Event::Roster { entries }).unwrap();
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_plugins(bevy::transform::TransformPlugin);
+        app.insert_resource(ButtonInput::<KeyCode>::default());
+        app.add_plugins(boxes::Plugin(boxes::Config::new(own_id)));
+        app.add_plugins(roster::Plugin(roster::Config::new(rx)));
+        (app, tx)
+    }
+
+    fn count_boxes(app: &mut App) -> (usize, usize, usize) {
+        let mut query = app
+            .world_mut()
+            .query::<(&boxes::Player, Option<&boxes::LocalPlayer>, &RigidBody)>();
+        let mut total = 0;
+        let mut local = 0;
+        let mut kinematic = 0;
+        for (_player, local_marker, body) in query.iter(app.world()) {
+            total += 1;
+            if local_marker.is_some() {
+                local += 1;
+            }
+            if *body == RigidBody::Kinematic {
+                kinematic += 1;
+            }
+        }
+        (total, local, kinematic)
+    }
+
+    #[test]
+    fn single_clean_session_has_one_box() {
+        let own_id = boxes::PlayerId(7);
+        let mut entries = roster::RosterState::default();
+        entries.insert(own_id, entry("self", now()));
+
+        let (mut app, _tx) = build_app(own_id, entries);
+        app.update();
+
+        assert_eq!(count_boxes(&mut app), (1, 1, 0));
+    }
+
+    #[test]
+    fn stale_previous_session_entry_does_not_duplicate() {
+        let own_id = boxes::PlayerId(7);
+        let mut entries = roster::RosterState::default();
+        entries.insert(own_id, entry("self", now()));
+        entries.insert(
+            boxes::PlayerId(99),
+            entry("stale-session", now() - roster::ROSTER_ENTRY_TTL_SECS - 10),
+        );
+
+        let (mut app, _tx) = build_app(own_id, entries);
+        app.update();
+
+        assert_eq!(count_boxes(&mut app), (1, 1, 0));
+    }
+
+    #[test]
+    fn two_players_spawn_one_box_each() {
+        let own_id = boxes::PlayerId(7);
+        let mut entries = roster::RosterState::default();
+        entries.insert(own_id, entry("self", now()));
+        entries.insert(boxes::PlayerId(8), entry("live-peer", now()));
+
+        let (mut app, _tx) = build_app(own_id, entries);
+        app.update();
+
+        assert_eq!(count_boxes(&mut app), (2, 1, 1));
     }
 }

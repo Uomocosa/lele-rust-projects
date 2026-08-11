@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use bevy::prelude::*;
 
 use crate::roster;
@@ -8,7 +10,13 @@ pub fn poll_freenet_events(
 ) {
     while let Ok(event) = events.try_recv() {
         match event {
-            roster::Event::Roster { entries } => **roster = entries,
+            roster::Event::Roster { entries } => {
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                **roster = roster::prune_stale(entries, now, roster::ROSTER_ENTRY_TTL_SECS);
+            }
             roster::Event::ConnectionError(reason) => {
                 tracing::error!(target: "roster", reason, "freenet connection error");
             }
@@ -18,11 +26,20 @@ pub fn poll_freenet_events(
 
 #[cfg(test)]
 mod tests {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     use bevy::prelude::*;
 
     use super::poll_freenet_events;
     use crate::boxes;
     use crate::roster;
+
+    fn now() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    }
 
     #[test]
     fn test_usage() {
@@ -35,7 +52,7 @@ mod tests {
             roster::PeerEntry {
                 peer_id: "peer-1".to_string(),
                 addrs: vec![],
-                updated_at: 1,
+                updated_at: now(),
             },
         );
         tx.send(roster::Event::Roster {

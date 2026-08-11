@@ -1,3 +1,6 @@
+pub mod constants;
+pub use constants::*;
+
 pub mod peer_entry;
 pub use peer_entry::PeerEntry;
 
@@ -6,6 +9,9 @@ pub use roster_state::RosterState;
 
 pub mod merge_roster;
 pub use merge_roster::merge_roster;
+
+pub mod prune_stale;
+pub use prune_stale::prune_stale;
 
 pub mod decode_roster_update;
 pub use decode_roster_update::decode_roster_update;

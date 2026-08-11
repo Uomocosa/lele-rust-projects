@@ -1,0 +1,2 @@
+pub const ROSTER_ENTRY_TTL_SECS: u64 = 300;
+pub const ROSTER_HEARTBEAT_SECS: u64 = 60;

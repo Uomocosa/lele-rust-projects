@@ -16,18 +16,14 @@ async fn main() {
         .with_writer(std::io::stdout)
         .init();
 
-    let own_id = boxes::PlayerId(
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0),
-    );
+    let keypair = p2p::load_or_create_keypair();
+    let own_id = p2p::derive_player_id(&keypair);
     let p2p_port = cli::parse_p2p_port().unwrap_or(0);
 
     let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel();
     let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
 
-    tokio::spawn(p2p::run(cmd_rx, event_tx));
+    tokio::spawn(p2p::run(cmd_rx, event_tx, keypair));
 
     let (peer_id, addrs) = match event_rx.recv().await {
         Some(p2p::Event::Ready { peer_id, addrs }) => (peer_id, addrs),

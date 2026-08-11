@@ -21,6 +21,12 @@ pub use behaviour::Behaviour;
 
 mod behaviour_new;
 
+pub mod load_or_create_keypair;
+pub use load_or_create_keypair::load_or_create_keypair;
+
+pub mod derive_player_id;
+pub use derive_player_id::derive_player_id;
+
 pub mod build_swarm;
 pub use build_swarm::build_swarm;
 

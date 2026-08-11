@@ -1,11 +1,12 @@
 use std::time::Duration;
 
+use libp2p::identity::Keypair;
 use libp2p::{noise, tcp, yamux};
 
 use crate::p2p;
 
-pub fn build_swarm() -> Result<libp2p::Swarm<p2p::Behaviour>, p2p::Error> {
-    let swarm = libp2p::SwarmBuilder::with_new_identity()
+pub fn build_swarm(keypair: Keypair) -> Result<libp2p::Swarm<p2p::Behaviour>, p2p::Error> {
+    let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
         .with_tcp(
             tcp::Config::default(),
@@ -31,10 +32,12 @@ pub fn build_swarm() -> Result<libp2p::Swarm<p2p::Behaviour>, p2p::Error> {
 
 #[cfg(test)]
 mod tests {
+    use libp2p::identity::Keypair;
+
     use super::build_swarm;
 
     #[test]
     fn test_usage() {
-        assert!(build_swarm().is_ok());
+        assert!(build_swarm(Keypair::generate_ed25519()).is_ok());
     }
 }

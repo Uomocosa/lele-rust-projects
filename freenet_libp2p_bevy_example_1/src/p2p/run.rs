@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use futures::StreamExt;
+use libp2p::identity::Keypair;
 use libp2p::request_response;
 use libp2p::swarm::SwarmEvent;
 use libp2p::{Multiaddr, PeerId};
@@ -10,8 +11,9 @@ use crate::p2p;
 pub async fn run(
     mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::Command>,
     event_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event>,
+    keypair: Keypair,
 ) {
-    let mut swarm = match p2p::build_swarm::build_swarm() {
+    let mut swarm = match p2p::build_swarm::build_swarm(keypair) {
         Ok(swarm) => swarm,
         Err(e) => {
             event_tx
@@ -132,6 +134,7 @@ mod tests {
     use std::time::Duration;
 
     use libp2p::PeerId;
+    use libp2p::identity::Keypair;
 
     use super::run;
     use crate::p2p;
@@ -171,8 +174,8 @@ mod tests {
         let (cmd_tx_b, cmd_rx_b) = tokio::sync::mpsc::unbounded_channel::<p2p::Command>();
         let (event_tx_b, mut event_rx_b) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
 
-        let task_a = tokio::spawn(run(cmd_rx_a, event_tx_a));
-        let task_b = tokio::spawn(run(cmd_rx_b, event_tx_b));
+        let task_a = tokio::spawn(run(cmd_rx_a, event_tx_a, Keypair::generate_ed25519()));
+        let task_b = tokio::spawn(run(cmd_rx_b, event_tx_b, Keypair::generate_ed25519()));
 
         let a_ready =
             tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_a)).await;
