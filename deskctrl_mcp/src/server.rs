@@ -11,7 +11,8 @@ use rmcp::{
 
 use crate::{
     ClickParams, ProcessMap, ReadOutputParams, RecordVideoParams, Recording, ScreenshotParams,
-    SendToTelegramParams, SpawnParams, WaitForOutputParams, WriteStdinParams, server_method,
+    SendKeysParams, SendToTelegramParams, SpawnParams, WaitForOutputParams, WriteStdinParams,
+    server_method,
 };
 
 #[derive(Clone)]
@@ -82,6 +83,9 @@ impl Server {
 
     #[tool(description = "Click inside a window at coordinates relative to its top-left corner (same coordinates as a screenshot of that window). Raises the window first, so it steals focus. Screenshot the window afterwards to confirm the click landed. Optional note is sent to Telegram when send_to_telegram is true.")]
     async fn click_window(&self, Parameters(params): Parameters<ClickParams>) -> Result<CallToolResult, ErrorData> { crate::server_click_window::click_window(self, params).await.map_err(ErrorData::from) }
+
+    #[tool(description = "Type literal text or press named keys/shortcuts into a window via XTEST. Takes window_id plus exactly one of: text (printable ASCII; \\n is Enter, \\t is Tab), or keys (a '+' separated chord, e.g. \"Ctrl+A\", \"Alt+Tab\", \"Ctrl+Shift+Esc\", \"F5\"; letters in a chord are unshifted). Raises the window first, so it steals focus. Screenshot the window afterwards to confirm the keys landed. Optional note is sent to Telegram when send_to_telegram is true.")]
+    async fn send_keys(&self, Parameters(params): Parameters<SendKeysParams>) -> Result<CallToolResult, ErrorData> { crate::server_send_keys::send_keys(self, params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Send a text message and/or a base64-encoded PNG photo to a pre-configured Telegram chat.")]
     async fn send_to_telegram(&self, Parameters(params): Parameters<SendToTelegramParams>) -> Result<CallToolResult, ErrorData> {

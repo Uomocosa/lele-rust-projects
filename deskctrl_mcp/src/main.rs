@@ -10,6 +10,7 @@ pub mod record_video_params;
 pub mod recording;
 pub mod recording_method;
 pub mod screenshot_params;
+pub mod send_keys_params;
 pub mod send_to_telegram_params;
 pub mod server;
 pub mod server_method;
@@ -23,6 +24,7 @@ pub mod write_stdin_params;
 
 mod server_click_window;
 mod server_kill_process;
+mod server_send_keys;
 mod server_spawn_process;
 mod server_write_stdin;
 
@@ -35,6 +37,7 @@ pub use read_output_params::ReadOutputParams;
 pub use record_video_params::RecordVideoParams;
 pub use recording::Recording;
 pub use screenshot_params::ScreenshotParams;
+pub use send_keys_params::SendKeysParams;
 pub use send_to_telegram_params::SendToTelegramParams;
 pub use server::Server;
 pub use spawn_params::SpawnParams;

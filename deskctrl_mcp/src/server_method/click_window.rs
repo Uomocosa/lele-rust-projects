@@ -1,5 +1,3 @@
-use std::process::Command;
-
 use rmcp::model::{CallToolResult, ContentBlock};
 use x11rb::{
     connection::Connection,
@@ -38,7 +36,7 @@ pub async fn click_window(params: ClickParams) -> Result<CallToolResult, Error> 
 
     // XTEST synthesizes input at the *root*, so it lands on whatever is topmost at those
     // coordinates. Raise the target first or an overlapping window eats the click.
-    raise(&window_id);
+    super::raise_window::raise_window(&window_id);
 
     let (conn, _screen) =
         x11rb::connect(None).map_err(|e| Error::Window(format!("connecting to X display: {e}")))?;
@@ -64,14 +62,6 @@ pub async fn click_window(params: ClickParams) -> Result<CallToolResult, Error> 
          = root ({}, {}); screenshot the window to confirm it took effect",
         point.dst_x, point.dst_y
     ))]))
-}
-
-// needed helper:
-fn raise(window_id: &str) {
-    let _ = Command::new("wmctrl")
-        .args(["-i", "-a", window_id])
-        .output();
-    std::thread::sleep(std::time::Duration::from_millis(400));
 }
 
 #[cfg(test)]

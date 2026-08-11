@@ -88,6 +88,7 @@ session start.
 | `list_windows` | Open desktop windows: window id, owning pid, geometry, title. Backed by `wmctrl -l -p -G`. |
 | `screenshot` | Whole screen with no arguments; one window with `window_id`, `pid`, or `title`. |
 | `click_window` | Click inside a window at window-relative coordinates. |
+| `send_keys` | Type literal text or press named keys/shortcuts into a window (XTEST). |
 | `list_processes` | **Not** windows — only the subprocesses this server spawned. |
 | `spawn_process` / `read_output` / `write_stdin` / `kill_process` | Managed subprocess control. |
 | `wait_for_output` | Block until a spawned process prints a line containing a substring. |
@@ -101,14 +102,18 @@ messages** to Telegram as you work, plus a session-start banner and a session-en
 
 - On session start the server sends `📋 Starting Session - YYYY_MM_DD [hh:mm:ss]` and begins an
   ffmpeg recording of the screen.
-- Each **visible-action** tool — `screenshot`, `click_window`, `spawn_process`, `write_stdin`,
-  `kill_process`, `record_video` — accepts a `send_to_telegram` flag that **defaults to `true`**.
-  When true (and Telegram is configured) the tool pushes its own short message:
+- Each **visible-action** tool — `screenshot`, `click_window`, `send_keys`, `spawn_process`,
+  `write_stdin`, `kill_process`, `record_video` — accepts a `send_to_telegram` flag that
+  **defaults to `true`**. When true (and Telegram is configured) the tool pushes its own short
+  message:
   - `screenshot` sends the photo with a caption — pass `caption` (e.g.
     `"freenet clicker state now at 8"`), or it falls back to an auto summary (target + size).
   - `click_window` sends a text message — pass `note` (e.g.
     `"clicking 'Increment button', expected in the image: freenet clicker state now at 8"`),
     or it auto-describes the click.
+  - `send_keys` sends a text message — pass `note` (e.g.
+    `"typing 'ls' in xterm, expected in the image: the prompt shows the typed command"`),
+    or it auto-describes the typed text / pressed keys.
   - `spawn` / `write_stdin` / `kill` send an auto template from their arguments.
 - The `send_to_telegram` flag is how the agent keeps the feed from flooding: leave it `true` only
   for steps with visible impact, set it `false` for routine/read-only calls (`list_windows`,
@@ -134,6 +139,17 @@ you read off a `screenshot {window_id}` image. It raises the window first (XTEST
 the root, so an overlapping window would otherwise swallow the click) — this steals focus. Always
 `screenshot` the window afterwards to confirm the click landed; a mistranslated click hits empty
 space and fails silently.
+
+`send_keys` types into the window that is focused after raising, with the same steal-focus caveat.
+Pass exactly one of:
+- `text` — printable ASCII typed character by character (`\n` is Enter, `\t` is Tab). The
+  keymap is read live from the X server, so shifted characters (`A`, `!`) and the letters' exact
+  physical positions follow the current keyboard layout.
+- `keys` — one chord of names joined with `+`, e.g. `Ctrl+A`, `Alt+Tab`, `Ctrl+Shift+Esc`,
+  `F5`. Modifiers: `Ctrl`, `Shift`, `Alt`, `Super`, `Meta`. Named keys: `Enter`, `Tab`,
+  `BackSpace`, `Escape`, `Delete`, `Insert`, `Home`, `End`, `PageUp`, `PageDown`, the arrows,
+  `Space`, `F1`–`F12`, or a single printable ASCII character. Letters in a chord are unshifted,
+  so `Ctrl+A` means control-a.
 
 ### Waiting on a slow process
 
@@ -170,8 +186,8 @@ X11 only (`DISPLAY` must be set) — there is no Wayland path. External binaries
 
 - `wmctrl` — required for `list_windows` and all window targeting
 - `import` + `convert` (ImageMagick), `xwd`, `gnome-screenshot` — capture, tried in that order
-- the X server's **XTEST** extension, for `click_window` — spoken directly via the pure-Rust
-  `x11rb` crate, so there is nothing to install
+- the X server's **XTEST** extension, for `click_window` and `send_keys` — spoken directly via
+  the pure-Rust `x11rb` crate, so there is nothing to install
 - `xdotool` is **not** used and is not installed on this machine; do not add a dependency on it
 - `ffmpeg` + `xdpyinfo` — required only for `record_video` (screen capture via `x11grab`)
 

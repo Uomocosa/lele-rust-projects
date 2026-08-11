@@ -9,19 +9,20 @@ pub fn get_info() -> ServerInfo {
         .with_instructions(
             "deskctrl: desktop and process control. Windows: list_windows (open windows \
              with their IDs), screenshot (whole screen, or one window via \
-             window_id/pid/title), click_window (click at window-relative coordinates). \
+             window_id/pid/title), click_window (click at window-relative coordinates), \
+             send_keys (type text or press named shortcuts into a window). \
              Processes: spawn_process (returns an os_pid that matches list_windows, so a \
              GUI app you spawned can be screenshotted and clicked), read_output, \
              wait_for_output (block until a line appears), write_stdin, kill_process, \
              list_processes (managed subprocesses only). Telegram: send_to_telegram sends a \
              custom message; record_video records the screen and sends the MP4 to Telegram. \
-             RULE: every visible-action tool (screenshot, click_window, spawn_process, \
-             write_stdin, kill_process, record_video) accepts send_to_telegram, which \
-             defaults to true. Leave it true only for steps with visible impact (clicks, \
-             captures, spawns); set it false for routine/read-only calls. A session-start \
-             message is sent automatically, and each notified action goes out as its own \
-             short step-by-step Telegram message (screenshots include the image with a \
-             caption).",
+             RULE: every visible-action tool (screenshot, click_window, send_keys, \
+             spawn_process, write_stdin, kill_process, record_video) accepts \
+             send_to_telegram, which defaults to true. Leave it true only for steps with \
+             visible impact (clicks, captures, spawns); set it false for routine/read-only \
+             calls. A session-start message is sent automatically, and each notified action \
+             goes out as its own short step-by-step Telegram message (screenshots include \
+             the image with a caption).",
         )
 }
 
@@ -39,6 +40,7 @@ mod tests {
             "list_windows",
             "screenshot",
             "click_window",
+            "send_keys",
             "spawn_process",
             "read_output",
             "wait_for_output",

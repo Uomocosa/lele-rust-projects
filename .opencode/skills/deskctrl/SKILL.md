@@ -2,9 +2,10 @@
 name: deskctrl
 description: |
   Use when working with the deskctrl MCP server (screenshots, window
-  listing, process management). Covers the vision-check guard for
-  screenshot calls, capturing a single window instead of the whole screen,
-  and the full process lifecycle (spawn, read, write, kill, list).
+  listing, typing/clicking into windows, process management). Covers the
+  vision-check guard for screenshot calls, capturing a single window
+  instead of the whole screen, and the full process lifecycle (spawn,
+  read, write, kill, list).
 ---
 
 # deskctrl
@@ -61,6 +62,24 @@ It raises the window first (input is injected at the screen level, so an
 overlapping window would otherwise swallow the click), which steals focus.
 **Always screenshot the window afterwards** — a mis-aimed click lands on
 empty space and fails silently.
+
+## Typing / send_keys
+
+`send_keys` types into the window focused after raising (same steal-focus
+rule as clicking). Pass `window_id` plus **exactly one** of:
+
+- `text` — printable ASCII typed character by character; `\n` is Enter,
+  `\t` is Tab. The keymap is read live from the X server, so shifted
+  characters (`A`, `!`) follow the current keyboard layout.
+- `keys` — one chord of names joined with `+`, e.g. `Ctrl+A`, `Alt+Tab`,
+  `Ctrl+Shift+Esc`, `F5`. Modifiers: `Ctrl`, `Shift`, `Alt`, `Super`,
+  `Meta`. Named keys: `Enter`, `Tab`, `BackSpace`, `Escape`, `Delete`,
+  `Insert`, `Home`, `End`, `PageUp`, `PageDown`, arrows, `Space`,
+  `F1`–`F12`, or a single printable ASCII character. Letters in a chord
+  are unshifted, so `Ctrl+A` means control-a.
+
+Non-ASCII text errors — send Unicode through the clipboard instead.
+Screenshot the window afterwards to confirm the text landed.
 
 ## Process Management
 
