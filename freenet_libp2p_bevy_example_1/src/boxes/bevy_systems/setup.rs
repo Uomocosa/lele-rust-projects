@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::boxes;
 
-pub fn setup(mut commands: Commands) {
+pub fn setup(mut commands: Commands, config: Res<boxes::Config>) {
     commands.spawn(Camera2d);
 
     commands.spawn((
@@ -18,7 +18,7 @@ pub fn setup(mut commands: Commands) {
 
     boxes::spawn_box(
         &mut commands,
-        boxes::Player(boxes::PlayerId(0)),
+        boxes::Player(**config),
         Vec2::new(0.0, boxes::GROUND_Y + boxes::BOX_SIZE),
         true,
     );
@@ -34,10 +34,15 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut app = App::new();
+        app.insert_resource(boxes::Config::new(boxes::PlayerId(9)));
         app.add_systems(Update, setup);
         app.update();
 
-        let mut query = app.world_mut().query::<&boxes::LocalPlayer>();
-        assert_eq!(query.iter(app.world()).count(), 1);
+        let mut query = app
+            .world_mut()
+            .query::<(&boxes::LocalPlayer, &boxes::Player)>();
+        let pairs: Vec<_> = query.iter(app.world()).collect();
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(**pairs[0].1, boxes::PlayerId(9));
     }
 }

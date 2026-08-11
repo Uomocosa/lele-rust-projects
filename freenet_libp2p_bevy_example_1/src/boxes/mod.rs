@@ -1,3 +1,8 @@
+pub mod config;
+pub use config::Config;
+
+mod config_new;
+
 pub mod player_id;
 pub use player_id::PlayerId;
 
