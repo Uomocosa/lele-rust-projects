@@ -8,22 +8,28 @@ use crate::roster;
 pub fn spawn_roster_boxes(
     mut commands: Commands,
     roster: Res<roster::Roster>,
-    existing: Query<&boxes::Player>,
+    existing: Query<(&boxes::Player, &Transform)>,
 ) {
     if !roster.is_changed() {
         return;
     }
 
-    let spawned: HashSet<boxes::PlayerId> = existing.iter().map(|player| **player).collect();
+    let spawned: HashSet<boxes::PlayerId> = existing.iter().map(|(player, _)| **player).collect();
+    let mut occupied_xs: Vec<f32> = existing
+        .iter()
+        .map(|(_, transform)| transform.translation.x)
+        .collect();
 
     for id in roster.keys() {
         if spawned.contains(id) {
             continue;
         }
+        let x = boxes::pick_spawn_x(&occupied_xs);
+        occupied_xs.push(x);
         boxes::spawn_box(
             &mut commands,
             boxes::Player(*id),
-            Vec2::new(0.0, boxes::GROUND_Y + boxes::BOX_SIZE),
+            Vec2::new(x, boxes::SPAWN_Y),
             false,
         );
     }
@@ -148,5 +154,25 @@ mod tests {
         app.update();
 
         assert_eq!(count_boxes(&mut app), (2, 1, 1));
+    }
+
+    #[test]
+    fn boxes_spawn_spread_out() {
+        let own_id = boxes::PlayerId(7);
+        let mut entries = roster::RosterState::default();
+        entries.insert(own_id, entry("self", now()));
+        entries.insert(boxes::PlayerId(8), entry("live-peer", now()));
+
+        let (mut app, _tx) = build_app(own_id, entries);
+        app.update();
+
+        let mut query = app.world_mut().query::<(&boxes::Player, &Transform)>();
+        let mut xs: Vec<f32> = query
+            .iter(app.world())
+            .map(|(_, t)| t.translation.x)
+            .collect();
+        xs.sort_by(f32::total_cmp);
+        assert_eq!(xs.len(), 2);
+        assert!((xs[0] - xs[1]).abs() > f32::EPSILON);
     }
 }

@@ -41,6 +41,9 @@ pub use setup_contract::setup_contract;
 pub mod connect_and_run;
 pub use connect_and_run::connect_and_run;
 
+pub mod connect_client_loop;
+pub use connect_client_loop::connect_client_loop;
+
 pub mod plugin;
 pub use plugin::Plugin;
 

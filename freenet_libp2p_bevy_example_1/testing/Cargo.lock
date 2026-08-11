@@ -580,7 +580,7 @@ dependencies = [
  "bevy_math",
  "bevy_transform_interpolation",
  "bitflags 2.13.1",
- "derive_more",
+ "derive_more 2.1.1",
  "disqualified",
  "glam_matrix_extras",
  "itertools 0.15.0",
@@ -742,7 +742,7 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "blake3",
- "derive_more",
+ "derive_more 2.1.1",
  "downcast-rs 2.0.2",
  "either",
  "petgraph 0.8.3",
@@ -834,7 +834,7 @@ dependencies = [
  "bitflags 2.13.1",
  "blake3",
  "crossbeam-channel",
- "derive_more",
+ "derive_more 2.1.1",
  "disqualified",
  "downcast-rs 2.0.2",
  "either",
@@ -899,7 +899,7 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "bevy_window",
- "derive_more",
+ "derive_more 2.1.1",
  "downcast-rs 2.0.2",
  "serde",
  "smallvec",
@@ -931,7 +931,7 @@ dependencies = [
  "bevy_math",
  "bevy_reflect",
  "bytemuck",
- "derive_more",
+ "derive_more 2.1.1",
  "encase",
  "serde",
  "thiserror 2.0.20",
@@ -1044,7 +1044,7 @@ dependencies = [
  "bitflags 2.13.1",
  "bumpalo",
  "concurrent-queue",
- "derive_more",
+ "derive_more 2.1.1",
  "fixedbitset 0.5.7",
  "indexmap 2.14.0",
  "log",
@@ -1127,9 +1127,11 @@ dependencies = [
 name = "bevy_freenet"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "avian2d",
  "bevy",
  "bincode",
+ "derive_more 1.0.0",
  "freenet",
  "freenet-stdlib",
  "futures",
@@ -1311,7 +1313,7 @@ dependencies = [
  "bevy_math",
  "bevy_platform",
  "bevy_reflect",
- "derive_more",
+ "derive_more 2.1.1",
  "log",
  "smol_str",
  "thiserror 2.0.20",
@@ -1492,7 +1494,7 @@ dependencies = [
  "approx",
  "arrayvec",
  "bevy_reflect",
- "derive_more",
+ "derive_more 2.1.1",
  "glam 0.32.1",
  "itertools 0.14.0",
  "libm",
@@ -1521,7 +1523,7 @@ dependencies = [
  "bevy_transform",
  "bitflags 2.13.1",
  "bytemuck",
- "derive_more",
+ "derive_more 2.1.1",
  "encase",
  "glam 0.32.1",
  "half",
@@ -1568,7 +1570,7 @@ dependencies = [
  "bevy_utils",
  "bitflags 2.13.1",
  "bytemuck",
- "derive_more",
+ "derive_more 2.1.1",
  "fixedbitset 0.5.7",
  "indexmap 2.14.0",
  "nonmax",
@@ -1668,7 +1670,7 @@ dependencies = [
  "bevy_ptr",
  "bevy_reflect_derive",
  "bevy_utils",
- "derive_more",
+ "derive_more 2.1.1",
  "disqualified",
  "downcast-rs 2.0.2",
  "erased-serde",
@@ -1732,7 +1734,7 @@ dependencies = [
  "bevy_window",
  "bitflags 2.13.1",
  "bytemuck",
- "derive_more",
+ "derive_more 2.1.1",
  "downcast-rs 2.0.2",
  "encase",
  "glam 0.32.1",
@@ -1872,7 +1874,7 @@ dependencies = [
  "bevy_utils",
  "bitflags 2.13.1",
  "bytemuck",
- "derive_more",
+ "derive_more 2.1.1",
  "fixedbitset 0.5.7",
  "nonmax",
  "tracing",
@@ -1918,7 +1920,7 @@ dependencies = [
  "bevy_platform",
  "concurrent-queue",
  "crossbeam-queue",
- "derive_more",
+ "derive_more 2.1.1",
  "futures-lite",
  "heapless",
  "web-task",
@@ -1980,7 +1982,7 @@ dependencies = [
  "bevy_reflect",
  "bevy_tasks",
  "bevy_utils",
- "derive_more",
+ "derive_more 2.1.1",
  "serde",
  "thiserror 2.0.20",
 ]
@@ -2022,7 +2024,7 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "bevy_window",
- "derive_more",
+ "derive_more 2.1.1",
  "parley",
  "smallvec",
  "swash",
@@ -2060,7 +2062,7 @@ dependencies = [
  "bevy_ui",
  "bevy_utils",
  "bytemuck",
- "derive_more",
+ "derive_more 2.1.1",
  "indexmap 2.14.0",
  "tracing",
 ]
@@ -2169,7 +2171,7 @@ dependencies = [
  "bevy_reflect",
  "bevy_transform",
  "bevy_utils",
- "derive_more",
+ "derive_more 2.1.1",
  "ron",
  "serde",
  "thiserror 2.0.20",
@@ -3387,11 +3389,31 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a9b99b9cbbe49445b21764dc0625032a89b145a2642e67603e1c936f5458d05"
+dependencies = [
+ "derive_more-impl 1.0.0",
+]
+
+[[package]]
+name = "derive_more"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d751e9e49156b02b44f9c1815bcb94b984cdcc4396ecc32521c739452808b134"
 dependencies = [
- "derive_more-impl",
+ "derive_more-impl 2.1.1",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb7330aeadfbe296029522e6c40f315320aba36fc43a5b3632f3795348f3bd22"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -9086,7 +9108,7 @@ checksum = "8adfa1c298912827b8a28b223b3b874357397ae706e6190acd9bf28cee99114d"
 dependencies = [
  "bitflags 2.13.1",
  "cssparser",
- "derive_more",
+ "derive_more 2.1.1",
  "log",
  "new_debug_unreachable",
  "phf",
@@ -9859,6 +9881,7 @@ dependencies = [
 name = "testing"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "bevy_freenet",
  "bincode",
  "freenet",

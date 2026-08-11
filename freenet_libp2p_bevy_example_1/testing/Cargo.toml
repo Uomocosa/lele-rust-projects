@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bevy = "0.19"
 bevy_freenet = { path = ".." }
 freenet = "0.2"
 freenet-stdlib = { version = "0.8", features = ["net"] }
-tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "net"] }
 tempfile = "3"
 bincode = "1"
 hex = "0.4"

@@ -16,6 +16,7 @@ fn entry(peer_id: &str) -> roster::PeerEntry {
 /// state across a real join, not just within a single isolated node.
 #[tokio::test(flavor = "multi_thread")]
 async fn two_nodes_see_each_other_in_the_roster() {
+    let params = testing::unique_params();
     let gateway = testing::TestNode::start_gateway(0)
         .await
         .expect("gateway node should start");
@@ -29,12 +30,13 @@ async fn two_nodes_see_each_other_in_the_roster() {
     let (mut gateway_client, gateway_roster) = testing::deploy_roster(
         gateway.port(),
         &wasm,
-        boxes::PlayerId { value: 1 },
+        &params,
+        boxes::PlayerId(1),
         entry("gateway-peer"),
     )
     .await
     .expect("gateway should deploy/join the roster contract");
-    assert!(gateway_roster.contains_key(&boxes::PlayerId { value: 1 }));
+    assert!(gateway_roster.contains_key(&boxes::PlayerId(1)));
 
     // The peer's own `deploy_roster` call already merges in the gateway's existing entry
     // synchronously (it Gets the contract, sees entry 1, merges in entry 2, and Updates) —
@@ -42,7 +44,8 @@ async fn two_nodes_see_each_other_in_the_roster() {
     let (peer_client, peer_roster) = testing::deploy_roster(
         peer.port(),
         &wasm,
-        boxes::PlayerId { value: 2 },
+        &params,
+        boxes::PlayerId(2),
         entry("joining-peer"),
     )
     .await
@@ -58,10 +61,10 @@ async fn two_nodes_see_each_other_in_the_roster() {
 
     assert_eq!(gateway_view.len(), 2);
     assert_eq!(peer_roster.len(), 2);
-    assert!(gateway_view.contains_key(&boxes::PlayerId { value: 1 }));
-    assert!(gateway_view.contains_key(&boxes::PlayerId { value: 2 }));
-    assert!(peer_roster.contains_key(&boxes::PlayerId { value: 1 }));
-    assert!(peer_roster.contains_key(&boxes::PlayerId { value: 2 }));
+    assert!(gateway_view.contains_key(&boxes::PlayerId(1)));
+    assert!(gateway_view.contains_key(&boxes::PlayerId(2)));
+    assert!(peer_roster.contains_key(&boxes::PlayerId(1)));
+    assert!(peer_roster.contains_key(&boxes::PlayerId(2)));
 
     gateway.shutdown().await;
     peer.shutdown().await;

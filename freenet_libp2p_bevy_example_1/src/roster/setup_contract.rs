@@ -23,6 +23,7 @@ pub async fn setup_contract(
     host: &str,
     port: u16,
     wasm: &[u8],
+    params: &[u8],
     own_id: boxes::PlayerId,
     own_entry: roster::PeerEntry,
 ) -> Result<(freenet::FreenetClient, ContractKey, roster::RosterState), String> {
@@ -37,8 +38,8 @@ pub async fn setup_contract(
     };
 
     let code = Arc::new(ContractCode::from(wasm.to_vec()));
-    let params = Parameters::from(Vec::new());
-    let wrapped = WrappedContract::new(code, params);
+    let contract_params = Parameters::from(params.to_vec());
+    let wrapped = WrappedContract::new(code, contract_params);
     let contract_key = wrapped.key;
     let instance_id = *contract_key.id();
 

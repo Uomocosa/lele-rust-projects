@@ -6,3 +6,5 @@ pub const GROUND_Y: f32 = -200.0;
 pub const GROUND_THICKNESS: f32 = 20.0;
 pub const GROUND_WIDTH: f32 = 800.0;
 pub const GROUND_CHECK_DISTANCE: f32 = BOX_SIZE / 2.0 + 2.0;
+pub const MAX_JUMP_HEIGHT: f32 = JUMP_SPEED * JUMP_SPEED / (2.0 * GRAVITY);
+pub const SPAWN_Y: f32 = 2.0 * (GROUND_Y + MAX_JUMP_HEIGHT + BOX_SIZE);

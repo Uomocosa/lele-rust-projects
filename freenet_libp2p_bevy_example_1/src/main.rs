@@ -16,7 +16,7 @@ async fn main() {
         .with_writer(std::io::stdout)
         .init();
 
-    let keypair = p2p::load_or_create_keypair();
+    let keypair = p2p::load_or_create_keypair(cli::parse_identity_dir());
     let own_id = p2p::derive_player_id(&keypair);
     let p2p_port = cli::parse_p2p_port().unwrap_or(0);
 

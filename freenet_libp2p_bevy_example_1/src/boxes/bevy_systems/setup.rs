@@ -19,7 +19,7 @@ pub fn setup(mut commands: Commands, config: Res<boxes::Config>) {
     boxes::spawn_box(
         &mut commands,
         boxes::Player(**config),
-        Vec2::new(0.0, boxes::GROUND_Y + boxes::BOX_SIZE),
+        Vec2::new(boxes::pick_spawn_x(&[]), boxes::SPAWN_Y),
         true,
     );
 }
