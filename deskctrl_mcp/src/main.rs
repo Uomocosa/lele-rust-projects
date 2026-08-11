@@ -1,49 +1,41 @@
-#[path = "ClickParams.rs"]
 pub mod click_params;
-#[path = "Error.rs"]
 pub mod error;
-#[path = "OutputBuffer.rs"]
+pub mod error_method;
 pub mod output_buffer;
-#[path = "PidParam.rs"]
-pub mod pid_param;
-#[path = "ProcessHandle.rs"]
+pub mod output_buffer_method;
 pub mod process_handle;
-#[path = "ProcessMap.rs"]
 pub mod process_map;
-#[path = "ReadOutputParams.rs"]
 pub mod read_output_params;
-#[path = "ScreenshotParams.rs"]
+pub mod record_video_params;
+pub mod recording;
+pub mod recording_method;
 pub mod screenshot_params;
-#[path = "SendToTelegramParams.rs"]
 pub mod send_to_telegram_params;
-#[path = "Server.rs"]
 pub mod server;
-#[path = "SpawnParams.rs"]
+pub mod server_method;
 pub mod spawn_params;
 #[cfg(test)]
-#[path = "TestSupport.rs"]
 pub mod test_support;
-#[path = "WaitForOutputParams.rs"]
 pub mod wait_for_output_params;
-#[path = "WindowInfo.rs"]
 pub mod window_info;
-#[path = "WriteStdinParams.rs"]
+pub mod window_info_method;
 pub mod write_stdin_params;
 
-pub mod ErrorMethod;
-pub mod OutputBufferMethod;
-pub mod ServerMethod;
-pub mod WindowInfoMethod;
+mod server_click_window;
+mod server_kill_process;
+mod server_spawn_process;
+mod server_write_stdin;
 
-use crate::send_to_telegram_params::SendToTelegramParams;
 pub use click_params::ClickParams;
 pub use error::Error;
 pub use output_buffer::OutputBuffer;
-pub use pid_param::PidParam;
 pub use process_handle::ProcessHandle;
 pub use process_map::ProcessMap;
 pub use read_output_params::ReadOutputParams;
+pub use record_video_params::RecordVideoParams;
+pub use recording::Recording;
 pub use screenshot_params::ScreenshotParams;
+pub use send_to_telegram_params::SendToTelegramParams;
 pub use server::Server;
 pub use spawn_params::SpawnParams;
 pub use wait_for_output_params::WaitForOutputParams;
@@ -63,10 +55,46 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let artifacts_dir = std::env::var("AAI_ARTIFACTS_DIR").ok();
-    let running = Server::with_artifacts_dir(artifacts_dir)
-        .serve(stdio())
-        .await?;
+    let server = Server::with_artifacts_dir(artifacts_dir);
+    let recording = server.recording.clone();
+    let bot_token = server.bot_token.clone();
+    let chat_id = server.chat_id.clone();
+    let artifacts_dir = server.artifacts_dir.clone();
+
+    if let (Some(token), Some(cid)) = (&bot_token, &chat_id) {
+        let now = chrono::Local::now().format("%Y_%m_%d [%H:%M:%S]");
+        server_method::telegram::send_text_fire_and_forget(
+            token.clone(),
+            cid.clone(),
+            format!("\u{1F4CB} Starting Session \u{2014} {now}"),
+        );
+
+        // Auto-record the session so it can be sent as a video at session end. If ffmpeg is
+        // missing, start() errors — log it and continue (the record_video tool raises the
+        // install error when the agent calls it explicitly).
+        match recording_method::start(&recording, artifacts_dir.as_deref(), None, None, None).await
+        {
+            Ok(desc) => {
+                tracing::info!(target: "deskctrl_mcp::recording", "{desc}");
+            }
+            Err(e) => {
+                tracing::warn!(target: "deskctrl_mcp::recording", "auto-record skipped: {e}");
+            }
+        }
+    }
+
+    let running = server.serve(stdio()).await?;
     running.waiting().await?;
+
+    // Session end: the stdio transport has closed, so stop the recording and send the video.
+    if let (Some(token), Some(cid)) = (bot_token, chat_id)
+        && let Ok(stopped) = recording_method::stop(&recording).await
+        && let Ok(mp4) = std::fs::read(&stopped.path)
+        && mp4.len() as u64 <= 50 * 1024 * 1024
+    {
+        let caption = stopped.caption();
+        server_method::telegram::send_video_fire_and_forget(token, cid, mp4, caption);
+    }
     Ok(())
 }
 

@@ -21,6 +21,7 @@ anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["multipart", "rustls-tls", "json"] }
 dotenvy = "0.15"
 x11rb = { version = "0.14.0", features = ["xtest"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [lints.rust]
 non_snake_case = "allow"

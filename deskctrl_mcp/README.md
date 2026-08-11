@@ -92,6 +92,32 @@ session start.
 | `spawn_process` / `read_output` / `write_stdin` / `kill_process` | Managed subprocess control. |
 | `wait_for_output` | Block until a spawned process prints a line containing a substring. |
 | `send_to_telegram` | Send text and/or a PNG to the configured chat. |
+| `record_video` | Start/stop an ffmpeg screen recording and send the MP4 to Telegram. |
+
+## Telegram: step-by-step notifications
+
+`send_action_summary` is gone. Instead of one big report, the server pushes **step-by-step
+messages** to Telegram as you work, plus a session-start banner and a session-end video.
+
+- On session start the server sends `📋 Starting Session - YYYY_MM_DD [hh:mm:ss]` and begins an
+  ffmpeg recording of the screen.
+- Each **visible-action** tool — `screenshot`, `click_window`, `spawn_process`, `write_stdin`,
+  `kill_process`, `record_video` — accepts a `send_to_telegram` flag that **defaults to `true`**.
+  When true (and Telegram is configured) the tool pushes its own short message:
+  - `screenshot` sends the photo with a caption — pass `caption` (e.g.
+    `"freenet clicker state now at 8"`), or it falls back to an auto summary (target + size).
+  - `click_window` sends a text message — pass `note` (e.g.
+    `"clicking 'Increment button', expected in the image: freenet clicker state now at 8"`),
+    or it auto-describes the click.
+  - `spawn` / `write_stdin` / `kill` send an auto template from their arguments.
+- The `send_to_telegram` flag is how the agent keeps the feed from flooding: leave it `true` only
+  for steps with visible impact, set it `false` for routine/read-only calls (`list_windows`,
+  `read_output`, `wait_for_output`, `list_processes` have no flag and never notify).
+- On session end (the stdio transport closes) the recording is stopped and the MP4 is sent to
+  Telegram with a caption.
+
+Requires `ffmpeg` and `xdpyinfo` for recording. If `ffmpeg` is missing, `record_video` returns an
+error asking you to install it; the session-end auto-send is skipped with a warning.
 
 ### Driving a GUI app
 
@@ -147,6 +173,7 @@ X11 only (`DISPLAY` must be set) — there is no Wayland path. External binaries
 - the X server's **XTEST** extension, for `click_window` — spoken directly via the pure-Rust
   `x11rb` crate, so there is nothing to install
 - `xdotool` is **not** used and is not installed on this machine; do not add a dependency on it
+- `ffmpeg` + `xdpyinfo` — required only for `record_video` (screen capture via `x11grab`)
 
 ### Known limitations
 
@@ -165,19 +192,27 @@ directory is used as a fallback:
 
 - `AAI_ARTIFACTS_DIR` — if set, every screenshot is also written to `<dir>/<unix_secs>.png`.
   Each agent points at its own subdirectory of `artifacts/` so their captures do not interleave.
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — if both set, screenshots are also pushed to
-  Telegram, fire-and-forget.
+  Recordings are written here as `<unix_secs>.mp4` too (else `/tmp`).
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — if both set, notifications, session start/end
+  messages, screenshots and the session video are pushed to Telegram.
 
 ## Adding a tool
 
-1. Implement it as one file in `src/ServerMethod/`, and export it from
-   `src/ServerMethod/mod.rs`. One public function per file is the convention throughout.
-2. If it takes arguments, add a params struct in its own `src/PascalCase.rs` file
+This crate is `lele_lint`-clean: snake_case filenames everywhere, one public item per file,
+and a `test_usage` test (or `// no test_usage necessary`) in every file. Run
+`cargo run --manifest-path ../lele_lint/Cargo.toml` after changes.
+
+1. Implement it as one file in `src/server_method/`, and export it from
+   `src/server_method/mod.rs`. One public function per file is the convention throughout.
+2. If it takes arguments, add a params struct in its own `src/<snake_case>_params.rs` file
    (`#[derive(Deserialize, schemars::JsonSchema)]`, doc comments become the schema
    descriptions) and wire it into `src/main.rs`.
-3. Add one `#[tool(description = "…")]` line in `src/Server.rs`.
-4. Mention it in the instructions string in `src/ServerMethod/get_info.rs`.
-5. `cargo fmt && cargo clippy --all-targets && cargo test`, then **`cargo build --release`**.
+3. Add one `#[tool(description = "…")]` line in `src/server.rs` (a thin 1-liner delegate; any
+   multi-statement logic goes in a `src/server_<method>.rs` method file or the action's
+   `server_method` file).
+4. Mention it in the instructions string in `src/server_method/get_info.rs`.
+5. `cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test`, run `lele_lint`,
+   then **`cargo build --release`**.
 6. Restart both agents and confirm the tool appears.
 
 Tests that need a live X display are `#[ignore]`d; run them with
