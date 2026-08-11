@@ -32,6 +32,9 @@ pub use config::Config;
 mod config_new;
 mod config_take_event_rx;
 
+pub mod node_info;
+pub use node_info::NodeInfo;
+
 pub mod start_embedded_node;
 pub use start_embedded_node::start_embedded_node;
 

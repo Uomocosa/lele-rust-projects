@@ -50,6 +50,11 @@ pub async fn connect_client_loop(
                     ..
                 })) => {
                     if let Some(entries) = roster::decode_roster_update(&update) {
+                        tracing::info!(
+                            target: "roster",
+                            entries = entries.len(),
+                            "received roster UpdateNotification"
+                        );
                         event_tx.send(roster::Event::Roster { entries }).ok();
                     }
                 }

@@ -18,11 +18,23 @@ pub fn load_or_create_keypair(dir_override: Option<PathBuf>) -> Keypair {
     };
     if let Ok(bytes) = std::fs::read(&path) {
         if let Ok(keypair) = Keypair::from_protobuf_encoding(&bytes) {
+            tracing::info!(
+                target: "p2p",
+                ?path,
+                peer_id = %keypair.public().to_peer_id(),
+                "loaded persisted identity"
+            );
             return keypair;
         }
         tracing::warn!(target: "p2p", ?path, "unreadable identity file, regenerating");
     }
     let keypair = Keypair::generate_ed25519();
+    tracing::info!(
+        target: "p2p",
+        ?path,
+        peer_id = %keypair.public().to_peer_id(),
+        "generated fresh identity"
+    );
     match keypair.to_protobuf_encoding() {
         Ok(bytes) => {
             if let Some(parent) = path.parent()
@@ -61,12 +73,58 @@ mod tests {
 
     #[test]
     fn different_dirs_yield_different_identities() {
-        let dir_a = std::env::temp_dir().join(format!("bevy_freenet_test_a_{}", std::process::id()));
-        let dir_b = std::env::temp_dir().join(format!("bevy_freenet_test_b_{}", std::process::id()));
+        let dir_a =
+            std::env::temp_dir().join(format!("bevy_freenet_test_a_{}", std::process::id()));
+        let dir_b =
+            std::env::temp_dir().join(format!("bevy_freenet_test_b_{}", std::process::id()));
         let a = load_or_create_keypair(Some(dir_a.clone()));
         let b = load_or_create_keypair(Some(dir_b.clone()));
         assert_ne!(a.public().to_peer_id(), b.public().to_peer_id());
         std::fs::remove_dir_all(&dir_a).ok();
         std::fs::remove_dir_all(&dir_b).ok();
+    }
+
+    /// Diagnostic for BUG_1.md Cause 1b: a concurrent reader must never observe a partially-written
+    /// identity file and regenerate, otherwise the on-disk identity flips mid-run. Red against the
+    /// current read-check-then-write `fs::write`; goes green once the write is made atomic
+    /// (write-to-temp + rename).
+    #[test]
+    fn concurrent_reads_see_a_stable_on_disk_identity() {
+        let dir = std::env::temp_dir().join(format!("bevy_freenet_race_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("identity.bin");
+
+        let stable = load_or_create_keypair(Some(dir.clone()));
+        let stable_bytes = stable.to_protobuf_encoding().unwrap();
+        let expected = stable.public().to_peer_id();
+        std::fs::write(&path, &stable_bytes).unwrap();
+
+        let writer = {
+            let path = path.clone();
+            let bytes = stable_bytes.clone();
+            std::thread::spawn(move || {
+                for _ in 0..5000 {
+                    std::fs::write(&path, &bytes).ok();
+                }
+            })
+        };
+
+        let readers: Vec<_> = (0..4)
+            .map(|_| {
+                let dir = dir.clone();
+                std::thread::spawn(move || {
+                    for _ in 0..5000 {
+                        let keypair = load_or_create_keypair(Some(dir.clone()));
+                        assert_eq!(keypair.public().to_peer_id(), expected);
+                    }
+                })
+            })
+            .collect();
+
+        writer.join().unwrap();
+        for reader in readers {
+            reader.join().unwrap();
+        }
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

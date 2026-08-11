@@ -3,17 +3,15 @@ use crate::roster;
 
 pub async fn connect_and_run(
     p2p_port: u16,
+    local: bool,
+    gateway: Option<String>,
     contract_wasm: Vec<u8>,
     own_id: boxes::PlayerId,
     own_entry: roster::PeerEntry,
     event_tx: tokio::sync::mpsc::UnboundedSender<roster::Event>,
 ) {
-    let _node_dir;
-    let (host, port) = match roster::start_embedded_node(p2p_port).await {
-        Ok((host, port, dir)) => {
-            _node_dir = dir;
-            (host, port)
-        }
+    let node = match roster::start_embedded_node(p2p_port, local, gateway).await {
+        Ok(node) => node,
         Err(e) => {
             event_tx
                 .send(roster::Event::ConnectionError(format!(
@@ -23,10 +21,17 @@ pub async fn connect_and_run(
             return;
         }
     };
+    let roster::NodeInfo {
+        host,
+        ws_port,
+        node_dir,
+        ..
+    } = node;
+    let _node_dir = node_dir;
 
     roster::connect_client_loop(
         &host,
-        port,
+        ws_port,
         &contract_wasm,
         &[],
         own_id,

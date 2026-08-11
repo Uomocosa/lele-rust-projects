@@ -158,8 +158,47 @@ Cause 2 (roster convergence across 3 production-path nodes times out at
 | Cause | Status | Where |
 |---|---|---|
 | 1. Shared/racy libp2p identity | **Fixed** (commit `2ce6f3b`) | `src/p2p/load_or_create_keypair.rs`, `src/cli/cli_parse_identity_dir.rs` |
-| 1b. Underlying read-check-write race | **Not fixed** — only made opt-in | `src/p2p/load_or_create_keypair.rs` |
-| 2. Freenet mainnet UPDATE propagation asymmetry | **Open, likely upstream** | `src/roster/start_embedded_node.rs` (no direct local-gateway wiring); tracked by red test `testing/tests/e2e_three_node_production_sync.rs` |
+| 1b. Underlying read-check-write race | **Not fixed** — now pinned by a red diagnostic test | `src/p2p/load_or_create_keypair.rs` (test `concurrent_reads_see_a_stable_on_disk_identity`) |
+| 2. Freenet mainnet UPDATE propagation asymmetry | **Bootstrap-only, proven** — direct-wired local path converges; mainnet node-discovery remains unreliable | `src/roster/start_embedded_node.rs` (+ `--freenet-local`/`--freenet-gateway`, hermetic test `testing/tests/local_two_node_production_sync.rs`); mainnet path still tracked by red test `testing/tests/e2e_three_node_production_sync.rs` |
+
+## Update (2026-08-11): diagnosis confirmed, local wiring added
+
+Diagnostics (logging + tests) plus a minimal local-gateway wiring path were added to confirm the two
+causes above and give same-machine play a deterministic bypass for Cause 2.
+
+- **Cause 2 is a bootstrap/discovery problem, not a bug in our roster code.** A new hermetic test,
+  `testing/tests/local_two_node_production_sync.rs`, runs the exact production startup path
+  (`p2p::load_or_create_keypair` → `p2p::run` → `roster::start_embedded_node` →
+  `roster::connect_client_loop` → Bevy wiring) for two instances, but wires them directly: one runs
+  as an isolated gateway and the other dials it by `"ip:port,hex-pubkey"`. It converges (both
+  rosters reach 2 entries, both spawn 2 boxes, movement syncs via libp2p) in ~5s, with no internet.
+  Since the only difference from the failing mainnet path is how the nodes discover each other, our
+  roster contract/merge/subscribe logic is verified correct and the residual flakiness is purely the
+  mainnet node-discovery route.
+- **New flags:** `--freenet-local` (isolated gateway host: `skip_load_from_network: true`,
+  `is_gateway: true`) and `--freenet-gateway "127.0.0.1:<port>,<hex-pubkey>"` (peer dialing that
+  gateway). Both bypass mainnet; neither flag keeps the current default mainnet join. The host logs
+  its own dial string so a sibling instance can be launched against it. Wired via
+  `cli::parse_freenet_local` / `cli::parse_freenet_gateway` → `connect_and_run` →
+  `start_embedded_node(p2p_port, local, gateway)`, which now returns a `roster::NodeInfo` struct
+  (`host`, `ws_port`, `public_port`, `public_key_hex`, `node_dir`).
+- **Why the production path needs the wiring:** with `skip_load_from_network: false` the node
+  fetches the gateway index from `https://freenet.org/keys/gateways.toml` on every boot (fresh temp
+  config dir → no cache), sets `relay_ready_connections = Some(3)`, and `wait_ready(0)` proceeds
+  with zero connected peers. Two same-machine instances therefore only ever find each other through
+  the mainnet DHT routing a freshly-Put contract between them — exactly the fragile, timing-dependent
+  path that yields `BROADCAST_NO_TARGETS` / asymmetric convergence.
+- **Cause 1b is now reproducible on demand.** The diagnostic test
+  `concurrent_reads_see_a_stable_on_disk_identity` (in `src/p2p/load_or_create_keypair.rs`) writes
+  the same identity file repeatedly from one thread while readers call `load_or_create_keypair` on
+  the same dir. Against the current read-check-then-write `fs::write`, readers catch the
+  truncated/partial file and regenerate distinct identities — the on-disk identity flips mid-run and
+  the assertion fails. This test is currently RED (that is its point); it goes green once the write
+  is made atomic (write-to-temp + rename), which is the remaining Cause 1b fix.
+- **Logging added across the production path** so live runs show exactly what each node is doing:
+  identity loaded-vs-generated (+ peer id) in `load_or_create_keypair`; join mode, public port and
+  pubkey hex in `start_embedded_node`; Get→Found/NotFound and each Update/Put in `setup_contract`;
+  and every received roster `UpdateNotification` (with entry count) in `connect_client_loop`.
 
 ## Possible next steps for Cause 2
 
@@ -167,7 +206,9 @@ Cause 2 (roster convergence across 3 production-path nodes times out at
   (mirroring `testing`'s `start_node_at`'s `gateway` parameter) for when a
   sibling local instance is already known — bypasses the public-mainnet
   propagation question entirely for same-machine/LAN play, which is most of
-  what this example needs.
+  what this example needs. **DONE** (2026-08-11): `--freenet-local` /
+  `--freenet-gateway` flags wired through `start_embedded_node`; proven by the
+  hermetic `local_two_node_production_sync.rs` test.
 - Track `freenet/freenet-core` releases past `0.2`/`0.8` for the
   propagation-edge-case fix referenced above, and re-run
   `e2e_three_node_production_sync` after bumping.

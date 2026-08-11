@@ -62,6 +62,12 @@ pub async fn setup_contract(
             HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
                 let existing: roster::RosterState =
                     bincode::deserialize(state.as_ref()).map_err(|e| format!("deser: {e}"))?;
+                tracing::info!(
+                    target: "roster",
+                    existing_len = existing.len(),
+                    already_present = existing.contains_key(&own_id),
+                    "roster GetResponse"
+                );
                 if existing.contains_key(&own_id) {
                     break existing;
                 }
@@ -72,6 +78,11 @@ pub async fn setup_contract(
                         bincode::serialize(&merged).map_err(|e| format!("ser: {e}"))?,
                     )),
                 };
+                tracing::info!(
+                    target: "roster",
+                    merged_len = merged.len(),
+                    "merging own entry, sending roster Update"
+                );
                 client
                     .send(ClientRequest::ContractOp(update_req))
                     .await
@@ -80,6 +91,10 @@ pub async fn setup_contract(
                 break merged;
             }
             HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
+                tracing::info!(
+                    target: "roster",
+                    "contract instance not found, sending roster Put"
+                );
                 let put_req = ContractRequest::Put {
                     contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped.clone())),
                     state: WrappedState::new(

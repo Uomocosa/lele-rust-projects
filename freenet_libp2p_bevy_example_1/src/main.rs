@@ -47,6 +47,8 @@ async fn main() {
 
     tokio::spawn(roster::connect_and_run(
         p2p_port,
+        cli::parse_freenet_local(),
+        cli::parse_freenet_gateway(),
         contract_wasm,
         own_id,
         own_entry,

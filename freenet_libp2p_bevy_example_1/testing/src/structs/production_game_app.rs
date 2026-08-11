@@ -16,6 +16,7 @@ pub struct ProductionGameApp {
     pub(crate) _roster_task: JoinHandle<()>,
     pub(crate) _identity_dir: tempfile::TempDir,
     pub(crate) _node_dir: tempfile::TempDir,
+    pub(crate) gateway: String,
 }
 
 #[rustfmt::skip]
@@ -23,9 +24,13 @@ impl ProductionGameApp {
     pub async fn new(wasm: &[u8], params: &[u8], player_index: u64) -> Self {
         pga_method::new(wasm, params, player_index).await
     }
+    pub async fn new_local(wasm: &[u8], params: &[u8], player_index: u64, gateway: Option<String>) -> Self {
+        pga_method::new_local(wasm, params, player_index, gateway).await
+    }
     pub fn box_count(&mut self) -> usize { pga_method::box_count(self) }
     pub fn roster_len(&mut self) -> usize { pga_method::roster_len(self) }
     pub fn box_spawns(&mut self) -> Vec<(bevy_freenet::boxes::PlayerId, bevy::math::Vec2, bool)> { pga_method::box_spawns(self) }
+    pub fn freenet_gateway(&self) -> String { pga_method::freenet_gateway(self) }
     pub async fn wait_for_box_count(&mut self, expected: usize, timeout: std::time::Duration) -> Result<(), String> {
         pga_method::wait_for_box_count(self, expected, timeout).await
     }

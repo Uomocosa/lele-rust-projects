@@ -1,6 +1,9 @@
 pub mod box_count;
 pub mod box_spawns;
+pub mod build;
+pub mod freenet_gateway;
 pub mod new;
+pub mod new_local;
 pub mod roster_len;
 pub mod simulate_move;
 pub mod wait_for_box_count;
@@ -8,7 +11,9 @@ pub mod wait_for_roster_len;
 
 pub use box_count::box_count;
 pub use box_spawns::box_spawns;
+pub use freenet_gateway::freenet_gateway;
 pub use new::new;
+pub use new_local::new_local;
 pub use roster_len::roster_len;
 pub use simulate_move::simulate_move;
 pub use wait_for_box_count::wait_for_box_count;

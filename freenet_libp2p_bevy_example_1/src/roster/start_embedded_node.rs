@@ -1,26 +1,54 @@
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
+use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
 use std::time::Duration;
 
 use tracing::info;
 
 use crate::freenet;
+use crate::roster;
 
 // needed helper:
-/// Returns the `TempDir` so the caller can keep it alive: it backs the node's config, data and
-/// log dirs, and dropping it deletes them out from under the still-running node.
+fn free_udp_port() -> Result<u16, Box<dyn std::error::Error>> {
+    let socket = UdpSocket::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
+    Ok(socket.local_addr()?.port())
+}
+
+/// Starts an in-process network-mode Freenet node and returns its dial-in info.
+///
+/// With `local = false` and `gateway = None` the node joins the public mainnet through the remote
+/// gateway index (the default single-player behavior). `local = true` starts an isolated gateway
+/// (`skip_load_from_network`); a `Some` `gateway` value dials that gateway directly — the hermetic
+/// same-machine mode that bypasses mainnet node discovery entirely.
 pub async fn start_embedded_node(
     p2p_port: u16,
-) -> Result<(String, u16, tempfile::TempDir), Box<dyn std::error::Error>> {
+    local: bool,
+    gateway: Option<String>,
+) -> Result<roster::NodeInfo, Box<dyn std::error::Error>> {
     let tmp = tempfile::tempdir()?;
 
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
-    let port = listener.local_addr()?.port();
+    let ws_port = listener.local_addr()?.port();
+    let public_port = if p2p_port == 0 {
+        free_udp_port()?
+    } else {
+        p2p_port
+    };
+    let skip_load_from_network = local || gateway.is_some();
+    let is_gateway = gateway.is_none();
+    let min_active_connections = usize::from(gateway.is_some());
 
-    info!(target: "roster", port, "starting in-process network-mode node");
+    info!(
+        target: "roster",
+        ws_port,
+        public_port,
+        skip_load_from_network,
+        is_gateway,
+        ?gateway,
+        "starting in-process network-mode node"
+    );
 
     let ws_config = ::freenet::config::WebsocketApiConfig {
         address: IpAddr::V4(Ipv4Addr::LOCALHOST),
-        port,
+        port: ws_port,
         ..Default::default()
     };
     let clients = ::freenet::server::serve_client_api_with_listener(ws_config, listener).await?;
@@ -28,10 +56,12 @@ pub async fn start_embedded_node(
     let config_args = ::freenet::config::ConfigArgs {
         mode: Some(::freenet::local_node::OperationMode::Network),
         network_api: ::freenet::config::NetworkArgs {
-            is_gateway: true,
-            network_port: Some(p2p_port),
+            is_gateway,
+            skip_load_from_network,
+            network_port: Some(public_port),
             public_address: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
-            public_port: Some(p2p_port),
+            public_port: Some(public_port),
+            gateway: gateway.map(|g| vec![g]),
             ..Default::default()
         },
         config_paths: ::freenet::config::ConfigPathsArgs {
@@ -42,6 +72,7 @@ pub async fn start_embedded_node(
         ..Default::default()
     };
     let config = config_args.build().await?;
+    let public_key_hex = hex::encode(config.transport_keypair().public().as_bytes());
     let node_config = ::freenet::local_node::NodeConfig::new(config).await?;
     let node = node_config.build(clients).await?;
 
@@ -51,9 +82,24 @@ pub async fn start_embedded_node(
         }
     });
 
-    let mut probe = freenet::FreenetClient::connect("127.0.0.1", port).await?;
-    probe.wait_ready(0, Duration::from_secs(30)).await?;
+    let mut probe = freenet::FreenetClient::connect("127.0.0.1", ws_port).await?;
+    probe
+        .wait_ready(min_active_connections, Duration::from_secs(30))
+        .await?;
 
-    Ok(("127.0.0.1".to_string(), port, tmp))
+    info!(
+        target: "roster",
+        public_key_hex,
+        public_port,
+        "embedded node ready; dial as 127.0.0.1:<public-port>,<pubkey-hex>"
+    );
+
+    Ok(roster::NodeInfo {
+        host: "127.0.0.1".to_string(),
+        ws_port,
+        public_port,
+        public_key_hex,
+        node_dir: tmp,
+    })
 }
 // no test_usage necessary — needs a live embedded freenet node, exercised by testing/

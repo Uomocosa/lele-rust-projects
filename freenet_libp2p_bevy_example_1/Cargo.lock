@@ -1136,6 +1136,7 @@ dependencies = [
  "freenet-stdlib",
  "futures",
  "futures-util",
+ "hex",
  "http",
  "libp2p",
  "serde",

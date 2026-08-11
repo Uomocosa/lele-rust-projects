@@ -12,15 +12,20 @@ pub async fn check_internet_access() -> Result<(), String> {
     let addrs = "1.1.1.1:443"
         .to_socket_addrs()
         .map_err(|e| format!("no internet access — cannot run this network-dependent e2e test: DNS/socket resolution failed: {e}"))?;
-    let addr = addrs
-        .into_iter()
-        .next()
-        .ok_or_else(|| "no internet access — cannot run this network-dependent e2e test: empty address list".to_string())?;
+    let addr = addrs.into_iter().next().ok_or_else(|| {
+        "no internet access — cannot run this network-dependent e2e test: empty address list"
+            .to_string()
+    })?;
 
     tokio::time::timeout(Duration::from_secs(5), TcpStream::connect(addr))
         .await
-        .map_err(|_| "no internet access — cannot run this network-dependent e2e test: connect timed out".to_string())?
-        .map_err(|e| format!("no internet access — cannot run this network-dependent e2e test: {e}"))?;
+        .map_err(|_| {
+            "no internet access — cannot run this network-dependent e2e test: connect timed out"
+                .to_string()
+        })?
+        .map_err(|e| {
+            format!("no internet access — cannot run this network-dependent e2e test: {e}")
+        })?;
 
     Ok(())
 }
