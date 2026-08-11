@@ -158,7 +158,7 @@ Cause 2 (roster convergence across 3 production-path nodes times out at
 | Cause | Status | Where |
 |---|---|---|
 | 1. Shared/racy libp2p identity | **Fixed** (commit `2ce6f3b`) | `src/p2p/load_or_create_keypair.rs`, `src/cli/cli_parse_identity_dir.rs` |
-| 1b. Underlying read-check-write race | **Not fixed** — now pinned by a red diagnostic test | `src/p2p/load_or_create_keypair.rs` (test `concurrent_reads_see_a_stable_on_disk_identity`) |
+| 1b. Underlying read-check-write race | **Fixed** — atomic write (temp + rename), regression-tested green | `src/p2p/load_or_create_keypair.rs` (`atomic_write` + `concurrent_reads_see_a_stable_on_disk_identity`) |
 | 2. Freenet mainnet UPDATE propagation asymmetry | **Bootstrap-only, proven** — direct-wired local path converges; mainnet node-discovery remains unreliable | `src/roster/start_embedded_node.rs` (+ `--freenet-local`/`--freenet-gateway`, hermetic test `testing/tests/local_two_node_production_sync.rs`); mainnet path still tracked by red test `testing/tests/e2e_three_node_production_sync.rs` |
 
 ## Update (2026-08-11): diagnosis confirmed, local wiring added
@@ -188,13 +188,15 @@ causes above and give same-machine play a deterministic bypass for Cause 2.
   with zero connected peers. Two same-machine instances therefore only ever find each other through
   the mainnet DHT routing a freshly-Put contract between them — exactly the fragile, timing-dependent
   path that yields `BROADCAST_NO_TARGETS` / asymmetric convergence.
-- **Cause 1b is now reproducible on demand.** The diagnostic test
-  `concurrent_reads_see_a_stable_on_disk_identity` (in `src/p2p/load_or_create_keypair.rs`) writes
-  the same identity file repeatedly from one thread while readers call `load_or_create_keypair` on
-  the same dir. Against the current read-check-then-write `fs::write`, readers catch the
-  truncated/partial file and regenerate distinct identities — the on-disk identity flips mid-run and
-  the assertion fails. This test is currently RED (that is its point); it goes green once the write
-  is made atomic (write-to-temp + rename), which is the remaining Cause 1b fix.
+- **Cause 1b is fixed.** The diagnostic test `concurrent_reads_see_a_stable_on_disk_identity` (in
+  `src/p2p/load_or_create_keypair.rs`) writes the identity file repeatedly from one thread while
+  readers call `load_or_create_keypair` on the same dir. Against the old read-check-then-write
+  `fs::write`, readers caught the truncated/partial file and regenerated distinct identities — the
+  on-disk identity flipped mid-run. The write is now atomic (`atomic_write`: write to a sibling temp
+  file, `sync_all`, then `rename` over the real path), so a reader sees only the old complete file or
+  the new complete file, never a partial one, and the test is green. Note this closes the
+  partial-read/re-generation flip only; two processes racing a *fresh* dir still each generate a
+  distinct identity — that is by design and is what `--identity-dir` is for.
 - **Logging added across the production path** so live runs show exactly what each node is doing:
   identity loaded-vs-generated (+ peer id) in `load_or_create_keypair`; join mode, public port and
   pubkey hex in `start_embedded_node`; Get→Found/NotFound and each Update/Put in `setup_contract`;
@@ -213,4 +215,5 @@ causes above and give same-machine play a deterministic bypass for Cause 2.
   propagation-edge-case fix referenced above, and re-run
   `e2e_three_node_production_sync` after bumping.
 - Fix the Cause 1b race properly (atomic write) regardless, since it's a
-  correctness bug independent of Cause 2.
+  correctness bug independent of Cause 2. **DONE** (2026-08-11): `atomic_write`
+  in `src/p2p/load_or_create_keypair.rs`.

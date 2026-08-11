@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use libp2p::identity::Keypair;
 
@@ -9,6 +10,18 @@ fn identity_file_path(dir_override: Option<PathBuf>) -> Option<PathBuf> {
     }
     std::env::var_os("HOME")
         .map(|home| PathBuf::from(home).join(".local/share/bevy_freenet/identity.bin"))
+}
+
+// needed helper:
+/// Writes to a temp file in the same directory and renames it over `path`, so a concurrent reader
+/// sees either the previous complete file or the new complete file — never a partial one. This is
+/// what stops a reader from observing a half-written identity and spuriously regenerating.
+fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let tmp_path = path.with_extension("tmp");
+    let mut file = std::fs::File::create(&tmp_path)?;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    std::fs::rename(&tmp_path, path)
 }
 
 pub fn load_or_create_keypair(dir_override: Option<PathBuf>) -> Keypair {
@@ -43,7 +56,7 @@ pub fn load_or_create_keypair(dir_override: Option<PathBuf>) -> Keypair {
                 tracing::warn!(target: "p2p", ?path, error = %e, "failed to create identity dir");
                 return keypair;
             }
-            if let Err(e) = std::fs::write(&path, bytes) {
+            if let Err(e) = atomic_write(&path, &bytes) {
                 tracing::warn!(target: "p2p", ?path, error = %e, "failed to persist identity");
             }
         }
@@ -56,6 +69,7 @@ pub fn load_or_create_keypair(dir_override: Option<PathBuf>) -> Keypair {
 mod tests {
     use libp2p::identity::Keypair;
 
+    use super::atomic_write;
     use super::load_or_create_keypair;
 
     #[test]
@@ -84,10 +98,10 @@ mod tests {
         std::fs::remove_dir_all(&dir_b).ok();
     }
 
-    /// Diagnostic for BUG_1.md Cause 1b: a concurrent reader must never observe a partially-written
-    /// identity file and regenerate, otherwise the on-disk identity flips mid-run. Red against the
-    /// current read-check-then-write `fs::write`; goes green once the write is made atomic
-    /// (write-to-temp + rename).
+    /// Regression test for BUG_1.md Cause 1b: a concurrent reader must never observe a
+    /// partially-written identity file and regenerate, otherwise the on-disk identity flips
+    /// mid-run. The writer uses the same atomic write path as `load_or_create_keypair`, so this
+    /// turns red if `atomic_write` is ever reverted to a plain truncate-then-write `fs::write`.
     #[test]
     fn concurrent_reads_see_a_stable_on_disk_identity() {
         let dir = std::env::temp_dir().join(format!("bevy_freenet_race_{}", std::process::id()));
@@ -97,14 +111,14 @@ mod tests {
         let stable = load_or_create_keypair(Some(dir.clone()));
         let stable_bytes = stable.to_protobuf_encoding().unwrap();
         let expected = stable.public().to_peer_id();
-        std::fs::write(&path, &stable_bytes).unwrap();
+        atomic_write(&path, &stable_bytes).unwrap();
 
         let writer = {
             let path = path.clone();
             let bytes = stable_bytes.clone();
             std::thread::spawn(move || {
                 for _ in 0..5000 {
-                    std::fs::write(&path, &bytes).ok();
+                    atomic_write(&path, &bytes).ok();
                 }
             })
         };
