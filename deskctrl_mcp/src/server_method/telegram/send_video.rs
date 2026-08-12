@@ -41,6 +41,7 @@ pub async fn send_video(
 #[cfg(test)]
 mod tests {
     use crate::Error;
+    use crate::test_support;
 
     #[tokio::test]
     async fn test_usage() {
@@ -52,8 +53,8 @@ mod tests {
     /// it, echoing a `video` object back in Telegram's response.
     #[tokio::test]
     async fn test_usage_live_send_video() {
-        let (token, chat_id) = crate::test_support::live_telegram_creds();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        let (token, chat_id) = test_support::live_telegram_creds();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let path = format!("/tmp/deskctrl-mcp-send-video-{}.mp4", std::process::id());
         let ok = std::process::Command::new("ffmpeg")

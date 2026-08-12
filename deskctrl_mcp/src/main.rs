@@ -1,6 +1,8 @@
 pub mod click_params;
 pub mod error;
 pub mod error_method;
+pub mod keyboard_input;
+pub mod keyboard_key;
 pub mod output_buffer;
 pub mod output_buffer_method;
 pub mod process_handle;
@@ -30,6 +32,8 @@ mod server_write_stdin;
 
 pub use click_params::ClickParams;
 pub use error::Error;
+pub use keyboard_input::KeyboardInput;
+pub use keyboard_key::KeyboardKey;
 pub use output_buffer::OutputBuffer;
 pub use process_handle::ProcessHandle;
 pub use process_map::ProcessMap;

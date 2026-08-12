@@ -108,6 +108,7 @@ pub async fn spawn_process(
 
 #[cfg(test)]
 mod tests {
+    use crate::server_method;
     use std::{
         collections::HashMap,
         sync::{Arc, atomic::AtomicU32},
@@ -132,6 +133,6 @@ mod tests {
         let result = spawn_process(&processes, &next_id, params).await;
         assert!(result.is_ok());
         assert!(processes.lock().await.contains_key(&1));
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 }

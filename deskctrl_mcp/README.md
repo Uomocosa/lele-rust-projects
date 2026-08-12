@@ -88,7 +88,7 @@ session start.
 | `list_windows` | Open desktop windows: window id, owning pid, geometry, title. Backed by `wmctrl -l -p -G`. |
 | `screenshot` | Whole screen with no arguments; one window with `window_id`, `pid`, or `title`. |
 | `click_window` | Click inside a window at window-relative coordinates. |
-| `send_keys` | Type literal text or press named keys/shortcuts into a window (XTEST). |
+| `send_keys` | Send a deliberate sequence of keyboard inputs (tap / hold / chord / delay / text) into a window (XTEST). |
 | `list_processes` | **Not** windows — only the subprocesses this server spawned. |
 | `spawn_process` / `read_output` / `write_stdin` / `kill_process` | Managed subprocess control. |
 | `wait_for_output` | Block until a spawned process prints a line containing a substring. |
@@ -113,7 +113,7 @@ messages** to Telegram as you work, plus a session-start banner and a session-en
     or it auto-describes the click.
   - `send_keys` sends a text message — pass `note` (e.g.
     `"typing 'ls' in xterm, expected in the image: the prompt shows the typed command"`),
-    or it auto-describes the typed text / pressed keys.
+    or it auto-describes the input plan.
   - `spawn` / `write_stdin` / `kill` send an auto template from their arguments.
 - The `send_to_telegram` flag is how the agent keeps the feed from flooding: leave it `true` only
   for steps with visible impact, set it `false` for routine/read-only calls (`list_windows`,
@@ -141,15 +141,29 @@ the root, so an overlapping window would otherwise swallow the click) — this s
 space and fails silently.
 
 `send_keys` types into the window that is focused after raising, with the same steal-focus caveat.
-Pass exactly one of:
-- `text` — printable ASCII typed character by character (`\n` is Enter, `\t` is Tab). The
-  keymap is read live from the X server, so shifted characters (`A`, `!`) and the letters' exact
-  physical positions follow the current keyboard layout.
-- `keys` — one chord of names joined with `+`, e.g. `Ctrl+A`, `Alt+Tab`, `Ctrl+Shift+Esc`,
-  `F5`. Modifiers: `Ctrl`, `Shift`, `Alt`, `Super`, `Meta`. Named keys: `Enter`, `Tab`,
-  `BackSpace`, `Escape`, `Delete`, `Insert`, `Home`, `End`, `PageUp`, `PageDown`, the arrows,
-  `Space`, `F1`–`F12`, or a single printable ASCII character. Letters in a chord are unshifted,
-  so `Ctrl+A` means control-a.
+It takes `window_id` plus `inputs`, a non-empty ordered list of deliberate keyboard actions. Each
+element is one of:
+
+- `tap` — `{ "type": "tap", "key": "a" }`. Press and release one key.
+- `hold` — `{ "type": "hold", "key": "d", "duration_ms": 1000 }`. Press a key and keep it down
+  for the duration, then release. X keyboard auto-repeat turns a long hold into repeated
+  characters, so this is how you type "a run of d's" — never spell out `dddddd…`.
+- `chord` — `{ "type": "chord", "keys": ["ctrl", "shift", "esc"] }`. Press several keys together
+  and release them all at once. Names are case-insensitive.
+- `delay` — `{ "type": "delay", "duration_ms": 300 }`. Wait without sending any keys.
+- `text` — `{ "type": "text", "text": "ls\n" }`. Literal printable ASCII typed character by
+  character (`\n` is Enter, `\t` is Tab).
+
+A `key` is a modifier (`Ctrl`/`Control`, `Shift`, `Alt`, `Super`/`Win`, `Meta`), a named key
+(`Enter`/`Return`, `Tab`, `BackSpace`, `Escape`/`Esc`, `Delete`/`Del`, `Insert`/`Ins`, `Home`,
+`End`, `PageUp`, `PageDown`, the arrows, `Space`, `F1`–`F12`), or a single printable ASCII
+character.
+
+Sending is **deliberate and bounded**: the whole sequence is validated before any key is pressed,
+the plan is capped (a few thousand units / at most 120 s of holds+delays), and any keys held by a
+`chord`/`hold` are always released — even if a later step errors — so a stuck modifier can never
+hang the desktop. Non-ASCII text errors — send Unicode through the clipboard instead. Screenshot
+the window afterwards to confirm the text landed.
 
 ### Waiting on a slow process
 

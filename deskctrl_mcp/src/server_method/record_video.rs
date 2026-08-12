@@ -66,6 +66,7 @@ async fn stop_and_send(
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support;
     use std::sync::Arc;
 
     use crate::{Error, RecordVideoParams};
@@ -91,8 +92,8 @@ mod tests {
     async fn test_usage_live_display() {
         use std::fs;
 
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let recording = Arc::new(tokio::sync::Mutex::new(None));
         let start = RecordVideoParams {

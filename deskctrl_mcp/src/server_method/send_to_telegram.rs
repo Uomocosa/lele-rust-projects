@@ -40,6 +40,7 @@ pub async fn send_to_telegram(
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support;
     use crate::{Error, SendToTelegramParams};
 
     #[tokio::test]
@@ -56,8 +57,8 @@ mod tests {
     /// Sends a real message via the full send_to_telegram path.
     #[tokio::test]
     async fn test_usage_live_send() {
-        let (token, chat_id) = crate::test_support::live_telegram_creds();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        let (token, chat_id) = test_support::live_telegram_creds();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let params = SendToTelegramParams {
             text: Some("deskctrl_mcp live test: send_to_telegram OK".to_string()),
@@ -76,8 +77,8 @@ mod tests {
     /// send_to_telegram path and asserts the summary reports both photo and caption.
     #[tokio::test]
     async fn test_usage_live_send_photo() {
-        let (token, chat_id) = crate::test_support::live_telegram_creds();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        let (token, chat_id) = test_support::live_telegram_creds();
+        let _guard = test_support::live_test_lock().lock().await;
 
         // 1x1 red PNG, base64-encoded — a real caller sends exactly this shape.
         let photo_base64 = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAIAAAD/gAIDAAAA6klEQVR4nO3QQQ3AIADAQEAX/oMsLKwvsuROQdN59h58s14H/IlZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVmBWYFZgVnBBWW/AghGbV2gAAAAAElFTkSuQmCC".to_string();

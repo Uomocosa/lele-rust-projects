@@ -23,7 +23,7 @@ pub async fn spawn_process(server: &Server, params: SpawnParams) -> Result<CallT
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{Server, SpawnParams};
+    use crate::{Server, SpawnParams, server_method};
 
     #[tokio::test]
     async fn test_usage() {
@@ -38,8 +38,6 @@ mod tests {
         let result = super::spawn_process(&server, params).await;
         assert!(result.is_ok());
         assert!(server.processes.lock().await.contains_key(&1));
-        crate::server_method::kill_process(&server.processes, 1)
-            .await
-            .ok();
+        server_method::kill_process(&server.processes, 1).await.ok();
     }
 }

@@ -270,6 +270,7 @@ fn try_raise_and_crop(window: &WindowInfo, path: &str) -> Result<bool, String> {
 mod tests {
     use super::png_size;
     use crate::ScreenshotParams;
+    use crate::test_support;
 
     #[test]
     fn test_usage() {
@@ -296,8 +297,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_usage_live_display() {
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let result = super::screenshot(ScreenshotParams::default(), None, None, None, true).await;
         assert!(result.is_ok());
@@ -307,8 +308,8 @@ mod tests {
     /// size.
     #[tokio::test]
     async fn test_usage_live_window_capture() {
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let mut child = std::process::Command::new("xterm")
             .spawn()

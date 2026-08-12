@@ -202,6 +202,30 @@ causes above and give same-machine play a deterministic bypass for Cause 2.
   pubkey hex in `start_embedded_node`; Get→Found/NotFound and each Update/Put in `setup_contract`;
   and every received roster `UpdateNotification` (with entry count) in `connect_client_loop`.
 
+## Verification (2026-08-11, independent re-check)
+
+Re-ran everything above from a clean read of the code, rather than trusting the commit messages:
+
+- `cargo test --lib` in the main crate: 50/50 pass, including
+  `p2p::load_or_create_keypair::tests::concurrent_reads_see_a_stable_on_disk_identity` — confirmed
+  green (was red before the `atomic_write` fix).
+- `cargo test --test local_two_node_production_sync` in `testing/`: 1/1 pass, converged in ~5s —
+  matches the commit's claim.
+- Live check via two real `bevy_freenet` processes (deskctrl MCP, not the test harness): spawned one
+  with `--freenet-local --identity-dir /tmp/bevy_freenet_mcp_a`, read its logged dial string
+  (`embedded node ready; dial as ...`), spawned a second with `--freenet-gateway <that string>
+  --identity-dir /tmp/bevy_freenet_mcp_b`. Both processes' logs show `received roster
+  UpdateNotification entries=2` and screenshots of both windows show 2 boxes each — roster
+  convergence reproduced outside the test harness too. (Separately noticed: the camera doesn't
+  track the local box, so a burst of movement input can push a box off the fixed 1280×720 viewport
+  and make it look like it "vanished" — that's a rendering/camera limitation, unrelated to roster
+  sync, and out of scope for this bug.)
+
+Conclusion: both fixes hold up under independent re-verification. Cause 1b is closed. Cause 2's
+mitigation (local gateway wiring) works as designed for same-machine play; the underlying mainnet
+discovery unreliability is unchanged and remains tracked by the red `e2e_three_node_production_sync`
+test.
+
 ## Possible next steps for Cause 2
 
 - Give `start_embedded_node` an optional explicit local-gateway wiring path

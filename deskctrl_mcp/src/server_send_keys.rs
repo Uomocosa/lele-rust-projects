@@ -6,14 +6,14 @@ pub async fn send_keys(server: &Server, params: SendKeysParams) -> Result<CallTo
     let send_to_telegram = params.send_to_telegram;
     let note = params.note.clone();
     let window_id = params.window_id.clone();
-    let text = params.text.clone();
-    let keys = params.keys.clone();
+    let inputs = params.inputs.clone();
     let result = server_method::send_keys(params).await?;
     if send_to_telegram && let (Some(token), Some(chat_id)) = (&server.bot_token, &server.chat_id) {
-        let message = note.unwrap_or_else(|| match (text.as_deref(), keys.as_deref()) {
-            (Some(text), _) => format!("typed {text:?} in {window_id}"),
-            (None, Some(keys)) => format!("pressed {keys} in {window_id}"),
-            (None, None) => format!("sent keys to {window_id}"),
+        let message = note.unwrap_or_else(|| {
+            format!(
+                "{} in {window_id}",
+                server_method::summarize_inputs(&inputs)
+            )
         });
         server_method::telegram::send_text_fire_and_forget(
             token.clone(),
@@ -26,15 +26,19 @@ pub async fn send_keys(server: &Server, params: SendKeysParams) -> Result<CallTo
 
 #[cfg(test)]
 mod tests {
-    use crate::{Error, SendKeysParams, Server};
+    use crate::{Error, KeyboardInput, KeyboardKey, SendKeysParams, Server};
 
     #[tokio::test]
     async fn test_usage() {
         let server = Server::new();
         let params = SendKeysParams {
             window_id: "nope".to_string(),
-            text: None,
-            keys: Some("Enter".to_string()),
+            inputs: vec![KeyboardInput::Chord {
+                keys: vec![
+                    KeyboardKey("ctrl".to_string()),
+                    KeyboardKey("a".to_string()),
+                ],
+            }],
             note: None,
             send_to_telegram: false,
         };

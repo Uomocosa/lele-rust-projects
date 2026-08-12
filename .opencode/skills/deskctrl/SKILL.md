@@ -65,21 +65,28 @@ empty space and fails silently.
 
 ## Typing / send_keys
 
-`send_keys` types into the window focused after raising (same steal-focus
-rule as clicking). Pass `window_id` plus **exactly one** of:
+`send_keys` types into the window focused after raising (same steal-focus rule as clicking).
+Pass `window_id` plus `inputs`, a non-empty ordered list of deliberate keyboard actions. Each
+element is one of:
 
-- `text` — printable ASCII typed character by character; `\n` is Enter,
-  `\t` is Tab. The keymap is read live from the X server, so shifted
-  characters (`A`, `!`) follow the current keyboard layout.
-- `keys` — one chord of names joined with `+`, e.g. `Ctrl+A`, `Alt+Tab`,
-  `Ctrl+Shift+Esc`, `F5`. Modifiers: `Ctrl`, `Shift`, `Alt`, `Super`,
-  `Meta`. Named keys: `Enter`, `Tab`, `BackSpace`, `Escape`, `Delete`,
-  `Insert`, `Home`, `End`, `PageUp`, `PageDown`, arrows, `Space`,
-  `F1`–`F12`, or a single printable ASCII character. Letters in a chord
-  are unshifted, so `Ctrl+A` means control-a.
+- `tap` — `{"type":"tap","key":"a"}` — press and release one key.
+- `hold` — `{"type":"hold","key":"d","duration_ms":1000}` — press a key and keep it down for the
+  duration, then release. Auto-repeat turns a long hold into repeated characters, so **use this
+  for "a run of d's" — never spell out `dddddd…`**.
+- `chord` — `{"type":"chord","keys":["ctrl","shift","esc"]}` — press several keys together and
+  release them all at once. Names are case-insensitive.
+- `delay` — `{"type":"delay","duration_ms":300}` — wait without sending keys.
+- `text` — `{"type":"text","text":"ls\n"}` — literal printable ASCII typed character by
+  character (`\n` is Enter, `\t` is Tab). The keymap is read live from the X server, so shifted
+  characters (`A`, `!`) follow the current layout.
 
-Non-ASCII text errors — send Unicode through the clipboard instead.
-Screenshot the window afterwards to confirm the text landed.
+A `key` is a modifier (`Ctrl`, `Shift`, `Alt`, `Super`, `Meta`), a named key (`Enter`, `Tab`,
+`BackSpace`, `Escape`, `Delete`, `Insert`, `Home`, `End`, `PageUp`, `PageDown`, arrows,
+`Space`, `F1`–`F12`), or a single printable ASCII character (letters are unshifted, so
+`ctrl` + `a` means control-a).
+
+Non-ASCII text errors — send Unicode through the clipboard instead. Screenshot the window
+afterwards to confirm the text landed.
 
 ## Process Management
 

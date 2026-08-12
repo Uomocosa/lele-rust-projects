@@ -1,12 +1,10 @@
 use libp2p::identity::Keypair;
 
+use super::peer_id_to_player_id;
 use crate::boxes;
 
 pub fn derive_player_id(keypair: &Keypair) -> boxes::PlayerId {
-    let bytes = keypair.public().to_peer_id().to_bytes();
-    let mut id_bytes = [0u8; 8];
-    id_bytes.copy_from_slice(&bytes[..8]);
-    boxes::PlayerId(u64::from_be_bytes(id_bytes))
+    peer_id_to_player_id(&keypair.public().to_peer_id())
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+use crate::output_buffer_method;
+
 /// Append-only transcript of a process's output, plus the `read_output` cursor.
 ///
 /// Kept append-only so `wait_for_output` can scan output that `read_output` already returned —
@@ -19,9 +21,9 @@ pub const MAX_BYTES: usize = 4 * 1024 * 1024;
 
 #[rustfmt::skip]
 impl OutputBuffer {
-    pub fn push(&mut self, line: &str) { crate::output_buffer_method::push(self, line) }
-    pub fn take_new(&mut self) -> String { crate::output_buffer_method::take_new(self) }
-    pub fn find_line(&self, pattern: &str) -> Option<String> { crate::output_buffer_method::find_line(self, pattern) }
+    pub fn push(&mut self, line: &str) { output_buffer_method::push(self, line) }
+    pub fn take_new(&mut self) -> String { output_buffer_method::take_new(self) }
+    pub fn find_line(&self, pattern: &str) -> Option<String> { output_buffer_method::find_line(self, pattern) }
     pub fn end(&self) -> usize { self.dropped + self.text.len() }
 }
 

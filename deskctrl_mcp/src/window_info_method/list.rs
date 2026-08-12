@@ -35,10 +35,11 @@ fn run() -> Result<Vec<WindowInfo>, Error> {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support;
     #[test]
     fn test_usage_live_display() {
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().blocking_lock();
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().blocking_lock();
 
         assert!(super::list().is_ok());
     }

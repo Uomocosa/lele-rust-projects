@@ -71,6 +71,6 @@ mod tests {
         .await;
         let text = format!("{:?}", echoed.ok());
         assert!(text.contains("ping-stdin"));
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 }

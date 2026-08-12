@@ -1,3 +1,5 @@
+use crate::window_info_method;
+
 /// A single open desktop window, as reported by `wmctrl -l -p -G`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowInfo {
@@ -17,7 +19,7 @@ pub struct WindowInfo {
 
 #[rustfmt::skip]
 impl WindowInfo {
-    pub fn geometry(&self) -> String { crate::window_info_method::geometry(self) }
+    pub fn geometry(&self) -> String { window_info_method::geometry(self) }
 }
 
 #[cfg(test)]

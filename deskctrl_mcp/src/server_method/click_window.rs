@@ -67,6 +67,7 @@ pub async fn click_window(params: ClickParams) -> Result<CallToolResult, Error> 
 #[cfg(test)]
 mod tests {
     use super::click_window;
+    use crate::test_support;
     use crate::{ClickParams, Error};
 
     #[tokio::test]
@@ -102,8 +103,8 @@ mod tests {
     async fn test_usage_live_display() {
         use crate::window_info_method;
 
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let mut child = std::process::Command::new("xterm")
             .spawn()

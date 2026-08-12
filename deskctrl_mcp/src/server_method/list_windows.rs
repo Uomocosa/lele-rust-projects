@@ -28,10 +28,11 @@ pub async fn list_windows() -> Result<CallToolResult, Error> {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support;
     #[tokio::test]
     async fn test_usage_live_display() {
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let result = super::list_windows().await.unwrap();
         let text = format!("{result:?}");

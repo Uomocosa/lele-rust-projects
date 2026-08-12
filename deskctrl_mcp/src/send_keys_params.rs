@@ -1,17 +1,18 @@
 use serde::Deserialize;
 
+use crate::KeyboardInput;
+
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct SendKeysParams {
     /// X11 window id from list_windows, e.g. "0x03a00004".
     pub window_id: String,
-    /// Literal text to type into the focused window, character by character. "\n" is Enter,
-    /// "\t" is Tab. Provide exactly one of text or keys.
+    /// A deliberate, bounded sequence of keyboard inputs to send, in order. Each element is one
+    /// of: tap (press+release a key), hold (press a key and keep it down for duration_ms, e.g. to
+    /// get a run of repeated characters), chord (press a set of keys together and release them all
+    /// at once, e.g. ["ctrl","shift","esc"]), delay (pause), or text (literal printable ASCII
+    /// typed character by character; "\n" is Enter, "\t" is Tab). Must be non-empty.
     #[serde(default)]
-    pub text: Option<String>,
-    /// Named keys or shortcuts to press, e.g. "Enter", "Tab", "BackSpace", "Escape", "F5",
-    /// "Ctrl+A", "Alt+Tab", "Ctrl+Shift+Esc". Provide exactly one of text or keys.
-    #[serde(default)]
-    pub keys: Option<String>,
+    pub inputs: Vec<KeyboardInput>,
     /// Optional template for the Telegram message, e.g. "typing 'ls' in xterm, expected in
     /// the image: the prompt shows the typed command". Shown only when `send_to_telegram` is
     /// true and Telegram is configured.
@@ -33,10 +34,12 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let params: SendKeysParams =
-            serde_json::from_str(r#"{"window_id":"0x03a00004","keys":"Ctrl+A"}"#).unwrap();
-        assert_eq!(params.keys.as_deref(), Some("Ctrl+A"));
-        assert!(params.text.is_none());
+        let params: SendKeysParams = serde_json::from_str(
+            r#"{"window_id":"0x03a00004","inputs":[{"type":"chord","keys":["ctrl","a"]}]}"#,
+        )
+        .unwrap();
+        assert_eq!(params.window_id, "0x03a00004");
+        assert_eq!(params.inputs.len(), 1);
         assert!(params.send_to_telegram);
         assert!(params.note.is_none());
     }

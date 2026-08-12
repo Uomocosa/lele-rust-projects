@@ -75,6 +75,7 @@ pub async fn send_raw(
 #[cfg(test)]
 mod tests {
     use crate::Error;
+    use crate::test_support;
 
     // needed helper: a real, minimal 1x1 red PNG so live photo tests exercise actual image
     // upload/decoding on Telegram's side rather than a synthetic byte string.
@@ -96,8 +97,8 @@ mod tests {
     /// just "the HTTP call didn't error".
     #[tokio::test]
     async fn test_usage_live_send() {
-        let (token, chat_id) = crate::test_support::live_telegram_creds();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        let (token, chat_id) = test_support::live_telegram_creds();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let text = "deskctrl_mcp live test: send_raw OK";
         let sent = super::send_raw(&token, &chat_id, Some(text), None, None)
@@ -111,8 +112,8 @@ mod tests {
     /// Telegram's response actually contains a photo array and the matching caption text.
     #[tokio::test]
     async fn test_usage_live_send_photo() {
-        let (token, chat_id) = crate::test_support::live_telegram_creds();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        let (token, chat_id) = test_support::live_telegram_creds();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let caption = "deskctrl_mcp live test: send_raw photo OK";
         let sent = super::send_raw(&token, &chat_id, Some(caption), Some(&tiny_png()), None)

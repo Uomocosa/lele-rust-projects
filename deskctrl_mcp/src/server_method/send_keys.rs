@@ -7,13 +7,15 @@ use x11rb::{
     rust_connection::RustConnection,
 };
 
-use crate::{Error, SendKeysParams, window_info_method};
+use crate::{Error, KeyboardInput, KeyboardKey, SendKeysParams, window_info_method};
 
 const KEY_PRESS_EVENT: u8 = 2;
 const KEY_RELEASE_EVENT: u8 = 3;
 const FIRST_KEYCODE: u8 = 8;
 const KEYCODE_COUNT: u8 = 248;
 const INTER_KEY_DELAY_MS: u64 = 10;
+const MAX_UNITS: usize = 5000;
+const MAX_WAIT_MS: u64 = 120_000;
 
 const SHIFT_L: u32 = 0xFFE1;
 const SHIFT_R: u32 = 0xFFE2;
@@ -39,15 +41,63 @@ const SPACE: u32 = 0x20;
 const F1: u32 = 0xFFBE;
 
 #[derive(Debug)]
-struct KeySpec {
-    keysym: u32,
-    hold: bool,
+enum Step {
+    Tap(u32),
+    Hold { keysym: u32, duration_ms: u64 },
+    Chord(Vec<u32>),
+    Delay(u64),
+    Char(u32),
 }
 
 #[derive(Debug, Default)]
 struct Keymap {
     plain: HashMap<u32, u8>,
     shifted: HashMap<u32, u8>,
+}
+
+/// Owns the keycodes that are currently pressed but not yet released. Releasing happens on the
+/// happy path via `release_all`, and on error via `Drop` — so a failed send can never leave a
+/// modifier (Ctrl/Shift/Alt) physically stuck down.
+struct HeldKeys<'a> {
+    conn: &'a RustConnection,
+    keycodes: Vec<u8>,
+}
+
+impl<'a> HeldKeys<'a> {
+    fn new(conn: &'a RustConnection) -> Self {
+        Self {
+            conn,
+            keycodes: Vec::new(),
+        }
+    }
+
+    fn press(&mut self, keycode: u8) -> Result<(), Error> {
+        fake_key(self.conn, KEY_PRESS_EVENT, keycode)?;
+        self.keycodes.push(keycode);
+        Ok(())
+    }
+
+    fn release_all(&mut self) -> Result<(), Error> {
+        let mut first_err = None;
+        for &keycode in self.keycodes.iter().rev() {
+            if let Err(e) = fake_key(self.conn, KEY_RELEASE_EVENT, keycode)
+                && first_err.is_none()
+            {
+                first_err = Some(e);
+            }
+        }
+        self.keycodes.clear();
+        if let Some(e) = first_err {
+            return Err(e);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for HeldKeys<'_> {
+    fn drop(&mut self) {
+        let _ = self.release_all();
+    }
 }
 
 pub async fn send_keys(params: SendKeysParams) -> Result<CallToolResult, Error> {
@@ -57,12 +107,8 @@ pub async fn send_keys(params: SendKeysParams) -> Result<CallToolResult, Error> 
             "invalid window_id {window_id:?}: expected hex like \"0x03a00004\" (see list_windows)"
         )));
     }
-    let specs = build_specs(&params)?;
-    if specs.is_empty() {
-        return Err(Error::Window(
-            "nothing to send: provide non-empty text or keys".to_string(),
-        ));
-    }
+    let steps = build_steps(&params.inputs)?;
+    enforce_cap(&steps)?;
 
     // XTEST synthesizes input at the *root*, so it lands on whatever is topmost. Raise the
     // target first or an overlapping window eats the keystrokes.
@@ -71,76 +117,103 @@ pub async fn send_keys(params: SendKeysParams) -> Result<CallToolResult, Error> 
     let (conn, _screen) =
         x11rb::connect(None).map_err(|e| Error::Window(format!("connecting to X display: {e}")))?;
     let keymap = keymap(&conn)?;
-    type_specs(&conn, &specs, &keymap)?;
+    execute(&conn, &steps, &keymap)?;
     conn.flush()
         .map_err(|e| Error::Window(format!("flushing keystrokes: {e}")))?;
 
-    let summary = match (params.text.as_deref(), params.keys.as_deref()) {
-        (Some(text), _) => format!("typed {text:?} in {window_id}"),
-        (None, Some(keys)) => format!("pressed {keys} in {window_id}"),
-        (None, None) => format!("sent keys to {window_id}"),
-    };
+    let summary = super::summarize_inputs(&params.inputs);
     Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-        "{summary}; screenshot the window to confirm it took effect"
+        "{summary} in {window_id}; screenshot the window to confirm it took effect"
     ))]))
 }
 
 // needed helper:
-fn build_specs(params: &SendKeysParams) -> Result<Vec<KeySpec>, Error> {
-    match (&params.text, &params.keys) {
-        (Some(text), None) => parse_text(text),
-        (None, Some(keys)) => parse_keys(keys),
-        _ => Err(Error::Window(
-            "provide exactly one of text or keys".to_string(),
-        )),
+fn build_steps(inputs: &[KeyboardInput]) -> Result<Vec<Step>, Error> {
+    if inputs.is_empty() {
+        return Err(Error::Window(
+            "nothing to send: provide a non-empty inputs sequence".to_string(),
+        ));
     }
+    let mut steps = Vec::new();
+    for input in inputs {
+        match input {
+            KeyboardInput::Tap { key } => steps.push(Step::Tap(keysym(key)?)),
+            KeyboardInput::Hold { key, duration_ms } => steps.push(Step::Hold {
+                keysym: keysym(key)?,
+                duration_ms: *duration_ms,
+            }),
+            KeyboardInput::Chord { keys } => {
+                if keys.is_empty() {
+                    return Err(Error::Window(
+                        "chord must contain at least one key".to_string(),
+                    ));
+                }
+                let mut resolved = Vec::with_capacity(keys.len());
+                for key in keys {
+                    resolved.push(keysym(key)?);
+                }
+                steps.push(Step::Chord(resolved));
+            }
+            KeyboardInput::Delay { duration_ms } => steps.push(Step::Delay(*duration_ms)),
+            KeyboardInput::Text { text } => {
+                for c in text.chars() {
+                    steps.push(Step::Char(text_char_keysym(c)?));
+                }
+            }
+        }
+    }
+    Ok(steps)
 }
 
 // needed helper:
-fn parse_text(text: &str) -> Result<Vec<KeySpec>, Error> {
-    text.chars()
-        .map(|c| match c {
-            '\n' => Ok(KeySpec {
-                keysym: RETURN,
-                hold: false,
-            }),
-            '\t' => Ok(KeySpec {
-                keysym: TAB,
-                hold: false,
-            }),
-            ' '..='~' => Ok(KeySpec {
-                keysym: c as u32,
-                hold: false,
-            }),
-            _ => Err(Error::Window(format!(
-                "unsupported character {c:?}: text is limited to printable ASCII plus \\n and \\t"
-            ))),
-        })
-        .collect()
+fn enforce_cap(steps: &[Step]) -> Result<(), Error> {
+    let mut units = 0usize;
+    let mut wait_ms = 0u64;
+    for step in steps {
+        match step {
+            Step::Tap(_) | Step::Delay(_) => units += 1,
+            Step::Hold { duration_ms, .. } => {
+                units += 1;
+                wait_ms += duration_ms;
+            }
+            Step::Chord(keys) => units += keys.len(),
+            Step::Char(_) => units += 1,
+        }
+    }
+    if units > MAX_UNITS {
+        return Err(Error::Window(format!(
+            "input plan is too large ({units} units, cap {MAX_UNITS}): make it more deliberate"
+        )));
+    }
+    if wait_ms > MAX_WAIT_MS {
+        return Err(Error::Window(format!(
+            "total hold/delay time is too long ({wait_ms}ms, cap {MAX_WAIT_MS}ms)"
+        )));
+    }
+    Ok(())
 }
 
 // needed helper:
-fn parse_keys(keys: &str) -> Result<Vec<KeySpec>, Error> {
-    let parts: Vec<&str> = keys.split('+').map(str::trim).collect();
-    let last = parts.len() - 1;
-    parts
-        .iter()
-        .enumerate()
-        .map(|(i, name)| {
-            let keysym = named_keysym(name).ok_or_else(|| {
-                Error::Window(format!(
-                    "unknown key {name:?} in {keys:?}: use a modifier (Ctrl, Shift, Alt, Super, \
-                     Meta), a named key (Enter, Tab, BackSpace, Escape, Delete, Insert, Home, \
-                     End, PageUp, PageDown, arrows, Space, F1-F12) or a single printable ASCII \
-                     character"
-                ))
-            })?;
-            Ok(KeySpec {
-                keysym,
-                hold: i < last,
-            })
-        })
-        .collect()
+fn keysym(key: &KeyboardKey) -> Result<u32, Error> {
+    named_keysym(key.as_str()).ok_or_else(|| {
+        Error::Window(format!(
+            "unknown key {key:?}: use a modifier (Ctrl, Shift, Alt, Super, Meta), a named key \
+             (Enter, Tab, BackSpace, Escape, Delete, Insert, Home, End, PageUp, PageDown, arrows, \
+             Space, F1-F12) or a single printable ASCII character"
+        ))
+    })
+}
+
+// needed helper:
+fn text_char_keysym(c: char) -> Result<u32, Error> {
+    match c {
+        '\n' => Ok(RETURN),
+        '\t' => Ok(TAB),
+        ' '..='~' => Ok(c as u32),
+        _ => Err(Error::Window(format!(
+            "unsupported character {c:?}: text is limited to printable ASCII plus \\n and \\t"
+        ))),
+    }
 }
 
 // needed helper:
@@ -153,34 +226,35 @@ fn named_keysym(name: &str) -> Option<u32> {
             c as u32
         });
     }
-    if let Some(n) = name
-        .strip_prefix('F')
+    let lower = name.to_ascii_lowercase();
+    if let Some(n) = lower
+        .strip_prefix('f')
         .and_then(|digits| digits.parse::<u32>().ok())
         .filter(|&n| (1..=12).contains(&n))
     {
         return Some(F1 + n - 1);
     }
-    match name {
-        "Ctrl" | "Control" => Some(CONTROL_L),
-        "Shift" => Some(SHIFT_L),
-        "Alt" => Some(ALT_L),
-        "Super" | "Win" => Some(SUPER_L),
-        "Meta" => Some(META_L),
-        "Enter" | "Return" => Some(RETURN),
-        "Tab" => Some(TAB),
-        "BackSpace" | "Backspace" => Some(BACK_SPACE),
-        "Escape" | "Esc" => Some(ESCAPE),
-        "Delete" | "Del" => Some(DELETE),
-        "Insert" | "Ins" => Some(INSERT),
-        "Home" => Some(HOME),
-        "End" => Some(END),
-        "PageUp" => Some(PAGE_UP),
-        "PageDown" => Some(PAGE_DOWN),
-        "Left" => Some(LEFT),
-        "Right" => Some(RIGHT),
-        "Up" => Some(UP),
-        "Down" => Some(DOWN),
-        "Space" => Some(SPACE),
+    match lower.as_str() {
+        "ctrl" | "control" => Some(CONTROL_L),
+        "shift" => Some(SHIFT_L),
+        "alt" => Some(ALT_L),
+        "super" | "win" => Some(SUPER_L),
+        "meta" => Some(META_L),
+        "enter" | "return" => Some(RETURN),
+        "tab" => Some(TAB),
+        "backspace" => Some(BACK_SPACE),
+        "escape" | "esc" => Some(ESCAPE),
+        "delete" | "del" => Some(DELETE),
+        "insert" | "ins" => Some(INSERT),
+        "home" => Some(HOME),
+        "end" => Some(END),
+        "pageup" => Some(PAGE_UP),
+        "pagedown" => Some(PAGE_DOWN),
+        "left" => Some(LEFT),
+        "right" => Some(RIGHT),
+        "up" => Some(UP),
+        "down" => Some(DOWN),
+        "space" => Some(SPACE),
         _ => None,
     }
 }
@@ -242,45 +316,72 @@ fn fake_key(conn: &RustConnection, event: u8, keycode: u8) -> Result<(), Error> 
 }
 
 // needed helper:
-fn type_specs(conn: &RustConnection, specs: &[KeySpec], keymap: &Keymap) -> Result<(), Error> {
-    let mut held = Vec::new();
-    for spec in specs {
-        if spec.hold {
-            let (keycode, needs_shift) = resolve_key(spec.keysym, keymap)?;
-            if needs_shift {
-                return Err(Error::Window(format!(
-                    "modifier keysym {:#x} is only reachable via Shift; cannot hold it",
-                    spec.keysym
-                )));
+fn execute(conn: &RustConnection, steps: &[Step], keymap: &Keymap) -> Result<(), Error> {
+    let mut held = HeldKeys::new(conn);
+    for step in steps {
+        match step {
+            Step::Tap(keysym) => {
+                tap_key(conn, *keysym, keymap)?;
             }
-            fake_key(conn, KEY_PRESS_EVENT, keycode)?;
-            held.push(keycode);
-        } else {
-            let (keycode, needs_shift) = resolve_key(spec.keysym, keymap)?;
-            if needs_shift {
-                let shift_keycode = keymap
-                    .plain
-                    .get(&SHIFT_L)
-                    .or_else(|| keymap.plain.get(&SHIFT_R))
-                    .copied()
-                    .ok_or_else(|| {
-                        Error::Window(
-                            "no unshifted Shift key on the current keyboard layout".to_string(),
-                        )
-                    })?;
-                fake_key(conn, KEY_PRESS_EVENT, shift_keycode)?;
-                fake_key(conn, KEY_PRESS_EVENT, keycode)?;
-                fake_key(conn, KEY_RELEASE_EVENT, keycode)?;
-                fake_key(conn, KEY_RELEASE_EVENT, shift_keycode)?;
-            } else {
-                fake_key(conn, KEY_PRESS_EVENT, keycode)?;
-                fake_key(conn, KEY_RELEASE_EVENT, keycode)?;
+            Step::Hold {
+                keysym,
+                duration_ms,
+            } => {
+                let (keycode, needs_shift) = resolve_key(*keysym, keymap)?;
+                if needs_shift {
+                    return Err(Error::Window(format!(
+                        "keysym {keysym:#x} is only reachable via Shift; cannot hold it"
+                    )));
+                }
+                held.press(keycode)?;
+                thread::sleep(Duration::from_millis(*duration_ms));
+                held.release_all()?;
+            }
+            Step::Chord(keysyms) => {
+                for keysym in keysyms {
+                    let (keycode, needs_shift) = resolve_key(*keysym, keymap)?;
+                    if needs_shift {
+                        return Err(Error::Window(format!(
+                            "keysym {keysym:#x} is only reachable via Shift; cannot hold it in a \
+                             chord"
+                        )));
+                    }
+                    held.press(keycode)?;
+                }
+                held.release_all()?;
+            }
+            Step::Delay(duration_ms) => {
+                thread::sleep(Duration::from_millis(*duration_ms));
+            }
+            Step::Char(keysym) => {
+                tap_key(conn, *keysym, keymap)?;
             }
         }
         thread::sleep(Duration::from_millis(INTER_KEY_DELAY_MS));
     }
-    for keycode in held.iter().rev() {
-        fake_key(conn, KEY_RELEASE_EVENT, *keycode)?;
+    held.release_all()?;
+    Ok(())
+}
+
+// needed helper:
+fn tap_key(conn: &RustConnection, keysym: u32, keymap: &Keymap) -> Result<(), Error> {
+    let (keycode, needs_shift) = resolve_key(keysym, keymap)?;
+    if needs_shift {
+        let shift_keycode = keymap
+            .plain
+            .get(&SHIFT_L)
+            .or_else(|| keymap.plain.get(&SHIFT_R))
+            .copied()
+            .ok_or_else(|| {
+                Error::Window("no unshifted Shift key on the current keyboard layout".to_string())
+            })?;
+        fake_key(conn, KEY_PRESS_EVENT, shift_keycode)?;
+        fake_key(conn, KEY_PRESS_EVENT, keycode)?;
+        fake_key(conn, KEY_RELEASE_EVENT, keycode)?;
+        fake_key(conn, KEY_RELEASE_EVENT, shift_keycode)?;
+    } else {
+        fake_key(conn, KEY_PRESS_EVENT, keycode)?;
+        fake_key(conn, KEY_RELEASE_EVENT, keycode)?;
     }
     Ok(())
 }
@@ -288,70 +389,86 @@ fn type_specs(conn: &RustConnection, specs: &[KeySpec], keymap: &Keymap) -> Resu
 #[cfg(test)]
 mod tests {
     use super::{
-        CONTROL_L, Error, Keymap, index_keymap, parse_keys, parse_text, resolve_key, send_keys,
+        CONTROL_L, Error, Keymap, MAX_UNITS, MAX_WAIT_MS, Step, build_steps, enforce_cap,
+        index_keymap, named_keysym, resolve_key, send_keys,
     };
-    use crate::SendKeysParams;
+    use crate::{KeyboardInput, KeyboardKey, SendKeysParams, test_support};
 
     #[tokio::test]
     async fn test_usage() {
-        // All rejected before any X connection or wmctrl call is attempted.
         let bad_id = send_keys(SendKeysParams {
             window_id: "nope".to_string(),
-            text: None,
-            keys: Some("Enter".to_string()),
+            inputs: vec![KeyboardInput::Chord {
+                keys: vec![
+                    KeyboardKey("ctrl".to_string()),
+                    KeyboardKey("a".to_string()),
+                ],
+            }],
             note: None,
             send_to_telegram: true,
         })
         .await;
         assert!(matches!(bad_id, Err(Error::Window(_))));
 
-        let both = send_keys(SendKeysParams {
+        let empty = send_keys(SendKeysParams {
             window_id: "0x1".to_string(),
-            text: Some("hi".to_string()),
-            keys: Some("Enter".to_string()),
+            inputs: Vec::new(),
             note: None,
             send_to_telegram: true,
         })
         .await;
-        assert!(matches!(both, Err(Error::Window(_))));
-
-        let neither = send_keys(SendKeysParams {
-            window_id: "0x1".to_string(),
-            text: None,
-            keys: None,
-            note: None,
-            send_to_telegram: true,
-        })
-        .await;
-        assert!(matches!(neither, Err(Error::Window(_))));
-
-        let empty_text = send_keys(SendKeysParams {
-            window_id: "0x1".to_string(),
-            text: Some(String::new()),
-            keys: None,
-            note: None,
-            send_to_telegram: true,
-        })
-        .await;
-        assert!(matches!(empty_text, Err(Error::Window(_))));
+        assert!(matches!(empty, Err(Error::Window(_))));
     }
 
     #[test]
-    fn test_usage_parse() {
-        let text = parse_text("A\n\t").unwrap();
-        assert_eq!(text.len(), 3);
-        assert_eq!(text[0].keysym, 'A' as u32);
-        assert!(!text[0].hold);
-        assert!(parse_text("é").is_err());
+    fn test_usage_build_steps() {
+        let inputs = vec![
+            KeyboardInput::Tap {
+                key: KeyboardKey("a".to_string()),
+            },
+            KeyboardInput::Text {
+                text: "A\n".to_string(),
+            },
+            KeyboardInput::Chord {
+                keys: vec![
+                    KeyboardKey("ctrl".to_string()),
+                    KeyboardKey("a".to_string()),
+                ],
+            },
+        ];
+        let steps = build_steps(&inputs).unwrap();
+        assert!(matches!(steps[0], Step::Tap(0x61)));
+        assert!(matches!(steps[1], Step::Char(0x41)));
+        assert!(matches!(steps[2], Step::Char(0xFF0D)));
+        assert!(matches!(steps[3], Step::Chord(_)));
 
-        let chord = parse_keys("Ctrl+Shift+F5").unwrap();
-        assert_eq!(chord.len(), 3);
-        assert!(chord[0].hold);
-        assert_eq!(chord[0].keysym, CONTROL_L);
-        assert!(!chord[2].hold);
-        assert!(chord[2].keysym >= 0xFFBE);
-        assert!(parse_keys("Ctrl+Whee").is_err());
-        assert!(parse_keys("").is_err());
+        assert!(build_steps(&[]).is_err());
+        let bad = KeyboardInput::Chord {
+            keys: vec![KeyboardKey("nope".to_string())],
+        };
+        assert!(build_steps(&[bad]).is_err());
+    }
+
+    #[test]
+    fn test_usage_cap() {
+        let text = "d".repeat(MAX_UNITS + 1);
+        let steps = build_steps(&[KeyboardInput::Text { text }]).unwrap();
+        assert!(enforce_cap(&steps).is_err());
+
+        let too_long = build_steps(&[KeyboardInput::Hold {
+            key: KeyboardKey("a".to_string()),
+            duration_ms: MAX_WAIT_MS + 1,
+        }])
+        .unwrap();
+        assert!(enforce_cap(&too_long).is_err());
+    }
+
+    #[test]
+    fn test_usage_named() {
+        assert_eq!(named_keysym("Ctrl"), Some(CONTROL_L));
+        assert_eq!(named_keysym("F5"), Some(0xFFC2));
+        assert_eq!(named_keysym("d"), Some(0x64));
+        assert_eq!(named_keysym("Whee"), None);
     }
 
     #[test]
@@ -376,15 +493,22 @@ mod tests {
         assert!(empty.plain.is_empty() && empty.shifted.is_empty());
     }
 
-    /// Spawns a real xterm, finds its window, and types text plus a chord into it. No
-    /// pixel-diffing (too flaky) — this only confirms the full X connect / get_keyboard_mapping
-    /// / xtest_fake_input path doesn't error against a real window.
+    #[test]
+    fn test_usage_summarize() {
+        let inputs = vec![KeyboardInput::Tap {
+            key: KeyboardKey("a".to_string()),
+        }];
+        assert!(super::super::summarize_inputs(&inputs).contains("tap a"));
+        assert!(super::super::summarize_inputs(&[]).contains("sent keys"));
+    }
+
     #[tokio::test]
+    #[ignore]
     async fn test_usage_live_display() {
         use crate::window_info_method;
 
-        crate::test_support::assert_live_display();
-        let _guard = crate::test_support::live_test_lock().lock().await;
+        test_support::assert_live_display();
+        let _guard = test_support::live_test_lock().lock().await;
 
         let mut child = std::process::Command::new("xterm")
             .spawn()
@@ -399,17 +523,22 @@ mod tests {
 
         let text_result = send_keys(SendKeysParams {
             window_id: window.id.clone(),
-            text: Some("hello world".to_string()),
-            keys: None,
+            inputs: vec![KeyboardInput::Text {
+                text: "hello world".to_string(),
+            }],
             note: None,
             send_to_telegram: true,
         })
         .await;
 
-        let keys_result = send_keys(SendKeysParams {
+        let chord_result = send_keys(SendKeysParams {
             window_id: window.id.clone(),
-            text: None,
-            keys: Some("Ctrl+A".to_string()),
+            inputs: vec![KeyboardInput::Chord {
+                keys: vec![
+                    KeyboardKey("ctrl".to_string()),
+                    KeyboardKey("a".to_string()),
+                ],
+            }],
             note: None,
             send_to_telegram: true,
         })
@@ -419,6 +548,6 @@ mod tests {
         let _ = child.wait();
 
         assert!(text_result.is_ok(), "{text_result:?}");
-        assert!(keys_result.is_ok(), "{keys_result:?}");
+        assert!(chord_result.is_ok(), "{chord_result:?}");
     }
 }

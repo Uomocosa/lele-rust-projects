@@ -39,6 +39,12 @@ pub fn poll_swarm_events(
             }
             p2p::Event::PeerDisconnected(peer_id) => {
                 peer_status.remove(&peer_id.to_base58());
+                let player_id = p2p::peer_id_to_player_id(&peer_id);
+                for (entity, player, _) in &mut remote_boxes {
+                    if **player == player_id {
+                        commands.entity(entity).despawn();
+                    }
+                }
             }
             _ => {}
         }
@@ -87,5 +93,25 @@ mod tests {
             target.map(|t| (t.pos.x, t.pos.y, t.tick)),
             Some((11.0, 12.0, 3))
         );
+    }
+
+    #[test]
+    fn disconnected_peer_box_is_despawned() {
+        let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
+        let peer_id = libp2p::PeerId::random();
+        let player_id = p2p::peer_id_to_player_id(&peer_id);
+        let mut app = App::new();
+        app.insert_resource(p2p::P2pEvents(event_rx));
+        app.insert_resource(p2p::PeerStatus::default());
+        let entity = app
+            .world_mut()
+            .spawn((boxes::Player(player_id), Transform::default()))
+            .id();
+        app.add_systems(Update, poll_swarm_events);
+
+        event_tx.send(p2p::Event::PeerDisconnected(peer_id)).ok();
+        app.update();
+
+        assert!(app.world().get_entity(entity).is_err());
     }
 }

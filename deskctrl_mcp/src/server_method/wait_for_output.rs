@@ -92,7 +92,7 @@ mod tests {
         assert!(text.contains("matched=true"));
         assert!(text.contains("key=abc"));
 
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 
     #[tokio::test]
@@ -136,7 +136,7 @@ mod tests {
         .unwrap();
         assert!(format!("{result:?}").contains("matched=true"));
 
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 
     #[tokio::test]
@@ -166,6 +166,6 @@ mod tests {
         .unwrap();
         assert!(format!("{result:?}").contains("matched=false"));
 
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 }

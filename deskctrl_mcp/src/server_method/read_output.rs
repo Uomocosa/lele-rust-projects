@@ -107,7 +107,7 @@ mod integration_tests {
         assert!(result.is_ok());
         let text = format!("{:?}", result.ok());
         assert!(text.contains("hello-read"));
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 
     #[tokio::test]
@@ -139,6 +139,6 @@ mod integration_tests {
         let text = format!("{:?}", result.ok());
         assert!(text.contains("early-line"));
         assert!(elapsed < std::time::Duration::from_secs(5));
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 }

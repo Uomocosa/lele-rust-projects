@@ -54,6 +54,6 @@ mod tests {
         assert!(result.is_ok());
         let text = format!("{:?}", result.ok());
         assert!(text.contains("sleep"));
-        crate::server_method::kill_process(&processes, 1).await.ok();
+        server_method::kill_process(&processes, 1).await.ok();
     }
 }

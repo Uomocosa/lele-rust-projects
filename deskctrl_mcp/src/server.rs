@@ -12,7 +12,8 @@ use rmcp::{
 use crate::{
     ClickParams, ProcessMap, ReadOutputParams, RecordVideoParams, Recording, ScreenshotParams,
     SendKeysParams, SendToTelegramParams, SpawnParams, WaitForOutputParams, WriteStdinParams,
-    server_method,
+    server_click_window, server_kill_process, server_method, server_send_keys,
+    server_spawn_process, server_write_stdin,
 };
 
 #[derive(Clone)]
@@ -61,16 +62,16 @@ impl Server {
     }
 
     #[tool(description = "Spawn a subprocess. Returns a numeric process ID you can pass to read_output, write_stdin, and kill_process.")]
-    async fn spawn_process(&self, Parameters(params): Parameters<SpawnParams>) -> Result<CallToolResult, ErrorData> { crate::server_spawn_process::spawn_process(self, params).await.map_err(ErrorData::from) }
+    async fn spawn_process(&self, Parameters(params): Parameters<SpawnParams>) -> Result<CallToolResult, ErrorData> { server_spawn_process::spawn_process(self, params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Drain buffered stdout/stderr collected since the last call. Waits up to timeout_ms for new output.")]
     async fn read_output(&self, Parameters(params): Parameters<ReadOutputParams>) -> Result<CallToolResult, ErrorData> { server_method::read_output(&self.processes, params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Send text to a running process's stdin. A newline is appended automatically.")]
-    async fn write_stdin(&self, Parameters(params): Parameters<WriteStdinParams>) -> Result<CallToolResult, ErrorData> { crate::server_write_stdin::write_stdin(self, params).await.map_err(ErrorData::from) }
+    async fn write_stdin(&self, Parameters(params): Parameters<WriteStdinParams>) -> Result<CallToolResult, ErrorData> { server_write_stdin::write_stdin(self, params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Terminate a managed process and remove it from the list.")]
-    async fn kill_process(&self, Parameters(params): Parameters<PidParam>) -> Result<CallToolResult, ErrorData> { crate::server_kill_process::kill_process(self, params.pid, params.send_to_telegram).await.map_err(ErrorData::from) }
+    async fn kill_process(&self, Parameters(params): Parameters<PidParam>) -> Result<CallToolResult, ErrorData> { server_kill_process::kill_process(self, params.pid, params.send_to_telegram).await.map_err(ErrorData::from) }
 
     #[tool(description = "List all managed processes with their IDs, command strings, and alive status.")]
     async fn list_processes(&self) -> Result<CallToolResult, ErrorData> { server_method::list_processes(&self.processes).await.map_err(ErrorData::from) }
@@ -82,10 +83,10 @@ impl Server {
     async fn list_windows(&self) -> Result<CallToolResult, ErrorData> { server_method::list_windows().await.map_err(ErrorData::from) }
 
     #[tool(description = "Click inside a window at coordinates relative to its top-left corner (same coordinates as a screenshot of that window). Raises the window first, so it steals focus. Screenshot the window afterwards to confirm the click landed. Optional note is sent to Telegram when send_to_telegram is true.")]
-    async fn click_window(&self, Parameters(params): Parameters<ClickParams>) -> Result<CallToolResult, ErrorData> { crate::server_click_window::click_window(self, params).await.map_err(ErrorData::from) }
+    async fn click_window(&self, Parameters(params): Parameters<ClickParams>) -> Result<CallToolResult, ErrorData> { server_click_window::click_window(self, params).await.map_err(ErrorData::from) }
 
-    #[tool(description = "Type literal text or press named keys/shortcuts into a window via XTEST. Takes window_id plus exactly one of: text (printable ASCII; \\n is Enter, \\t is Tab), or keys (a '+' separated chord, e.g. \"Ctrl+A\", \"Alt+Tab\", \"Ctrl+Shift+Esc\", \"F5\"; letters in a chord are unshifted). Raises the window first, so it steals focus. Screenshot the window afterwards to confirm the keys landed. Optional note is sent to Telegram when send_to_telegram is true.")]
-    async fn send_keys(&self, Parameters(params): Parameters<SendKeysParams>) -> Result<CallToolResult, ErrorData> { crate::server_send_keys::send_keys(self, params).await.map_err(ErrorData::from) }
+    #[tool(description = "Send a deliberate, bounded sequence of keyboard inputs into a window via XTEST. Takes window_id plus inputs, a non-empty ordered list of {type:tap|hold|chord|delay|text}. tap presses+releases one key; hold keeps a key down for duration_ms (use it for a run of repeated characters instead of many taps); chord presses several keys together (e.g. keys [\"ctrl\",\"shift\",\"esc\"]) and releases them all at once; delay waits duration_ms; text types literal printable ASCII (\\n is Enter, \\t is Tab). Raises the window first, so it steals focus. Screenshot the window afterwards to confirm the keys landed. Optional note is sent to Telegram when send_to_telegram is true.")]
+    async fn send_keys(&self, Parameters(params): Parameters<SendKeysParams>) -> Result<CallToolResult, ErrorData> { server_send_keys::send_keys(self, params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Send a text message and/or a base64-encoded PNG photo to a pre-configured Telegram chat.")]
     async fn send_to_telegram(&self, Parameters(params): Parameters<SendToTelegramParams>) -> Result<CallToolResult, ErrorData> {

@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::error_method;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("spawn failed: {0}")]
@@ -22,9 +23,8 @@ pub enum Error {
 
 #[rustfmt::skip]
 impl From<Error> for rmcp::ErrorData {
-    fn from(value: Error) -> Self { crate::error_method::from(value) }
+    fn from(value: Error) -> Self { error_method::from(value) }
 }
-
 #[cfg(test)]
 mod tests {
     use crate::Error;
