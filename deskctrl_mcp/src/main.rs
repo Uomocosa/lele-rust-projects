@@ -49,6 +49,8 @@ pub use wait_for_output_params::WaitForOutputParams;
 pub use window_info::WindowInfo;
 pub use write_stdin_params::WriteStdinParams;
 
+use std::time::Duration;
+
 use rmcp::{ServiceExt, transport::stdio};
 
 #[tokio::main]
@@ -94,15 +96,51 @@ async fn main() -> anyhow::Result<()> {
     running.waiting().await?;
 
     // Session end: the stdio transport has closed, so stop the recording and send the video.
-    if let (Some(token), Some(cid)) = (bot_token, chat_id)
-        && let Ok(stopped) = recording_method::stop(&recording).await
-        && let Ok(mp4) = std::fs::read(&stopped.path)
-        && mp4.len() as u64 <= 50 * 1024 * 1024
-    {
-        let caption = stopped.caption();
-        server_method::telegram::send_video_fire_and_forget(token, cid, mp4, caption);
+    // The upload is awaited because the process exits immediately afterwards — a fire-and-forget
+    // task would be cancelled before the request completes.
+    if let (Some(token), Some(cid)) = (bot_token, chat_id) {
+        match recording_method::stop(&recording).await {
+            Ok(stopped) => match std::fs::read(&stopped.path) {
+                Ok(mp4) => send_session_video(&token, &cid, mp4, &stopped.caption()).await,
+                Err(e) => {
+                    tracing::warn!(target: "deskctrl_mcp::recording", "reading session recording failed: {e}");
+                }
+            },
+            Err(e) => {
+                tracing::warn!(target: "deskctrl_mcp::recording", "stopping session recording failed: {e}");
+            }
+        }
     }
     Ok(())
+}
+
+// needed helper:
+async fn send_session_video(token: &str, chat_id: &str, mp4: Vec<u8>, caption: &str) {
+    let mb = mp4.len() as f64 / (1024.0 * 1024.0);
+    if mp4.len() as u64 > 50 * 1024 * 1024 {
+        let text =
+            format!("\u{26A0}\u{FE0F} Session video too large ({mb:.1} MB) to send to Telegram");
+        let _ = server_method::telegram::send(token, chat_id, Some(&text), None, None).await;
+        return;
+    }
+    match tokio::time::timeout(
+        Duration::from_secs(60),
+        server_method::telegram::send_video(token, chat_id, &mp4, Some(caption)),
+    )
+    .await
+    {
+        Ok(Ok(_)) => {
+            tracing::info!(target: "deskctrl_mcp::recording", "sent session video to Telegram");
+        }
+        Ok(Err(e)) => {
+            tracing::warn!(target: "deskctrl_mcp::recording", "session video send failed: {e}");
+            let text = format!("\u{26A0}\u{FE0F} Session video send failed: {e}");
+            let _ = server_method::telegram::send(token, chat_id, Some(&text), None, None).await;
+        }
+        Err(_) => {
+            tracing::warn!(target: "deskctrl_mcp::recording", "session video send timed out");
+        }
+    }
 }
 
 #[cfg(test)]

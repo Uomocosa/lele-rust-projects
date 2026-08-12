@@ -1,3 +1,4 @@
+mod assert_no_keyboard_grab;
 pub mod click_window;
 pub mod get_info;
 pub mod html_escape;

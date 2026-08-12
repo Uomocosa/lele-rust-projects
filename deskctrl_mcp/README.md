@@ -101,7 +101,8 @@ session start.
 messages** to Telegram as you work, plus a session-start banner and a session-end video.
 
 - On session start the server sends `📋 Starting Session - YYYY_MM_DD [hh:mm:ss]` and begins an
-  ffmpeg recording of the screen.
+  ffmpeg recording of the screen (capped at `RECORDING_MAX_SECS`, default 10 minutes, so the file
+  stays well under Telegram's 50 MB upload limit).
 - Each **visible-action** tool — `screenshot`, `click_window`, `send_keys`, `spawn_process`,
   `write_stdin`, `kill_process`, `record_video` — accepts a `send_to_telegram` flag that
   **defaults to `true`**. When true (and Telegram is configured) the tool pushes its own short
@@ -118,13 +119,20 @@ messages** to Telegram as you work, plus a session-start banner and a session-en
 - The `send_to_telegram` flag is how the agent keeps the feed from flooding: leave it `true` only
   for steps with visible impact, set it `false` for routine/read-only calls (`list_windows`,
   `read_output`, `wait_for_output`, `list_processes` have no flag and never notify).
-- On session end (the stdio transport closes) the recording is stopped and the MP4 is sent to
-  Telegram with a caption.
+- On session end (the stdio transport closes) the recording is stopped and the MP4 is uploaded to
+  Telegram with a caption; the upload is awaited (with a 60s timeout) before the server exits, and
+  a Telegram text is sent instead if the video is too large or the upload fails.
 
 Requires `ffmpeg` and `xdpyinfo` for recording. If `ffmpeg` is missing, `record_video` returns an
 error asking you to install it; the session-end auto-send is skipped with a warning.
 
 ### Driving a GUI app
+
+**Start each session with one full-screen `screenshot`.** A modal dialog that holds a keyboard
+grab (e.g. gnome-keyring's "Choose password for new keyring") hides at a glance behind a
+per-window capture, but shows up in a full-screen shot — and it will silently swallow every
+keystroke/click until dismissed. Only the full-screen capture reveals it, so take one at session
+start and watch for anything unexpected before driving any window.
 
 `spawn_process` returns both its own `id` (used by the other process tools) and the **`os_pid`**,
 which is the number `list_windows` reports for the window. That is the only reliable way to tell
@@ -162,8 +170,12 @@ character.
 Sending is **deliberate and bounded**: the whole sequence is validated before any key is pressed,
 the plan is capped (a few thousand units / at most 120 s of holds+delays), and any keys held by a
 `chord`/`hold` are always released — even if a later step errors — so a stuck modifier can never
-hang the desktop. Non-ASCII text errors — send Unicode through the clipboard instead. Screenshot
-the window afterwards to confirm the text landed.
+hang the desktop. Each press/release is flushed to the X server immediately, so `hold` durations
+and `delay`s have real timing (auto-repeat fires during a long hold). `send_keys` first probes for
+an active keyboard grab by another window (e.g. a modal dialog): if one is held, it **errors
+instead of typing into the grabber** — `raise_window`'s focus check alone cannot detect this.
+Non-ASCII text errors — send Unicode through the clipboard instead. Screenshot the window
+afterwards to confirm the text landed.
 
 ### Waiting on a slow process
 
@@ -223,6 +235,8 @@ directory is used as a fallback:
 - `AAI_ARTIFACTS_DIR` — if set, every screenshot is also written to `<dir>/<unix_secs>.png`.
   Each agent points at its own subdirectory of `artifacts/` so their captures do not interleave.
   Recordings are written here as `<unix_secs>.mp4` too (else `/tmp`).
+- `RECORDING_MAX_SECS` — max recording length in seconds before ffmpeg stops itself (default
+  `600`, i.e. 10 minutes). Keeps session videos small enough to send via Telegram.
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — if both set, notifications, session start/end
   messages, screenshots and the session video are pushed to Telegram.
 

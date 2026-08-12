@@ -110,14 +110,19 @@ pub async fn send_keys(params: SendKeysParams) -> Result<CallToolResult, Error> 
     let steps = build_steps(&params.inputs)?;
     enforce_cap(&steps)?;
 
-    // XTEST synthesizes input at the *root*, so it lands on whatever is topmost. Raise the
-    // target first or an overlapping window eats the keystrokes.
-    super::raise_window::raise_window(window_id);
+    // XTEST synthesizes input at the *root*, so it lands on whatever holds an active grab or
+    // is topmost. Bail out first if another window (e.g. a modal dialog) has grabbed the
+    // keyboard — its events would go there no matter what raise_window does. Then raise the
+    // target or an overlapping window eats the keystrokes; bail out if focus never lands on it
+    // so we never type into the wrong window.
+    super::assert_no_keyboard_grab::assert_no_keyboard_grab()?;
+    super::raise_window::raise_window(window_id)?;
 
     let (conn, _screen) =
         x11rb::connect(None).map_err(|e| Error::Window(format!("connecting to X display: {e}")))?;
     let keymap = keymap(&conn)?;
     execute(&conn, &steps, &keymap)?;
+    // Safety net: every keystroke is already flushed by fake_key, this only drains anything left.
     conn.flush()
         .map_err(|e| Error::Window(format!("flushing keystrokes: {e}")))?;
 
@@ -312,6 +317,11 @@ fn resolve_key(keysym: u32, keymap: &Keymap) -> Result<(u8, bool), Error> {
 fn fake_key(conn: &RustConnection, event: u8, keycode: u8) -> Result<(), Error> {
     conn.xtest_fake_input(event, keycode, 0, 0, 0, 0, 0)
         .map_err(|e| Error::Window(format!("xtest_fake_input: {e}")))?;
+    // xtest_fake_input is a void request that x11rb buffers; flush it now so the X server
+    // actually receives the press/release before the next step sleeps. Without this, a
+    // `hold`'s press, its duration, and its release all arrive in one burst at the end.
+    conn.flush()
+        .map_err(|e| Error::Window(format!("flushing keystroke: {e}")))?;
     Ok(())
 }
 
@@ -547,7 +557,17 @@ mod tests {
         let _ = child.kill();
         let _ = child.wait();
 
-        assert!(text_result.is_ok(), "{text_result:?}");
-        assert!(chord_result.is_ok(), "{chord_result:?}");
+        // On a desktop with an active keyboard grab (e.g. a lingering modal dialog) send_keys
+        // correctly refuses to type rather than feeding the grabber — accept that guard here,
+        // since the typing itself cannot be verified while the keyboard is captured.
+        let guarded = |result: &Result<rmcp::model::CallToolResult, Error>| matches!(result, Err(Error::Window(msg)) if msg.contains("keyboard is actively grabbed"));
+        assert!(
+            text_result.is_ok() || guarded(&text_result),
+            "{text_result:?}"
+        );
+        assert!(
+            chord_result.is_ok() || guarded(&chord_result),
+            "{chord_result:?}"
+        );
     }
 }

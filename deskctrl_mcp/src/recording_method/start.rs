@@ -10,6 +10,7 @@ use crate::{Error, Recording, WindowInfo, window_info_method};
 
 const FRAME_RATE: &str = "15";
 const CRF: &str = "28";
+const DEFAULT_MAX_SECS: u64 = 600;
 
 struct Capture {
     pub size: String,
@@ -35,7 +36,8 @@ pub async fn start(
 
     let capture = resolve_capture(window_id, pid, title)?;
     let path = video_path(artifacts_dir);
-    let child = spawn_ffmpeg(&capture, &path)?;
+    let max_secs = max_secs();
+    let child = spawn_ffmpeg(&capture, &path, max_secs)?;
 
     *guard = Some(Recording {
         path: path.clone(),
@@ -45,7 +47,7 @@ pub async fn start(
     });
 
     Ok(format!(
-        "recording started: {} \u{2192} {} (will stop + send to Telegram on stop)",
+        "recording started: {} \u{2192} {} (max {max_secs}s; will stop + send to Telegram on stop)",
         capture.desc, path
     ))
 }
@@ -114,6 +116,19 @@ fn screen_size() -> Result<String, Error> {
 }
 
 // needed helper:
+fn max_secs() -> u64 {
+    max_secs_from(std::env::var("RECORDING_MAX_SECS").ok())
+}
+
+// needed helper:
+fn max_secs_from(env_value: Option<String>) -> u64 {
+    env_value
+        .and_then(|v| v.trim().parse().ok())
+        .filter(|&s| s > 0)
+        .unwrap_or(DEFAULT_MAX_SECS)
+}
+
+// needed helper:
 fn video_path(artifacts_dir: Option<&str>) -> String {
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -126,9 +141,10 @@ fn video_path(artifacts_dir: Option<&str>) -> String {
 }
 
 // needed helper:
-fn spawn_ffmpeg(capture: &Capture, path: &str) -> Result<Child, Error> {
+fn spawn_ffmpeg(capture: &Capture, path: &str, max_secs: u64) -> Result<Child, Error> {
     let display = std::env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string());
     let input = format!("{display}{}", capture.offset);
+    let cap = max_secs.to_string();
     Command::new("ffmpeg")
         .args([
             "-y",
@@ -148,10 +164,31 @@ fn spawn_ffmpeg(capture: &Capture, path: &str) -> Result<Child, Error> {
             CRF,
             "-pix_fmt",
             "yuv420p",
+            "-t",
+            &cap,
             path,
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| Error::Ffmpeg(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DEFAULT_MAX_SECS, max_secs_from, video_path};
+
+    #[test]
+    fn test_usage() {
+        assert_eq!(max_secs_from(None), DEFAULT_MAX_SECS);
+        assert_eq!(max_secs_from(Some("300".to_string())), 300);
+        assert_eq!(max_secs_from(Some("  60  ".to_string())), 60);
+        assert_eq!(max_secs_from(Some("0".to_string())), DEFAULT_MAX_SECS);
+        assert_eq!(max_secs_from(Some("abc".to_string())), DEFAULT_MAX_SECS);
+
+        let path = video_path(None);
+        assert!(path.ends_with(".mp4") && path.contains("deskctrl-mcp-recording-"));
+        let dir = video_path(Some("/tmp/rec"));
+        assert!(dir.ends_with(".mp4") && dir.starts_with("/tmp/rec/"));
+    }
 }

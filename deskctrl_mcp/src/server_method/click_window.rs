@@ -36,7 +36,7 @@ pub async fn click_window(params: ClickParams) -> Result<CallToolResult, Error> 
 
     // XTEST synthesizes input at the *root*, so it lands on whatever is topmost at those
     // coordinates. Raise the target first or an overlapping window eats the click.
-    super::raise_window::raise_window(&window_id);
+    super::raise_window::raise_window(&window_id)?;
 
     let (conn, _screen) =
         x11rb::connect(None).map_err(|e| Error::Window(format!("connecting to X display: {e}")))?;
