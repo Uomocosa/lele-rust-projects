@@ -9,11 +9,12 @@ use bevy::input::keyboard::KeyCode;
 /// instead of relying on the public Freenet mainnet to route the shared roster contract between
 /// them.
 ///
-/// This is the decisive experiment for BUG_1.md Cause 2: if the two production-path nodes converge
-/// when directly wired, the roster contract/merge/subscribe code in this project is correct and the
-/// residual same-machine flakiness is purely a mainnet node-discovery/bootstrap problem. If this
-/// stays red, the bug is in our own code, not upstream. Unlike `e2e_three_node_production_sync.rs`,
-/// this test is fully local and needs no internet access.
+/// This is the decisive experiment for the same-machine sync reliability work: if the two
+/// production-path nodes converge when directly wired, the roster contract/merge/subscribe code in
+/// this project is correct and residual same-machine flakiness is purely a mainnet
+/// node-discovery/bootstrap problem. If this stays red, the bug is in our own code, not upstream.
+/// Unlike `e2e_three_node_production_sync.rs`, this test is fully local and needs no internet
+/// access.
 #[tokio::test(flavor = "multi_thread")]
 async fn two_local_production_nodes_converge_and_sync_movement() {
     let params = testing::unique_params();

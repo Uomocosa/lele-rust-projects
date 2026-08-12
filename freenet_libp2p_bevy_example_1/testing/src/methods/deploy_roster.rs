@@ -7,7 +7,15 @@ pub async fn deploy_roster(
     own_id: boxes::PlayerId,
     own_entry: roster::PeerEntry,
 ) -> Result<(bevy_freenet::freenet::FreenetClient, roster::RosterState), String> {
-    let (client, _key, entries) =
-        roster::setup_contract("127.0.0.1", port, wasm, params, own_id, own_entry).await?;
+    let (client, _key, entries) = roster::setup_contract(
+        "127.0.0.1",
+        port,
+        wasm,
+        params,
+        own_id,
+        own_entry,
+        std::time::Duration::ZERO,
+    )
+    .await?;
     Ok((client, entries))
 }

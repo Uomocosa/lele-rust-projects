@@ -8,11 +8,13 @@ pub fn build(plugin: &roster::Plugin, app: &mut App) {
 
     app.insert_resource(roster::Roster::default())
         .insert_resource(roster::RosterEvents(event_rx))
+        .insert_resource(roster::FreenetStatus::default())
         .add_systems(
             Update,
             (
                 roster::bevy_systems::poll_freenet_events,
                 roster::bevy_systems::spawn_roster_boxes,
+                roster::bevy_systems::update_status_text,
             )
                 .chain(),
         );

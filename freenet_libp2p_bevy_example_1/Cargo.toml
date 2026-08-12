@@ -1,6 +1,6 @@
 [package]
 name = "bevy_freenet"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 [lib]
@@ -25,7 +25,7 @@ tokio = { version = "1", features = ["rt", "sync", "macros", "rt-multi-thread", 
 tokio-tungstenite = "0.27"
 thiserror = "2"
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
 bincode = "1"
 async-trait = "0.1"

@@ -14,18 +14,67 @@ Prove the complete freenet + libp2p + Bevy integration:
 ```
 Bevy App
   ├── freenet node ─── DHT ──► lobby, contracts
-  └── libp2p swarm ─── direct TCP ──► position sync, input
+  └── libp2p swarm ─── direct TCP/QUIC ──► position sync, input
 ```
 
 ## Current Status
 
-M0 (scaffolding), M1 (local avian2d physics game, no networking), and M2
-(roster contract on Freenet) are done. The game has a `contract/` crate
-with a commutative-merge roster (`BTreeMap<PlayerId, PeerEntry>`), an
-embedded Freenet node with a real readiness check (no blind sleeps), a
-`roster` domain that spawns a box for every roster entry, and a `testing/`
-crate whose `two_node_roster` test proves two separate embedded nodes
-actually join and converge on the same 2-entry roster. See `TODO.md` for
-the full milestone plan and `M2_STEP.md` for the M2 design writeup.
+M0 (scaffolding), M0.5 (coexistence spike), M1 (local avian2d physics game),
+M2 (roster contract on Freenet), and **M3 (libp2p real-time sync)** are done.
 
-Next: M3 — libp2p real-time position sync (same-machine/LAN first).
+The full hybrid stack works end-to-end:
+
+- `contract/` — commutative-merge roster (`BTreeMap<PlayerId, PeerEntry>`):
+  union keys, last-write-wins per entry on `updated_at`.
+- Embedded Freenet node with a real readiness check — the mainnet path waits
+  for at least one active connection before contract ops (no proceeding with
+  zero peers), and `connect_client_loop` pulls a refresh `Get` every
+  `ROSTER_REFRESH_SECS` so a dropped mainnet `UpdateNotification` is recovered
+  instead of leaving the roster stale forever.
+- `p2p/` — libp2p swarm (QUIC + TCP, `request_response` bincode snapshots at
+  30 Hz on `FixedUpdate`), threaded bridge owning the `!Sync` swarm on a tokio
+  task, kinematic remote boxes driven by snapshots with interpolation,
+  despawn-on-disconnect.
+- `--identity-dir`, `--p2p-port`, `--freenet-local`, `--freenet-gateway` CLI
+  flags (identity persistence, distinct per-machine ports, and a hermetic
+  same-machine mode that bypasses the flaky public-mainnet discovery path).
+- `testing/` — hermetic two-node roster/box tests plus
+  `local_two_node_production_sync`, which drives two real production-path app
+  instances wired directly and converges + syncs movement deterministically.
+
+### Known limitation (upstream, not this project)
+
+Public-mainnet node discovery is timing-dependent in two distinct ways:
+
+1. **A single contract op can stall or vanish.** `Update` fan-out is fire-and-forget
+   (freenet-core PR #2038) and can be silently dropped, so a `Get`/`Update` can take
+   minutes. This project survives it by retrying roster setup with capped backoff, the
+   on-screen freenet status, and a fast pull refresh (5 s) during startup.
+1. **Node bootstrap itself can fail transiently.** The mainnet can refuse every gateway
+   dial for minutes at a time (all NAT traversals failing, `wait_ready` timing out).
+   `connect_and_run` retries `start_embedded_node` with capped backoff instead of giving
+   up, so the game stays playable single-player and the roster joins on a later retry.
+2. **Two concurrent first-`Put`s of a brand-new key can seed disjoint replicas.** freenet
+   0.2.123's Put probes for an existing holder first (summary-first PUT, #4642) and
+   reconciles deltas when it finds one, but if the probe misses (the other seed is still
+   being placed), the full-state fallback seeds a second independent copy. Those copies
+   only reconcile via the periodic InterestSync anti-entropy exchange, which runs on a
+   5-minute heartbeat (`INTEREST_HEARTBEAT_INTERVAL` in freenet-core), so a split can look
+   permanent for minutes. Client-side mitigation: `setup_contract`'s `not_found_grace`
+   window re-checks for an existing seed for up to `SETUP_CONTRACT_GRACE_SECS` before
+   `Put`ting, and the mainnet e2e probe staggers the second instance's join by 45 s —
+   mirroring real users, who never start an app in the same instant.
+
+The mainnet e2e probe (`testing/tests/e2e_three_node_production_sync.rs`) is `#[ignore]`d —
+run it explicitly with `cargo test -- --ignored`. The deterministic gate for the
+production startup path is the fully-local `local_two_node_production_sync`.
+
+## Scope
+
+M4 (cross-network relay pool) and M5 (polish: status UI, ed25519 identity
+bridge) are explicitly **future work**, not part of this ship. See `TODO.md`.
+
+## Reference
+
+- `TODO.md` — milestone plan and open questions.
+- `M2_STEP.md`, `M3_STEP.md` — design writeups for the completed milestones.

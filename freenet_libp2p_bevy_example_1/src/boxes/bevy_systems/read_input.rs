@@ -40,6 +40,7 @@ pub fn read_input(
 mod tests {
     use avian2d::prelude::*;
     use bevy::prelude::*;
+    use bevy::time::TimeUpdateStrategy;
 
     use super::read_input;
     use crate::boxes;
@@ -69,5 +70,45 @@ mod tests {
 
         let velocity = app.world().get::<LinearVelocity>(entity).unwrap();
         assert_eq!(velocity.0.x, 0.0);
+    }
+
+    #[test]
+    fn test_moves_on_key_press() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_plugins(bevy::transform::TransformPlugin);
+        app.add_plugins(PhysicsPlugins::default());
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::from_secs_f32(1.0 / 60.0),
+        ));
+        app.finish();
+        app.cleanup();
+
+        let mut input = ButtonInput::<KeyCode>::default();
+        input.press(KeyCode::KeyD);
+        app.insert_resource(input);
+
+        let entity = app
+            .world_mut()
+            .spawn((
+                boxes::LocalPlayer,
+                boxes::Player(boxes::PlayerId(0)),
+                RigidBody::Dynamic,
+                Collider::rectangle(boxes::BOX_SIZE, boxes::BOX_SIZE),
+                LinearVelocity::ZERO,
+                Position::new(Vec2::ZERO),
+                Transform::default(),
+            ))
+            .id();
+
+        app.add_systems(Update, read_input);
+
+        for _ in 0..20 {
+            app.update();
+        }
+
+        let position = app.world().get::<Position>(entity).unwrap();
+        assert!(position.x > 0.0);
+        assert_ne!((position.x, position.y), (0.0, 0.0));
     }
 }

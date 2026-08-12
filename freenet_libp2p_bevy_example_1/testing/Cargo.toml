@@ -1,6 +1,6 @@
 [package]
 name = "testing"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 [dependencies]
@@ -13,4 +13,4 @@ tempfile = "3"
 bincode = "1"
 hex = "0.4"
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

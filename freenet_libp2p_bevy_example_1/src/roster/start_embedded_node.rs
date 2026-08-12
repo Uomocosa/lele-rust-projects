@@ -7,7 +7,7 @@ use crate::freenet;
 use crate::roster;
 
 // needed helper:
-fn free_udp_port() -> Result<u16, Box<dyn std::error::Error>> {
+fn free_udp_port() -> Result<u16, Box<dyn std::error::Error + Send + Sync>> {
     let socket = UdpSocket::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
     Ok(socket.local_addr()?.port())
 }
@@ -15,14 +15,16 @@ fn free_udp_port() -> Result<u16, Box<dyn std::error::Error>> {
 /// Starts an in-process network-mode Freenet node and returns its dial-in info.
 ///
 /// With `local = false` and `gateway = None` the node joins the public mainnet through the remote
-/// gateway index (the default single-player behavior). `local = true` starts an isolated gateway
-/// (`skip_load_from_network`); a `Some` `gateway` value dials that gateway directly — the hermetic
+/// gateway index as a **client node** (`is_gateway: false`, no advertised public address) — the
+/// default single-player behavior. `local = true` starts an isolated gateway
+/// (`skip_load_from_network`, `is_gateway: true`, loopback public identity) so peers can dial it
+/// directly; a `Some` `gateway` value dials that gateway directly as a client — the hermetic
 /// same-machine mode that bypasses mainnet node discovery entirely.
 pub async fn start_embedded_node(
     p2p_port: u16,
     local: bool,
     gateway: Option<String>,
-) -> Result<roster::NodeInfo, Box<dyn std::error::Error>> {
+) -> Result<roster::NodeInfo, Box<dyn std::error::Error + Send + Sync>> {
     let tmp = tempfile::tempdir()?;
 
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
@@ -33,8 +35,9 @@ pub async fn start_embedded_node(
         p2p_port
     };
     let skip_load_from_network = local || gateway.is_some();
-    let is_gateway = gateway.is_none();
-    let min_active_connections = usize::from(gateway.is_some());
+    let is_gateway = local;
+    let public_address = local.then_some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+    let min_active_connections = if local { 0 } else { 1 };
 
     info!(
         target: "roster",
@@ -59,8 +62,8 @@ pub async fn start_embedded_node(
             is_gateway,
             skip_load_from_network,
             network_port: Some(public_port),
-            public_address: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
-            public_port: Some(public_port),
+            public_address,
+            public_port: public_address.map(|_| public_port),
             gateway: gateway.map(|g| vec![g]),
             ..Default::default()
         },
@@ -84,7 +87,7 @@ pub async fn start_embedded_node(
 
     let mut probe = freenet::FreenetClient::connect("127.0.0.1", ws_port).await?;
     probe
-        .wait_ready(min_active_connections, Duration::from_secs(30))
+        .wait_ready(min_active_connections, Duration::from_secs(90))
         .await?;
 
     info!(

@@ -98,7 +98,7 @@ mod tests {
         std::fs::remove_dir_all(&dir_b).ok();
     }
 
-    /// Regression test for BUG_1.md Cause 1b: a concurrent reader must never observe a
+    /// Regression test for the identity-file race: a concurrent reader must never observe a
     /// partially-written identity file and regenerate, otherwise the on-disk identity flips
     /// mid-run. The writer uses the same atomic write path as `load_or_create_keypair`, so this
     /// turns red if `atomic_write` is ever reverted to a plain truncate-then-write `fs::write`.

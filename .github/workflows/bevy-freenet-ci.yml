@@ -1,0 +1,79 @@
+name: bevy-freenet CI
+
+on:
+  push:
+
+jobs:
+  detect-version:
+    runs-on: ubuntu-latest
+    outputs:
+      increased: ${{ steps.diff.outputs.increased }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect crate version increase
+        id: diff
+        run: |
+          CURRENT=$(grep -m1 '^version = ' freenet_libp2p_bevy_example_1/Cargo.toml | awk -F'"' '{print $2}')
+          PARENT=$(git show HEAD^:freenet_libp2p_bevy_example_1/Cargo.toml 2>/dev/null | grep -m1 '^version = ' | awk -F'"' '{print $2}' || echo "0.0.0")
+          echo "current=$CURRENT parent=$PARENT"
+          INCREASED=false
+          if [ "$PARENT" != "$CURRENT" ]; then
+            HIGHEST=$(printf '%s\n%s\n' "$PARENT" "$CURRENT" | sort -V | tail -n1)
+            if [ "$HIGHEST" = "$CURRENT" ]; then
+              INCREASED=true
+            fi
+          fi
+          echo "increased=$INCREASED"
+          echo "increased=$INCREASED" >> "$GITHUB_OUTPUT"
+
+  build-test:
+    needs: detect-version
+    if: needs.detect-version.outputs.increased == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: /tmp/frt-build
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build all targets (main crate)
+        working-directory: freenet_libp2p_bevy_example_1
+        run: cargo build --all-targets
+
+      - name: Check formatting
+        working-directory: freenet_libp2p_bevy_example_1
+        run: cargo fmt -- --check
+
+      - name: Clippy (deny warnings)
+        working-directory: freenet_libp2p_bevy_example_1
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run all tests (main crate)
+        working-directory: freenet_libp2p_bevy_example_1
+        run: cargo test --all-targets
+
+      - name: Build all targets (testing crate)
+        working-directory: freenet_libp2p_bevy_example_1/testing
+        run: cargo build --all-targets
+
+      - name: Clippy (deny warnings, testing crate)
+        working-directory: freenet_libp2p_bevy_example_1/testing
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run all tests (testing crate)
+        working-directory: freenet_libp2p_bevy_example_1/testing
+        run: cargo test --all-targets
+
+      - name: lele_lint
+        working-directory: freenet_libp2p_bevy_example_1
+        run: cargo run --manifest-path ../lele_lint/Cargo.toml

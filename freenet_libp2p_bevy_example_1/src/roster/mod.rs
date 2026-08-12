@@ -23,6 +23,9 @@ pub use roster::Roster;
 pub mod event;
 pub use event::Event;
 
+pub mod freenet_status;
+pub use freenet_status::FreenetStatus;
+
 pub mod roster_events;
 pub use roster_events::RosterEvents;
 
@@ -43,6 +46,9 @@ pub use setup_contract::setup_contract;
 
 pub mod connect_and_run;
 pub use connect_and_run::connect_and_run;
+
+pub mod connect_client_args;
+pub use connect_client_args::ConnectClientArgs;
 
 pub mod connect_client_loop;
 pub use connect_client_loop::connect_client_loop;

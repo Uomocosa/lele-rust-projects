@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use bevy::input::ButtonInput;
 use bevy::input::keyboard::KeyCode;
@@ -51,9 +51,18 @@ pub(crate) async fn build(
         updated_at: now_unix_secs(),
     };
 
-    let node = roster::start_embedded_node(0, local, gateway)
-        .await
-        .expect("start embedded freenet node");
+    let node = loop {
+        match roster::start_embedded_node(0, local, gateway.clone()).await {
+            Ok(node) => break node,
+            Err(e) => {
+                tracing::error!(target: "roster", error = %e, "embedded node startup failed, retrying");
+                tokio::time::sleep(Duration::from_secs(
+                    roster::NODE_START_RETRY_BACKOFF_SECS,
+                ))
+                .await;
+            }
+        }
+    };
     let roster::NodeInfo {
         host,
         ws_port,
@@ -66,15 +75,34 @@ pub(crate) async fn build(
     let (roster_tx, roster_rx) = tokio::sync::mpsc::unbounded_channel();
     let wasm = wasm.to_vec();
     let params = params.to_vec();
+    let not_found_grace = if local {
+        std::time::Duration::ZERO
+    } else {
+        std::time::Duration::from_secs(roster::SETUP_CONTRACT_GRACE_SECS)
+    };
     let roster_task = tokio::spawn(async move {
-        roster::connect_client_loop(&host, ws_port, &wasm, &params, own_id, own_entry, roster_tx)
-            .await;
+        roster::connect_client_loop(
+            roster::ConnectClientArgs {
+                host: &host,
+                port: ws_port,
+                contract_wasm: &wasm,
+                params: &params,
+                own_id,
+                own_entry,
+                not_found_grace,
+            },
+            roster_tx,
+        )
+        .await;
     });
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(bevy::transform::TransformPlugin);
     app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
+        std::time::Duration::from_secs_f32(1.0 / 60.0),
+    ));
     app.add_plugins(boxes::Plugin(boxes::Config::new(own_id)));
     app.add_plugins(roster::Plugin(roster::Config::new(roster_rx)));
     app.add_plugins(p2p::Plugin(p2p::Config::new(cmd_tx, event_rx)));

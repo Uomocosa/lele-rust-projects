@@ -12,7 +12,10 @@ fn now_unix_secs() -> u64 {
 
 #[tokio::main]
 async fn main() {
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "warn,roster=info,p2p=info".into());
     tracing_subscriber::fmt()
+        .with_env_filter(filter)
         .with_writer(std::io::stdout)
         .init();
 

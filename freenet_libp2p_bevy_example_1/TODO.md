@@ -94,8 +94,13 @@ actually searches. (Confirmed by correlating `Registered transaction` →
 - **A joining player can read an empty roster and conclude nobody is online.**
   Roster reads must be gated on ring/connection state, or retried with a floor
   — never trusted on the first response during startup.
-- [ ] M2 must find the real readiness signal (ring size / connected peer count
+- [x] M2 must find the real readiness signal (ring size / connected peer count
       via a node query) instead of a sleep or a first-response check.
+      Implemented as `FreenetClient::wait_ready` polling
+      `NodeQuery::NodeDiagnostics` until `active_connections` clears the
+      per-mode floor (`start_embedded_node`). The mainnet path waits for ≥1
+      connection; the guest-dials-gateway path waits for ≥1; the isolated host
+      proceeds immediately.
 
 #### Other findings
 - **Freenet contract ops cost ~7 s, not milliseconds.** Measured repeatedly on
@@ -198,31 +203,37 @@ Full writeup and design rationale: `M2_STEP.md`.
       harness for that in this session), but covered by a headless `App`
       test
 
-### M3 — libp2p real-time sync (same-machine / LAN first)
-- [ ] `src/p2p/swarm.rs`: `SwarmBuilder::with_new_identity().with_tokio()
+### M3 — libp2p real-time sync (same-machine / LAN first) ✅ DONE
+- [x] `src/p2p/build_swarm.rs`: `SwarmBuilder::with_existing_identity().with_tokio()
       .with_tcp(..)?.with_quic().with_dns()?.with_relay_client(noise, yamux)?
       .with_behaviour(..)?.with_swarm_config(..).build()`
-- [ ] Behaviour struct: `request_response` (custom bincode `Codec`,
+- [x] Behaviour struct: `request_response` (custom bincode `Codec`,
       `ProtocolSupport::Full`, protocol `/freenet-boxes/positions/1.0.0`),
       `identify`, `ping`, `autonat`, `relay::client`, `dcutr`
-- [ ] Threading bridge (libp2p skill §8): `Swarm` is `!Sync` — own it on a
-      dedicated thread running a tokio runtime, `select_next_some()` in a
-      tight loop, push events out over `mpsc::unbounded_channel`. Bevy drains
-      with `try_recv()`. **No blocking calls back into the swarm thread.**
-- [ ] Listen on QUIC (`/ip4/0.0.0.0/udp/0/quic-v1`) + TCP; publish PeerId and
+- [x] Threading bridge (libp2p skill §8): the `!Sync` `Swarm` is owned on a
+      tokio task, `select_next_some()` in a tight loop, events pushed out over
+      `mpsc::unbounded_channel`. Bevy drains with `try_recv()`. **No blocking
+      calls back into the swarm task.**
+- [x] Listen on QUIC (`/ip4/0.0.0.0/udp/0/quic-v1`) + TCP; publish PeerId and
       all listen addrs into the roster; dial every new roster entry
-- [ ] `snapshot.rs`: `{ player_id, x, y, vx, vy, tick, sent_at_ms }`, bincode,
+- [x] `snapshot.rs`: `{ player_id, x, y, vx, vy, tick, sent_at_ms }`, bincode,
       length-prefixed (4-byte BE)
-- [ ] `send_snapshot.rs` on 30 Hz `FixedUpdate`, local box only. Drop stale
-      outbound snapshots rather than queueing — latest-wins
-- [ ] `apply_snapshot.rs`: discard snapshots with an older `tick` than the last
-      applied (reordering); interpolate toward the target over ~100 ms rather
-      than snapping
-- [ ] Remote boxes = `RigidBody::Kinematic`
-- [ ] **Checkpoint: two windows on one machine, each box moves in the other's
-      window in real time.**
+- [x] `send_snapshot.rs` on 30 Hz `FixedUpdate`, local box only. Latest-wins —
+      the loop never enqueues a backlog
+- [x] `interpolate_remote_boxes.rs`: discard snapshots with an older `tick`
+      than the last applied (reordering guard in `poll_swarm_events`);
+      interpolate toward the target over ~100 ms rather than snapping
+- [x] Remote boxes = `RigidBody::Kinematic`
+- [x] **Checkpoint: two windows on one machine, each box moves in the other's
+      window in real time.** Verified via the hermetic
+      `local_two_node_production_sync` test (direct-wired production path,
+      deterministic green) and the ignored mainnet probe
+      `e2e_three_node_production_sync` (run with `-- --ignored`).
 
-### M4 — Cross-network via a self-hosted relay pool (the actual goal)
+### M4 — Cross-network via a self-hosted relay pool (the actual goal) — POST-SHIP FUTURE WORK
+The relay machinery (`relay::client`, `autonat`, `dcutr`) is wired into the
+behaviour but the relay *pool* (server side, `relays` contract, `--relay`
+flag, RTT UI) is not. Not part of this ship.
 - [ ] `--relay AUTO|YES|NO` CLI flag (default `AUTO`), parsed in `src/cli/`
       alongside the existing `cli_parse_*.rs` files
 - [ ] `autonat` client: determine own reachability (`Public` / `Private`)
@@ -248,10 +259,11 @@ Full writeup and design rationale: `M2_STEP.md`.
 - [ ] **Checkpoint: two machines on two different home networks, both boxes
       moving. Record which of relayed/direct each pair got.**
 
-### M5 — Polish
+### M5 — Polish — POST-SHIP FUTURE WORK
 - [ ] Player-name / connection-status UI (port `status_bubble` + message log
       from example_2 — without `bevy_tweening`)
-- [ ] Handle disconnect: despawn the box, drop the roster entry
+- [x] Handle disconnect: despawn the box (`poll_swarm_events` on
+      `PeerDisconnected`)
 - [ ] ed25519 identity bridge: derive the libp2p `Keypair` from the same
       32-byte secret as the Freenet node identity
       (`Keypair::ed25519_from_bytes` → `with_existing_identity`), so a peer's
@@ -259,8 +271,10 @@ Full writeup and design rationale: `M2_STEP.md`.
 - [ ] e2e test: spawn two release binaries, assert both report "peer connected"
       (steal `ProcessOrchestrator`'s spawn-and-scrape-stdout approach from
       `libp2p_bevy_example/src/p2p/testing/`)
-- [ ] `pre-push`: build --all-targets, clippy -D warnings, fmt --check,
+- [x] `pre-push`: build --all-targets, clippy -D warnings, fmt --check,
       test --all-targets, `cargo run --manifest-path ../lele_lint/Cargo.toml`
+      (in `Makefile.toml`; CI workflow `.github/workflows/bevy-freenet-ci.yml`
+      runs the same gate on every crate version bump)
 
 ## Explicitly out of scope
 
@@ -291,9 +305,28 @@ Full writeup and design rationale: `M2_STEP.md`.
 - **Does the Freenet node expose a ring-size / connected-peers query?** M0.5
   proved we need one (a Get response is not readiness) but did not find one.
   If there is no such API, the fallback is "retry the roster read until either
-  non-empty or a floor of N seconds has passed".
+  non-empty or a floor of N seconds has passed". **Answer (2026-08-12):** yes —
+  `NodeQuery::NodeDiagnostics` exposes `network_info.active_connections`, and
+  `wait_ready` gates contract ops on it (see the M2 checkbox note above).
 - Roster entry expiry: TTL-based, or explicit leave message? TTL is more robust
   against crashes but needs a clock the contract can trust.
+- **Mainnet roster convergence reliability (2026-08-12, ship-time note; 2026-08-13 fix).**
+  A single mainnet `Get`/`Update` op can stall well past the ~7 s typical latency
+  (fire-and-forget UPDATE fan-out since freenet-core PR #2038 can silently drop, and
+  routing through a congested ring can take minutes), and one stalled op used to kill
+  the roster loop permanently. Now: `connect_client_loop` retries `setup_contract` with
+  capped exponential backoff (5 s → 15 s) and re-runs it whenever the client loop
+  drops; mainnet/guest instances join as client nodes (`is_gateway: false`, no
+  loopback-derived `PeerId`) instead of serving as public gateways; the app shows the
+  connect state on screen; and the roster pulls fast (5 s) plus heartbeats the *full
+  known roster* during the first minute so a peer that knows more heals stale replicas.
+  **Residual upstream case:** two *concurrent* first-`Put`s of a brand-new key can seed
+  disjoint replicas (the summary-first PUT probe can miss a still-seeding copy); those
+  reconcile only via the 5-minute `INTEREST_HEARTBEAT_INTERVAL` InterestSync exchange.
+  Client mitigation: `setup_contract`'s `not_found_grace` (60 s) re-checks for an
+  existing seed before `Put`ting, and the mainnet e2e staggers the second node by 45 s.
+  The hermetic direct-wired path is deterministic; the mainnet probe is `#[ignore]`d
+  and run manually.
 
 ## Reference
 

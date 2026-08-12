@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 
 use crate::boxes;
@@ -12,12 +14,18 @@ pub fn poll_swarm_events(
     >,
     mut peer_status: ResMut<p2p::PeerStatus>,
 ) {
+    // `Commands` are deferred, so an entity despawned earlier in this drain is still visible in
+    // `remote_boxes`. Queuing another command on it would panic when the buffers are applied — a
+    // buffered snapshot arriving after a disconnect, or two disconnects for the same peer, both hit
+    // that. Track the entities we already despawned and skip them.
+    let mut despawned = HashSet::new();
+
     while let Ok(event) = events.try_recv() {
         match event {
             p2p::Event::IncomingSnapshot { snapshot, .. } => {
                 let player_id = boxes::PlayerId(snapshot.player_id);
                 for (entity, player, target) in &mut remote_boxes {
-                    if **player != player_id {
+                    if **player != player_id || despawned.contains(&entity) {
                         continue;
                     }
                     let stale = match target {
@@ -41,7 +49,7 @@ pub fn poll_swarm_events(
                 peer_status.remove(&peer_id.to_base58());
                 let player_id = p2p::peer_id_to_player_id(&peer_id);
                 for (entity, player, _) in &mut remote_boxes {
-                    if **player == player_id {
+                    if **player == player_id && despawned.insert(entity) {
                         commands.entity(entity).despawn();
                     }
                 }
@@ -109,6 +117,44 @@ mod tests {
             .id();
         app.add_systems(Update, poll_swarm_events);
 
+        event_tx.send(p2p::Event::PeerDisconnected(peer_id)).ok();
+        app.update();
+
+        assert!(app.world().get_entity(entity).is_err());
+    }
+
+    /// A snapshot buffered behind a `PeerDisconnected` for the same peer used to queue an `insert`
+    /// on the entity the disconnect had already queued a `despawn` for — both land in the same
+    /// command buffer and the app panicked when it was applied.
+    #[test]
+    fn snapshot_after_disconnect_in_one_drain_does_not_panic() {
+        let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
+        let peer_id = libp2p::PeerId::random();
+        let player_id = p2p::peer_id_to_player_id(&peer_id);
+        let mut app = App::new();
+        app.insert_resource(p2p::P2pEvents(event_rx));
+        app.insert_resource(p2p::PeerStatus::default());
+        let entity = app
+            .world_mut()
+            .spawn((boxes::Player(player_id), Transform::default()))
+            .id();
+        app.add_systems(Update, poll_swarm_events);
+
+        event_tx.send(p2p::Event::PeerDisconnected(peer_id)).ok();
+        event_tx
+            .send(p2p::Event::IncomingSnapshot {
+                from: peer_id,
+                snapshot: p2p::Snapshot {
+                    player_id: *player_id,
+                    x: 11.0,
+                    y: 12.0,
+                    vx: 0.0,
+                    vy: 0.0,
+                    tick: 3,
+                    sent_at_ms: 0,
+                },
+            })
+            .ok();
         event_tx.send(p2p::Event::PeerDisconnected(peer_id)).ok();
         app.update();
 

@@ -23,12 +23,15 @@ pub fn new(
     let params = params.to_vec();
     let roster_task = tokio::spawn(async move {
         roster::connect_client_loop(
-            "127.0.0.1",
-            ws_port,
-            &wasm,
-            &params,
-            own_id,
-            own_entry,
+            roster::ConnectClientArgs {
+                host: "127.0.0.1",
+                port: ws_port,
+                contract_wasm: &wasm,
+                params: &params,
+                own_id,
+                own_entry,
+                not_found_grace: std::time::Duration::ZERO,
+            },
             event_tx,
         )
         .await;

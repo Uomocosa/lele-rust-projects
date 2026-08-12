@@ -29,6 +29,7 @@ impl ProductionGameApp {
     }
     pub fn box_count(&mut self) -> usize { pga_method::box_count(self) }
     pub fn roster_len(&mut self) -> usize { pga_method::roster_len(self) }
+    pub fn own_player_id(&self) -> bevy_freenet::boxes::PlayerId { pga_method::own_player_id(self) }
     pub fn box_spawns(&mut self) -> Vec<(bevy_freenet::boxes::PlayerId, bevy::math::Vec2, bool)> { pga_method::box_spawns(self) }
     pub fn freenet_gateway(&self) -> String { pga_method::freenet_gateway(self) }
     pub async fn wait_for_box_count(&mut self, expected: usize, timeout: std::time::Duration) -> Result<(), String> {
@@ -36,6 +37,12 @@ impl ProductionGameApp {
     }
     pub async fn wait_for_roster_len(&mut self, expected: usize, timeout: std::time::Duration) -> Result<(), String> {
         pga_method::wait_for_roster_len(self, expected, timeout).await
+    }
+    pub async fn wait_for_box_ids(&mut self, expected: &[bevy_freenet::boxes::PlayerId], timeout: std::time::Duration) -> Result<(), String> {
+        pga_method::wait_for_box_ids(self, expected, timeout).await
+    }
+    pub async fn wait_for_roster_ids(&mut self, expected: &[bevy_freenet::boxes::PlayerId], timeout: std::time::Duration) -> Result<(), String> {
+        pga_method::wait_for_roster_ids(self, expected, timeout).await
     }
     pub fn simulate_move(&mut self, direction: bevy::input::keyboard::KeyCode, frames: u32) {
         pga_method::simulate_move(self, direction, frames)
