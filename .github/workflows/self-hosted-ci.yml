@@ -54,11 +54,6 @@ jobs:
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
-
       - name: Build all targets
         run: cargo build --all-targets
 
@@ -140,12 +135,6 @@ jobs:
 
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
-
-      - name: Install system dependencies
-        if: matrix.os == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
       - name: Download pre-built contract WASM
         if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
