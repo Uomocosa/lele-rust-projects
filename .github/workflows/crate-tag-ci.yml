@@ -112,6 +112,9 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.mode != 'test'
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: target/ci-contract
+      RUSTFLAGS: ""
     steps:
       - uses: actions/checkout@v4
 
@@ -130,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: contract-wasm
-          path: ${{ needs.resolve.outputs.crate }}/contract/target/wasm32-unknown-unknown/release/*.wasm
+          path: ${{ needs.resolve.outputs.crate }}/contract/target/ci-contract/wasm32-unknown-unknown/release/*.wasm
 
   build-check:
     needs: [resolve, build-contract]
