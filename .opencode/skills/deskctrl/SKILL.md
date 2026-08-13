@@ -18,6 +18,13 @@ MCP server registered under the key `deskctrl`, so its tools are
 The `screenshot` tool returns a PNG image plus a text summary (dimensions,
 file size). With no arguments it captures the whole screen.
 
+**Session start:** take **one full-screen** screenshot before driving any
+window. A modal dialog holding a keyboard grab (e.g. gnome-keyring's
+"Choose password for new keyring") is hidden in a per-window capture but
+visible in a full-screen shot — and it silently swallows every keystroke and
+click until dismissed. `send_keys` now errors on an active grab rather than
+typing into the grabber, but you still want to spot the dialog first.
+
 **Vision guard (MANDATORY):** Before calling `screenshot`, check whether
 the current model can handle images:
 
@@ -87,6 +94,9 @@ A `key` is a modifier (`Ctrl`, `Shift`, `Alt`, `Super`, `Meta`), a named key (`E
 
 Non-ASCII text errors — send Unicode through the clipboard instead. Screenshot the window
 afterwards to confirm the text landed.
+
+`send_keys` errors if another window (e.g. a modal dialog) holds an active keyboard grab —
+keystrokes would go to the grabber, not the target. Dismiss the dialog and retry.
 
 ## Process Management
 
