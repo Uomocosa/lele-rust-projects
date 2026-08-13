@@ -8,6 +8,7 @@ pub struct TestNode {
     pub(crate) public_port: u16,
     pub(crate) public_key_hex: String,
     pub _task: JoinHandle<()>,
+    pub(crate) shutdown_handle: freenet::ShutdownHandle,
 }
 
 #[rustfmt::skip]

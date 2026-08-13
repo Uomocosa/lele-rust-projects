@@ -7,7 +7,7 @@ pub async fn start_peer(
     let tmp = tempfile::tempdir()?;
     let public_port = free_udp_port()?;
     let gateway = format!("127.0.0.1:{gateway_public_port},{gateway_public_key_hex}");
-    let (port, public_key_hex, task) =
+    let (port, public_key_hex, task, shutdown_handle) =
         start_node_at(tmp.path(), false, public_port, Some(gateway)).await?;
 
     Ok(crate::structs::test_node::TestNode {
@@ -16,6 +16,7 @@ pub async fn start_peer(
         public_port,
         public_key_hex,
         _task: task,
+        shutdown_handle,
     })
 }
 // no test_usage necessary — needs a live gateway, exercised by the two-node roster test

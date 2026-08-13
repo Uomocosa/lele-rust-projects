@@ -9,7 +9,8 @@ pub async fn start_gateway(
     } else {
         public_port
     };
-    let (port, public_key_hex, task) = start_node_at(tmp.path(), true, public_port, None).await?;
+    let (port, public_key_hex, task, shutdown_handle) =
+        start_node_at(tmp.path(), true, public_port, None).await?;
 
     Ok(crate::structs::test_node::TestNode {
         _tmp: Some(tmp),
@@ -17,6 +18,7 @@ pub async fn start_gateway(
         public_port,
         public_key_hex,
         _task: task,
+        shutdown_handle,
     })
 }
 
@@ -29,5 +31,6 @@ mod tests {
         let node = TestNode::start_gateway(0).await.unwrap();
         assert!(node.port() > 0);
         assert_eq!(node.public_key_hex().len(), 64);
+        node.shutdown().await;
     }
 }

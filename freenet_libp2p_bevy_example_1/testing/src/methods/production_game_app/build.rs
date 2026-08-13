@@ -56,10 +56,8 @@ pub(crate) async fn build(
             Ok(node) => break node,
             Err(e) => {
                 tracing::error!(target: "roster", error = %e, "embedded node startup failed, retrying");
-                tokio::time::sleep(Duration::from_secs(
-                    roster::NODE_START_RETRY_BACKOFF_SECS,
-                ))
-                .await;
+                tokio::time::sleep(Duration::from_secs(roster::NODE_START_RETRY_BACKOFF_SECS))
+                    .await;
             }
         }
     };

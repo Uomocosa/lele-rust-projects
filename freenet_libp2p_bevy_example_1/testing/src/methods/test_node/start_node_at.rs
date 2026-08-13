@@ -3,6 +3,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use bevy_freenet::freenet::FreenetClient;
+use freenet::ShutdownHandle;
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
 use freenet::local_node::{NodeConfig, OperationMode};
 use freenet::run_network_node;
@@ -23,8 +24,13 @@ pub(crate) async fn start_node_at(
     is_gateway: bool,
     public_port: u16,
     gateway: Option<String>,
-) -> Result<(u16, String, JoinHandle<()>), Box<dyn std::error::Error>> {
-    let _ = tracing_subscriber::fmt::try_init();
+) -> Result<(u16, String, JoinHandle<()>, ShutdownHandle), Box<dyn std::error::Error>> {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "warn,freenet::client_events::websocket=off".into()),
+        )
+        .try_init();
 
     let min_active_connections = usize::from(gateway.is_some());
 
@@ -61,6 +67,8 @@ pub(crate) async fn start_node_at(
     let node_config = NodeConfig::new(config).await?;
     let node = node_config.build(clients).await?;
 
+    let shutdown_handle = node.shutdown_handle();
+
     let task = tokio::spawn(async move {
         if let Err(e) = run_network_node(node).await {
             tracing::error!(error = %e, "node exited with error");
@@ -72,5 +80,5 @@ pub(crate) async fn start_node_at(
         .wait_ready(min_active_connections, Duration::from_secs(30))
         .await?;
 
-    Ok((ws_port, public_key_hex, task))
+    Ok((ws_port, public_key_hex, task, shutdown_handle))
 }
