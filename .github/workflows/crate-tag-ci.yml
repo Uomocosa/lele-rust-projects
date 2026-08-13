@@ -263,7 +263,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.resolve.outputs.crate }}-${{ github.ref_name }}-${{ matrix.os_name }}-${{ matrix.arch }}
-          path: target/ci/release/${{ steps.bin.outputs.bin }}${{ matrix.exe }}
+          path: ${{ needs.resolve.outputs.crate }}/target/ci/release/${{ steps.bin.outputs.bin }}${{ matrix.exe }}
+          if-no-files-found: error
 
   publish:
     needs: [resolve, release]
@@ -274,7 +275,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: /tmp/release-artifacts
+          path: release-artifacts
           pattern: ${{ needs.resolve.outputs.crate }}-${{ github.ref_name }}-*
 
       - name: Create or update GitHub Release with all platform binaries
@@ -285,7 +286,7 @@ jobs:
           TAG="${{ github.ref_name }}"
           mkdir -p /tmp/assets
           assets=()
-          for f in /tmp/release-artifacts/*/*; do
+          for f in "$GITHUB_WORKSPACE"/release-artifacts/*/*; do
             [ -f "$f" ] || continue
             dir="$(basename "$(dirname "$f")")"
             os_arch="${dir##*-${TAG}-}"
