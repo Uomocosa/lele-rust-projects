@@ -193,7 +193,11 @@ jobs:
 
   release:
     needs: [resolve, test, build-contract]
-    if: needs.resolve.outputs.mode == 'release' || needs.resolve.outputs.mode == 'release-notests'
+    if: |
+      always() &&
+      (needs.resolve.outputs.mode == 'release' || needs.resolve.outputs.mode == 'release-notests') &&
+      needs.test.result != 'failure' &&
+      needs.build-contract.result == 'success'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
