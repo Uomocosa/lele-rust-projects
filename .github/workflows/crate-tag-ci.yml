@@ -300,7 +300,11 @@ jobs:
             dir="$(basename "$(dirname "$f")")"
             os_arch="${dir##*-${TAG}-}"
             bin="$(basename "$f")"
-            asset="${bin}-${os_arch}"
+            if [[ "$bin" == *.exe ]]; then
+              asset="${bin%.exe}-${os_arch}.exe"
+            else
+              asset="${bin}-${os_arch}"
+            fi
             cp "$f" "/tmp/assets/$asset"
             assets+=("/tmp/assets/$asset")
           done
