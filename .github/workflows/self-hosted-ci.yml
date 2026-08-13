@@ -1,0 +1,190 @@
+name: self-hosted CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      crate:
+        description: Crate folder name (e.g. freenet_libp2p_bevy_example_1)
+        required: false
+        default: freenet_libp2p_bevy_example_1
+      run-tests:
+        description: Run the Linux test gate (build, fmt, clippy, tests, subcrates, lele_lint)
+        type: boolean
+        default: true
+      release-builds:
+        description: Build release binaries on Linux + Windows and upload artifacts
+        type: boolean
+        default: true
+
+jobs:
+  resolve:
+    runs-on: [self-hosted, linux]
+    outputs:
+      crate: ${{ steps.check.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate crate folder
+        id: check
+        run: |
+          set -euo pipefail
+          CRATE="${{ inputs.crate }}"
+          [ -d "$CRATE" ] || { echo "crate folder '$CRATE' not found" >&2; exit 1; }
+          [ -f "$CRATE/Cargo.toml" ] || { echo "no Cargo.toml in '$CRATE'" >&2; exit 1; }
+          echo "crate=$CRATE" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve
+    if: inputs.run-tests
+    runs-on: [self-hosted, linux]
+    env:
+      CARGO_TARGET_DIR: /tmp/frt-build
+      RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
+      - name: Build all targets
+        run: cargo build --all-targets
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run all tests
+        run: cargo test --all-targets
+
+      - name: Build, clippy, test subcrates (testing/e2e_tests/integration_tests)
+        run: |
+          set -euo pipefail
+          for sub in testing e2e_tests integration_tests; do
+            [ -f "$sub/Cargo.toml" ] || continue
+            echo "=== subcrate: $sub ==="
+            cargo build --all-targets --manifest-path "$sub/Cargo.toml"
+            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" -- -D warnings
+            cargo test --all-targets --manifest-path "$sub/Cargo.toml"
+          done
+
+      - name: lele_lint
+        run: cargo run --manifest-path ../lele_lint/Cargo.toml
+
+  build-contract:
+    needs: resolve
+    if: inputs.release-builds
+    runs-on: [self-hosted, linux]
+    env:
+      CARGO_TARGET_DIR: target/ci-contract
+      RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build contract WASM once
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        working-directory: ${{ needs.resolve.outputs.crate }}/contract
+        run: cargo build --release --target wasm32-unknown-unknown
+
+      - name: Upload contract WASM
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-wasm
+          path: ${{ needs.resolve.outputs.crate }}/contract/target/ci-contract/wasm32-unknown-unknown/release/*.wasm
+
+  build:
+    needs: [resolve, build-contract]
+    if: inputs.release-builds
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+          - os: windows
+    env:
+      CARGO_TARGET_DIR: target/ci
+      RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install system dependencies
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
+      - name: Download pre-built contract WASM
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-wasm
+          path: contract-wasm-download
+
+      - name: Place contract WASM at embed location
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        run: |
+          src=$(find "$GITHUB_WORKSPACE/contract-wasm-download" -name '*.wasm' | head -n1)
+          cp "$src" "contract/$(basename "$src")"
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Build subcrates (testing/e2e_tests/integration_tests)
+        run: |
+          set -euo pipefail
+          for sub in testing e2e_tests integration_tests; do
+            [ -f "$sub/Cargo.toml" ] || continue
+            cargo build --all-targets --manifest-path "$sub/Cargo.toml"
+          done
+
+      - name: Resolve binary name
+        id: bin
+        run: |
+          BIN=$(cargo metadata --no-deps --format-version 1 | python3 -c "
+          import json, sys
+          pkg = json.load(sys.stdin)['packages'][0]
+          bins = [t['name'] for t in pkg['targets'] if 'bin' in t['kind']]
+          print(bins[0] if bins else pkg['name'].replace('-', '_'))
+          ")
+          echo "bin=$BIN" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.resolve.outputs.crate }}-selfhosted-${{ matrix.os }}
+          path: ${{ needs.resolve.outputs.crate }}/target/ci/release/${{ steps.bin.outputs.bin }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          if-no-files-found: error
