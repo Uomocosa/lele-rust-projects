@@ -143,6 +143,8 @@ jobs:
           path: /tmp/frt-build/release/${{ steps.bin.outputs.bin }}
 
       - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
