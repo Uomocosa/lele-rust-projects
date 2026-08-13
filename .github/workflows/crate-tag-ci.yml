@@ -1,0 +1,154 @@
+name: crate-tag CI
+
+on:
+  push:
+    tags:
+      - '*-test-*'
+      - '*-release-*'
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      crate: ${{ steps.parse.outputs.crate }}
+      mode: ${{ steps.parse.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse tag into crate and mode
+        id: parse
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          CRATE=""
+          MODE=""
+          for dir in */; do
+            dir="${dir%/}"
+            [ -f "$dir/Cargo.toml" ] || continue
+            norm=$(printf '%s' "$dir" | tr '_ ' '--')
+            prefix="${norm}-"
+            case "$TAG" in
+              "$prefix"*)
+                rest="${TAG#"$prefix"}"
+                if [[ "$rest" =~ ^(test|release)-[0-9]{4}-[0-9]{2}-[0-9]{2}#[0-9]+$ ]]; then
+                  CRATE="$dir"
+                  MODE="${BASH_REMATCH[1]}"
+                  break
+                fi
+                ;;
+            esac
+          done
+          if [ -z "$CRATE" ]; then
+            echo "Tag '$TAG' does not match <crate-folder>-(test|release)-YYYY-MM-DD#N with a known crate folder" >&2
+            exit 1
+          fi
+          echo "crate=$CRATE" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: /tmp/frt-build
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
+      - name: Build all targets
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: cargo build --all-targets
+
+      - name: Check formatting
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: cargo fmt -- --check
+
+      - name: Clippy (deny warnings)
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run all tests
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: cargo test --all-targets
+
+      - name: Build, clippy, test subcrates (testing/e2e_tests/integration_tests)
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: |
+          set -euo pipefail
+          for sub in testing e2e_tests integration_tests; do
+            [ -f "$sub/Cargo.toml" ] || continue
+            echo "=== subcrate: $sub ==="
+            cargo build --all-targets --manifest-path "$sub/Cargo.toml"
+            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" -- -D warnings
+            cargo test --all-targets --manifest-path "$sub/Cargo.toml"
+          done
+
+      - name: lele_lint
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: cargo run --manifest-path ../lele_lint/Cargo.toml
+
+  release:
+    needs: [resolve, test]
+    if: needs.resolve.outputs.mode == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CARGO_TARGET_DIR: /tmp/frt-build
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
+      - name: Build release binary
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: cargo build --release
+
+      - name: Resolve binary name
+        id: bin
+        working-directory: ${{ needs.resolve.outputs.crate }}
+        run: |
+          BIN=$(cargo metadata --no-deps --format-version 1 | python3 -c "
+          import json, sys
+          pkg = json.load(sys.stdin)['packages'][0]
+          bins = [t['name'] for t in pkg['targets'] if 'bin' in t['kind']]
+          print(bins[0] if bins else pkg['name'].replace('-', '_'))
+          ")
+          echo "bin=$BIN" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.resolve.outputs.crate }}-${{ github.ref_name }}-linux-x86_64
+          path: /tmp/frt-build/release/${{ steps.bin.outputs.bin }}
+
+      - name: Create or update GitHub Release
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          BIN=/tmp/frt-build/release/${{ steps.bin.outputs.bin }}
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$BIN" --clobber
+          else
+            gh release create "$TAG" "$BIN" --title "$TAG" --generate-notes
+          fi
