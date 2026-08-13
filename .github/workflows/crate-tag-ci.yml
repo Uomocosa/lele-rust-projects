@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - '*-test-*'
+      - '*-build-*'
       - '*-release-*'
 
 jobs:
@@ -30,16 +31,24 @@ jobs:
             case "$TAG" in
               "$prefix"*)
                 rest="${TAG#"$prefix"}"
-                if [[ "$rest" =~ ^(test|release)-[0-9]{4}-[0-9]{2}-[0-9]{2}#[0-9]+$ ]]; then
-                  CRATE="$dir"
-                  MODE="${BASH_REMATCH[1]}"
-                  break
+                if   [[ "$rest" =~ ^test-[0-9]{4}-[0-9]{2}-[0-9]{2}#[0-9]+$ ]]; then
+                  MODE="test"
+                elif [[ "$rest" =~ ^build-[0-9]{4}-[0-9]{2}-[0-9]{2}#[0-9]+$ ]]; then
+                  MODE="build"
+                elif [[ "$rest" =~ ^release-notests-[0-9]{4}-[0-9]{2}-[0-9]{2}#[0-9]+$ ]]; then
+                  MODE="release-notests"
+                elif [[ "$rest" =~ ^release-[0-9]{4}-[0-9]{2}-[0-9]{2}#[0-9]+$ ]]; then
+                  MODE="release"
+                else
+                  continue
                 fi
+                CRATE="$dir"
+                break
                 ;;
             esac
           done
           if [ -z "$CRATE" ]; then
-            echo "Tag '$TAG' does not match <crate-folder>-(test|release)-YYYY-MM-DD#N with a known crate folder" >&2
+            echo "Tag '$TAG' does not match <crate-folder>-(test|build|release|release-notests)-YYYY-MM-DD#N with a known crate folder" >&2
             exit 1
           fi
           echo "crate=$CRATE" >> "$GITHUB_OUTPUT"
@@ -47,6 +56,7 @@ jobs:
 
   test:
     needs: resolve
+    if: needs.resolve.outputs.mode == 'test' || needs.resolve.outputs.mode == 'release'
     runs-on: ubuntu-latest
     env:
       CARGO_TARGET_DIR: /tmp/frt-build
@@ -98,15 +108,48 @@ jobs:
         working-directory: ${{ needs.resolve.outputs.crate }}
         run: cargo run --manifest-path ../lele_lint/Cargo.toml
 
-  release:
-    needs: [resolve, test]
-    if: needs.resolve.outputs.mode == 'release'
+  build-contract:
+    needs: resolve
+    if: needs.resolve.outputs.mode != 'test'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build contract WASM once
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        working-directory: ${{ needs.resolve.outputs.crate }}/contract
+        run: cargo build --release --target wasm32-unknown-unknown
+
+      - name: Upload contract WASM
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-wasm
+          path: ${{ needs.resolve.outputs.crate }}/contract/target/wasm32-unknown-unknown/release/*.wasm
+
+  build-check:
+    needs: [resolve, build-contract]
+    if: needs.resolve.outputs.mode == 'build'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
     env:
-      CARGO_TARGET_DIR: /tmp/frt-build
+      CARGO_TARGET_DIR: target/ci
       RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ needs.resolve.outputs.crate }}
     steps:
       - uses: actions/checkout@v4
 
@@ -116,17 +159,94 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Install system dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
-      - name: Build release binary
+      - name: Download pre-built contract WASM
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-wasm
+          path: contract-wasm-download
+
+      - name: Place contract WASM at embed location
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        run: |
+          src=$(find "$GITHUB_WORKSPACE/contract-wasm-download" -name '*.wasm' | head -n1)
+          cp "$src" "contract/$(basename "$src")"
+
+      - name: Build all targets (cross-platform compile check)
+        run: cargo build --all-targets
+
+      - name: Build subcrates (testing/e2e_tests/integration_tests)
+        run: |
+          set -euo pipefail
+          for sub in testing e2e_tests integration_tests; do
+            [ -f "$sub/Cargo.toml" ] || continue
+            cargo build --all-targets --manifest-path "$sub/Cargo.toml"
+          done
+
+  release:
+    needs: [resolve, test, build-contract]
+    if: needs.resolve.outputs.mode == 'release' || needs.resolve.outputs.mode == 'release-notests'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_name: linux
+            arch: x86_64
+            exe: ""
+          - os: macos-latest
+            os_name: macos
+            arch: aarch64
+            exe: ""
+          - os: windows-latest
+            os_name: windows
+            arch: x86_64
+            exe: ".exe"
+    env:
+      CARGO_TARGET_DIR: target/ci
+      RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: bash
         working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
+      - name: Download pre-built contract WASM
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-wasm
+          path: contract-wasm-download
+
+      - name: Place contract WASM at embed location
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        run: |
+          src=$(find "$GITHUB_WORKSPACE/contract-wasm-download" -name '*.wasm' | head -n1)
+          cp "$src" "contract/$(basename "$src")"
+
+      - name: Build release binary
         run: cargo build --release
 
       - name: Resolve binary name
         id: bin
-        working-directory: ${{ needs.resolve.outputs.crate }}
         run: |
           BIN=$(cargo metadata --no-deps --format-version 1 | python3 -c "
           import json, sys
@@ -139,18 +259,44 @@ jobs:
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ needs.resolve.outputs.crate }}-${{ github.ref_name }}-linux-x86_64
-          path: /tmp/frt-build/release/${{ steps.bin.outputs.bin }}
+          name: ${{ needs.resolve.outputs.crate }}-${{ github.ref_name }}-${{ matrix.os_name }}-${{ matrix.arch }}
+          path: target/ci/release/${{ steps.bin.outputs.bin }}${{ matrix.exe }}
 
-      - name: Create or update GitHub Release
+  publish:
+    needs: [resolve, release]
+    if: needs.resolve.outputs.mode == 'release' || needs.resolve.outputs.mode == 'release-notests'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/release-artifacts
+          pattern: ${{ needs.resolve.outputs.crate }}-${{ github.ref_name }}-*
+
+      - name: Create or update GitHub Release with all platform binaries
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
-          BIN=/tmp/frt-build/release/${{ steps.bin.outputs.bin }}
+          mkdir -p /tmp/assets
+          assets=()
+          for f in /tmp/release-artifacts/*/*; do
+            [ -f "$f" ] || continue
+            dir="$(basename "$(dirname "$f")")"
+            os_arch="${dir##*-${TAG}-}"
+            bin="$(basename "$f")"
+            asset="${bin}-${os_arch}"
+            cp "$f" "/tmp/assets/$asset"
+            assets+=("/tmp/assets/$asset")
+          done
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "no platform binaries found to publish" >&2
+            exit 1
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$BIN" --clobber
+            gh release upload "$TAG" "${assets[@]}" --clobber
           else
-            gh release create "$TAG" "$BIN" --title "$TAG" --generate-notes
+            gh release create "$TAG" "${assets[@]}" --title "$TAG" --generate-notes
           fi
