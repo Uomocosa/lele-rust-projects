@@ -272,7 +272,10 @@ jobs:
 
   publish:
     needs: [resolve, release]
-    if: needs.resolve.outputs.mode == 'release' || needs.resolve.outputs.mode == 'release-notests'
+    if: |
+      always() &&
+      (needs.resolve.outputs.mode == 'release' || needs.resolve.outputs.mode == 'release-notests') &&
+      needs.release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
