@@ -4,10 +4,11 @@ version = "0.1.2"
 edition = "2024"
 
 [lib]
+name = "freenet_libp2p_bevy_example_1_lib"
 crate-type = ["lib", "cdylib"]
 
 [[bin]]
-name = "bevy_freenet"
+name = "freenet-libp2p-bevy-example-1"
 path = "src/main.rs"
 
 [dependencies]

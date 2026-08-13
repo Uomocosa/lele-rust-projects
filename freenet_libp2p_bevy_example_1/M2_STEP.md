@@ -41,7 +41,7 @@ targeting `wasm32-unknown-unknown` (mirror
 crate-type). `contract/src/lib.rs`:
 - `PlayerId` (already exists as a Bevy `Component` field type in
   `src/boxes/player_id.rs` — the contract crate is compiled to WASM
-  separately and cannot depend on the `bevy_freenet` lib, so it needs its
+  separately and cannot depend on the `freenet_libp2p_bevy_example_1_lib` lib, so it needs its
   own `PlayerId` newtype, `derive(Ord, PartialOrd, Serialize, Deserialize)`
   for the `BTreeMap` key)
 - `PeerEntry { peer_id: String, addrs: Vec<String>, updated_at: u64 }`

@@ -127,7 +127,7 @@ actually searches. (Confirmed by correlating `Registered transaction` →
       — `SpatialQuery::cast_ray` straight down from the box, excluding itself
 - [x] `test_usage` per file; headless `App` tests for move/jump/spawn
 - [x] **Checkpoint: one box, keyboard-controlled, jumps, lands. Runs solo.**
-      Verified visually — spawned `cargo run --bin bevy_freenet`, screenshotted
+      Verified visually — spawned `cargo run --bin freenet-libp2p-bevy-example-1`, screenshotted
       the window: box rendered and resting on the ground under gravity. WASD/
       arrow/Space input logic verified via the `read_input` and `plugin`
       `test_usage` tests (no way to synthesize real key events through the

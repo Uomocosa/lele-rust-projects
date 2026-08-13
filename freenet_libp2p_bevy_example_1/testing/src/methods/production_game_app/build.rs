@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use bevy::input::ButtonInput;
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
-use bevy_freenet::{boxes, p2p, roster};
+use freenet_libp2p_bevy_example_1_lib::{boxes, p2p, roster};
 
 use crate::structs::production_game_app::ProductionGameApp;
 

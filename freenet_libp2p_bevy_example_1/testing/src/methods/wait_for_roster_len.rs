@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use bevy_freenet::roster;
+use freenet_libp2p_bevy_example_1_lib::roster;
 
 use crate::methods::recv_roster_notification;
 
 pub async fn wait_for_roster_len(
-    client: &mut bevy_freenet::freenet::FreenetClient,
+    client: &mut freenet_libp2p_bevy_example_1_lib::freenet::FreenetClient,
     expected_len: usize,
     timeout: Duration,
 ) -> Option<roster::RosterState> {

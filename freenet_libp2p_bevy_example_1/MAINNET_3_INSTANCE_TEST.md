@@ -1,6 +1,6 @@
 # Three-instance mainnet discovery test — 2026-08-12
 
-Run of three identical `bevy_freenet` release binaries, each with its own
+Run of three identical `freenet-libp2p-bevy-example-1` release binaries, each with its own
 `--identity-dir`, **no** `--freenet-local` and **no** `--freenet-gateway`, i.e.
 the pure public-Freenet path that simulates three PCs on three networks.
 

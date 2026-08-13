@@ -248,7 +248,7 @@ Bevy communicates only over the mpsc channels (`try_send`/`try_recv`). No
   `Command::SendSnapshot`; `poll_swarm_events` fed an `IncomingSnapshot` moves
   a pre-spawned `Kinematic` box's `RemoteTarget`; `dial_roster_peers` emits one
   `Dial` per new remote entry and none for self.
-- **Manual checkpoint (the M3 acceptance test):** run two `bevy_freenet`
+- **Manual checkpoint (the M3 acceptance test):** run two `freenet-libp2p-bevy-example-1`
   binaries with distinct `--p2p-port` values, let them join the public ring,
   each finds the other via the roster, dials over loopback QUIC/TCP, and each
   box moves in the other's window in real time. Verified visually via the

@@ -8,8 +8,9 @@ fn identity_file_path(dir_override: Option<PathBuf>) -> Option<PathBuf> {
     if let Some(dir) = dir_override {
         return Some(dir.join("identity.bin"));
     }
-    std::env::var_os("HOME")
-        .map(|home| PathBuf::from(home).join(".local/share/bevy_freenet/identity.bin"))
+    std::env::var_os("HOME").map(|home| {
+        PathBuf::from(home).join(".local/share/freenet-libp2p-bevy-example-1/identity.bin")
+    })
 }
 
 // needed helper:
@@ -74,7 +75,10 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let dir = std::env::temp_dir().join(format!("bevy_freenet_test_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "freenet_libp2p_bevy_example_1_test_{}",
+            std::process::id()
+        ));
         let keypair = load_or_create_keypair(Some(dir.clone()));
         let bytes = keypair.to_protobuf_encoding().unwrap();
         let restored = Keypair::from_protobuf_encoding(&bytes).unwrap();
@@ -87,10 +91,14 @@ mod tests {
 
     #[test]
     fn different_dirs_yield_different_identities() {
-        let dir_a =
-            std::env::temp_dir().join(format!("bevy_freenet_test_a_{}", std::process::id()));
-        let dir_b =
-            std::env::temp_dir().join(format!("bevy_freenet_test_b_{}", std::process::id()));
+        let dir_a = std::env::temp_dir().join(format!(
+            "freenet_libp2p_bevy_example_1_test_a_{}",
+            std::process::id()
+        ));
+        let dir_b = std::env::temp_dir().join(format!(
+            "freenet_libp2p_bevy_example_1_test_b_{}",
+            std::process::id()
+        ));
         let a = load_or_create_keypair(Some(dir_a.clone()));
         let b = load_or_create_keypair(Some(dir_b.clone()));
         assert_ne!(a.public().to_peer_id(), b.public().to_peer_id());
@@ -104,7 +112,10 @@ mod tests {
     /// turns red if `atomic_write` is ever reverted to a plain truncate-then-write `fs::write`.
     #[test]
     fn concurrent_reads_see_a_stable_on_disk_identity() {
-        let dir = std::env::temp_dir().join(format!("bevy_freenet_race_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "freenet_libp2p_bevy_example_1_race_{}",
+            std::process::id()
+        ));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("identity.bin");
 

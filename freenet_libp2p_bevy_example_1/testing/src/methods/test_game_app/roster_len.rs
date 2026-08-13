@@ -1,4 +1,4 @@
-use bevy_freenet::roster;
+use freenet_libp2p_bevy_example_1_lib::roster;
 
 use crate::structs::test_game_app::TestGameApp;
 

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_freenet::{boxes, roster};
+use freenet_libp2p_bevy_example_1_lib::{boxes, roster};
 
 use crate::structs::test_game_app::TestGameApp;
 

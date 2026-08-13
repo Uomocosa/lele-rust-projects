@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
 use std::path::Path;
 use std::time::Duration;
 
-use bevy_freenet::freenet::FreenetClient;
+use freenet_libp2p_bevy_example_1_lib::freenet::FreenetClient;
 use freenet::ShutdownHandle;
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
 use freenet::local_node::{NodeConfig, OperationMode};

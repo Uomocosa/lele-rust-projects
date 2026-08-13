@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bevy::prelude::*;
-use bevy_freenet::{boxes, cli, p2p, roster};
+use freenet_libp2p_bevy_example_1_lib::{boxes, cli, p2p, roster};
 
 fn now_unix_secs() -> u64 {
     SystemTime::now()

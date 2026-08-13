@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use bevy_freenet::boxes;
+use freenet_libp2p_bevy_example_1_lib::boxes;
 
 use crate::structs::production_game_app::ProductionGameApp;
 

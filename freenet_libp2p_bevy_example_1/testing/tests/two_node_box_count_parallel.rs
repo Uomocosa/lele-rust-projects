@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy_freenet::{boxes, roster};
+use freenet_libp2p_bevy_example_1_lib::{boxes, roster};
 
 fn entry(peer_id: &str) -> roster::PeerEntry {
     roster::PeerEntry {
