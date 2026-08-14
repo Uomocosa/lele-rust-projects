@@ -14,7 +14,7 @@ jobs:
           - os: windows
     defaults:
       run:
-        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd {1}', github.workspace, '{0}') || 'bash' }}
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
     steps:
       - uses: actions/checkout@v4
 
