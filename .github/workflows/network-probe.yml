@@ -3,6 +3,10 @@ name: network-probe
 on:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   probe:
     runs-on: [self-hosted, "${{ matrix.os }}"]
