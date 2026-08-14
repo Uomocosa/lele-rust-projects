@@ -71,8 +71,21 @@ jobs:
         run: rm -rf "$CARGO_TARGET_DIR"
 
       - uses: dtolnay/rust-toolchain@stable
+        if: matrix.os != 'windows'
         with:
           components: clippy, rustfmt
+
+      - name: Install rust toolchain (windows, git-bash)
+        if: matrix.os == 'windows'
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default -y
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup default stable
+          rustup component add clippy rustfmt
 
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
@@ -119,10 +132,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Clean persistent target dir (cold build)
-        if: inputs.clean
-        run: rm -rf "$CARGO_TARGET_DIR"
-
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
 
@@ -161,6 +170,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        if: matrix.os != 'windows'
+
+      - name: Install rust toolchain (windows, git-bash)
+        if: matrix.os == 'windows'
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default -y
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup default stable
+          rustup component add clippy rustfmt
 
       - name: Clean persistent target dir (cold build)
         if: inputs.clean
@@ -238,6 +260,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        if: matrix.os != 'windows'
+
+      - name: Install rust toolchain (windows, git-bash)
+        if: matrix.os == 'windows'
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default -y
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup default stable
+          rustup component add clippy rustfmt
 
       - name: Clean persistent target dir (cold build)
         if: inputs.clean
