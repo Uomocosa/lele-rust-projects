@@ -15,10 +15,14 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      PATH: ${{ matrix.os == 'windows' && 'C:\\Program Files\\Git\\usr\\bin;C:\\Program Files\\Git\\bin;' || '' }}${{ env.PATH }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Put Git Bash first on PATH
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          echo "PATH=C:\Program Files\Git\usr\bin;C:\Program Files\Git\bin;$env:PATH" >> $env:GITHUB_ENV
 
       - name: Collect network identity
         id: net
