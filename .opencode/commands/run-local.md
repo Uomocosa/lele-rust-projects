@@ -14,8 +14,9 @@ Set `MODE` from `$ARGUMENTS`:
 ## Phase 1 — Runner pre-flight (STOP on failure)
 1. Call `list_runners`. Print both machines and their status.
 2. You need BOTH the Linux runner and the Windows runner **online**.
-   - If either is offline → **STOP immediately**. Do not trigger anything. Tell the user to start the offline runner (Linux: `~/actions-runner/run.sh`; Windows: `C:\actions-runner\run.cmd`) and wait for them to confirm, then re-run Phase 1.
-3. The Windows runner must have Git Bash first on PATH (persisted once via `setx PATH "C:\Program Files\Git\bin;%PATH%"`). You cannot probe PATH remotely — treat an online Windows runner as ready. If the Windows leg later fails at the rust-toolchain step, that is the sign the one-time `setx` was never applied; tell the user to run it once.
+   - If the **Linux** runner is offline → **start it yourself** with `~/actions-runner/run.sh` (you are on Linux).
+   - If the **Windows** runner is offline → **STOP and tell the user the exact command to run** on Windows: `C:\actions-runner\run.cmd`. Wait for them to confirm it's up, then re-run Phase 1.
+   - Do not trigger anything until both runners are online.
 
 ## Phase 2 — Same-LAN gate (STOP and ASK)
 1. Call `probe_network` to get each machine's public IP + LAN IP (it triggers the `network-probe` workflow and waits).
@@ -49,7 +50,7 @@ Print a concise report to the user:
 - Job matrix with pass/fail (Phase 4 results), including the `cross-os-verify` PASS/FAIL verdict.
 - The exact paths of the two `.log` files (single/double log for investigation).
 - If `cross-os-verify` failed, quote from each log what each machine observed so the user can investigate the bug.
-- Any runner/PATH issue you hit, and what the user must do manually (only ever: start a runner, or run the one-time `setx`).
+- Any runner issue you hit, and what the user must do manually (Windows: run `C:\actions-runner\run.cmd`; Linux: you start it yourself).
 
 ## Hard rules
 - Never trigger the pipeline before Phase 1 confirms both runners online.
