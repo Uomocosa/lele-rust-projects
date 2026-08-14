@@ -53,9 +53,11 @@ jobs:
       matrix:
         include:
           - os: linux
+            target_dir: /home/uomocosa/.cache/frt-test
           - os: windows
+            target_dir: 'C:\cargo-target\frt-test'
     env:
-      CARGO_TARGET_DIR: ${{ runner.home }}/.cache/frt-test
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
       RUSTFLAGS: ""
     defaults:
       run:
