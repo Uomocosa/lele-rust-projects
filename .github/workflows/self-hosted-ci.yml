@@ -58,6 +58,7 @@ jobs:
             target_dir: 'C:\cargo-target\frt-test'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '4' || '0' }}
       RUSTFLAGS: ""
     defaults:
       run:
@@ -161,6 +162,7 @@ jobs:
             target_dir: 'C:\cargo-target\ci'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '4' || '0' }}
       RUSTFLAGS: ""
     defaults:
       run:
@@ -247,6 +249,7 @@ jobs:
             target_dir: 'C:\cargo-target\cross-os'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '4' || '0' }}
       RUSTFLAGS: ""
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_MACHINE: ${{ matrix.os }}
