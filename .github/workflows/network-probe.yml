@@ -14,15 +14,9 @@ jobs:
           - os: windows
     defaults:
       run:
-        shell: bash
+        shell: ${{ matrix.os == 'windows' && './.github/scripts/git-bash.cmd' || 'bash' }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Put Git Bash first on PATH
-        if: matrix.os == 'windows'
-        shell: pwsh
-        run: |
-          echo "PATH=C:\Program Files\Git\usr\bin;C:\Program Files\Git\bin;$env:PATH" >> $env:GITHUB_ENV
 
       - name: Collect network identity
         id: net
