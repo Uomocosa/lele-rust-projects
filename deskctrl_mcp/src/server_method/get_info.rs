@@ -20,7 +20,7 @@ pub fn get_info() -> ServerInfo {
              spawn_process, write_stdin, kill_process, record_video) accepts \
              send_to_telegram, which defaults to true. Leave it true only for steps with \
              visible impact (clicks, captures, spawns); set it false for routine/read-only \
-             calls. A session-start message is sent automatically, and each notified action \
+             calls. Each notified action \
              goes out as its own short step-by-step Telegram message (screenshots include \
              the image with a caption).",
         )

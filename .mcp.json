@@ -7,6 +7,12 @@
       "env": {
         "AAI_ARTIFACTS_DIR": "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/deskctrl_mcp/artifacts/claude_code"
       }
+    },
+    "test-orchestrator": {
+      "type": "stdio",
+      "command": "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/test_orchestrator_mcp/target/release/test-orchestrator-mcp",
+      "args": [],
+      "env": {}
     }
   }
 }

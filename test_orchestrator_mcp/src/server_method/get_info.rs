@@ -17,8 +17,10 @@ pub fn get_info() -> ServerInfo {
              build / release workflow). Runtime tools (local to the machine the MCP runs \
              on): launch_game (start the game detached with RUST_LOG=warn,roster=info,\
              p2p=info, log to file), game_status (grep the log for ring connections, \
-             roster entries, libp2p connections, errors), stop_game. Secrets: GH_TOKEN \
-             lives only in <crate>/.env, never in code.",
+             roster entries, libp2p connections, errors), stop_game, probe_network \
+             (trigger the network-probe workflow and return each machine's public + LAN \
+             IP to detect a same-LAN run). Secrets: GH_TOKEN lives only in <crate>/.env, \
+             never in code.",
         )
 }
 
@@ -42,6 +44,7 @@ mod tests {
             "launch_game",
             "game_status",
             "stop_game",
+            "probe_network",
         ] {
             assert!(instructions.contains(tool), "instructions omit {tool}");
         }

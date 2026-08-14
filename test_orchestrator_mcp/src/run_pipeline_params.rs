@@ -11,4 +11,7 @@ pub struct RunPipelineParams {
     /// Build release binaries on Linux + Windows and upload artifacts
     #[serde(default)]
     pub release_builds: Option<bool>,
+    /// Build profile: "dev" (default, debug) or "release"
+    #[serde(default)]
+    pub build_mode: Option<String>,
 }

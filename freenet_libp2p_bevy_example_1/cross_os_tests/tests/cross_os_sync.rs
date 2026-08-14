@@ -1,0 +1,108 @@
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
+use serde::Serialize;
+use testing::ProductionGameApp;
+
+const DEFAULT_DURATION_SECS: u64 = 300;
+const POLL_INTERVAL_SECS: u64 = 2;
+
+#[derive(Serialize)]
+struct LogLine {
+    machine: String,
+    own: u64,
+    observed: Vec<u64>,
+    t: f64,
+}
+
+fn machine_label() -> String {
+    std::env::var("CROSS_OS_MACHINE").unwrap_or_else(|_| {
+        if cfg!(target_os = "windows") {
+            "windows".to_string()
+        } else {
+            "linux".to_string()
+        }
+    })
+}
+
+fn log_path(machine: &str) -> PathBuf {
+    std::env::var("CROSS_OS_LOG")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(format!("cross-os-{machine}.log")))
+}
+
+fn contract_params() -> Vec<u8> {
+    match std::env::var("CROSS_OS_KEY") {
+        Ok(key) => key.into_bytes(),
+        Err(_) => testing::unique_params(),
+    }
+}
+
+fn window_secs() -> u64 {
+    std::env::var("CROSS_OS_DURATION_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_DURATION_SECS)
+}
+
+/// The single cross-OS test. Each machine (Linux + Windows runner) runs this same test against
+/// the same `CROSS_OS_KEY` contract on the public Freenet mainnet, and writes the roster it
+/// observes to a JSON-lines log. The workflow's `cross-os-verify` job downloads both logs and
+/// asserts each side saw the other's player id — that is what makes it a cross-OS test
+/// regardless of whether the machines share a LAN. Ignored by default; run explicitly via the
+/// workflow's `cross-os` job with `-- --ignored`.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn cross_os_nodes_converge_and_report() {
+    let machine = machine_label();
+    let path = log_path(&machine);
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent).expect("create log parent dir");
+    }
+
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "warn,roster=info,p2p=info".into()),
+        )
+        .try_init();
+
+    let wasm = testing::load_wasm();
+    let params = contract_params();
+    let mut app = ProductionGameApp::new(&wasm, &params, 0).await;
+    let own = *app.own_player_id();
+
+    let mut file = File::create(&path).expect("create log file");
+    let start = Instant::now();
+    let deadline = start + Duration::from_secs(window_secs());
+    let mut last_observed: Vec<u64> = Vec::new();
+
+    loop {
+        app.tick();
+        let observed: Vec<u64> = app.roster_ids().iter().map(|id| **id).collect();
+        if observed != last_observed {
+            let line = LogLine {
+                machine: machine.clone(),
+                own,
+                observed: observed.clone(),
+                t: start.elapsed().as_secs_f64(),
+            };
+            let mut text = serde_json::to_string(&line).expect("serialize line");
+            text.push('\n');
+            file.write_all(text.as_bytes()).expect("write log line");
+            file.flush().expect("flush log");
+            last_observed = observed;
+        }
+        if Instant::now() >= deadline {
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(POLL_INTERVAL_SECS)).await;
+    }
+
+    drop(app);
+    tracing::info!(target: "roster", machine = %machine, own = own, final_observed = ?last_observed, "cross-os window complete");
+}

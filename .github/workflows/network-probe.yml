@@ -1,0 +1,43 @@
+name: network-probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+          - os: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect network identity
+        id: net
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            PUBLIC_IP=$(curl -s --max-time 10 https://api.ipify.org || echo "unknown")
+            LAN_IP=$(ipconfig | grep -A 5 "Wireless LAN adapter" | grep "IPv4" | head -n1 | sed -n 's/.*: //p' || echo "unknown")
+          else
+            PUBLIC_IP=$(curl -s --max-time 10 https://api.ipify.org || echo "unknown")
+            LAN_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $NF; exit}' || echo "unknown")
+          fi
+          echo "public_ip=$PUBLIC_IP" >> "$GITHUB_OUTPUT"
+          echo "lan_ip=$LAN_IP" >> "$GITHUB_OUTPUT"
+
+      - name: Write probe artifact
+        run: |
+          cat > "network-probe-${{ matrix.os }}.json" <<EOF
+          {"machine":"${{ matrix.os }}","public_ip":"${{ steps.net.outputs.public_ip }}","lan_ip":"${{ steps.net.outputs.lan_ip }}"}
+          EOF
+
+      - name: Upload probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-probe
+          path: network-probe-${{ matrix.os }}.json
+          if-no-files-found: error

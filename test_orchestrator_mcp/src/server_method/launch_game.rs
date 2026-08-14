@@ -52,7 +52,7 @@ fn default_exe(exe_override: Option<&str>) -> String {
         "{}/../freenet_libp2p_bevy_example_1/target",
         env!("CARGO_MANIFEST_DIR")
     );
-    for sub in ["ci/release", "release"] {
+    for sub in ["ci/release", "ci/debug", "release", "debug"] {
         let candidate = format!("{base}/{sub}/{bin}");
         if Path::new(&candidate).exists() {
             return candidate;
@@ -74,7 +74,9 @@ mod tests {
             p2p_port: 63221,
             log_file: None,
         };
-        let err = launch_game(None, params).await.unwrap_err();
+        let err = launch_game(Some("/nonexistent/fbx"), params)
+            .await
+            .unwrap_err();
         assert!(err.to_string().contains("game executable not found"));
         assert!(default_exe(Some("/x")) == "/x");
     }

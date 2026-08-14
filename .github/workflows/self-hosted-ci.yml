@@ -8,13 +8,24 @@ on:
         required: false
         default: freenet_libp2p_bevy_example_1
       run-tests:
-        description: Run the Linux test gate (build, fmt, clippy, tests, subcrates, lele_lint)
+        description: Run the full test gate on Linux + Windows (build, fmt, clippy, tests, subcrates, lele_lint)
         type: boolean
         default: true
       release-builds:
-        description: Build release binaries on Linux + Windows and upload artifacts
+        description: Build binaries on Linux + Windows and run the cross-OS suite
         type: boolean
         default: true
+      build-mode:
+        description: Build profile for the binary jobs (dev = fast debug, release = --release)
+        type: choice
+        options:
+          - dev
+          - release
+        default: dev
+      clean:
+        description: Clean the persistent cargo target dirs first (forces a cold build)
+        type: boolean
+        default: false
 
 jobs:
   resolve:
@@ -36,9 +47,15 @@ jobs:
   test:
     needs: resolve
     if: inputs.run-tests
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+          - os: windows
     env:
-      CARGO_TARGET_DIR: /tmp/frt-build
+      CARGO_TARGET_DIR: ${{ runner.home }}/.cache/frt-test
       RUSTFLAGS: ""
     defaults:
       run:
@@ -46,6 +63,10 @@ jobs:
         working-directory: ${{ needs.resolve.outputs.crate }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Clean persistent target dir (cold build)
+        if: inputs.clean
+        run: rm -rf "$CARGO_TARGET_DIR"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -85,7 +106,7 @@ jobs:
     if: inputs.release-builds
     runs-on: [self-hosted, linux]
     env:
-      CARGO_TARGET_DIR: target/ci-contract
+      CARGO_TARGET_DIR: /home/uomocosa/.cache/frt-ci-contract
       RUSTFLAGS: ""
     defaults:
       run:
@@ -95,6 +116,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Clean persistent target dir (cold build)
+        if: inputs.clean
+        run: rm -rf "$CARGO_TARGET_DIR"
 
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
@@ -109,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: contract-wasm
-          path: ${{ needs.resolve.outputs.crate }}/contract/target/ci-contract/wasm32-unknown-unknown/release/*.wasm
+          path: ${{ env.CARGO_TARGET_DIR }}/wasm32-unknown-unknown/release/*.wasm
 
   build:
     needs: [resolve, build-contract]
@@ -120,9 +145,11 @@ jobs:
       matrix:
         include:
           - os: linux
+            target_dir: /home/uomocosa/.cache/frt-ci
           - os: windows
+            target_dir: 'C:\cargo-target\ci'
     env:
-      CARGO_TARGET_DIR: target/ci
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
       RUSTFLAGS: ""
     defaults:
       run:
@@ -132,6 +159,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Clean persistent target dir (cold build)
+        if: inputs.clean
+        run: rm -rf "$CARGO_TARGET_DIR"
 
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
@@ -149,8 +180,8 @@ jobs:
           src=$(find "$GITHUB_WORKSPACE/contract-wasm-download" -name '*.wasm' | head -n1)
           cp "$src" "contract/$(basename "$src")"
 
-      - name: Build release binary
-        run: cargo build --release
+      - name: Build binary
+        run: cargo build ${{ inputs.build-mode == 'release' && '--release' || '' }}
 
       - name: Build subcrates (testing/e2e_tests/integration_tests)
         run: |
@@ -174,6 +205,123 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ needs.resolve.outputs.crate }}-selfhosted-${{ matrix.os }}
-          path: ${{ needs.resolve.outputs.crate }}/target/ci/release/${{ steps.bin.outputs.bin }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          name: ${{ needs.resolve.outputs.crate }}-selfhosted-${{ matrix.os }}-${{ inputs.build-mode }}
+          path: ${{ env.CARGO_TARGET_DIR }}/${{ inputs.build-mode == 'release' && 'release' || 'debug' }}/${{ steps.bin.outputs.bin }}${{ matrix.os == 'windows' && '.exe' || '' }}
           if-no-files-found: error
+
+  cross-os:
+    needs: [resolve, build-contract]
+    if: inputs.release-builds
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            target_dir: /home/uomocosa/.cache/frt-crossos
+          - os: windows
+            target_dir: 'C:\cargo-target\cross-os'
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      RUSTFLAGS: ""
+      CROSS_OS_KEY: cross-os-${{ github.run_id }}
+      CROSS_OS_MACHINE: ${{ matrix.os }}
+      CROSS_OS_LOG: cross-os-${{ matrix.os }}.log
+      CROSS_OS_DURATION_SECS: "300"
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Clean persistent target dir (cold build)
+        if: inputs.clean
+        run: rm -rf "$CARGO_TARGET_DIR"
+
+      - name: Install wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Download pre-built contract WASM
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-wasm
+          path: contract-wasm-download
+
+      - name: Place contract WASM at embed location
+        if: hashFiles(format('{0}/contract/Cargo.toml', needs.resolve.outputs.crate)) != ''
+        run: |
+          src=$(find "$GITHUB_WORKSPACE/contract-wasm-download" -name '*.wasm' | head -n1)
+          cp "$src" "contract/$(basename "$src")"
+
+      - name: Clippy cross-OS crate
+        run: cargo clippy --all-targets --manifest-path cross_os_tests/Cargo.toml -- -D warnings
+
+      - name: Run cross-OS sync probe
+        run: cargo test --manifest-path cross_os_tests/Cargo.toml -- --ignored
+
+      - name: Upload cross-OS log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-os-log-${{ matrix.os }}
+          path: cross-os-${{ matrix.os }}.log
+          if-no-files-found: error
+
+  cross-os-verify:
+    needs: cross-os
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cross-os-log-linux
+          path: verify/linux
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cross-os-log-windows
+          path: verify/windows
+
+      - name: Assert each OS observed the other's player id
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, sys
+
+          def load(path):
+              own, observed = None, set()
+              try:
+                  with open(path) as f:
+                      for line in f:
+                          line = line.strip()
+                          if not line:
+                              continue
+                          try:
+                              rec = json.loads(line)
+                          except json.JSONDecodeError:
+                              continue
+                          own = rec.get("own", own)
+                          observed |= set(rec.get("observed", []))
+              except FileNotFoundError:
+                  pass
+              return own, observed
+
+          l_own, l_obs = load("verify/linux/cross-os-linux.log")
+          w_own, w_obs = load("verify/windows/cross-os-windows.log")
+
+          if l_own is None or w_own is None:
+              sys.exit("cross-os-verify: a side produced no log / no roster data")
+          print(f"linux   own={l_own} observed={sorted(l_obs)}")
+          print(f"windows own={w_own} observed={sorted(w_obs)}")
+
+          if w_own not in l_obs:
+              sys.exit(f"FAIL: linux never observed the windows player {w_own}")
+          if l_own not in w_obs:
+              sys.exit(f"FAIL: windows never observed the linux player {l_own}")
+          print(f"PASS: cross-OS sync confirmed (linux saw {w_own}, windows saw {l_own})")
+          PY

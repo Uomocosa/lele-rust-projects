@@ -8,16 +8,16 @@ name = "casa-rossa-discord"
 path = "src/main.rs"
 
 [dependencies]
-serenity = { version = "0.12", default-features = false, features = [
+serenity = { version = "=0.12.5", default-features = false, features = [
     "client", "gateway", "rustls_backend", "model", "builder", "http",
 ] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-html_scraper = { package = "scraper", version = "0.22" }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-thiserror = "2"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-dotenvy = "0.15"
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls"] }
+html_scraper = { package = "scraper", version = "=0.22.0" }
+tokio = { version = "=1.53.1", features = ["rt-multi-thread", "macros"] }
+thiserror = "=2.0.19"
+tracing = "=0.1.44"
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
+dotenvy = "=0.15.7"
 
 [lints.rust]
 non_snake_case = "allow"

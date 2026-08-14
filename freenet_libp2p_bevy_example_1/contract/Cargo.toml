@@ -11,10 +11,10 @@ default = ["freenet-main-contract"]
 freenet-main-contract = []
 
 [dependencies]
-freenet-stdlib = { version = "0.8", features = ["contract"] }
-freenet-macros = "0.2"
-serde = { version = "1", features = ["derive"] }
-bincode = "1"
+freenet-stdlib = { version = "=0.8.5", features = ["contract"] }
+freenet-macros = "=0.2.0"
+serde = { version = "=1.0.229", features = ["derive"] }
+bincode = "=1.3.3"
 
 [profile.release]
 lto = true

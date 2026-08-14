@@ -6,8 +6,8 @@ use rmcp::{
 };
 
 use crate::{
-    DownloadArtifactsParams, GameStatusParams, LaunchGameParams, NextTagParams, RunPipelineParams,
-    RunStatusParams, StopGameParams, TriggerTagCiParams, server_method,
+    DownloadArtifactsParams, GameStatusParams, LaunchGameParams, NextTagParams, ProbeNetworkParams,
+    RunPipelineParams, RunStatusParams, StopGameParams, TriggerTagCiParams, server_method,
 };
 
 #[derive(Clone)]
@@ -49,14 +49,17 @@ impl Server {
     #[tool(description = "Create and push a crate-tag CI tag (<crate>-<mode>-YYYY-MM-DD#N) via the GitHub API — this starts the tag-triggered GitHub-hosted workflow (test gate, build check, or full release). Use dry_run to preview the tag first.")]
     async fn trigger_tag_ci(&self, Parameters(params): Parameters<TriggerTagCiParams>) -> Result<CallToolResult, ErrorData> { server_method::trigger_tag_ci(&self.gh_repo, self.gh_token.as_deref(), params).await.map_err(ErrorData::from) }
 
-    #[tool(description = "Launch the game on THIS machine with RUST_LOG=warn,roster=info,p2p=info, detached, logging to a file. Returns the pid. Uses the default release binary unless exe is given.")]
-    async fn launch_game(&self, Parameters(params): Parameters<LaunchGameParams>) -> Result<CallToolResult, ErrorData> { server_method::launch_game(self.game_exe.as_deref(), params).await.map_err(ErrorData::from) }
+    #[tool(description = "Launch the game on THIS machine with RUST_LOG=warn,roster=info,p2p=info, detached, logging to a file. Returns the pid. Uses the default dev/release binary unless exe is given.")]
+    async fn launch_game(&self, Parameters(params): Parameters<LaunchGameParams>) -> Result<CallToolResult, ErrorData> { let exe = params.exe.as_deref().or(self.game_exe.as_deref()).map(str::to_owned); server_method::launch_game(exe.as_deref(), params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Report the game's progress from its log file: ring connections, roster entries, libp2p connections, and any retry/error signals. Pass pid to also report whether the process is alive.")]
     async fn game_status(&self, Parameters(params): Parameters<GameStatusParams>) -> Result<CallToolResult, ErrorData> { server_method::game_status(params).await.map_err(ErrorData::from) }
 
     #[tool(description = "Terminate a running game process by pid.")]
     async fn stop_game(&self, Parameters(params): Parameters<StopGameParams>) -> Result<CallToolResult, ErrorData> { server_method::stop_game(params).await.map_err(ErrorData::from) }
+
+    #[tool(description = "Trigger the network-probe workflow on both self-hosted runners, wait for it, and return each machine's public IP + LAN IP as JSON. Used to detect whether the two machines are on the same LAN.")]
+    async fn probe_network(&self, Parameters(_params): Parameters<ProbeNetworkParams>) -> Result<CallToolResult, ErrorData> { server_method::probe_network(&self.gh_repo, self.gh_token.as_deref()).await.map_err(ErrorData::from) }
 }
 
 #[tool_handler]
@@ -88,6 +91,7 @@ mod tests {
             "launch_game",
             "game_status",
             "stop_game",
+            "probe_network",
         ] {
             assert!(instructions.contains(tool), "instructions omit {tool}");
         }

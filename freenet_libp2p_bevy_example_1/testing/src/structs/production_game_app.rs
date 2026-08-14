@@ -29,6 +29,7 @@ impl ProductionGameApp {
     }
     pub fn box_count(&mut self) -> usize { pga_method::box_count(self) }
     pub fn roster_len(&mut self) -> usize { pga_method::roster_len(self) }
+    pub fn roster_ids(&self) -> Vec<freenet_libp2p_bevy_example_1_lib::boxes::PlayerId> { pga_method::roster_ids(self) }
     pub fn own_player_id(&self) -> freenet_libp2p_bevy_example_1_lib::boxes::PlayerId { pga_method::own_player_id(self) }
     pub fn box_spawns(&mut self) -> Vec<(freenet_libp2p_bevy_example_1_lib::boxes::PlayerId, bevy::math::Vec2, bool)> { pga_method::box_spawns(self) }
     pub fn freenet_gateway(&self) -> String { pga_method::freenet_gateway(self) }

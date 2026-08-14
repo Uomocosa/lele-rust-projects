@@ -98,11 +98,12 @@ session start.
 ## Telegram: step-by-step notifications
 
 `send_action_summary` is gone. Instead of one big report, the server pushes **step-by-step
-messages** to Telegram as you work, plus a session-start banner and a session-end video.
+messages** to Telegram as you work.
 
-- On session start the server sends `📋 Starting Session - YYYY_MM_DD [hh:mm:ss]` and begins an
-  ffmpeg recording of the screen (capped at `RECORDING_MAX_SECS`, default 10 minutes, so the file
-  stays well under Telegram's 50 MB upload limit).
+- Starting the server is **silent**: no session banner, no automatic recording. Recording happens
+  only when the agent calls `record_video` explicitly (capped at `RECORDING_MAX_SECS`, default
+  10 minutes, so the file stays well under Telegram's 50 MB upload limit). A recording left
+  running when the session ends is stopped at shutdown but never uploaded.
 - Each **visible-action** tool — `screenshot`, `click_window`, `send_keys`, `spawn_process`,
   `write_stdin`, `kill_process`, `record_video` — accepts a `send_to_telegram` flag that
   **defaults to `true`**. When true (and Telegram is configured) the tool pushes its own short
@@ -236,9 +237,9 @@ directory is used as a fallback:
   Each agent points at its own subdirectory of `artifacts/` so their captures do not interleave.
   Recordings are written here as `<unix_secs>.mp4` too (else `/tmp`).
 - `RECORDING_MAX_SECS` — max recording length in seconds before ffmpeg stops itself (default
-  `600`, i.e. 10 minutes). Keeps session videos small enough to send via Telegram.
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — if both set, notifications, session start/end
-  messages, screenshots and the session video are pushed to Telegram.
+  `600`, i.e. 10 minutes). Keeps `record_video` output small enough to send via Telegram.
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — if both set, tool notifications, screenshots and
+  `record_video` output are pushed to Telegram. Nothing is sent unless a tool is called.
 
 ## Adding a tool
 

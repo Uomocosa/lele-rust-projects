@@ -36,6 +36,13 @@
       "environment": {
         "AAI_ARTIFACTS_DIR": "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/deskctrl_mcp/artifacts/freenet_bevy"
       }
+    },
+    "test-orchestrator": {
+      "type": "local",
+      "command": [
+        "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/test_orchestrator_mcp/target/release/test-orchestrator-mcp"
+      ],
+      "enabled": true
     }
   },
   "provider": {
