@@ -14,7 +14,9 @@ jobs:
           - os: windows
     defaults:
       run:
-        shell: ${{ matrix.os == 'windows' && 'C:\\Program Files\\Git\\bin\\bash.exe --noprofile --norc -e -o pipefail {0}' || 'bash' }}
+        shell: bash
+    env:
+      PATH: ${{ matrix.os == 'windows' && 'C:\\Program Files\\Git\\usr\\bin;C:\\Program Files\\Git\\bin;' || '' }}${{ env.PATH }}
     steps:
       - uses: actions/checkout@v4
 
