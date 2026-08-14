@@ -3,10 +3,6 @@ name: network-probe
 on:
   workflow_dispatch:
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   probe:
     runs-on: [self-hosted, "${{ matrix.os }}"]
@@ -16,6 +12,9 @@ jobs:
         include:
           - os: linux
           - os: windows
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows' && 'C:\\Program Files\\Git\\bin\\bash.exe --noprofile --norc -e -o pipefail {0}' || 'bash' }}
     steps:
       - uses: actions/checkout@v4
 
