@@ -61,7 +61,7 @@ jobs:
       RUSTFLAGS: ""
     defaults:
       run:
-        shell: bash
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd {1}', github.workspace, '{0}') || 'bash' }}
         working-directory: ${{ needs.resolve.outputs.crate }}
     steps:
       - uses: actions/checkout@v4
@@ -155,7 +155,7 @@ jobs:
       RUSTFLAGS: ""
     defaults:
       run:
-        shell: bash
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd {1}', github.workspace, '{0}') || 'bash' }}
         working-directory: ${{ needs.resolve.outputs.crate }}
     steps:
       - uses: actions/checkout@v4
@@ -232,7 +232,7 @@ jobs:
       CROSS_OS_DURATION_SECS: "300"
     defaults:
       run:
-        shell: bash
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd {1}', github.workspace, '{0}') || 'bash' }}
         working-directory: ${{ needs.resolve.outputs.crate }}
     steps:
       - uses: actions/checkout@v4
