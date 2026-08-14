@@ -257,11 +257,11 @@ jobs:
           src=$(find "$GITHUB_WORKSPACE/contract-wasm-download" -name '*.wasm' | head -n1)
           cp "$src" "contract/$(basename "$src")"
 
-      - name: Clippy cross-OS crate
-        run: cargo clippy --all-targets --manifest-path cross_os_tests/Cargo.toml -- -D warnings
+      - name: Clippy testing crate
+        run: cargo clippy --all-targets --manifest-path testing/Cargo.toml -- -D warnings
 
       - name: Run cross-OS sync probe
-        run: cargo test --manifest-path cross_os_tests/Cargo.toml -- --ignored
+        run: cargo test --manifest-path testing/Cargo.toml --test cross_os_sync -- --ignored
 
       - name: Upload cross-OS log
         if: always()

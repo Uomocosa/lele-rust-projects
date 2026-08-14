@@ -52,7 +52,7 @@ fn window_secs() -> u64 {
 /// observes to a JSON-lines log. The workflow's `cross-os-verify` job downloads both logs and
 /// asserts each side saw the other's player id — that is what makes it a cross-OS test
 /// regardless of whether the machines share a LAN. Ignored by default; run explicitly via the
-/// workflow's `cross-os` job with `-- --ignored`.
+/// workflow's `cross-os` job with `--test cross_os_sync -- --ignored`.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn cross_os_nodes_converge_and_report() {
