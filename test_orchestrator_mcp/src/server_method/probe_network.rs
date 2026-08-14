@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use rmcp::model::{CallToolResult, ContentBlock};
 
 use crate::Error;
@@ -18,26 +20,34 @@ pub async fn probe_network(repo: &str, token: Option<&str>) -> Result<CallToolRe
 
     let run_id = latest_run_id(repo, token).await?;
 
-    run_gh(
-        token,
-        &[
-            "run".to_string(),
-            "watch".to_string(),
-            run_id.to_string(),
-            "-R".to_string(),
-            repo.to_string(),
-            "--exit-status".to_string(),
-            "--interval".to_string(),
-            "10".to_string(),
-        ],
-    )
-    .await
-    .map_err(|e| match e {
-        Error::GhFailed(msg) => Error::GhFailed(format!(
-            "network probe run #{run_id} failed or timed out: {msg}"
-        )),
-        other => other,
-    })?;
+    let args = [
+        "run".to_string(),
+        "watch".to_string(),
+        run_id.to_string(),
+        "-R".to_string(),
+        repo.to_string(),
+        "--exit-status".to_string(),
+        "--interval".to_string(),
+        "10".to_string(),
+    ];
+    let watch = run_gh(token, &args);
+
+    match tokio::time::timeout(Duration::from_secs(180), watch).await {
+        Err(_) => {
+            return Err(Error::GhFailed(format!(
+                "network probe run #{run_id} timed out after 180s — a self-hosted runner is offline. Windows: run C:\\actions-runner\\run.cmd; Linux: ~/actions-runner/run.sh"
+            )));
+        }
+        Ok(Err(e)) => {
+            return Err(match e {
+                Error::GhFailed(msg) => {
+                    Error::GhFailed(format!("network probe run #{run_id} failed: {msg}"))
+                }
+                other => other,
+            });
+        }
+        Ok(Ok(_)) => {}
+    }
 
     let dest = std::env::temp_dir().join(format!("network-probe-{run_id}"));
     run_gh(
