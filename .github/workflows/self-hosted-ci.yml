@@ -149,7 +149,7 @@ jobs:
           path: ${{ env.CARGO_TARGET_DIR }}/wasm32-unknown-unknown/release/*.wasm
 
   build:
-    needs: [resolve, build-contract]
+    needs: [resolve, build-contract, test]
     if: inputs.release-builds
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
@@ -236,7 +236,7 @@ jobs:
           if-no-files-found: error
 
   cross-os:
-    needs: [resolve, build-contract]
+    needs: [resolve, build-contract, build]
     if: inputs.release-builds
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
