@@ -269,7 +269,9 @@ jobs:
     needs: [resolve, build-contract, build]
     if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.build.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
-    timeout-minutes: 15
+    # Generous: a clean=true run cold-builds cross_os_sync (Windows ~10.5 min) before the
+    # 5-minute probe. 15 min was too tight and cancelled the whole run.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
