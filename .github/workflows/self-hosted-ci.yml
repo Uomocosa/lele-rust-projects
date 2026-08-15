@@ -26,6 +26,15 @@ on:
         description: Clean the persistent cargo target dirs first (forces a cold build)
         type: boolean
         default: false
+      jobs:
+        description: Which stage to run (all = full pipeline; otherwise only the selected stage runs, with dependent stages skipped)
+        type: choice
+        options:
+          - all
+          - test
+          - build
+          - cross-os
+        default: all
 
 jobs:
   resolve:
@@ -46,7 +55,7 @@ jobs:
 
   test:
     needs: resolve
-    if: inputs.run-tests
+    if: (inputs.jobs == 'all' || inputs.jobs == 'test') && (inputs.run-tests || inputs.jobs == 'test')
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       fail-fast: false
@@ -119,7 +128,7 @@ jobs:
 
   build-contract:
     needs: resolve
-    if: inputs.release-builds
+    if: (inputs.jobs == 'all' && inputs.release-builds) || inputs.jobs == 'build' || inputs.jobs == 'cross-os'
     runs-on: [self-hosted, linux]
     env:
       CARGO_TARGET_DIR: /home/uomocosa/.cache/frt-ci-contract
@@ -150,7 +159,7 @@ jobs:
 
   build:
     needs: [resolve, build-contract, test]
-    if: inputs.release-builds
+    if: (inputs.jobs == 'all' || inputs.jobs == 'build') && (inputs.release-builds || inputs.jobs == 'build') && needs.test.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       fail-fast: false
@@ -237,8 +246,9 @@ jobs:
 
   cross-os:
     needs: [resolve, build-contract, build]
-    if: inputs.release-builds
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.build.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -308,12 +318,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cross-os-log-${{ matrix.os }}
-          path: cross-os-${{ matrix.os }}.log
+          path: ${{ needs.resolve.outputs.crate }}/cross-os-${{ matrix.os }}.log
           if-no-files-found: error
 
   cross-os-verify:
     needs: cross-os
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && needs.cross-os.result == 'success'
     runs-on: [self-hosted, linux]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 

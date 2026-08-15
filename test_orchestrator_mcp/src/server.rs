@@ -31,7 +31,7 @@ impl Server {
     #[tool(description = "List the GitHub self-hosted runners registered for the repo with their status and labels. Shows both machines (Linux + Windows) from either PC.")]
     async fn list_runners(&self) -> Result<CallToolResult, ErrorData> { server_method::list_runners(&self.gh_repo, self.gh_token.as_deref()).await.map_err(ErrorData::from) }
 
-    #[tool(description = "Trigger the self-hosted CI workflow (manual dispatch) on your own machines. Starts the Linux test gate and the Linux + Windows release builds, producing downloadable binaries with a single shared contract WASM.")]
+    #[tool(description = "Trigger the self-hosted CI workflow (manual dispatch) on your own machines. Starts the Linux test gate and the Linux + Windows release builds, producing downloadable binaries with a single shared contract WASM. Set jobs=all (default, full pipeline), test, build, or cross-os to run only that stage.")]
     async fn run_pipeline(&self, Parameters(params): Parameters<RunPipelineParams>) -> Result<CallToolResult, ErrorData> { server_method::run_pipeline(&self.gh_repo, self.gh_token.as_deref(), params).await.map_err(ErrorData::from) }
 
     #[tool(description = "List the most recent GitHub Actions runs (both the self-hosted pipeline and the tag-triggered crate-tag CI) with their status.")]

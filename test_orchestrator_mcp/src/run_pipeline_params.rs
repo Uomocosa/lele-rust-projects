@@ -14,4 +14,7 @@ pub struct RunPipelineParams {
     /// Build profile: "dev" (default, debug) or "release"
     #[serde(default)]
     pub build_mode: Option<String>,
+    /// Which stage to run: "all" (default, full pipeline), "test", "build", or "cross-os"
+    #[serde(default)]
+    pub jobs: Option<String>,
 }

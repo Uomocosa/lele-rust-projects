@@ -3,7 +3,7 @@ use std::time::Duration;
 use rmcp::model::{CallToolResult, ContentBlock};
 
 use crate::Error;
-use crate::server_method::{latest_run_id, run_gh};
+use crate::server_method::{latest_workflow_run_id, run_gh};
 
 pub async fn probe_network(repo: &str, token: Option<&str>) -> Result<CallToolResult, Error> {
     run_gh(
@@ -18,7 +18,7 @@ pub async fn probe_network(repo: &str, token: Option<&str>) -> Result<CallToolRe
     )
     .await?;
 
-    let run_id = latest_run_id(repo, token).await?;
+    let run_id = latest_workflow_run_id(repo, "network-probe.yml", token).await?;
 
     let args = [
         "run".to_string(),
@@ -58,8 +58,6 @@ pub async fn probe_network(repo: &str, token: Option<&str>) -> Result<CallToolRe
             run_id.to_string(),
             "-R".to_string(),
             repo.to_string(),
-            "-n".to_string(),
-            "network-probe".to_string(),
             "-D".to_string(),
             dest.to_string_lossy().to_string(),
         ],
