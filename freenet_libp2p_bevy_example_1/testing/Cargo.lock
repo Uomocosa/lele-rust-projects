@@ -9888,6 +9888,7 @@ dependencies = [
  "freenet",
  "freenet-stdlib",
  "hex",
+ "libp2p",
  "serde",
  "serde_json",
  "tempfile",
