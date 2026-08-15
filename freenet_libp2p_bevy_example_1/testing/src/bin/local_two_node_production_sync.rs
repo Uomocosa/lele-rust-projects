@@ -12,11 +12,13 @@ use bevy::input::keyboard::KeyCode;
 /// This is the decisive experiment for the same-machine sync reliability work: if the two
 /// production-path nodes converge when directly wired, the roster contract/merge/subscribe code in
 /// this project is correct and residual same-machine flakiness is purely a mainnet
-/// node-discovery/bootstrap problem. If this stays red, the bug is in our own code, not upstream.
-/// Unlike `e2e_three_node_production_sync.rs`, this test is fully local and needs no internet
-/// access.
-#[tokio::test(flavor = "multi_thread")]
-async fn two_local_production_nodes_converge_and_sync_movement() {
+/// node-discovery/bootstrap problem. Unlike `e2e_three_node_production_sync.rs`, this harness is
+/// fully local and needs no internet access.
+///
+/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
+/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let params = testing::unique_params();
     let wasm = testing::load_wasm();
 
@@ -27,21 +29,19 @@ async fn two_local_production_nodes_converge_and_sync_movement() {
 
     host.wait_for_roster_len(2, Duration::from_secs(60))
         .await
-        .expect(
-            "host should observe both roster entries once the guest has joined via direct dial",
-        );
+        .map_err(|e| format!("host should observe both roster entries once the guest has joined via direct dial: {e}"))?;
     guest
         .wait_for_roster_len(2, Duration::from_secs(60))
         .await
-        .expect("guest should observe both roster entries");
+        .map_err(|e| format!("guest should observe both roster entries: {e}"))?;
 
     host.wait_for_box_count(2, Duration::from_secs(60))
         .await
-        .expect("host should spawn one box per roster entry");
+        .map_err(|e| format!("host should spawn one box per roster entry: {e}"))?;
     guest
         .wait_for_box_count(2, Duration::from_secs(60))
         .await
-        .expect("guest should spawn one box per roster entry");
+        .map_err(|e| format!("guest should spawn one box per roster entry: {e}"))?;
 
     let initial_host = host.box_spawns();
 
@@ -63,11 +63,17 @@ async fn two_local_production_nodes_converge_and_sync_movement() {
             .iter()
             .find(|(final_id, _, _)| final_id == id)
             .map(|(_, pos, _)| *pos)
-            .unwrap_or_else(|| panic!("box for {id:?} disappeared from host"));
-        assert!(
-            (final_pos.x - initial_pos.x).abs() > f32::EPSILON,
-            "host should see guest box {id:?} move after simulate_move + p2p sync \
-             (was {initial_pos:?}, now {final_pos:?})"
-        );
+            .ok_or_else(|| format!("box for {id:?} disappeared from host"))?;
+        if (final_pos.x - initial_pos.x).abs() <= f32::EPSILON {
+            return Err(format!(
+                "host should see guest box {id:?} move after simulate_move + p2p sync \
+                 (was {initial_pos:?}, now {final_pos:?})"
+            )
+            .into());
+        }
     }
+
+    Ok(())
 }
+
+// no test_usage necessary

@@ -10,7 +10,7 @@ const JOIN_STAGGER_SECS: u64 = 45;
 /// Reproduces, end-to-end, the manually-observed scenario where instances built through the real
 /// production node-startup path (`p2p::load_or_create_keypair` -> `p2p::run` ->
 /// `roster::start_embedded_node`, no explicit local gateway wiring) discover each other and sync
-/// movement over the public mainnet — unlike the hermetic `TestNode`-based tests in
+/// movement over the public mainnet — unlike the hermetic `TestNode`-based harnesses in
 /// `two_node_roster.rs` / `two_node_box_count.rs`, which point peers directly at a gateway and so
 /// never exercise this code path.
 ///
@@ -23,26 +23,25 @@ const JOIN_STAGGER_SECS: u64 = 45;
 /// InterestSync anti-entropy (`INTEREST_HEARTBEAT_INTERVAL`), which is upstream behaviour, not
 /// this project's code — see OBJECTIVE.md.
 ///
-/// Ignored by default: convergence through the public mainnet DHT remains timing-dependent.
-/// The client retries setup with backoff, pulls the roster fast (5 s) during startup, and
-/// heartbeats the *full known roster* so a peer that knows more actively heals stale replicas.
-/// The deterministic gate for the production startup path is the fully local
-/// `local_two_node_production_sync.rs`, which wires the same code directly. Run this test
-/// explicitly with `-- --ignored` to probe the live mainnet.
+/// Convergence through the public mainnet DHT remains timing-dependent. The client retries setup
+/// with backoff, pulls the roster fast (5 s) during startup, and heartbeats the *full known
+/// roster* so a peer that knows more actively heals stale replicas. The deterministic gate for
+/// the production startup path is the fully local `local_two_node_production_sync.rs`, which wires
+/// the same code directly.
 ///
-/// Waits and movement assertions scope to the *current run's* two player ids, not to roster/box
-/// counts, so stale entries accumulated on the shared contract key from earlier runs cannot
-/// satisfy them.
-#[tokio::test(flavor = "multi_thread")]
-#[ignore]
-async fn two_production_nodes_converge_and_sync_movement() {
+/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
+/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "warn,roster=info,p2p=info".into());
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 
-    testing::check_internet_access()
-        .await
-        .expect("this e2e test requires internet access to reach the public Freenet mainnet");
+    testing::check_internet_access().await.map_err(|e| {
+        format!(
+            "this e2e harness requires internet access to reach the public Freenet mainnet: {e}"
+        )
+    })?;
 
     let params = testing::unique_params();
     let wasm = testing::load_wasm();
@@ -58,10 +57,12 @@ async fn two_production_nodes_converge_and_sync_movement() {
     for (name, app) in [("app_a", &mut app_a), ("app_b", &mut app_b)] {
         app.wait_for_roster_ids(&ids, Duration::from_secs(120))
             .await
-            .unwrap_or_else(|_| panic!("{name} should observe both current-run roster entries"));
+            .map_err(|e| format!("{name} should observe both current-run roster entries: {e}"))?;
         app.wait_for_box_ids(&ids, Duration::from_secs(60))
             .await
-            .unwrap_or_else(|_| panic!("{name} should spawn one box per current-run roster entry"));
+            .map_err(|e| {
+                format!("{name} should spawn one box per current-run roster entry: {e}")
+            })?;
     }
 
     // Step 2: snapshot spawn positions before moving anything (spawn x is spread out by
@@ -90,11 +91,17 @@ async fn two_production_nodes_converge_and_sync_movement() {
             .iter()
             .find(|(final_id, _, _)| final_id == id)
             .map(|(_, pos, _)| *pos)
-            .unwrap_or_else(|| panic!("box for {id:?} disappeared from app_a"));
-        assert!(
-            (final_pos.x - initial_pos.x).abs() > f32::EPSILON,
-            "app_a should see remote box {id:?} move after simulate_move + p2p sync \
-             (was {initial_pos:?}, now {final_pos:?})"
-        );
+            .ok_or_else(|| format!("box for {id:?} disappeared from app_a"))?;
+        if (final_pos.x - initial_pos.x).abs() <= f32::EPSILON {
+            return Err(format!(
+                "app_a should see remote box {id:?} move after simulate_move + p2p sync \
+                 (was {initial_pos:?}, now {final_pos:?})"
+            )
+            .into());
+        }
     }
+
+    Ok(())
 }
+
+// no test_usage necessary

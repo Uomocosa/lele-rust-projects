@@ -123,6 +123,22 @@ jobs:
             cargo test --all-targets --manifest-path "$sub/Cargo.toml"
           done
 
+      # The port-binding harnesses are [[bin]] targets (not integration tests) so cargo emits
+      # them at stable, un-hashed paths like debug/<name>.exe — that lets Windows Firewall rules
+      # keyed to those paths stay valid across dependency changes (a hashed deps/ name would go
+      # stale on every cargo update and re-trigger the firewall prompt). They are run here
+      # explicitly and sequentially. e2e_three_node_production_sync and cross_os_sync are excluded:
+      # the former needs the public mainnet (internet), the latter is driven by the cross-os job.
+      - name: Run local harness binaries (stable names, sequential)
+        run: |
+          set -euo pipefail
+          for bin in two_node_roster two_node_box_count two_node_box_count_parallel \
+                     local_two_node_production_sync; do
+            echo "=== harness: $bin ==="
+            cargo build --manifest-path testing/Cargo.toml --bin "$bin"
+            "$CARGO_TARGET_DIR/debug/$bin"
+          done
+
       - name: lele_lint
         run: cargo run --manifest-path ../lele_lint/Cargo.toml
 
@@ -310,8 +326,11 @@ jobs:
       - name: Clippy testing crate
         run: cargo clippy --all-targets --manifest-path testing/Cargo.toml -- -D warnings
 
+      - name: Build cross-OS harness binary
+        run: cargo build --manifest-path testing/Cargo.toml --bin cross_os_sync
+
       - name: Run cross-OS sync probe
-        run: cargo test --manifest-path testing/Cargo.toml --test cross_os_sync -- --ignored
+        run: "$CARGO_TARGET_DIR/debug/cross_os_sync"
 
       - name: Upload cross-OS log
         if: always()

@@ -2,12 +2,12 @@ use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
 use std::path::Path;
 use std::time::Duration;
 
-use freenet_libp2p_bevy_example_1_lib::freenet::FreenetClient;
 use freenet::ShutdownHandle;
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
 use freenet::local_node::{NodeConfig, OperationMode};
 use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
+use freenet_libp2p_bevy_example_1_lib::freenet::FreenetClient;
 use tokio::task::JoinHandle;
 
 pub(crate) fn free_udp_port() -> Result<u16, Box<dyn std::error::Error>> {

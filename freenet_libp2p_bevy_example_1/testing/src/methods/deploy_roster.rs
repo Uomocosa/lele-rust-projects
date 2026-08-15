@@ -6,7 +6,13 @@ pub async fn deploy_roster(
     params: &[u8],
     own_id: boxes::PlayerId,
     own_entry: roster::PeerEntry,
-) -> Result<(freenet_libp2p_bevy_example_1_lib::freenet::FreenetClient, roster::RosterState), String> {
+) -> Result<
+    (
+        freenet_libp2p_bevy_example_1_lib::freenet::FreenetClient,
+        roster::RosterState,
+    ),
+    String,
+> {
     let (client, _key, entries) = roster::setup_contract(
         "127.0.0.1",
         port,

@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use freenet_libp2p_bevy_example_1_lib::{boxes, roster};
 
+// needed helper:
 fn entry(peer_id: &str) -> roster::PeerEntry {
     roster::PeerEntry {
         peer_id: peer_id.to_string(),
@@ -10,7 +11,8 @@ fn entry(peer_id: &str) -> roster::PeerEntry {
     }
 }
 
-fn assert_boxes(app: &mut testing::TestGameApp) {
+// needed helper:
+fn assert_boxes(app: &mut testing::TestGameApp) -> Result<(), String> {
     assert_eq!(app.box_count(), 2);
     assert_eq!(app.roster_len(), 2);
 
@@ -39,21 +41,24 @@ fn assert_boxes(app: &mut testing::TestGameApp) {
         xs[0] >= -bound && xs[1] <= bound,
         "box x positions must stay on the ground"
     );
+    Ok(())
 }
 
-/// A second, structurally identical box-count test running concurrently with the first one.
-/// Because each test joins its own private roster contract (its own `unique_params`), the
-/// two tests cannot contaminate each other's exact-count assertions even when cargo runs
-/// them in parallel.
-#[tokio::test(flavor = "multi_thread")]
-async fn two_instances_each_spawn_exactly_two_boxes_in_parallel() {
+/// A second, structurally identical box-count harness running after the first one. Each run joins
+/// its own private roster contract (its own `unique_params`), so runs cannot contaminate each
+/// other's exact-count assertions.
+///
+/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
+/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let params = testing::unique_params();
     let gateway = testing::TestNode::start_gateway(0)
         .await
-        .expect("gateway node should start");
+        .map_err(|e| format!("gateway node should start: {e}"))?;
     let peer = testing::TestNode::start_peer(gateway.public_port(), gateway.public_key_hex())
         .await
-        .expect("peer node should join the gateway");
+        .map_err(|e| format!("peer node should join the gateway: {e}"))?;
     let wasm = testing::load_wasm();
 
     let mut gateway_app = testing::TestGameApp::new(
@@ -74,24 +79,27 @@ async fn two_instances_each_spawn_exactly_two_boxes_in_parallel() {
     gateway_app
         .wait_for_roster_len(2, Duration::from_secs(60))
         .await
-        .expect("gateway app should observe both roster entries");
+        .map_err(|e| format!("gateway app should observe both roster entries: {e}"))?;
     peer_app
         .wait_for_roster_len(2, Duration::from_secs(60))
         .await
-        .expect("peer app should observe both roster entries");
+        .map_err(|e| format!("peer app should observe both roster entries: {e}"))?;
 
     gateway_app
         .wait_for_box_count(2, Duration::from_secs(60))
         .await
-        .expect("gateway app should spawn one box per roster entry");
+        .map_err(|e| format!("gateway app should spawn one box per roster entry: {e}"))?;
     peer_app
         .wait_for_box_count(2, Duration::from_secs(60))
         .await
-        .expect("peer app should spawn one box per roster entry");
+        .map_err(|e| format!("peer app should spawn one box per roster entry: {e}"))?;
 
-    assert_boxes(&mut gateway_app);
-    assert_boxes(&mut peer_app);
+    assert_boxes(&mut gateway_app).map_err(|e| format!("gateway box assertions failed: {e}"))?;
+    assert_boxes(&mut peer_app).map_err(|e| format!("peer box assertions failed: {e}"))?;
 
     gateway.shutdown().await;
     peer.shutdown().await;
+    Ok(())
 }
+
+// no test_usage necessary

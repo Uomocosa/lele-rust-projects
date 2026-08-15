@@ -17,6 +17,7 @@ struct LogLine {
     t: f64,
 }
 
+// needed helper:
 fn machine_label() -> String {
     std::env::var("CROSS_OS_MACHINE").unwrap_or_else(|_| {
         if cfg!(target_os = "windows") {
@@ -27,12 +28,14 @@ fn machine_label() -> String {
     })
 }
 
+// needed helper:
 fn log_path(machine: &str) -> PathBuf {
     std::env::var("CROSS_OS_LOG")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(format!("cross-os-{machine}.log")))
 }
 
+// needed helper:
 fn contract_params() -> Vec<u8> {
     match std::env::var("CROSS_OS_KEY") {
         Ok(key) => key.into_bytes(),
@@ -47,21 +50,23 @@ fn window_secs() -> u64 {
         .unwrap_or(DEFAULT_DURATION_SECS)
 }
 
-/// The single cross-OS test. Each machine (Linux + Windows runner) runs this same test against
-/// the same `CROSS_OS_KEY` contract on the public Freenet mainnet, and writes the roster it
-/// observes to a JSON-lines log. The workflow's `cross-os-verify` job downloads both logs and
-/// asserts each side saw the other's player id — that is what makes it a cross-OS test
-/// regardless of whether the machines share a LAN. Ignored by default; run explicitly via the
-/// workflow's `cross-os` job with `--test cross_os_sync -- --ignored`.
-#[tokio::test(flavor = "multi_thread")]
-#[ignore]
-async fn cross_os_nodes_converge_and_report() {
+/// The cross-OS probe. Each machine (Linux + Windows runner) runs this same binary against the
+/// same `CROSS_OS_KEY` contract on the public Freenet mainnet and writes the roster it observes
+/// to a JSON-lines log. The workflow's `cross-os-verify` job downloads both logs and asserts each
+/// side saw the other's player id — that is what makes it a cross-OS test regardless of whether
+/// the machines share a LAN.
+///
+/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path
+/// like `target/<dir>/debug/cross_os_sync.exe`, letting Windows Firewall rules keyed to that path
+/// stay valid across dependency changes.
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let machine = machine_label();
     let path = log_path(&machine);
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
-        std::fs::create_dir_all(parent).expect("create log parent dir");
+        std::fs::create_dir_all(parent)?;
     }
 
     let _ = tracing_subscriber::fmt()
@@ -76,7 +81,7 @@ async fn cross_os_nodes_converge_and_report() {
     let mut app = ProductionGameApp::new(&wasm, &params, 0).await;
     let own = *app.own_player_id();
 
-    let mut file = File::create(&path).expect("create log file");
+    let mut file = File::create(&path)?;
     let start = Instant::now();
     let deadline = start + Duration::from_secs(window_secs());
     let mut last_observed: Vec<u64> = Vec::new();
@@ -91,10 +96,10 @@ async fn cross_os_nodes_converge_and_report() {
                 observed: observed.clone(),
                 t: start.elapsed().as_secs_f64(),
             };
-            let mut text = serde_json::to_string(&line).expect("serialize line");
+            let mut text = serde_json::to_string(&line)?;
             text.push('\n');
-            file.write_all(text.as_bytes()).expect("write log line");
-            file.flush().expect("flush log");
+            file.write_all(text.as_bytes())?;
+            file.flush()?;
             last_observed = observed;
         }
         if Instant::now() >= deadline {
@@ -105,4 +110,7 @@ async fn cross_os_nodes_converge_and_report() {
 
     drop(app);
     tracing::info!(target: "roster", machine = %machine, own = own, final_observed = ?last_observed, "cross-os window complete");
+    Ok(())
 }
+
+// no test_usage necessary
