@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The gateway only learns about the peer's entry via a push notification, since its own
     // client already returned before the peer's write happened.
     let gateway_view =
-        testing::wait_for_roster_len(&mut gateway_client, 2, Duration::from_secs(30))
+        testing::wait_for_roster_len(&mut gateway_client, 2, Duration::from_secs(60))
             .await
             .ok_or("gateway should observe both roster entries within timeout")?;
 

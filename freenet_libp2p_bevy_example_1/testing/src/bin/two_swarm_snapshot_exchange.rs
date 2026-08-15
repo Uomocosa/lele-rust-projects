@@ -49,15 +49,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let task_a = tokio::spawn(p2p::run(cmd_rx_a, event_tx_a, Keypair::generate_ed25519()));
     let task_b = tokio::spawn(p2p::run(cmd_rx_b, event_tx_b, Keypair::generate_ed25519()));
 
-    let a_ready =
-        tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_a)).await;
+    let a_ready = tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_a)).await;
     if a_ready.is_err() {
         return fail("swarm A never became ready");
     }
     let (a_peer, a_addrs) = a_ready.unwrap();
 
-    let b_ready =
-        tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_b)).await;
+    let b_ready = tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_b)).await;
     if b_ready.is_err() {
         return fail("swarm B never became ready");
     }
