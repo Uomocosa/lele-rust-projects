@@ -33,9 +33,11 @@ on:
 jobs:
   probe:
     runs-on: [self-hosted, windows]
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
-      CARGO_TARGET_DIR: C:\cargo-target\frt-firewall-probe
+      # Reuse the already-warm test dir (deps pre-built) so the probe only recompiles the
+      # single touched test harness to a fresh deps\<hash>.exe — no 20-min cold dep build.
+      CARGO_TARGET_DIR: C:\cargo-target\frt-test
       CARGO_BUILD_JOBS: 4
       RUSTFLAGS: ""
     defaults:
@@ -97,11 +99,12 @@ jobs:
         run: |
           set -euo pipefail
           CRATE="${{ steps.check.outputs.crate }}"
-          # CARGO_INCREMENTAL=0 forces a full compile of the test harness to a fresh
-          # deps\<hash>.exe path, so we probe a binary Windows has never seen.
-          export CARGO_INCREMENTAL=0
+          # Touch the source so cargo recompiles the test harness to a fresh deps\<hash>.exe
+          # (a path Windows has never seen), without a full cold build of the dep tree.
+          touch "$CRATE/src/p2p/run.rs"
           cargo build --manifest-path "$CRATE/Cargo.toml" --tests --lib
-          ls -1 "$CARGO_TARGET_DIR/debug/deps/" | grep -i "two_swarm\|example_1_lib.*\.exe" || true
+          echo "== hashed test binaries =="
+          ls -1 "$CARGO_TARGET_DIR/debug/deps/" | grep -iE "freenet_libp2p.*\.exe" || true
 
       - name: Run the bind test (a prompt would hang this; timeout turns it into a failure)
         run: |
