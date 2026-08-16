@@ -40,7 +40,7 @@ jobs:
       RUSTFLAGS: ""
     defaults:
       run:
-        shell: C:\Program Files\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
+        shell: ${{ format('{0}/.github/scripts/git-bash.cmd', github.workspace) }} {0}
     steps:
       - uses: actions/checkout@v4
 
