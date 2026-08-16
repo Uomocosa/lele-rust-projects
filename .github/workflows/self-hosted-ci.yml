@@ -34,6 +34,7 @@ on:
           - test
           - build
           - cross-os
+          - test-windows-firewall
         default: all
 
 jobs:
@@ -55,7 +56,7 @@ jobs:
 
   firewall-probe:
     needs: resolve
-    if: (inputs.jobs == 'all' || inputs.jobs == 'test')
+    if: (inputs.jobs == 'all' || inputs.jobs == 'test' || inputs.jobs == 'test-windows-firewall')
     uses: ./.github/workflows/firewall-probe.yml
     with:
       crate: ${{ needs.resolve.outputs.crate }}
