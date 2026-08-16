@@ -33,11 +33,10 @@ on:
 jobs:
   probe:
     runs-on: [self-hosted, windows]
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
-      # Reuse the already-warm test dir (deps pre-built) so the probe only recompiles the
-      # single touched test harness to a fresh deps\<hash>.exe — no 20-min cold dep build.
-      CARGO_TARGET_DIR: C:\cargo-target\frt-test
+      # firewall probe is freenet-only (no bevy) so it builds in ~1-2 min into its own dir.
+      CARGO_TARGET_DIR: C:\cargo-target\frt-firewall-probe
       CARGO_BUILD_JOBS: 4
       RUSTFLAGS: ""
     defaults:
@@ -95,25 +94,23 @@ jobs:
           }
         shell: powershell
 
-      - name: Build the hashed two-swarm test binary
+      - name: Build the freenet-only probe
         run: |
           set -euo pipefail
           CRATE="${{ steps.check.outputs.crate }}"
-          # Touch the source so cargo recompiles the test harness to a fresh deps\<hash>.exe
-          # (a path Windows has never seen), without a full cold build of the dep tree.
-          touch "$CRATE/src/p2p/run.rs"
-          cargo build --manifest-path "$CRATE/Cargo.toml" --tests --lib
-          echo "== hashed test binaries =="
-          ls -1 "$CARGO_TARGET_DIR/debug/deps/" | grep -iE "freenet_libp2p.*\.exe" || true
+          # firewall_probe depends only on freenet (no bevy), so it builds in ~1-2 min.
+          cargo build --manifest-path "$CRATE/firewall_probe/Cargo.toml"
 
-      - name: Run the bind test (a prompt would hang this; timeout turns it into a failure)
+      - name: Run the probe (a prompt would hang this; timeout turns it into a failure)
         run: |
           set -euo pipefail
           CRATE="${{ steps.check.outputs.crate }}"
           export PATH="$HOME/.cargo/bin:$PATH"
-          cargo test --manifest-path "$CRATE/Cargo.toml" --lib p2p::run::tests::two_swarm_snapshot_exchange -- --exact
+          # The probe starts a freenet network-mode node that binds inbound UDP and connects
+          # to its local ws API. If Windows prompts (Query User) the run hangs or fails.
+          "$CARGO_TARGET_DIR/debug/firewall_probe"
 
       - name: Report PASS
         run: |
-          echo "Firewall probe PASS: fresh hashed test binary bound 0.0.0.0 with no prompt."
+          echo "Firewall probe PASS: freenet node bound inbound UDP with no prompt."
           echo "NotifyOnListen=False + broad allow rules verified on the Windows runner."
