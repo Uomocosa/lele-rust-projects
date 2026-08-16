@@ -64,7 +64,7 @@ jobs:
 
       - name: Assert firewall profile suppresses the prompt
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = "Stop"
           echo "== NotifyOnListen per profile (must all be False) =="
           Get-NetFirewallProfile | ForEach-Object {
             $p = $_.Profile
@@ -79,7 +79,7 @@ jobs:
 
       - name: Assert the two broad inbound allow rules exist and are enabled
         run: |
-          set -euo pipefail
+          $ErrorActionPreference = "Stop"
           $missing = @()
           foreach ($name in @("frt ci inbound tcp", "frt ci inbound udp")) {
             $rule = Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue
