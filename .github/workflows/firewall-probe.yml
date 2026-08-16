@@ -1,0 +1,116 @@
+name: firewall-probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      crate:
+        description: Crate folder name (e.g. freenet_libp2p_bevy_example_1)
+        required: false
+        default: freenet_libp2p_bevy_example_1
+  workflow_call:
+    inputs:
+      crate:
+        description: Crate folder name (e.g. freenet_libp2p_bevy_example_1)
+        required: true
+        type: string
+
+# Verifies the standing Windows Firewall setup suppresses the "Query User" prompt
+# for a brand-new hashed deps\*.exe test binary.
+#
+# Rationale (see test_orchestrator_mcp/README.md): Windows Firewall raises a prompt
+# the first time an unrecognized program listen()s on an inbound port. In unattended
+# CI that prompt would block a run. The standing fix is:
+#   * Set-NetFirewallProfile -NotifyOnListen False   (no dialog, hash-independent)
+#   * two broad inbound Allow rules                   (the "user clicked Allow" step)
+#
+# This job:
+#   1. Asserts NotifyOnListen is False on all 3 profiles and the 2 broad rules exist.
+#   2. Compiles the p2p::run::tests::two_swarm_snapshot_exchange #[tokio::test], which
+#      binds sockets on 0.0.0.0, into a fresh hashed deps\*.exe.
+#   3. Runs that test. The job-level timeout turns a prompt-hang into a visible failure;
+#      a completed bind + green test is the pass signal.
+
+jobs:
+  probe:
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 20
+    env:
+      CARGO_TARGET_DIR: C:\cargo-target\frt-firewall-probe
+      CARGO_BUILD_JOBS: 4
+      RUSTFLAGS: ""
+    defaults:
+      run:
+        shell: C:\Program Files\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate crate folder
+        id: check
+        run: |
+          CRATE="${{ inputs.crate }}"
+          [ -d "$CRATE" ] || { echo "crate folder '$CRATE' not found" >&2; exit 1; }
+          [ -f "$CRATE/Cargo.toml" ] || { echo "no Cargo.toml in '$CRATE'" >&2; exit 1; }
+          echo "crate=$CRATE" >> "$GITHUB_OUTPUT"
+
+      - name: Install rust toolchain (windows, git-bash)
+        run: |
+          set -euo pipefail
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default -y
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup default stable
+
+      - name: Assert firewall profile suppresses the prompt
+        run: |
+          set -euo pipefail
+          echo "== NotifyOnListen per profile (must all be False) =="
+          Get-NetFirewallProfile | ForEach-Object {
+            $p = $_.Profile
+            $n = $_.NotifyOnListen
+            Write-Output ("{0} NotifyOnListen={1}" -f $p, $n)
+            if ($n -ne $false) {
+              Write-Error ("profile {0} has NotifyOnListen=$n; expected False" -f $p)
+              exit 1
+            }
+          }
+        shell: powershell
+
+      - name: Assert the two broad inbound allow rules exist and are enabled
+        run: |
+          set -euo pipefail
+          $missing = @()
+          foreach ($name in @("frt ci inbound tcp", "frt ci inbound udp")) {
+            $rule = Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue
+            if (-not $rule) { $missing += $name; continue }
+            Write-Output ("found rule: {0} enabled={1}" -f $name, $rule.Enabled)
+            if ($rule.Enabled -ne 'True') { $missing += $name }
+          }
+          if ($missing.Count -gt 0) {
+            Write-Error ("missing or disabled firewall rules: {0}" -f ($missing -join ', '))
+            exit 1
+          }
+        shell: powershell
+
+      - name: Build the hashed two-swarm test binary
+        run: |
+          set -euo pipefail
+          CRATE="${{ steps.check.outputs.crate }}"
+          # CARGO_INCREMENTAL=0 forces a full compile of the test harness to a fresh
+          # deps\<hash>.exe path, so we probe a binary Windows has never seen.
+          export CARGO_INCREMENTAL=0
+          cargo build --manifest-path "$CRATE/Cargo.toml" --tests --lib
+          ls -1 "$CARGO_TARGET_DIR/debug/deps/" | grep -i "two_swarm\|example_1_lib.*\.exe" || true
+
+      - name: Run the bind test (a prompt would hang this; timeout turns it into a failure)
+        run: |
+          set -euo pipefail
+          CRATE="${{ steps.check.outputs.crate }}"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          cargo test --manifest-path "$CRATE/Cargo.toml" --lib p2p::run::tests::two_swarm_snapshot_exchange -- --exact
+
+      - name: Report PASS
+        run: |
+          echo "Firewall probe PASS: fresh hashed test binary bound 0.0.0.0 with no prompt."
+          echo "NotifyOnListen=False + broad allow rules verified on the Windows runner."

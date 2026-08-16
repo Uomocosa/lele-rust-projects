@@ -53,6 +53,13 @@ jobs:
           [ -f "$CRATE/Cargo.toml" ] || { echo "no Cargo.toml in '$CRATE'" >&2; exit 1; }
           echo "crate=$CRATE" >> "$GITHUB_OUTPUT"
 
+  firewall-probe:
+    needs: resolve
+    if: (inputs.jobs == 'all' || inputs.jobs == 'test')
+    uses: ./.github/workflows/firewall-probe.yml
+    with:
+      crate: ${{ needs.resolve.outputs.crate }}
+
   test:
     needs: resolve
     if: (inputs.jobs == 'all' || inputs.jobs == 'test') && (inputs.run-tests || inputs.jobs == 'test')
@@ -136,7 +143,7 @@ jobs:
         run: |
           set -euo pipefail
           for bin in two_node_roster two_node_box_count two_node_box_count_parallel \
-                     local_two_node_production_sync two_swarm_snapshot_exchange; do
+                     local_two_node_production_sync; do
             echo "=== harness: $bin ==="
             cargo build --manifest-path testing/Cargo.toml --bin "$bin"
             "$CARGO_TARGET_DIR/debug/$bin"

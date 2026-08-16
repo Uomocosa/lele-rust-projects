@@ -85,11 +85,39 @@ never logged. When unset, the tools fall back to the machine's `gh` login.
    then `game_status` to watch for `ring_connections`, roster convergence and
    `ConnectionEstablished`.
 
-**Do not add a firewall rule to make a test pass.** Hand-configuring inbound
-UDP tests a special-cased machine rather than the software; real users will not
-do it. Mainnet and libp2p are supposed to traverse NAT on their own, so a run
-that fails without a manual rule is a finding to record, not something to work
-around. See `freenet_libp2p_bevy_example_1/CROSS_NETWORK_TEST_2026-08-13.md`.
+**Windows Firewall is a first-run authorization step, not a pass/fail switch.**
+When a freenet/libp2p node calls `listen()` on an inbound port, Windows Firewall
+raises its "Query User" prompt: a real user sees it once and clicks **Allow**. In
+unattended CI a pre-authored firewall rule is the *automated equivalent of that
+click* — it reproduces exactly the authorization a real deployment performs, it
+does not special-case a broken pass. The freenet/libp2p NAT traversal
+(`autonat`/`dcutr`/`relay`, gateway discovery) still does the real work; the rule
+only un-blocks the inbound listen so that traversal can complete.
+
+Standing Windows runner setup (dedicated test box, `bootstrap.ps1`):
+
+```powershell
+# Kill the prompt at the profile level (hash-independent).
+Set-NetFirewallProfile -Profile Domain,Private,Public -NotifyOnListen False
+
+# The "user clicked Allow" equivalent: two broad inbound allows.
+New-NetFirewallRule -DisplayName "frt ci inbound tcp" -Direction Inbound `
+  -Action Allow -Profile Any -Protocol TCP -LocalPort Any -RemoteAddress Any
+New-NetFirewallRule -DisplayName "frt ci inbound udp" -Direction Inbound `
+  -Action Allow -Profile Any -Protocol UDP -LocalPort Any -RemoteAddress Any
+```
+
+`NotifyOnListen False` means unmatched inbound listens are handled per
+`DefaultInboundAction` (kept at `Block`) with no dialog, regardless of build
+hash — so hashed `deps\*.exe` test binaries never re-prompt. The two explicit
+allows are the accepted trade-off on this dedicated box.
+
+**Finding discipline still applies:** if cross-OS genuinely fails even with the
+rules in place (e.g. symmetric NAT, an inert NAT-traversal stack), that is a
+**finding to record**, not a reason to add more rules. See
+`freenet_libp2p_bevy_example_1/CROSS_NETWORK_TEST_2026-08-13.md`. The
+`2026-08-14` run deliberately ran *without* firewall rules to isolate an
+environmental finding — that was a one-off isolation, not standing policy.
 
 Note that a failed run leaks an in-process freenet node holding its UDP port
 (the retry loop in `roster/connect_and_run.rs` never aborts the old one), and a

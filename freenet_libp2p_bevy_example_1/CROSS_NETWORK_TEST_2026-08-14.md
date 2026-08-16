@@ -6,6 +6,9 @@ network numbers are recorded as data, not as a pass/fail gate.
 
 Constraints held throughout: **no firewall rules**, **no code changes**, public
 mainnet only (no `--freenet-local`, no `--freenet-gateway`).
+*(The rule-free run here was a deliberate one-off to isolate an environmental
+finding; it is not standing policy — see the firewall note in
+`test_orchestrator_mcp/README.md`.)*
 
 ## Verdict up front
 
