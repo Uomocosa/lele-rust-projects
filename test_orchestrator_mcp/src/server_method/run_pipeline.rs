@@ -23,6 +23,7 @@ pub async fn run_pipeline(
     let run_tests = params.run_tests.unwrap_or(true);
     let release_builds = params.release_builds.unwrap_or(true);
     let build_mode = params.build_mode.unwrap_or_else(|| "dev".to_string());
+    let clean = params.clean.unwrap_or(false);
     let jobs = params.jobs.unwrap_or_else(|| "all".to_string());
     let args = [
         "workflow".to_string(),
@@ -39,11 +40,13 @@ pub async fn run_pipeline(
         "-f".to_string(),
         format!("build-mode={build_mode}"),
         "-f".to_string(),
+        format!("clean={clean}"),
+        "-f".to_string(),
         format!("jobs={jobs}"),
     ];
     server_method::run_gh(token, &args).await?;
     Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-        "triggered self-hosted pipeline for {crate_folder} (run-tests={run_tests}, release-builds={release_builds}, build-mode={build_mode}, jobs={jobs})"
+        "triggered self-hosted pipeline for {crate_folder} (run-tests={run_tests}, release-builds={release_builds}, build-mode={build_mode}, clean={clean}, jobs={jobs})"
     ))]))
 }
 
@@ -59,6 +62,7 @@ mod tests {
             run_tests: None,
             release_builds: None,
             build_mode: None,
+            clean: None,
             jobs: None,
         };
         let err = run_pipeline("repo", None, params).await.unwrap_err();

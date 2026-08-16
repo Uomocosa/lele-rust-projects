@@ -14,6 +14,9 @@ pub struct RunPipelineParams {
     /// Build profile: "dev" (default, debug) or "release"
     #[serde(default)]
     pub build_mode: Option<String>,
+    /// Clean the persistent cargo target dirs first (forces a cold build)
+    #[serde(default)]
+    pub clean: Option<bool>,
     /// Which stage to run: "all" (default, full pipeline), "test", "build", or "cross-os"
     #[serde(default)]
     pub jobs: Option<String>,
