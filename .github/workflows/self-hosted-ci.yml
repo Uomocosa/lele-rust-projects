@@ -133,7 +133,7 @@ jobs:
             [ -f "$sub/Cargo.toml" ] || continue
             echo "=== subcrate: $sub ==="
             cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
-            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" -- -D warnings $TEST_JOBS
+            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS -- -D warnings
             cargo test --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
           done
 
