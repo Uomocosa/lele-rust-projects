@@ -75,7 +75,7 @@ jobs:
             target_dir: 'C:\cargo-target\frt-test'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
-      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '4' || '6' }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '1' || '6' }}
       RUSTFLAGS: ""
     defaults:
       run:
@@ -123,14 +123,17 @@ jobs:
       - name: Build, clippy, test subcrates (testing/e2e_tests/integration_tests)
         run: |
           set -euo pipefail
-          # link.exe OOMs (LNK1102) on Windows when several test binaries link concurrently,
-          # so serialize the subcrate test build there. Linux keeps default parallelism.
+          # Windows has very little RAM: link.exe OOMs (LNK1102) when several test binaries link
+          # concurrently, so CARGO_BUILD_JOBS=1 (above) serializes every cargo job there and the
+          # subcrate build is a type-check only (the cargo test below still links and runs each
+          # binary). Linux keeps full parallelism and the real build.
+          CHECK_OR_BUILD="${{ matrix.os == 'windows' && 'check' || 'build' }}"
           TEST_JOBS="${{ matrix.os == 'windows' && '-j 1' || '' }}"
           for sub in testing e2e_tests integration_tests; do
             [ -f "$sub/Cargo.toml" ] || continue
             echo "=== subcrate: $sub ==="
-            cargo build --all-targets --manifest-path "$sub/Cargo.toml"
-            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" -- -D warnings
+            cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
+            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" -- -D warnings $TEST_JOBS
             cargo test --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
           done
 
@@ -198,7 +201,7 @@ jobs:
             target_dir: 'C:\cargo-target\ci'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
-      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '4' || '6' }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '1' || '6' }}
       RUSTFLAGS: ""
     defaults:
       run:
@@ -248,11 +251,14 @@ jobs:
       - name: Build subcrates (testing/e2e_tests/integration_tests)
         run: |
           set -euo pipefail
-          # Windows link.exe OOMs (LNK1102) linking several test binaries concurrently.
+          # Windows has very little RAM: link.exe OOMs (LNK1102) linking several test binaries
+          # concurrently, so CARGO_BUILD_JOBS=1 (above) serializes every cargo job there and the
+          # subcrate build is a type-check only. Linux keeps full parallelism and the real build.
+          CHECK_OR_BUILD="${{ matrix.os == 'windows' && 'check' || 'build' }}"
           TEST_JOBS="${{ matrix.os == 'windows' && '-j 1' || '' }}"
           for sub in testing e2e_tests integration_tests; do
             [ -f "$sub/Cargo.toml" ] || continue
-            cargo build --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
+            cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
           done
 
       - name: Resolve binary name
@@ -277,9 +283,10 @@ jobs:
     needs: [resolve, build-contract, build]
     if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.build.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
-    # Generous: a clean=true run cold-builds cross_os_sync (Windows ~10.5 min) before the
-    # 5-minute probe. 15 min was too tight and cancelled the whole run.
-    timeout-minutes: 30
+    # Generous: a clean=true run cold-builds cross_os_sync (Windows ~10.5 min at jobs=4; the
+    # Windows runner now builds at CARGO_BUILD_JOBS=1 for RAM headroom, so allow ~3-5x that)
+    # before the 5-minute probe. 15 min was too tight and cancelled the whole run.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -290,7 +297,7 @@ jobs:
             target_dir: 'C:\cargo-target\cross-os'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
-      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '4' || '6' }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '1' || '6' }}
       RUSTFLAGS: ""
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_MACHINE: ${{ matrix.os }}
