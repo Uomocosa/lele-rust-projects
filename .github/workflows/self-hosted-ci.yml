@@ -279,13 +279,13 @@ jobs:
           path: ${{ env.CARGO_TARGET_DIR }}/${{ inputs.build-mode == 'release' && 'release' || 'debug' }}/${{ steps.bin.outputs.bin }}${{ matrix.os == 'windows' && '.exe' || '' }}
           if-no-files-found: error
 
-  cross-os:
+  cross-os-build:
     needs: [resolve, build-contract, build]
     if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.build.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
     # Generous: a clean=true run cold-builds cross_os_sync (Windows ~10.5 min at jobs=4; the
-    # Windows runner now builds at CARGO_BUILD_JOBS=1 for RAM headroom, so allow ~3-5x that)
-    # before the 5-minute probe. 15 min was too tight and cancelled the whole run.
+    # Windows runner now builds at CARGO_BUILD_JOBS=1 for RAM headroom, so allow ~3-5x that).
+    # 15 min was too tight and cancelled the whole run.
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -299,10 +299,6 @@ jobs:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
       CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '1' || '6' }}
       RUSTFLAGS: ""
-      CROSS_OS_KEY: cross-os-${{ github.run_id }}
-      CROSS_OS_MACHINE: ${{ matrix.os }}
-      CROSS_OS_LOG: cross-os-${{ matrix.os }}.log
-      CROSS_OS_DURATION_SECS: "300"
     defaults:
       run:
         shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
@@ -351,6 +347,35 @@ jobs:
       - name: Build cross-OS harness binary
         run: cargo build --manifest-path testing/Cargo.toml --bin cross_os_sync
 
+  cross-os-run:
+    # Split from cross-os-build so both machines finish building before either 5-minute probe
+    # starts: both run legs become eligible at the same instant once every build leg completes,
+    # so the probes overlap and cross-os-verify gets a fair chance to observe both players.
+    needs: [resolve, cross-os-build]
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.cross-os-build.result != 'failure'
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            target_dir: /home/uomocosa/.cache/frt-crossos
+          - os: windows
+            target_dir: 'C:\cargo-target\cross-os'
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      CROSS_OS_KEY: cross-os-${{ github.run_id }}
+      CROSS_OS_MACHINE: ${{ matrix.os }}
+      CROSS_OS_LOG: cross-os-${{ matrix.os }}.log
+      CROSS_OS_DURATION_SECS: "300"
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Run cross-OS sync probe
         run: "$CARGO_TARGET_DIR/debug/cross_os_sync"
 
@@ -363,8 +388,8 @@ jobs:
           if-no-files-found: error
 
   cross-os-verify:
-    needs: cross-os
-    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && needs.cross-os.result == 'success'
+    needs: cross-os-run
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && needs.cross-os-run.result == 'success'
     runs-on: [self-hosted, linux]
     timeout-minutes: 10
     steps:
