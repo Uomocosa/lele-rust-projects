@@ -240,8 +240,11 @@ jobs:
           if-no-files-found: error
 
   cross-os-build:
-    needs: [resolve, build-contract, build]
-    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.build.result != 'failure'
+    # Depends only on build-contract (for the embedded wasm), NOT on the `build` binary job: the
+    # cross-OS probes compile cross_os_tests themselves. Keeping `build` out lets jobs=cross-os run
+    # standalone — otherwise build (skipped for jobs=cross-os) would auto-skip this whole chain.
+    needs: [resolve, build-contract]
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os')
     runs-on: [self-hosted, "${{ matrix.os }}"]
     # Generous: a clean=true run cold-builds the cross-OS probe tests (Windows ~10.5 min at jobs=4; the
     # Windows runner now builds at CARGO_BUILD_JOBS=1 for RAM headroom, so allow ~3-5x that).
