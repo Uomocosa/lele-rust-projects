@@ -257,7 +257,10 @@ jobs:
             target_dir: 'C:\cargo-target\cross-os'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
-      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '1' || '6' }}
+      # Cross-OS flow uses the same build settings on Linux as on Windows (jobs=1) so both
+      # machines pace at the same parallelism; Linux is still faster but we wait on Windows
+      # anyway. The normal test/build jobs keep more Linux parallelism for fast iteration.
+      CARGO_BUILD_JOBS: "1"
       RUSTFLAGS: ""
     defaults:
       run:
@@ -309,14 +312,16 @@ jobs:
           set -euo pipefail
           cargo test -p cross_os_tests --no-run
 
-  cross-os-run:
-    # Split from cross-os-build so both machines finish building before either 5-minute probe
-    # starts: both run legs become eligible at the same instant once every build leg completes,
-    # so the probes overlap and cross-os-verify gets a fair chance to observe both players.
+  cross-os-peer-discovery:
+    # Build then run, synchronized per test: both machines run the SAME probe at the same time.
+    # A matrix job's legs run in parallel and the next job's `needs` is satisfied only after ALL
+    # legs of the dependency complete, so cross-os-movement-sync cannot start until both machines
+    # finished peer_discovery. The generous timeout guarantees the run eventually stops even if a
+    # machine is left idle.
     needs: [resolve, cross-os-build]
     if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.cross-os-build.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
-    timeout-minutes: 30
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -327,6 +332,7 @@ jobs:
             target_dir: 'C:\cargo-target\cross-os'
     env:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      CARGO_BUILD_JOBS: "1"
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_MACHINE: ${{ matrix.os }}
       CROSS_OS_DURATION_SECS: "300"
@@ -345,14 +351,6 @@ jobs:
           cargo test -p cross_os_tests \
             --test peer_discovery -- --ignored --nocapture
 
-      - name: Run cross-OS movement-sync probe
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/.cargo/bin:$PATH"
-          export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log"
-          cargo test -p cross_os_tests \
-            --test movement_sync -- --ignored --nocapture
-
       - name: Upload cross-OS log
         if: always()
         uses: actions/upload-artifact@v4
@@ -360,6 +358,42 @@ jobs:
           name: cross-os-log-${{ matrix.os }}
           path: ${{ needs.resolve.outputs.crate }}/cross-os-${{ matrix.os }}.log
           if-no-files-found: error
+
+  cross-os-movement-sync:
+    # Runs only after BOTH machines finished cross-os-peer-discovery; both machines start the
+    # movement-sync probe at the same time.
+    needs: [resolve, cross-os-peer-discovery]
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.cross-os-peer-discovery.result == 'success'
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            target_dir: /home/uomocosa/.cache/frt-crossos
+          - os: windows
+            target_dir: 'C:\cargo-target\cross-os'
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.target_dir }}
+      CARGO_BUILD_JOBS: "1"
+      CROSS_OS_KEY: cross-os-${{ github.run_id }}
+      CROSS_OS_MACHINE: ${{ matrix.os }}
+      CROSS_OS_DURATION_SECS: "300"
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run cross-OS movement-sync probe
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log"
+          cargo test -p cross_os_tests \
+            --test movement_sync -- --ignored --nocapture
 
       - name: Upload cross-OS movement log
         if: always()
@@ -370,8 +404,8 @@ jobs:
           if-no-files-found: error
 
   cross-os-verify:
-    needs: cross-os-run
-    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && needs.cross-os-run.result == 'success'
+    needs: cross-os-movement-sync
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && needs.cross-os-movement-sync.result == 'success'
     runs-on: [self-hosted, linux]
     timeout-minutes: 10
     steps:
