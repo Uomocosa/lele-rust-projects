@@ -98,8 +98,9 @@ jobs:
         run: |
           set -euo pipefail
           CRATE="${{ steps.check.outputs.crate }}"
-          # firewall_probe depends only on freenet (no bevy), so it builds in ~1-2 min.
-          cargo build --manifest-path "$CRATE/firewall_probe/Cargo.toml"
+          # firewall_probe is a workspace member that depends only on freenet (no bevy), so it
+          # reuses the already-built freenet/tokio units and builds fast.
+          cargo build -p firewall_probe --manifest-path "$CRATE/Cargo.toml"
 
       - name: Run the probe (a prompt would hang this; timeout turns it into a failure)
         run: |

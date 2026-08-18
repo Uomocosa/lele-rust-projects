@@ -108,38 +108,21 @@ jobs:
       - name: Install wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Build all targets
-        run: cargo build --all-targets
+      - name: Build all workspace targets
+        run: cargo build --workspace --all-targets
 
       - name: Check formatting
         run: cargo fmt -- --check
 
       - name: Clippy (deny warnings)
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Run all tests
-        run: cargo test --all-targets
-
-      - name: Build, clippy, test subcrates (testing/e2e_tests/integration_tests)
-        run: |
-          set -euo pipefail
-          # Windows has very little RAM: link.exe OOMs (LNK1102) when several test binaries link
-          # concurrently, so CARGO_BUILD_JOBS=1 (above) serializes every cargo job there and the
-          # subcrate build is a type-check only (the cargo test below still links and runs each
-          # binary). Linux keeps full parallelism and the real build.
-          CHECK_OR_BUILD="${{ matrix.os == 'windows' && 'check' || 'build' }}"
-          TEST_JOBS="${{ matrix.os == 'windows' && '-j 1' || '' }}"
-          for sub in testing e2e_tests integration_tests cross_os_tests; do
-            [ -f "$sub/Cargo.toml" ] || continue
-            echo "=== subcrate: $sub ==="
-            cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
-            cargo clippy --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS -- -D warnings
-            cargo test --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
-          done
+      - name: Run all workspace tests
+        run: cargo test --workspace --all-targets
 
       # e2e_three_node_production_sync and the two cross-OS probes are #[ignore]d (the first needs
       # the public mainnet, the latter are driven per-machine by the cross-os job). The 4 local
-      # port-binding harnesses now run as proper integration_tests via the subcrate loop above.
+      # port-binding harnesses run as integration_tests via the workspace `cargo test` above.
       # With the standing Windows Firewall fix (NotifyOnListen=False + broad Allow rules) hashed
       # test exes no longer re-trigger the prompt, so they need no stable-name [[bin]] path.
 
@@ -236,20 +219,7 @@ jobs:
           cp "$src" "contract/$(basename "$src")"
 
       - name: Build binary
-        run: cargo build ${{ inputs.build-mode == 'release' && '--release' || '' }}
-
-      - name: Build subcrates (testing/e2e_tests/integration_tests)
-        run: |
-          set -euo pipefail
-          # Windows has very little RAM: link.exe OOMs (LNK1102) linking several test binaries
-          # concurrently, so CARGO_BUILD_JOBS=1 (above) serializes every cargo job there and the
-          # subcrate build is a type-check only. Linux keeps full parallelism and the real build.
-          CHECK_OR_BUILD="${{ matrix.os == 'windows' && 'check' || 'build' }}"
-          TEST_JOBS="${{ matrix.os == 'windows' && '-j 1' || '' }}"
-          for sub in testing e2e_tests integration_tests cross_os_tests; do
-            [ -f "$sub/Cargo.toml" ] || continue
-            cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
-          done
+        run: cargo build --workspace ${{ inputs.build-mode == 'release' && '--release' || '' }}
 
       - name: Resolve binary name
         id: bin
@@ -332,12 +302,12 @@ jobs:
           cp "$src" "contract/$(basename "$src")"
 
       - name: Clippy testing crate
-        run: cargo clippy --all-targets --manifest-path testing/Cargo.toml -- -D warnings
+        run: cargo clippy --all-targets -p testing -- -D warnings
 
       - name: Build cross-OS probe tests (compile check, not run)
         run: |
           set -euo pipefail
-          cargo test --manifest-path cross_os_tests/Cargo.toml --no-run
+          cargo test -p cross_os_tests --no-run
 
   cross-os-run:
     # Split from cross-os-build so both machines finish building before either 5-minute probe
@@ -372,7 +342,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.cargo/bin:$PATH"
           export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-${{ matrix.os }}.log"
-          cargo test --manifest-path cross_os_tests/Cargo.toml \
+          cargo test -p cross_os_tests \
             --test peer_discovery -- --ignored --nocapture
 
       - name: Run cross-OS movement-sync probe
@@ -380,7 +350,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.cargo/bin:$PATH"
           export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log"
-          cargo test --manifest-path cross_os_tests/Cargo.toml \
+          cargo test -p cross_os_tests \
             --test movement_sync -- --ignored --nocapture
 
       - name: Upload cross-OS log

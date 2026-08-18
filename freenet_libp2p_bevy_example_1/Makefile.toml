@@ -22,10 +22,10 @@ description = "Full verification before push"
 dependencies = ["copy-wasm"]
 script = """
 set -e
-cargo build --all-targets
-cargo clippy --all-targets -- -D warnings
+cargo build --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt -- --check
-cargo test --all-targets -- --nocapture
+cargo test --workspace --all-targets -- --nocapture
 cargo run --manifest-path ../lele_lint/Cargo.toml
 echo "ALL CHECKS PASSED"
 """

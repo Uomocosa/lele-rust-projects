@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "testing", "integration_tests", "e2e_tests", "cross_os_tests", "firewall_probe"]
+resolver = "3"
+
 [package]
 name = "bevy_freenet"
 version = "0.1.2"

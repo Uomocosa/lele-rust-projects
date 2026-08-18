@@ -10,8 +10,8 @@ Read [OBJECTIVE.md](./OBJECTIVE.md) for the project's goals, constraints, and cu
 
 | Key | Command |
 |-----|---------|
-| `RUN_ALL_TESTS` | `cargo build --all-targets && cargo clippy -- -D warnings && cargo fmt -- --check && cargo test --all-targets && cargo run --manifest-path ../lele_lint/Cargo.toml` |
-| `RUN_BUILD_CLIPPY` | `cargo build --all-targets && cargo clippy -- -D warnings` |
+| `RUN_ALL_TESTS` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings && cargo fmt -- --check && cargo test --workspace --all-targets && cargo run --manifest-path ../lele_lint/Cargo.toml` |
+| `RUN_BUILD_CLIPPY` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings` |
 | `RUN_LELE_LINT` | `cargo run --manifest-path ../lele_lint/Cargo.toml` |
 
 ## Standard Build & Verification Routine

@@ -12,7 +12,11 @@ pub fn remote_snapshots(this: &mut ProductionGameApp) -> Vec<(boxes::PlayerId, V
     let mut snaps: Vec<(boxes::PlayerId, Vec2, u64)> = query
         .iter(this.app.world())
         .map(|(player, transform, target)| {
-            (**player, transform.translation.truncate(), target.sent_at_ms)
+            (
+                **player,
+                transform.translation.truncate(),
+                target.sent_at_ms,
+            )
         })
         .collect();
     snaps.sort_by_key(|(id, _, _)| *id);
