@@ -1,5 +1,6 @@
 [workspace]
 members = [".", "testing", "integration_tests", "e2e_tests", "cross_os_tests", "firewall_probe"]
+exclude = ["contract"]
 resolver = "3"
 
 [package]
