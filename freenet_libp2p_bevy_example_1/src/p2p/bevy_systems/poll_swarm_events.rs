@@ -38,6 +38,7 @@ pub fn poll_swarm_events(
                     commands.entity(entity).insert(p2p::RemoteTarget {
                         pos: Vec2::new(snapshot.x, snapshot.y),
                         tick: snapshot.tick,
+                        sent_at_ms: snapshot.sent_at_ms,
                     });
                     break;
                 }

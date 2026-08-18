@@ -50,17 +50,17 @@ fn window_secs() -> u64 {
         .unwrap_or(DEFAULT_DURATION_SECS)
 }
 
-/// The cross-OS probe. Each machine (Linux + Windows runner) runs this same binary against the
-/// same `CROSS_OS_KEY` contract on the public Freenet mainnet and writes the roster it observes
-/// to a JSON-lines log. The workflow's `cross-os-verify` job downloads both logs and asserts each
-/// side saw the other's player id — that is what makes it a cross-OS test regardless of whether
-/// the machines share a LAN.
+/// The cross-OS roster-presence probe. Each machine (Linux + Windows runner) runs this same
+/// `#[tokio::test]` against the same `CROSS_OS_KEY` contract on the public Freenet mainnet and
+/// writes the roster it observes to a JSON-lines log. The workflow's `cross-os-verify` job
+/// downloads both logs and asserts each side saw the other's player id — that is what makes it a
+/// cross-OS test regardless of whether the machines share a LAN.
 ///
-/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path
-/// like `target/<dir>/debug/cross_os_sync.exe`, letting Windows Firewall rules keyed to that path
-/// stay valid across dependency changes.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// `#[ignore]`d — run per-machine from the workflow with
+/// `cargo test --manifest-path cross_os_tests/Cargo.toml --test peer_discovery -- --ignored`.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn peer_discovery() -> Result<(), Box<dyn std::error::Error>> {
     let machine = machine_label();
     let path = log_path(&machine);
     if let Some(parent) = path.parent()
@@ -112,5 +112,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(target: "roster", machine = %machine, own = own, final_observed = ?last_observed, "cross-os window complete");
     Ok(())
 }
-
-// no test_usage necessary

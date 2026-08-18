@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use freenet_libp2p_bevy_example_1_lib::{boxes, roster};
 
+// needed helper:
 fn entry(peer_id: &str) -> roster::PeerEntry {
     roster::PeerEntry {
         peer_id: peer_id.to_string(),
@@ -14,11 +15,8 @@ fn entry(peer_id: &str) -> roster::PeerEntry {
 /// node A as its gateway), each Puts/merges its own roster entry, and each ends up observing a
 /// 2-entry roster — proving the commutative-merge contract actually propagates state across a real
 /// join, not just within a single isolated node.
-///
-/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
-/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test(flavor = "multi_thread")]
+async fn two_node_roster() -> Result<(), Box<dyn std::error::Error>> {
     let params = testing::unique_params();
     let gateway = testing::TestNode::start_gateway(0)
         .await
@@ -43,9 +41,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("gateway roster should contain its own player id".into());
     }
 
-    // The peer's own `deploy_roster` call already merges in the gateway's existing entry
-    // synchronously (it Gets the contract, sees entry 1, merges in entry 2, and Updates) — it
-    // does not need to wait for a push notification of its own write.
     let (peer_client, peer_roster) = testing::deploy_roster(
         peer.port(),
         &wasm,
@@ -57,8 +52,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .map_err(|e| format!("peer should deploy/join the roster contract: {e}"))?;
     drop(peer_client);
 
-    // The gateway only learns about the peer's entry via a push notification, since its own
-    // client already returned before the peer's write happened.
     let gateway_view =
         testing::wait_for_roster_len(&mut gateway_client, 2, Duration::from_secs(60))
             .await
@@ -95,5 +88,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     peer.shutdown().await;
     Ok(())
 }
-
-// no test_usage necessary

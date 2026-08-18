@@ -1,17 +1,21 @@
 [package]
-name = "testing"
-version = "0.1.1"
+name = "cross_os_tests"
+version = "0.1.0"
 edition = "2024"
+
+[[test]]
+name = "peer_discovery"
+path = "peer_discovery.rs"
+
+[[test]]
+name = "movement_sync"
+path = "movement_sync.rs"
 
 [dependencies]
 bevy = "=0.19.0"
-freenet-libp2p-bevy-example-1-lib = { path = "..", package = "bevy_freenet" }
-freenet = "=0.2.123"
-freenet-stdlib = { version = "=0.8.5", features = ["net"] }
 tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "net"] }
-tempfile = "=3.27.0"
-bincode = "=1.3.3"
 serde = { version = "=1.0.229", features = ["derive"] }
-hex = "=0.4.3"
+serde_json = "=1.0.151"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
+testing = { path = "../testing" }

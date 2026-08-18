@@ -5,4 +5,5 @@ use bevy::prelude::Component;
 pub struct RemoteTarget {
     pub pos: Vec2,
     pub tick: u64,
+    pub sent_at_ms: u64,
 }

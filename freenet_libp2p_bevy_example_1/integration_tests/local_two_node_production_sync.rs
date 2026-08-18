@@ -12,13 +12,9 @@ use bevy::input::keyboard::KeyCode;
 /// This is the decisive experiment for the same-machine sync reliability work: if the two
 /// production-path nodes converge when directly wired, the roster contract/merge/subscribe code in
 /// this project is correct and residual same-machine flakiness is purely a mainnet
-/// node-discovery/bootstrap problem. Unlike `e2e_three_node_production_sync.rs`, this harness is
-/// fully local and needs no internet access.
-///
-/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
-/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// node-discovery/bootstrap problem.
+#[tokio::test(flavor = "multi_thread")]
+async fn local_two_node_production_sync() -> Result<(), Box<dyn std::error::Error>> {
     let params = testing::unique_params();
     let wasm = testing::load_wasm();
 
@@ -75,5 +71,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-// no test_usage necessary

@@ -129,7 +129,7 @@ jobs:
           # binary). Linux keeps full parallelism and the real build.
           CHECK_OR_BUILD="${{ matrix.os == 'windows' && 'check' || 'build' }}"
           TEST_JOBS="${{ matrix.os == 'windows' && '-j 1' || '' }}"
-          for sub in testing e2e_tests integration_tests; do
+          for sub in testing e2e_tests integration_tests cross_os_tests; do
             [ -f "$sub/Cargo.toml" ] || continue
             echo "=== subcrate: $sub ==="
             cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
@@ -137,21 +137,11 @@ jobs:
             cargo test --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
           done
 
-      # The port-binding harnesses are [[bin]] targets (not integration tests) so cargo emits
-      # them at stable, un-hashed paths like debug/<name>.exe — that lets Windows Firewall rules
-      # keyed to those paths stay valid across dependency changes (a hashed deps/ name would go
-      # stale on every cargo update and re-trigger the firewall prompt). They are run here
-      # explicitly and sequentially. e2e_three_node_production_sync and cross_os_sync are excluded:
-      # the former needs the public mainnet (internet), the latter is driven by the cross-os job.
-      - name: Run local harness binaries (stable names, sequential)
-        run: |
-          set -euo pipefail
-          for bin in two_node_roster two_node_box_count two_node_box_count_parallel \
-                     local_two_node_production_sync; do
-            echo "=== harness: $bin ==="
-            cargo build --manifest-path testing/Cargo.toml --bin "$bin"
-            "$CARGO_TARGET_DIR/debug/$bin"
-          done
+      # e2e_three_node_production_sync and the two cross-OS probes are #[ignore]d (the first needs
+      # the public mainnet, the latter are driven per-machine by the cross-os job). The 4 local
+      # port-binding harnesses now run as proper integration_tests via the subcrate loop above.
+      # With the standing Windows Firewall fix (NotifyOnListen=False + broad Allow rules) hashed
+      # test exes no longer re-trigger the prompt, so they need no stable-name [[bin]] path.
 
       - name: lele_lint
         run: cargo run --manifest-path ../lele_lint/Cargo.toml
@@ -256,7 +246,7 @@ jobs:
           # subcrate build is a type-check only. Linux keeps full parallelism and the real build.
           CHECK_OR_BUILD="${{ matrix.os == 'windows' && 'check' || 'build' }}"
           TEST_JOBS="${{ matrix.os == 'windows' && '-j 1' || '' }}"
-          for sub in testing e2e_tests integration_tests; do
+          for sub in testing e2e_tests integration_tests cross_os_tests; do
             [ -f "$sub/Cargo.toml" ] || continue
             cargo $CHECK_OR_BUILD --all-targets --manifest-path "$sub/Cargo.toml" $TEST_JOBS
           done
@@ -283,7 +273,7 @@ jobs:
     needs: [resolve, build-contract, build]
     if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.build.result != 'failure'
     runs-on: [self-hosted, "${{ matrix.os }}"]
-    # Generous: a clean=true run cold-builds cross_os_sync (Windows ~10.5 min at jobs=4; the
+    # Generous: a clean=true run cold-builds the cross-OS probe tests (Windows ~10.5 min at jobs=4; the
     # Windows runner now builds at CARGO_BUILD_JOBS=1 for RAM headroom, so allow ~3-5x that).
     # 15 min was too tight and cancelled the whole run.
     timeout-minutes: 180
@@ -344,8 +334,10 @@ jobs:
       - name: Clippy testing crate
         run: cargo clippy --all-targets --manifest-path testing/Cargo.toml -- -D warnings
 
-      - name: Build cross-OS harness binary
-        run: cargo build --manifest-path testing/Cargo.toml --bin cross_os_sync
+      - name: Build cross-OS probe tests (compile check, not run)
+        run: |
+          set -euo pipefail
+          cargo test --manifest-path cross_os_tests/Cargo.toml --no-run
 
   cross-os-run:
     # Split from cross-os-build so both machines finish building before either 5-minute probe
@@ -367,7 +359,6 @@ jobs:
       CARGO_TARGET_DIR: ${{ matrix.target_dir }}
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_MACHINE: ${{ matrix.os }}
-      CROSS_OS_LOG: cross-os-${{ matrix.os }}.log
       CROSS_OS_DURATION_SECS: "300"
     defaults:
       run:
@@ -376,8 +367,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run cross-OS sync probe
-        run: "$CARGO_TARGET_DIR/debug/cross_os_sync"
+      - name: Run cross-OS peer-discovery probe
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-${{ matrix.os }}.log"
+          cargo test --manifest-path cross_os_tests/Cargo.toml \
+            --test peer_discovery -- --ignored --nocapture
+
+      - name: Run cross-OS movement-sync probe
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log"
+          cargo test --manifest-path cross_os_tests/Cargo.toml \
+            --test movement_sync -- --ignored --nocapture
 
       - name: Upload cross-OS log
         if: always()
@@ -385,6 +389,14 @@ jobs:
         with:
           name: cross-os-log-${{ matrix.os }}
           path: ${{ needs.resolve.outputs.crate }}/cross-os-${{ matrix.os }}.log
+          if-no-files-found: error
+
+      - name: Upload cross-OS movement log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-os-movement-log-${{ matrix.os }}
+          path: ${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log
           if-no-files-found: error
 
   cross-os-verify:
@@ -405,7 +417,17 @@ jobs:
           name: cross-os-log-windows
           path: verify/windows
 
-      - name: Assert each OS observed the other's player id
+      - uses: actions/download-artifact@v4
+        with:
+          name: cross-os-movement-log-linux
+          path: verify/linux-movement
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cross-os-movement-log-windows
+          path: verify/windows-movement
+
+      - name: Assert each OS observed the other's player id and moved
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -429,11 +451,35 @@ jobs:
                   pass
               return own, observed
 
+          def load_movement(path):
+              # returns (own, set of distinct remote_x values, set of distinct local_x values)
+              own = None
+              remote_xs = set()
+              local_xs = set()
+              try:
+                  with open(path) as f:
+                      for line in f:
+                          line = line.strip()
+                          if not line:
+                              continue
+                          try:
+                              rec = json.loads(line)
+                          except json.JSONDecodeError:
+                              continue
+                          own = rec.get("own", own)
+                          if rec.get("remote_x") is not None:
+                              remote_xs.add(rec["remote_x"])
+                          if rec.get("local_x") is not None:
+                              local_xs.add(rec["local_x"])
+              except FileNotFoundError:
+                  pass
+              return own, remote_xs, local_xs
+
           l_own, l_obs = load("verify/linux/cross-os-linux.log")
           w_own, w_obs = load("verify/windows/cross-os-windows.log")
 
           if l_own is None or w_own is None:
-              sys.exit("cross-os-verify: a side produced no log / no roster data")
+              sys.exit("cross-os-verify: a side produced no roster log / no roster data")
           print(f"linux   own={l_own} observed={sorted(l_obs)}")
           print(f"windows own={w_own} observed={sorted(w_obs)}")
 
@@ -441,5 +487,15 @@ jobs:
               sys.exit(f"FAIL: linux never observed the windows player {w_own}")
           if l_own not in w_obs:
               sys.exit(f"FAIL: windows never observed the linux player {l_own}")
-          print(f"PASS: cross-OS sync confirmed (linux saw {w_own}, windows saw {l_own})")
+          print(f"PASS: cross-OS roster sync confirmed (linux saw {w_own}, windows saw {l_own})")
+
+          l_own_m, l_remote_x, _ = load_movement("verify/linux-movement/cross-os-movement-linux.log")
+          w_own_m, w_remote_x, _ = load_movement("verify/windows-movement/cross-os-movement-windows.log")
+          if l_own_m is None or w_own_m is None:
+              print("WARN: a movement log is missing; movement sync not verified")
+          else:
+              for name, own, remote_x in [("linux", l_own_m, l_remote_x), ("windows", w_own_m, w_remote_x)]:
+                  if len(remote_x) < 2:
+                      sys.exit(f"FAIL: {name} (own={own}) never saw its remote box move ({sorted(remote_x)})")
+              print(f"PASS: movement propagated (linux saw remote x-positions {sorted(l_remote_x)}, windows saw {sorted(w_remote_x)})")
           PY

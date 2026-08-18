@@ -1,0 +1,26 @@
+[package]
+name = "integration_tests"
+version = "0.1.0"
+edition = "2024"
+
+[[test]]
+name = "two_node_box_count"
+path = "two_node_box_count.rs"
+
+[[test]]
+name = "two_node_box_count_parallel"
+path = "two_node_box_count_parallel.rs"
+
+[[test]]
+name = "two_node_roster"
+path = "two_node_roster.rs"
+
+[[test]]
+name = "local_two_node_production_sync"
+path = "local_two_node_production_sync.rs"
+
+[dependencies]
+bevy = "=0.19.0"
+freenet-libp2p-bevy-example-1-lib = { path = "..", package = "bevy_freenet" }
+tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "net"] }
+testing = { path = "../testing" }

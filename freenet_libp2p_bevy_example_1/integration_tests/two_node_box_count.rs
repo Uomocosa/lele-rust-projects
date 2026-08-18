@@ -47,11 +47,8 @@ fn assert_boxes(app: &mut testing::TestGameApp) -> Result<(), String> {
 /// Two instances of the game run on two embedded nodes that join the same *private* roster
 /// contract (unique params). Both converge on a 2-entry roster, and each app ends up with exactly
 /// 2 boxes: 1 local player plus 1 kinematic remote box, spread out over the ground.
-///
-/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
-/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test(flavor = "multi_thread")]
+async fn two_node_box_count() -> Result<(), Box<dyn std::error::Error>> {
     let params = testing::unique_params();
     let gateway = testing::TestNode::start_gateway(0)
         .await
@@ -101,5 +98,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     peer.shutdown().await;
     Ok(())
 }
-
-// no test_usage necessary

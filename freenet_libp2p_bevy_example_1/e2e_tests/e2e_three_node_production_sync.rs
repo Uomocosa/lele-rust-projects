@@ -11,8 +11,8 @@ const JOIN_STAGGER_SECS: u64 = 45;
 /// production node-startup path (`p2p::load_or_create_keypair` -> `p2p::run` ->
 /// `roster::start_embedded_node`, no explicit local gateway wiring) discover each other and sync
 /// movement over the public mainnet — unlike the hermetic `TestNode`-based harnesses in
-/// `two_node_roster.rs` / `two_node_box_count.rs`, which point peers directly at a gateway and so
-/// never exercise this code path.
+/// `integration_tests`, which point peers directly at a gateway and so never exercise this code
+/// path.
 ///
 /// Uses a fresh contract key per run plus a **staggered join** (app_b starts
 /// `JOIN_STAGGER_SECS` after app_a), which is what the production
@@ -26,13 +26,13 @@ const JOIN_STAGGER_SECS: u64 = 45;
 /// Convergence through the public mainnet DHT remains timing-dependent. The client retries setup
 /// with backoff, pulls the roster fast (5 s) during startup, and heartbeats the *full known
 /// roster* so a peer that knows more actively heals stale replicas. The deterministic gate for
-/// the production startup path is the fully local `local_two_node_production_sync.rs`, which wires
-/// the same code directly.
+/// the production startup path is the fully local `local_two_node_production_sync`.
 ///
-/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
-/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// `#[ignore]`d because it requires public-mainnet access; run explicitly with
+/// `cargo test --test e2e_three_node_production_sync -- --ignored`.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn e2e_three_node_production_sync() -> Result<(), Box<dyn std::error::Error>> {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "warn,roster=info,p2p=info".into());
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
@@ -52,8 +52,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ids = [app_a.own_player_id(), app_b.own_player_id()];
 
-    // Step 1: every app must observe both current-run players in the roster and spawn a box for
-    // each. Scoped by id, so stale entries from previous runs can't satisfy the wait.
     for (name, app) in [("app_a", &mut app_a), ("app_b", &mut app_b)] {
         app.wait_for_roster_ids(&ids, Duration::from_secs(120))
             .await
@@ -65,17 +63,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             })?;
     }
 
-    // Step 2: snapshot spawn positions before moving anything (spawn x is spread out by
-    // `boxes::pick_spawn_x`, not a single fixed constant, so "moved" must be judged relative to
-    // each box's own recorded starting position, not an absolute value).
     let initial_a = app_a.box_spawns();
 
-    // Step 3: each app moves its own local box.
     app_a.simulate_move(KeyCode::KeyD, 30);
     app_b.simulate_move(KeyCode::KeyD, 30);
 
-    // Step 4: after direct p2p snapshot sync, every app should see the other box have moved off
-    // its recorded spawn position.
     for _ in 0..60 {
         app_a.tick();
         app_b.tick();
@@ -103,5 +95,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-// no test_usage necessary

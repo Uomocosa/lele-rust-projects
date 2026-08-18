@@ -55,6 +55,7 @@ mod tests {
                 p2p::RemoteTarget {
                     pos: Vec2::new(10.0, 0.0),
                     tick: 1,
+                    sent_at_ms: 0,
                 },
             ))
             .id();

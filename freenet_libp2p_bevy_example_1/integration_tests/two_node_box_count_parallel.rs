@@ -47,11 +47,8 @@ fn assert_boxes(app: &mut testing::TestGameApp) -> Result<(), String> {
 /// A second, structurally identical box-count harness running after the first one. Each run joins
 /// its own private roster contract (its own `unique_params`), so runs cannot contaminate each
 /// other's exact-count assertions.
-///
-/// This is a `[[bin]]` (not an integration test) so cargo emits it at a stable, un-hashed path,
-/// letting Windows Firewall rules keyed to that path stay valid across dependency changes.
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test(flavor = "multi_thread")]
+async fn two_node_box_count_parallel() -> Result<(), Box<dyn std::error::Error>> {
     let params = testing::unique_params();
     let gateway = testing::TestNode::start_gateway(0)
         .await
@@ -101,5 +98,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     peer.shutdown().await;
     Ok(())
 }
-
-// no test_usage necessary
