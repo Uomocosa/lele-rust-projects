@@ -49,6 +49,9 @@ impl ProductionGameApp {
     pub fn simulate_move(&mut self, direction: bevy::input::keyboard::KeyCode, frames: u32) {
         pga_method::simulate_move(self, direction, frames)
     }
+    pub fn simulate_move_and_jump(&mut self, direction: bevy::input::keyboard::KeyCode, frames: u32) {
+        pga_method::simulate_move_and_jump(self, direction, frames)
+    }
     pub fn tick(&mut self) { self.app.update(); }
 }
 

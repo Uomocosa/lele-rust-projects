@@ -32,7 +32,7 @@ pub fn setup(mut commands: Commands, config: Res<boxes::Config>) {
     boxes::spawn_box(
         &mut commands,
         boxes::Player(**config),
-        Vec2::new(boxes::pick_spawn_x(&[]), boxes::SPAWN_Y),
+        Vec2::new(boxes::spawn_x_for_player(**config), boxes::SPAWN_Y),
         true,
     );
 }
@@ -53,10 +53,14 @@ mod tests {
 
         let mut query = app
             .world_mut()
-            .query::<(&boxes::LocalPlayer, &boxes::Player)>();
+            .query::<(&boxes::LocalPlayer, &boxes::Player, &Transform)>();
         let pairs: Vec<_> = query.iter(app.world()).collect();
         assert_eq!(pairs.len(), 1);
         assert_eq!(**pairs[0].1, boxes::PlayerId(9));
+        assert_eq!(
+            pairs[0].2.translation.x,
+            boxes::spawn_x_for_player(boxes::PlayerId(9))
+        );
     }
 
     #[test]

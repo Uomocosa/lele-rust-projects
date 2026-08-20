@@ -1,17 +1,1 @@
-{
-  "enabledPlugins": {
-    "bevy@opencode-skills": true,
-    "freenet@opencode-skills": true,
-    "lele-syntax-py@opencode-skills": true,
-    "lele-syntax-rs@opencode-skills": true,
-    "libp2p@opencode-skills": true,
-    "opencode-create-agents@opencode-skills": true,
-    "opencode-create-commands@opencode-skills": true,
-    "opencode-create-skill@opencode-skills": true,
-    "opencode-git-workflow@opencode-skills": true,
-    "pixi@opencode-skills": true,
-    "plan-refactor-rs@opencode-skills": true,
-    "plan-remove-dead-code-py@opencode-skills": true,
-    "plan-remove-dead-code-rs@opencode-skills": true
-  }
-}
+{}

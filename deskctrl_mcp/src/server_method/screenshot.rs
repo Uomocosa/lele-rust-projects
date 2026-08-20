@@ -3,7 +3,7 @@ use std::{fs, process::Command, time::SystemTime};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use rmcp::model::{CallToolResult, ContentBlock};
 
-use crate::{Error, ScreenshotParams, WindowInfo, window_info_method};
+use crate::{Error, ScreenshotParams, WindowInfo, screen_method, window_info_method};
 
 use super::telegram;
 
@@ -19,7 +19,7 @@ pub async fn screenshot(
     // Full-screen capture may find a blanked/locked screen; a window we were handed by id is
     // already known to exist, so skip the wake dance and its 5s settle.
     if target.is_none() {
-        wake_screen();
+        screen_method::wake();
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 
@@ -96,22 +96,6 @@ fn resolve_target(params: &ScreenshotParams) -> Result<Option<WindowInfo>, Error
         params.pid,
         params.title.as_deref(),
     )
-}
-
-// needed helper:
-fn wake_screen() {
-    let display = std::env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string());
-    let _ = Command::new("cinnamon-screensaver-command")
-        .arg("--deactivate")
-        .output();
-    let _ = Command::new("gnome-screensaver-command")
-        .arg("--deactivate")
-        .output();
-    let _ = Command::new("xdg-screensaver").arg("reset").output();
-    let _ = Command::new("xset")
-        .args(["-display", &display, "dpms", "force", "on"])
-        .output();
-    let _ = Command::new("loginctl").arg("unlock-session").output();
 }
 
 // needed helper:

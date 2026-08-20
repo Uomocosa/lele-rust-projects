@@ -21,6 +21,9 @@ pub use spawn_box::spawn_box;
 pub mod pick_spawn_x;
 pub use pick_spawn_x::pick_spawn_x;
 
+pub mod spawn_x_for_player;
+pub use spawn_x_for_player::spawn_x_for_player;
+
 pub mod move_box;
 pub use move_box::move_box;
 

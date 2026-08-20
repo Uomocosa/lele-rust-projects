@@ -1,16 +1,18 @@
 use std::{
     process::{Child, Command, Stdio},
     sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use tokio::sync::Mutex;
 
-use crate::{Error, Recording, WindowInfo, window_info_method};
+use crate::{Error, Recording, WindowInfo, screen_method, window_info_method};
 
 const FRAME_RATE: &str = "15";
 const CRF: &str = "28";
 const DEFAULT_MAX_SECS: u64 = 600;
+const WAKE_SETTLE_SECS: u64 = 5;
+const KEEP_AWAKE_INTERVAL_SECS: u64 = 60;
 
 struct Capture {
     pub size: String,
@@ -37,19 +39,51 @@ pub async fn start(
     let capture = resolve_capture(window_id, pid, title)?;
     let path = video_path(artifacts_dir);
     let max_secs = max_secs();
+
+    // x11grab always reads the root window — a window selector only crops it — so a blanked
+    // screen ruins windowed recordings too. Unlike screenshot, wake for every capture.
+    screen_method::wake();
+    tokio::time::sleep(Duration::from_secs(WAKE_SETTLE_SECS)).await;
+    let warning = screensaver_warning();
+
     let child = spawn_ffmpeg(&capture, &path, max_secs)?;
+    let keep_awake = tokio::spawn(async {
+        loop {
+            tokio::time::sleep(Duration::from_secs(KEEP_AWAKE_INTERVAL_SECS)).await;
+            screen_method::poke();
+        }
+    });
 
     *guard = Some(Recording {
         path: path.clone(),
         child,
         started: SystemTime::now(),
         target: capture.desc.clone(),
+        keep_awake,
     });
 
     Ok(format!(
-        "recording started: {} \u{2192} {} (max {max_secs}s; will stop + send to Telegram on stop)",
+        "recording started: {} \u{2192} {} (max {max_secs}s; will stop + send to Telegram on stop){warning}",
         capture.desc, path
     ))
+}
+
+/// Best-effort: a screensaver still up after `wake` means the capture is probably of the blanker,
+/// which is worth knowing now rather than after the video is posted. Absent command = no warning.
+// needed helper:
+fn screensaver_warning() -> String {
+    let Ok(out) = Command::new("cinnamon-screensaver-command")
+        .arg("--query")
+        .output()
+    else {
+        return String::new();
+    };
+    let text = String::from_utf8_lossy(&out.stdout);
+    if text.contains("is active") {
+        return " \u{2014} warning: screensaver still active, recording may show the blanker"
+            .to_string();
+    }
+    String::new()
 }
 
 fn check_ffmpeg() -> Result<(), Error> {

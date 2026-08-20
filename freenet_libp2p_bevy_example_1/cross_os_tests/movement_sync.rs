@@ -13,6 +13,26 @@ const DEFAULT_DURATION_SECS: u64 = 300;
 const MOVE_EVERY_TICKS: u64 = 30;
 const MOVE_FRAMES: u32 = 20;
 const SAMPLE_EVERY_TICKS: u64 = 5;
+// Two boxes walking straight at each other pin against each other's collider and barely
+// move (Avian2d resolves the overlap by opposing each side's velocity), which can starve
+// cross-os-verify's "remote box moved" check. When boxes are this close, jump-and-move
+// away instead of continuing the normal alternating walk.
+const CLOSE_THRESHOLD: f32 = 60.0;
+// ManualDuration(1.0/60.0) in build.rs makes each app.update() advance sim time by
+// exactly 1/60s, so 60 frames is a deterministic ~1s hold.
+const ESCAPE_FRAMES: u32 = 60;
+// Mirrors JOIN_STAGGER_SECS in e2e_tests/e2e_three_node_production_sync.rs: without a
+// stagger, both machines can independently miss each other's first `Put` of the shared
+// contract key and seed disjoint replicas (see OBJECTIVE.md's InterestSync note).
+const DEFAULT_JOIN_STAGGER_SECS: u64 = 45;
+
+// needed helper:
+fn join_stagger_secs() -> u64 {
+    std::env::var("CROSS_OS_JOIN_STAGGER_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_JOIN_STAGGER_SECS)
+}
 
 #[derive(Serialize)]
 struct LogLine {
@@ -61,6 +81,44 @@ fn window_secs() -> u64 {
         .unwrap_or(DEFAULT_DURATION_SECS)
 }
 
+// needed helper:
+/// Direction that increases separation from `remote_x`, or `None` if already clear.
+fn escape_direction(local_x: f32, remote_x: f32) -> Option<KeyCode> {
+    if (local_x - remote_x).abs() >= CLOSE_THRESHOLD {
+        return None;
+    }
+    Some(if local_x < remote_x {
+        KeyCode::KeyA
+    } else {
+        KeyCode::KeyD
+    })
+}
+
+/// If the local box is close enough to the remote box that they'd collide head-on,
+/// jump-and-move away from it. Returns whether an escape maneuver was performed.
+fn move_to_empty_space(app: &mut ProductionGameApp, own: u64) -> bool {
+    let spawns = app.box_spawns();
+    let local_x = spawns
+        .iter()
+        .find(|(id, _, is_local)| *is_local || **id == own)
+        .map(|(_, pos, _)| pos.x);
+    let remote_x = spawns
+        .iter()
+        .find(|(id, _, is_local)| !*is_local && **id != own)
+        .map(|(_, pos, _)| pos.x);
+
+    match (local_x, remote_x) {
+        (Some(local_x), Some(remote_x)) => match escape_direction(local_x, remote_x) {
+            Some(direction) => {
+                app.simulate_move_and_jump(direction, ESCAPE_FRAMES);
+                true
+            }
+            None => false,
+        },
+        _ => false,
+    }
+}
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -94,6 +152,10 @@ async fn movement_sync() -> Result<(), Box<dyn std::error::Error>> {
         )
         .try_init();
 
+    if machine == "windows" {
+        tokio::time::sleep(Duration::from_secs(join_stagger_secs())).await;
+    }
+
     let wasm = testing::load_wasm();
     let params = contract_params();
     let mut app = ProductionGameApp::new(&wasm, &params, 0).await;
@@ -106,7 +168,7 @@ async fn movement_sync() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_remote_sent_at_ms: Option<u64> = None;
 
     while Instant::now() < deadline {
-        if tick_n.is_multiple_of(MOVE_EVERY_TICKS) {
+        if tick_n.is_multiple_of(MOVE_EVERY_TICKS) && !move_to_empty_space(&mut app, own) {
             let direction = if (tick_n / MOVE_EVERY_TICKS).is_multiple_of(2) {
                 KeyCode::KeyD
             } else {
@@ -172,4 +234,17 @@ async fn movement_sync() -> Result<(), Box<dyn std::error::Error>> {
         "movement-sync window complete"
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CLOSE_THRESHOLD, escape_direction};
+    use bevy::input::keyboard::KeyCode;
+
+    #[test]
+    fn test_usage() {
+        assert_eq!(escape_direction(0.0, CLOSE_THRESHOLD * 2.0), None);
+        assert_eq!(escape_direction(0.0, 10.0), Some(KeyCode::KeyA));
+        assert_eq!(escape_direction(10.0, 0.0), Some(KeyCode::KeyD));
+    }
 }

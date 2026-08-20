@@ -47,6 +47,9 @@ pub use setup_contract::setup_contract;
 pub mod connect_and_run;
 pub use connect_and_run::connect_and_run;
 
+pub mod connect_and_run_args;
+pub use connect_and_run_args::ConnectAndRunArgs;
+
 pub mod connect_client_args;
 pub use connect_client_args::ConnectClientArgs;
 

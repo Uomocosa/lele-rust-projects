@@ -59,6 +59,22 @@ in the message rather than guessing.
 `list_windows` needs `wmctrl` and an X11 display. It is unrelated to
 `list_processes`, which lists only subprocesses this server spawned.
 
+## Recording video
+
+`record_video` with no arguments starts a recording; `record_video stop:true`
+ends it, sends the MP4 to Telegram, and clears the state. Only one recording
+runs at a time — starting a second errors until you stop the first. Pass
+`summary` on stop to caption the video, and a `window_id`/`pid`/`title` on
+start to crop to one window.
+
+Recording always grabs the root window (a selector only crops that grab), so
+the server wakes the screen and holds off the screensaver for as long as the
+recording runs. You do not need a keep-awake step in your own prompt.
+
+The start result may end with `warning: screensaver still active` — that means
+the blanker survived the wake and the video probably shows it rather than the
+desktop. Fix the screen state before trusting the capture.
+
 ## Clicking
 
 `click_window` takes `window_id` plus `x`/`y` **relative to the window's

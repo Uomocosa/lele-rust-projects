@@ -14,6 +14,8 @@ pub async fn stop(recording: &Arc<Mutex<Option<Recording>>>) -> Result<StoppedRe
         })?
     };
 
+    rec.keep_awake.abort();
+
     let target = rec.target;
     let path = rec.path;
     let mut child = rec.child;

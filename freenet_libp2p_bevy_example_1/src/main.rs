@@ -49,12 +49,17 @@ async fn main() {
     let (roster_tx, roster_rx) = tokio::sync::mpsc::unbounded_channel();
 
     tokio::spawn(roster::connect_and_run(
-        p2p_port,
-        cli::parse_freenet_local(),
-        cli::parse_freenet_gateway(),
-        contract_wasm,
-        own_id,
-        own_entry,
+        roster::ConnectAndRunArgs {
+            p2p_port,
+            local: cli::parse_freenet_local(),
+            gateway: cli::parse_freenet_gateway(),
+            contract_wasm,
+            params: cli::parse_contract_params()
+                .map(String::into_bytes)
+                .unwrap_or_default(),
+            own_id,
+            own_entry,
+        },
         roster_tx,
     ));
 

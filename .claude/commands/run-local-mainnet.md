@@ -1,0 +1,1 @@
+../../.opencode/commands/run-local-mainnet.md

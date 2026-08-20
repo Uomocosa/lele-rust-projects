@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use crate::boxes;
 use crate::roster;
 
 /// Starts the embedded Freenet node, then runs the roster loop forever.
@@ -12,14 +11,19 @@ use crate::roster;
 /// `connect_client_loop`'s setup retries. The game stays playable single-player throughout;
 /// only the roster never joins until a retry succeeds.
 pub async fn connect_and_run(
-    p2p_port: u16,
-    local: bool,
-    gateway: Option<String>,
-    contract_wasm: Vec<u8>,
-    own_id: boxes::PlayerId,
-    own_entry: roster::PeerEntry,
+    args: roster::ConnectAndRunArgs,
     event_tx: tokio::sync::mpsc::UnboundedSender<roster::Event>,
 ) {
+    let roster::ConnectAndRunArgs {
+        p2p_port,
+        local,
+        gateway,
+        contract_wasm,
+        params,
+        own_id,
+        own_entry,
+    } = args;
+
     let mut node_attempt: u32 = 0;
     let node = loop {
         node_attempt += 1;
@@ -69,7 +73,7 @@ pub async fn connect_and_run(
             host: &host,
             port: ws_port,
             contract_wasm: &contract_wasm,
-            params: &[],
+            params: &params,
             own_id,
             own_entry,
             not_found_grace,

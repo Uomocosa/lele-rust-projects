@@ -11,6 +11,7 @@ pub mod read_output_params;
 pub mod record_video_params;
 pub mod recording;
 pub mod recording_method;
+pub mod screen_method;
 pub mod screenshot_params;
 pub mod send_keys_params;
 pub mod send_to_telegram_params;

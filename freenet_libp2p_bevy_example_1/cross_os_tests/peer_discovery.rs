@@ -8,6 +8,18 @@ use testing::ProductionGameApp;
 
 const DEFAULT_DURATION_SECS: u64 = 300;
 const POLL_INTERVAL_SECS: u64 = 2;
+// Mirrors JOIN_STAGGER_SECS in e2e_tests/e2e_three_node_production_sync.rs: without a
+// stagger, both machines can independently miss each other's first `Put` of the shared
+// contract key and seed disjoint replicas (see OBJECTIVE.md's InterestSync note).
+const DEFAULT_JOIN_STAGGER_SECS: u64 = 45;
+
+// needed helper:
+fn join_stagger_secs() -> u64 {
+    std::env::var("CROSS_OS_JOIN_STAGGER_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_JOIN_STAGGER_SECS)
+}
 
 #[derive(Serialize)]
 struct LogLine {
@@ -75,6 +87,10 @@ async fn peer_discovery() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or_else(|_| "warn,roster=info,p2p=info".into()),
         )
         .try_init();
+
+    if machine == "windows" {
+        tokio::time::sleep(Duration::from_secs(join_stagger_secs())).await;
+    }
 
     let wasm = testing::load_wasm();
     let params = contract_params();
