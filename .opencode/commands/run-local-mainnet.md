@@ -30,7 +30,7 @@ Create `"$RUN_DIR/instance-$i"` per instance with its own `identity/` subdir and
 ## Phase 3 — Launch all N instances with no local/gateway wiring
 Every instance, including the first, uses the same pattern — **no** `--freenet-local`, **no** `--freenet-gateway`:
 ```
-bash -c "exec env RUST_LOG=warn,roster=info,p2p=info RUST_BACKTRACE=1 $BIN --identity-dir $RUN_DIR/instance-$i/identity --contract-params $CONTRACT_PARAMS > $RUN_DIR/instance-$i/app.log 2>&1"
+bash -c "exec env RUST_LOG=warn,roster=trace,p2p=debug,freenet_bevy=debug RUST_BACKTRACE=1 $BIN --identity-dir $RUN_DIR/instance-$i/identity --contract-params $CONTRACT_PARAMS > $RUN_DIR/instance-$i/app.log 2>&1"
 ```
 (`bash -c "exec ..."` replaces the bash process image in place, so the spawned `os_pid` still resolves to the real game binary.) Launch them close together — this is deliberately reproducing the "multiple users start at once" race, not staggering it away. Record each instance's deskctrl PID / `os_pid`.
 
@@ -46,10 +46,15 @@ Poll each `app.log` (targets are `target: "roster"`) for:
 - **The failure mode this run exists to surface:** if *more than one* instance's log shows `sending roster Put` for this run's `$CONTRACT_PARAMS`, that's the exact disjoint-replica race described in `OBJECTIVE.md` (two concurrent first-`Put`s of a brand-new key, reconciling only via freenet-core's 5-minute InterestSync heartbeat) — call this out explicitly in the report rather than just reporting pass/fail.
 - Other failure signatures to grep for: `error exited with error`, `panicked`, `update confirmation timed out`, `timeout after 30s`.
 
-## Phase 6 — Visual confirmation, sent to Telegram
+## Phase 6 — Arrange the windows, then visual confirmation to Telegram
 Use deskctrl `list_windows`, matching each instance's `os_pid` (never `title` — they're identical across instances). Not optional when deskctrl is available:
-1. `screenshot` each instance's window by `window_id`, `send_to_telegram` (default `true`) posts each photo as taken; caption with the instance number.
-2. `record_video` (whole screen, no `window_id`) for ~15-30s once instances start converging/moving, then `record_video stop:true` with a `summary` — posts the MP4 to Telegram.
+1. **Tile the windows** in a two-column layout so the whole-screen video shows all N at once. The screen is 1920x1080 with a ~40px Cinnamon bottom panel, so useable height ≈ 1040. Split horizontally with `gap` = 8px: left column `Wl`, right column `Wr`, `Wl + gap + Wr = 1920` — equal halves (`Wl = Wr = 956`) give good proportions.
+   - **Instance 1 = the tall left window** at `(0,0)`, size `956x1040` — it gets the full height so its UI is easy to read.
+   - Right column holds instances `2..N` (`K = N−1`) stacked vertically, each `Wr` wide at `x = Wl + gap = 964`: `h_r = (1040 − (K−1)·gap) / K`; the `j`-th right instance (`j = i−1`) is at `y = (j−1)·(h_r + gap)`.
+   - For N=3: `i1 956x1040 @(0,0)` · `i2 956x516 @(964,0)` · `i3 956x516 @(964,524)`.
+   - Move+resize each matched window via Bash: `wmctrl -i -r <window_id> -e 0,<x_i>,<y_i>,<w_i>,<h_i>`. Re-run `list_windows` after to confirm all three are visible and non-overlapping before recording; tweak total width to ~1912 if the WM clips the right edge.
+2. `screenshot` each instance's window by `window_id`, `send_to_telegram` (default `true`) posts each photo as taken; caption with the instance number.
+3. `record_video` (whole screen, no `window_id`) for ~15-30s once instances start converging/moving, then `record_video stop:true` with a `summary` — posts the MP4 to Telegram. The tiled column from step 1 is what makes all N instances visible in this recording.
 
 ## Phase 7 — Tear every instance down
 **Always kill the instances at the end — never leave them running.** They are real mainnet peers holding sockets and a Freenet node each; leftovers from an earlier run corrupt the next one and keep talking to the network indefinitely.

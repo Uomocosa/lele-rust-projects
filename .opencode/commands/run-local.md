@@ -6,6 +6,13 @@ You are orchestrating the local cross-machine pipeline for the freenet-libp2p-be
 
 Work through these phases in order, and never skip a phase.
 
+## Lead-in — Crate logging verbosity
+The bevy app must be launched with `RUST_LOG` at **trace on `roster`, debug on `p2p` and `freenet_bevy`** so the run produces the detailed logs we need to see what's going on:
+```
+RUST_LOG=warn,roster=trace,p2p=debug,freenet_bevy=debug
+```
+Ensure the pipeline/build launches the app with this filter (the app's own default of `warn,roster=info,p2p=info` is overridden by the env var).
+
 ## Phase 0 — Determine build mode
 Set `MODE` from `$ARGUMENTS`:
 - Contains `release` → `MODE=release`

@@ -64,6 +64,9 @@
           }
         },
         "deepseek-v4-flash": {
+          "options": {
+            "reasoningEffort": "low"
+          },
           "variants": {
             "high": {
               "reasoningEffort": "Max"

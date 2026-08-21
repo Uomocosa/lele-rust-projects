@@ -75,6 +75,30 @@ The start result may end with `warning: screensaver still active` — that means
 the blanker survived the wake and the video probably shows it rather than the
 desktop. Fix the screen state before trusting the capture.
 
+## Arranging windows for a whole-screen recording
+
+`record_video` with no selector grabs the whole screen, so overlapping windows
+hide each other. deskctrl has no move/resize tool, but `wmctrl` is already
+installed (it powers `list_windows`) and can move+resize from Bash:
+
+```
+wmctrl -i -r <window_id> -e 0,<x>,<y>,<width>,<height>
+```
+
+To show several app windows in one frame, tile them: take the screen geometry
+(`xdpyinfo | grep dimensions`, or `wmctrl -d`/`xrandr`), reserve the desktop
+panel/decoration height, and stack the windows full-width top↔bottom with equal
+heights and an 8px gap:
+
+- `usable_h = screen_h − panel (≈40)`; `h = (usable_h − (N−1)·gap) / N`
+- window `i` (1-based) y = `(i−1)·(h + gap)`, x = 0, width = screen_w
+- Example 1920x1080, N=3 → height 341 each, y = 0 / 349 / 698.
+
+Match each window via `list_windows` (`pid`/`window_id`, never `title` — same
+app duplicates titles), run `wmctrl -i -r` per window, then re-run `list_windows`
+to confirm visibility/non-overlap. Nudge `width` down (~8-12px) if the WM clips
+the right edge.
+
 ## Clicking
 
 `click_window` takes `window_id` plus `x`/`y` **relative to the window's

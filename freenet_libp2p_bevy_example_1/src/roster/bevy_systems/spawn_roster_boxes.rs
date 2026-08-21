@@ -26,6 +26,12 @@ pub fn spawn_roster_boxes(
         }
         let x = boxes::pick_spawn_x(&occupied_xs);
         occupied_xs.push(x);
+        tracing::debug!(
+            target: "roster",
+            player = format!("{:08x}", **id as u32),
+            x = x,
+            "spawning box for player"
+        );
         boxes::spawn_box(
             &mut commands,
             boxes::Player(*id),

@@ -35,6 +35,14 @@ pub fn poll_swarm_events(
                     if stale {
                         continue;
                     }
+                    tracing::debug!(
+                        target: "p2p",
+                        player_id = snapshot.player_id,
+                        tick = snapshot.tick,
+                        x = snapshot.x,
+                        y = snapshot.y,
+                        "applied remote snapshot"
+                    );
                     commands.entity(entity).insert(p2p::RemoteTarget {
                         pos: Vec2::new(snapshot.x, snapshot.y),
                         tick: snapshot.tick,
@@ -49,6 +57,11 @@ pub fn poll_swarm_events(
             p2p::Event::PeerDisconnected(peer_id) => {
                 peer_status.remove(&peer_id.to_base58());
                 let player_id = p2p::peer_id_to_player_id(&peer_id);
+                tracing::debug!(
+                    target: "p2p",
+                    player_id = *player_id,
+                    "peer disconnected, despawning box"
+                );
                 for (entity, player, _) in &mut remote_boxes {
                     if **player == player_id && despawned.insert(entity) {
                         commands.entity(entity).despawn();

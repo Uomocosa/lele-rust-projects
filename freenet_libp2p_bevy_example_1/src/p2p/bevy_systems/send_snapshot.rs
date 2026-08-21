@@ -37,6 +37,14 @@ pub fn send_snapshot(
         if *player_id == **config {
             continue;
         }
+        tracing::debug!(
+            target: "p2p",
+            player_id = snapshot.player_id,
+            tick = snapshot.tick,
+            x = snapshot.x,
+            y = snapshot.y,
+            "sending snapshot"
+        );
         commands
             .send(p2p::Command::SendSnapshot {
                 peer_id: entry.peer_id.clone(),
