@@ -1,6 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bevy::prelude::*;
+use clap::Parser;
 use freenet_libp2p_bevy_example_1_lib::{boxes, cli, p2p, roster};
 
 fn now_unix_secs() -> u64 {
@@ -12,6 +13,8 @@ fn now_unix_secs() -> u64 {
 
 #[tokio::main]
 async fn main() {
+    let cli = cli::Cli::parse();
+
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "warn,roster=info,p2p=info".into());
     tracing_subscriber::fmt()
@@ -19,9 +22,8 @@ async fn main() {
         .with_writer(std::io::stdout)
         .init();
 
-    let keypair = p2p::load_or_create_keypair(cli::parse_identity_dir());
+    let keypair = p2p::load_or_create_keypair(cli.identity_dir);
     let own_id = p2p::derive_player_id(&keypair);
-    let p2p_port = cli::parse_p2p_port().unwrap_or(0);
 
     let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel();
     let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -50,11 +52,11 @@ async fn main() {
 
     tokio::spawn(roster::connect_and_run(
         roster::ConnectAndRunArgs {
-            p2p_port,
-            local: cli::parse_freenet_local(),
-            gateway: cli::parse_freenet_gateway(),
+            local: cli.freenet_local,
+            gateway: cli.freenet_gateway,
             contract_wasm,
-            params: cli::parse_contract_params()
+            params: cli
+                .contract_params
                 .map(String::into_bytes)
                 .unwrap_or_default(),
             own_id,
@@ -64,7 +66,7 @@ async fn main() {
     ));
 
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.build().disable::<bevy::log::LogPlugin>())
         .add_plugins(boxes::Plugin(boxes::Config::new(own_id)))
         .add_plugins(roster::Plugin(roster::Config::new(roster_rx)))
         .add_plugins(p2p::Plugin(p2p::Config::new(cmd_tx, event_rx)))

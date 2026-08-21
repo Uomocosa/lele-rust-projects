@@ -15,7 +15,6 @@ pub async fn connect_and_run(
     event_tx: tokio::sync::mpsc::UnboundedSender<roster::Event>,
 ) {
     let roster::ConnectAndRunArgs {
-        p2p_port,
         local,
         gateway,
         contract_wasm,
@@ -32,7 +31,7 @@ pub async fn connect_and_run(
                 attempt: node_attempt,
             })
             .ok();
-        let start_result = roster::start_embedded_node(p2p_port, local, gateway.clone()).await;
+        let start_result = roster::start_embedded_node(local, gateway.clone()).await;
         match start_result {
             Ok(node) => break node,
             Err(e) => {

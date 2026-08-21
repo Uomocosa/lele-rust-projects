@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-freenet = "=0.2.123"
+freenet = "=0.2.128"
 freenet-stdlib = { version = "=0.8.5", features = ["net"] }
 tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "net"] }
 tokio-tungstenite = "=0.27.0"

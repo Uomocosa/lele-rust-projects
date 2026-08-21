@@ -16,6 +16,9 @@ pub use prune_stale::prune_stale;
 pub mod decode_roster_update;
 pub use decode_roster_update::decode_roster_update;
 
+pub mod roster_digest;
+pub use roster_digest::roster_digest;
+
 #[allow(clippy::module_inception)]
 pub mod roster;
 pub use roster::Roster;

@@ -23,7 +23,8 @@ pub fn poll_freenet_events(
                     .duration_since(UNIX_EPOCH)
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
-                **roster = roster::prune_stale(entries, now, roster::ROSTER_ENTRY_TTL_SECS);
+                let merged = roster::merge_roster(std::mem::take(&mut **roster), entries);
+                **roster = roster::prune_stale(merged, now, roster::ROSTER_ENTRY_TTL_SECS);
                 *status = roster::FreenetStatus::Connected;
             }
             roster::Event::ConnectionError(reason) => {

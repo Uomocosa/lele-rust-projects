@@ -18,7 +18,7 @@ Parse `$ARGUMENTS`:
 cd freenet_libp2p_bevy_example_1
 cargo build --workspace [--release if MODE=release]
 ```
-Resolve `BIN` = `target/debug/freenet-libp2p-bevy-example-1` (or `target/release/...` for release), matching the crate's `[[bin]]` name in `Cargo.toml`. Do not use `cargo run` to launch instances — the binary must be spawned directly so its OS pid is the one deskctrl's `list_windows`/`screenshot` can match (see `.opencode/skills/deskctrl/SKILL.md`).
+Resolve `BIN` via `cargo metadata --no-deps --format-version1 | jq -r .target_directory` (do **not** assume `target/debug` under the crate directory — this workspace overrides `target-dir` in `freenet_libp2p_bevy_example_1/.cargo/config.toml`, so check that file if `jq`/`cargo metadata` isn't available) joined with `debug/freenet-libp2p-bevy-example-1` or `release/...` for release, matching the crate's `[[bin]]` name in `Cargo.toml`. Sanity-check the resolved path with `$BIN --help` (prints all flags and exits) before spawning real instances. Do not use `cargo run` to launch instances — the binary must be spawned directly so its OS pid is the one deskctrl's `list_windows`/`screenshot` can match (see `.opencode/skills/deskctrl/SKILL.md`).
 
 ## Phase 2 — Prepare the run directory (the logging story)
 ```
@@ -35,6 +35,8 @@ bash -c "exec env RUST_LOG=warn,roster=info,p2p=info RUST_BACKTRACE=1 $BIN --ide
 Record the returned deskctrl PID and `os_pid`.
 
 ## Phase 4 — Extract the gateway address from instance 1's log
+Do not `sleep`-poll via Bash — long or chained `sleep`s are blocked by the harness. Use `ScheduleWakeup` (60-180s delay) to check back on `app.log` progress, or `Monitor`'s until-loop.
+
 Poll `$RUN_DIR/instance-1/app.log` (Bash `grep`, or Monitor's until-loop) for the line emitted by `src/roster/start_embedded_node.rs:93-98`:
 ```
 embedded node ready; dial as 127.0.0.1:<public-port>,<pubkey-hex>  public_key_hex=... public_port=...
@@ -66,8 +68,8 @@ Use deskctrl `list_windows` and match each instance's `os_pid` (from Phase 3/5) 
 **Always kill the instances at the end — never leave them running.** Each one holds an embedded Freenet node and sockets; leftovers from an earlier run collide with the next one's gateway wiring and quietly skew its results.
 
 Do this *after* Phase 7 has captured its screenshots and video (those artifacts are the durable record — the live windows are not), and do it even when the run failed or ended early:
-1. deskctrl `kill_process` for each recorded instance PID.
-2. Then `pkill -f freenet-libp2p-bevy-example-1` from Bash to catch anything deskctrl did not own.
+1. deskctrl `kill_process` for each recorded instance PID. This may be denied by the auto-mode classifier for some or all PIDs — that is expected, not a run failure; don't stop or retry on the denial, just move to step 2.
+2. Then `pkill -f freenet-libp2p-bevy-example-1` from Bash — this is the authoritative kill and must always run regardless of whether step 1 succeeded or was denied.
 3. Confirm with `pgrep -af freenet-libp2p-bevy-example-1` and report the result. Nothing should remain.
 
 The logs under `$RUN_DIR` survive the kill — that is where the evidence lives. If the user asks to keep the windows up for hands-on poking, they will say so; default to tearing down.

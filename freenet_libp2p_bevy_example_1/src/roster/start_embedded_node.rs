@@ -21,7 +21,6 @@ fn free_udp_port() -> Result<u16, Box<dyn std::error::Error + Send + Sync>> {
 /// directly; a `Some` `gateway` value dials that gateway directly as a client — the hermetic
 /// same-machine mode that bypasses mainnet node discovery entirely.
 pub async fn start_embedded_node(
-    p2p_port: u16,
     local: bool,
     gateway: Option<String>,
 ) -> Result<roster::NodeInfo, Box<dyn std::error::Error + Send + Sync>> {
@@ -29,11 +28,7 @@ pub async fn start_embedded_node(
 
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
     let ws_port = listener.local_addr()?.port();
-    let public_port = if p2p_port == 0 {
-        free_udp_port()?
-    } else {
-        p2p_port
-    };
+    let public_port = free_udp_port()?;
     let skip_load_from_network = local || gateway.is_some();
     let is_gateway = local;
     let public_address = local.then_some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
@@ -79,16 +74,30 @@ pub async fn start_embedded_node(
     let node_config = ::freenet::local_node::NodeConfig::new(config).await?;
     let node = node_config.build(clients).await?;
 
-    tokio::spawn(async move {
+    let node_task = tokio::spawn(async move {
         if let Err(e) = ::freenet::run_network_node(node).await {
             tracing::error!(target: "roster", error = %e, "node exited with error");
         }
     });
 
-    let mut probe = freenet::FreenetClient::connect("127.0.0.1", ws_port).await?;
-    probe
-        .wait_ready(min_active_connections, Duration::from_secs(90))
-        .await?;
+    let ready_result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
+        let mut probe = freenet::FreenetClient::connect("127.0.0.1", ws_port).await?;
+        probe
+            .wait_ready(min_active_connections, Duration::from_secs(90))
+            .await?;
+        Ok(())
+    }
+    .await;
+    if let Err(e) = ready_result {
+        node_task.abort();
+        tracing::error!(
+            target: "roster",
+            error = %e,
+            public_port,
+            "embedded node failed to become ready; aborted node task and releasing port"
+        );
+        return Err(e);
+    }
 
     info!(
         target: "roster",

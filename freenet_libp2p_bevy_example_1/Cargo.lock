@@ -1131,6 +1131,7 @@ dependencies = [
  "avian2d",
  "bevy",
  "bincode",
+ "clap",
  "derive_more 1.0.0",
  "freenet",
  "freenet-stdlib",
@@ -4048,9 +4049,9 @@ dependencies = [
 
 [[package]]
 name = "freenet"
-version = "0.2.123"
+version = "0.2.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b0bf09eef983e792f9acea0ff79de6f4e454816a0df3d844847a5fae0d2ad0e"
+checksum = "0d33339bfe555cee11332e1be051ddea8fbeb3095e91d6c004f4dea07bb52787"
 dependencies = [
  "aes-gcm",
  "ahash",

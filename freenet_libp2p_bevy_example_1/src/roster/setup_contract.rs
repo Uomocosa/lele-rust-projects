@@ -79,6 +79,13 @@ pub async fn setup_contract(
     own_roster.insert(own_id, own_entry);
 
     let grace_deadline = tokio::time::Instant::now() + not_found_grace;
+    tracing::debug!(
+        target: "roster",
+        contract = %contract_key,
+        own_id = format!("{:08x}", *own_id as u32),
+        grace_secs = not_found_grace.as_secs(),
+        "roster setup starting"
+    );
 
     let get_req = ContractRequest::Get {
         key: instance_id,
@@ -100,7 +107,7 @@ pub async fn setup_contract(
                     bincode::deserialize(state.as_ref()).map_err(|e| format!("deser: {e}"))?;
                 tracing::info!(
                     target: "roster",
-                    existing_len = existing.len(),
+                    digest = %roster::roster_digest(&existing),
                     already_present = existing.contains_key(&own_id),
                     "roster GetResponse"
                 );
@@ -116,7 +123,7 @@ pub async fn setup_contract(
                 };
                 tracing::info!(
                     target: "roster",
-                    merged_len = merged.len(),
+                    digest = %roster::roster_digest(&merged),
                     "merging own entry, sending roster Update"
                 );
                 client
@@ -140,6 +147,7 @@ pub async fn setup_contract(
                 }
                 tracing::info!(
                     target: "roster",
+                    digest = %roster::roster_digest(&own_roster),
                     "grace window expired, sending roster Put"
                 );
                 let put_req = ContractRequest::Put {

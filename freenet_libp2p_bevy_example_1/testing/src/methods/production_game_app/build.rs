@@ -52,7 +52,7 @@ pub(crate) async fn build(
     };
 
     let node = loop {
-        match roster::start_embedded_node(0, local, gateway.clone()).await {
+        match roster::start_embedded_node(local, gateway.clone()).await {
             Ok(node) => break node,
             Err(e) => {
                 tracing::error!(target: "roster", error = %e, "embedded node startup failed, retrying");

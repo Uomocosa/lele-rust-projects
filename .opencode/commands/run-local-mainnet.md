@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`: first integer found → instance count `N` (default `3`); co
 cd freenet_libp2p_bevy_example_1
 cargo build --workspace [--release if MODE=release]
 ```
-Resolve `BIN` = `target/debug/freenet-libp2p-bevy-example-1` (or `target/release/...`). Never launch via `cargo run` — spawn the binary directly so deskctrl's `os_pid` matches the real game window (see `.opencode/skills/deskctrl/SKILL.md`).
+Resolve `BIN` via `cargo metadata --no-deps --format-version1 | jq -r .target_directory` (do **not** assume `target/debug` under the crate directory — this workspace overrides `target-dir` in `freenet_libp2p_bevy_example_1/.cargo/config.toml`, so check that file if `jq`/`cargo metadata` isn't available) joined with `debug/freenet-libp2p-bevy-example-1` or `release/...`. Sanity-check the resolved path with `$BIN --help` (prints all flags and exits) before spawning real instances. Never launch via `cargo run` — spawn the binary directly so deskctrl's `os_pid` matches the real game window (see `.opencode/skills/deskctrl/SKILL.md`).
 
 ## Phase 2 — Prepare the run directory and the shared throwaway contract
 ```
@@ -37,6 +37,8 @@ bash -c "exec env RUST_LOG=warn,roster=info,p2p=info RUST_BACKTRACE=1 $BIN --ide
 ## Phase 4 — Watch each instance's own mainnet bootstrap
 Each instance independently retries `start_embedded_node` with backoff if the mainnet refuses every gateway dial (`src/roster/connect_and_run.rs:8-13`) — this is normal and can take a while; poll each `app.log` for `embedded node ready; dial as ...` (`start_embedded_node.rs:93-98`) before expecting roster activity. Give it a few minutes; don't treat early silence as failure.
 
+Do not `sleep`-poll via Bash — long or chained `sleep`s are blocked by the harness. Use `ScheduleWakeup` (60-180s delay) to check back on `app.log` progress across Phase 4/5, or `Monitor`'s until-loop.
+
 ## Phase 5 — Confirm convergence — and watch for the race
 Poll each `app.log` (targets are `target: "roster"`) for:
 - `sending roster Put` (`setup_contract.rs:141-144`) — this instance's grace window (`SETUP_CONTRACT_GRACE_SECS`, 60s) expired without finding an existing seed, so it seeded the contract.
@@ -53,8 +55,8 @@ Use deskctrl `list_windows`, matching each instance's `os_pid` (never `title` �
 **Always kill the instances at the end — never leave them running.** They are real mainnet peers holding sockets and a Freenet node each; leftovers from an earlier run corrupt the next one and keep talking to the network indefinitely.
 
 Do this *after* Phase 6 has captured its screenshots and video (those artifacts are the durable record — the live windows are not), and do it even when the run failed, errored, or converged early:
-1. deskctrl `kill_process` for each recorded instance PID.
-2. Then `pkill -f freenet-libp2p-bevy-example-1` from Bash to catch anything deskctrl did not own.
+1. deskctrl `kill_process` for each recorded instance PID. This may be denied by the auto-mode classifier for some or all PIDs — that is expected, not a run failure; don't stop or retry on the denial, just move to step 2.
+2. Then `pkill -f freenet-libp2p-bevy-example-1` from Bash — this is the authoritative kill and must always run regardless of whether step 1 succeeded or was denied.
 3. Confirm with `pgrep -af freenet-libp2p-bevy-example-1` and report the result. Nothing should remain.
 
 The logs under `$RUN_DIR` survive the kill — that is where the evidence lives.

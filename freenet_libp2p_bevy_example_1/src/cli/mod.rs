@@ -1,11 +1,26 @@
-mod cli_parse_contract_params;
-mod cli_parse_freenet_gateway;
-mod cli_parse_freenet_local;
-mod cli_parse_identity_dir;
-mod cli_parse_p2p_port;
+use std::path::PathBuf;
 
-pub use cli_parse_contract_params::parse_contract_params;
-pub use cli_parse_freenet_gateway::parse_freenet_gateway;
-pub use cli_parse_freenet_local::parse_freenet_local;
-pub use cli_parse_identity_dir::parse_identity_dir;
-pub use cli_parse_p2p_port::parse_p2p_port;
+/// Command-line arguments for `freenet-libp2p-bevy-example-1`.
+#[derive(clap::Parser)]
+#[command(name = "freenet-libp2p-bevy-example-1")]
+pub struct Cli {
+    /// Directory holding this instance's identity keypair (default:
+    /// `$HOME/.local/share/freenet-libp2p-bevy-example-1`). Two instances started on one
+    /// machine without this flag share that directory, so they load the same keypair, derive
+    /// the same PlayerId, and collapse into a single roster entry — pass a distinct directory
+    /// per instance when running more than one locally.
+    #[arg(long)]
+    pub identity_dir: Option<PathBuf>,
+
+    /// Contract parameters distinguishing this roster from production (omit for the real production roster)
+    #[arg(long)]
+    pub contract_params: Option<String>,
+
+    /// Run an isolated local Freenet node instead of joining the public mainnet
+    #[arg(long)]
+    pub freenet_local: bool,
+
+    /// Dial this gateway directly instead of using public mainnet discovery
+    #[arg(long)]
+    pub freenet_gateway: Option<String>,
+}

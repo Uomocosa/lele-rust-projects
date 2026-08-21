@@ -14,6 +14,7 @@ pub fn build(plugin: &roster::Plugin, app: &mut App) {
             (
                 roster::bevy_systems::poll_freenet_events,
                 roster::bevy_systems::spawn_roster_boxes,
+                roster::bevy_systems::despawn_roster_boxes,
                 roster::bevy_systems::update_status_text,
             )
                 .chain(),
