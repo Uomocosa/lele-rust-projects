@@ -8,7 +8,7 @@ pub fn decode_roster_update(update: &UpdateData) -> Option<roster::RosterState> 
         UpdateData::Delta(delta) => delta.as_ref(),
         _ => return None,
     };
-    bincode::deserialize(bytes).ok()
+    roster::contract_state::decode_roster(bytes)
 }
 
 #[cfg(test)]

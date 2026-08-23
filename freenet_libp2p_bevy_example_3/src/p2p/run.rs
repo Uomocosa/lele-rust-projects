@@ -36,6 +36,7 @@ pub async fn run(
     let mut listen_addrs: Vec<String> = Vec::new();
     let mut ready_deadline: Option<tokio::time::Instant> = None;
     let mut latest_snapshot: Option<p2p::Snapshot> = None;
+    let latest_netcode: Option<p2p::NetcodeMsg> = None;
 
     loop {
         let ready_sleep = tokio::time::sleep_until(
@@ -80,6 +81,11 @@ pub async fn run(
                         swarm.behaviour_mut().positions.send_request(&pid, snapshot);
                     }
                 }
+                Some(p2p::Command::SendNetcode { peer_id, msg }) => {
+                    if let Ok(pid) = peer_id.parse::<PeerId>() {
+                        swarm.behaviour_mut().netcode.send_request(&pid, msg);
+                    }
+                }
                 None => break,
             },
             event = swarm.select_next_some() => match event {
@@ -103,6 +109,23 @@ pub async fn run(
                     request_response::Message::Response { response, .. } => {
                         event_tx
                             .send(p2p::Event::IncomingSnapshot { from: peer, snapshot: response })
+                            .ok();
+                    }
+                },
+                SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Netcode(
+                    request_response::Event::Message { peer, message, .. },
+                )) => match message {
+                    request_response::Message::Request { request, channel, .. } => {
+                        event_tx
+                            .send(p2p::Event::IncomingNetcode { from: peer, msg: request })
+                            .ok();
+                        if let Some(reply) = latest_netcode {
+                            swarm.behaviour_mut().netcode.send_response(channel, reply).ok();
+                        }
+                    }
+                    request_response::Message::Response { response, .. } => {
+                        event_tx
+                            .send(p2p::Event::IncomingNetcode { from: peer, msg: response })
                             .ok();
                     }
                 },
@@ -163,6 +186,16 @@ mod tests {
         loop {
             if let Some(p2p::Event::IncomingSnapshot { snapshot, .. }) = rx.recv().await {
                 return snapshot;
+            }
+        }
+    }
+
+    async fn wait_netcode(
+        rx: &mut tokio::sync::mpsc::UnboundedReceiver<p2p::Event>,
+    ) -> p2p::NetcodeMsg {
+        loop {
+            if let Some(p2p::Event::IncomingNetcode { msg, .. }) = rx.recv().await {
+                return msg;
             }
         }
     }
@@ -273,6 +306,91 @@ mod tests {
         task_a.abort();
         task_b.abort();
         let _ = a_addrs;
+        let _ = b_addrs;
+        let _ = b_peer;
+    }
+
+    #[tokio::test]
+    async fn two_swarm_netcode_exchange() {
+        let (cmd_tx_a, cmd_rx_a) = tokio::sync::mpsc::unbounded_channel::<p2p::Command>();
+        let (event_tx_a, mut event_rx_a) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
+        let (cmd_tx_b, cmd_rx_b) = tokio::sync::mpsc::unbounded_channel::<p2p::Command>();
+        let (event_tx_b, mut event_rx_b) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
+
+        let task_a = tokio::spawn(run(cmd_rx_a, event_tx_a, Keypair::generate_ed25519()));
+        let task_b = tokio::spawn(run(cmd_rx_b, event_tx_b, Keypair::generate_ed25519()));
+
+        let a_ready =
+            tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_a)).await;
+        assert!(a_ready.is_ok(), "swarm A never became ready");
+        let (a_peer, a_addrs) = match a_ready {
+            Ok((peer, addrs)) => (peer, addrs),
+            Err(_) => return,
+        };
+
+        let b_ready =
+            tokio::time::timeout(Duration::from_secs(10), wait_ready(&mut event_rx_b)).await;
+        assert!(b_ready.is_ok(), "swarm B never became ready");
+        let (b_peer, b_addrs) = match b_ready {
+            Ok((peer, addrs)) => (peer, addrs),
+            Err(_) => return,
+        };
+
+        let dial_addrs: Vec<String> = a_addrs
+            .iter()
+            .map(|addr| format!("{addr}/p2p/{a_peer}"))
+            .collect();
+        cmd_tx_b
+            .send(p2p::Command::Dial {
+                peer_id: a_peer.clone(),
+                addrs: dial_addrs,
+            })
+            .ok();
+
+        let a_saw_b =
+            tokio::time::timeout(Duration::from_secs(10), wait_connected(&mut event_rx_a)).await;
+        assert!(a_saw_b.is_ok(), "A never connected to B");
+
+        let commit = p2p::NetcodeMsg::Commit {
+            tick: 4,
+            player_id: [2; 32],
+            hash: 424242,
+        };
+        cmd_tx_b
+            .send(p2p::Command::SendNetcode {
+                peer_id: a_peer.clone(),
+                msg: commit,
+            })
+            .ok();
+
+        let a_recv =
+            tokio::time::timeout(Duration::from_secs(10), wait_netcode(&mut event_rx_a)).await;
+        assert!(a_recv.is_ok(), "A never received B's netcode commit");
+        let a_recv = match a_recv {
+            Ok(msg) => msg,
+            Err(_) => return,
+        };
+        assert_eq!(a_recv, commit);
+
+        let state_hash_msg = p2p::NetcodeMsg::StateHash { tick: 4, hash: 7 };
+        cmd_tx_a
+            .send(p2p::Command::SendNetcode {
+                peer_id: b_peer.clone(),
+                msg: state_hash_msg,
+            })
+            .ok();
+
+        let b_recv =
+            tokio::time::timeout(Duration::from_secs(10), wait_netcode(&mut event_rx_b)).await;
+        assert!(b_recv.is_ok(), "B never received A's state hash");
+        let b_recv = match b_recv {
+            Ok(msg) => msg,
+            Err(_) => return,
+        };
+        assert_eq!(b_recv, state_hash_msg);
+
+        task_a.abort();
+        task_b.abort();
         let _ = b_addrs;
         let _ = b_peer;
     }

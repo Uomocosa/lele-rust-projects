@@ -18,6 +18,14 @@ pub fn new(key: &Keypair, relay_behaviour: relay::client::Behaviour) -> Behaviou
             )],
             request_response::Config::default(),
         ),
+        netcode: request_response::Behaviour::with_codec(
+            p2p::NetcodeCodec,
+            [(
+                StreamProtocol::new(p2p::constants::NETCODE_PROTOCOL_NAME),
+                ProtocolSupport::Full,
+            )],
+            request_response::Config::default(),
+        ),
         identify: identify::Behaviour::new(identify::Config::new(
             p2p::constants::IDENTIFY_PROTOCOL_VERSION.to_string(),
             key.public(),

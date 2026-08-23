@@ -10,6 +10,12 @@ pub use snapshot::Snapshot;
 pub mod snapshot_codec;
 pub use snapshot_codec::SnapshotCodec;
 
+pub mod netcode_msg;
+pub use netcode_msg::NetcodeMsg;
+
+pub mod netcode_codec;
+pub use netcode_codec::NetcodeCodec;
+
 pub mod command;
 pub use command::Command;
 

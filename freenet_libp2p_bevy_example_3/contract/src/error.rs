@@ -12,6 +12,14 @@ pub enum Error {
     SignatureInvalid,
     #[error("update rewinds the entry sequence")]
     Rewind,
+    #[error("input log rewinds the log sequence")]
+    InputLogRewind,
+    #[error("input log batch exceeds the ring cap")]
+    InputLogTooLarge,
+    #[error("input log references an identity not in the roster")]
+    IdentityNotInRoster,
+    #[error("input log entry is not signed")]
+    UnsignedInput,
 }
 
 // no test_usage necessary

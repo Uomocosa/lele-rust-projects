@@ -14,5 +14,9 @@ pub enum Event {
         from: PeerId,
         snapshot: p2p::Snapshot,
     },
+    IncomingNetcode {
+        from: PeerId,
+        msg: p2p::NetcodeMsg,
+    },
     Error(String),
 }

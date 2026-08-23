@@ -104,7 +104,8 @@ pub async fn setup_contract(
                 state, ..
             })) => {
                 let existing: roster::RosterState =
-                    bincode::deserialize(state.as_ref()).map_err(|e| format!("deser: {e}"))?;
+                    roster::contract_state::decode_roster(state.as_ref())
+                        .ok_or("cannot decode roster state")?;
                 tracing::info!(
                     target: "roster",
                     digest = %roster::roster_digest(&existing),

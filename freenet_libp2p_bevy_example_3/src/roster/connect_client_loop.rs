@@ -138,9 +138,9 @@ async fn run_roster_loop(
                     ..
                 })) => {
                     let entries: roster::RosterState =
-                        match bincode::deserialize(state.as_ref()) {
-                            Ok(entries) => entries,
-                            Err(_) => continue,
+                        match roster::contract_state::decode_roster(state.as_ref()) {
+                            Some(entries) => entries,
+                            None => continue,
                         };
                     let incoming = roster::roster_digest(&entries);
                     known = absorb(known, entries, own_id);

@@ -10,4 +10,8 @@ pub enum Command {
         peer_id: String,
         snapshot: p2p::Snapshot,
     },
+    SendNetcode {
+        peer_id: String,
+        msg: p2p::NetcodeMsg,
+    },
 }

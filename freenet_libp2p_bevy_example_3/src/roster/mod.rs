@@ -13,6 +13,8 @@ pub use sign_entry::sign_entry;
 pub mod roster_state;
 pub use roster_state::RosterState;
 
+pub mod contract_state;
+
 pub mod merge_roster;
 pub use merge_roster::merge_roster;
 
