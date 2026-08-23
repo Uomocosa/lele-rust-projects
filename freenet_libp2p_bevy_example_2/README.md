@@ -27,6 +27,7 @@ the ideas are derived from; it is read as reference only.
   matrix; resolution: Framing A (authority-in-contract).
 - [[docs/DESIGN]] — two candidate architectures; Design A (membership-gate) is authoritative.
 - [[docs/TESTING]] — testing runbook + implementation blueprint.
+- [[docs/CONTRACT_PLAN]] — contract function inventory + lele-conformant atomic layout (Phase 3 groundwork).
 - [[docs/SKILL_PLAN]] — how this documentation migrates into skills, and how skills link
   like a Zettelkasten.
 

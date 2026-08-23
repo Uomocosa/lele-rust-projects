@@ -1,0 +1,15 @@
+[package]
+name = "e2e_tests_3"
+version = "0.1.0"
+edition = "2024"
+
+[[test]]
+name = "e2e_three_node_production_sync"
+path = "e2e_three_node_production_sync.rs"
+
+[dependencies]
+bevy = "=0.19.0"
+tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "net"] }
+tracing = "=0.1.44"
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
+testing_3 = { path = "../testing_3" }
