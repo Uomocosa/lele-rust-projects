@@ -12,7 +12,7 @@ fn fixture_path(name: &str) -> PathBuf {
 }
 
 fn run_checkers(path: &str) -> Vec<Diagnostic> {
-    let p = Project::discover(Some(&fixture_path(path))).unwrap();
+    let p = Project::discover(Some(&fixture_path(path)), None).unwrap();
     let config = Config::load(&p.root).unwrap_or_default();
     let checkers = build_checkers(&config);
     checkers.iter().flat_map(|c| c.check(&p)).collect()

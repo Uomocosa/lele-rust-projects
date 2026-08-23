@@ -8,6 +8,9 @@ pub enum Error {
     #[error("src/ directory not found at {0}")]
     NoSrcDirectory(String),
 
+    #[error("scan folder not found or not a directory: {0}")]
+    NoScanFolder(String),
+
     #[error("filesystem error: {0}")]
     WalkDir(#[from] walkdir::Error),
 

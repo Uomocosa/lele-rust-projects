@@ -24,6 +24,9 @@ struct Args {
     #[arg(long, value_name = "PATH")]
     config: Option<PathBuf>,
 
+    #[arg(long = "scan-folder", value_name = "FOLDERS", value_delimiter = ',')]
+    scan_folder: Option<Vec<String>>,
+
     #[arg(value_name = "PATH")]
     path: Option<PathBuf>,
 }
@@ -43,13 +46,14 @@ fn main() {
         process::exit(1);
     }
 
-    let project = match project::Project::discover(args.path.as_deref()) {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("lele_lint: {e}", e = e);
-            process::exit(1);
-        }
-    };
+    let project =
+        match project::Project::discover(args.path.as_deref(), args.scan_folder.as_deref()) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("lele_lint: {e}", e = e);
+                process::exit(1);
+            }
+        };
 
     let config = config::Config::load(&project.root).unwrap_or_default();
 

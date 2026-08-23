@@ -25,8 +25,8 @@ impl Project {
 
 #[rustfmt::skip]
 impl Project {
-    pub fn discover(start_dir: Option<&Path>) -> Result<Self, error::Error> {
-        project_discover::discover(start_dir)
+    pub fn discover(start_dir: Option<&Path>, scan_folders: Option<&[String]>) -> Result<Self, error::Error> {
+        project_discover::discover(start_dir, scan_folders)
     }
     pub fn find_cargo_root(start: &Path) -> Result<PathBuf, error::Error> {
         project_find_cargo_root::find_cargo_root(start)
