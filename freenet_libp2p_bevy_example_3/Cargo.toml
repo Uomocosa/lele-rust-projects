@@ -23,6 +23,7 @@ avian2d = { version = "=0.7.0", default-features = false, features = [
     "2d", "f32", "parry-f32", "debug-plugin", "xpbd_joints", "enhanced-determinism",
 ] }
 derive_more = { version = "=1.0.0", features = ["deref", "deref_mut"] }
+bevy_lele_rollback_plugin_1 = { path = "../bevy_lele_rollback_plugin_1" }
 freenet = "=0.2.128"
 freenet-stdlib = { version = "=0.8.5", features = ["net"] }
 libp2p = { version = "=0.56.0", features = [

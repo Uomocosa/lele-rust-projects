@@ -11,6 +11,7 @@ pub mod lockstep;
 pub use lockstep::Lockstep;
 
 mod lockstep_advance_to;
+mod lockstep_all_committed_for;
 mod lockstep_new;
 mod lockstep_record_commit;
 mod lockstep_record_reveal;

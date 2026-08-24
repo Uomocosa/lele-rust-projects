@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use bevy::prelude::Resource;
 
-use super::engine_handle_recv_engine;
+use super::engine_handle_recv_reply;
 use super::engine_handle_send_cmd;
 use crate::engine;
 
@@ -19,6 +19,6 @@ pub struct EngineHandle {
 #[rustfmt::skip]
 impl EngineHandle {
     pub fn send_cmd(&self, cmd: engine::EngineCmd) { engine_handle_send_cmd::send_cmd(self, cmd) }
-    pub fn recv_engine(&self) -> Option<engine::Snapshot> { engine_handle_recv_engine::recv_engine(self) }
+    pub fn recv_reply(&self) -> Option<engine::EngineReply> { engine_handle_recv_reply::recv_reply(self) }
 }
 // no test_usage necessary - thin delegates, exercised by spawn_engine and the boxes tests

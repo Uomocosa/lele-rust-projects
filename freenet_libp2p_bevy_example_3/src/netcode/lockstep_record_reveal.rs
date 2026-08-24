@@ -1,6 +1,10 @@
 use crate::engine;
 use crate::netcode;
 
+/// Records a revealed input, hash-checked against the peer's earlier commit. Commitment-first
+/// ordering (a peer only *sends* its reveal once every synced participant has committed) is
+/// enforced on the sending side via `Lockstep::all_committed_for`; here we accept any reveal so an
+/// out-of-order reveal arriving ahead of its commit is never dropped.
 pub fn record_reveal(
     lockstep: &mut netcode::Lockstep,
     tick: u64,
@@ -57,5 +61,23 @@ mod tests {
         );
         assert!(lockstep.tampered.contains(&[1; 32]));
         assert!(!lockstep.reveals.contains_key(&(9, [1; 32])));
+    }
+
+    #[test]
+    fn reveal_without_prior_known_commit_is_accepted() {
+        let mut lockstep = netcode::Lockstep::new(vec![[1; 32], [2; 32]]);
+        let action = engine::Action::default();
+        assert!(lockstep.record_reveal(3, [1; 32], action).is_ok());
+        lockstep
+            .record_commit(3, [1; 32], engine::hash_action(&action))
+            .unwrap();
+        let tampered = engine::Action {
+            direction: engine::Direction::Left,
+            jump: true,
+        };
+        assert_eq!(
+            lockstep.record_reveal(3, [1; 32], tampered),
+            Err(netcode::Error::RevealMismatch)
+        );
     }
 }

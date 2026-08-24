@@ -5,7 +5,6 @@ use crate::p2p;
 
 #[derive(NetworkBehaviour)]
 pub struct Behaviour {
-    pub positions: request_response::Behaviour<p2p::SnapshotCodec>,
     pub netcode: request_response::Behaviour<p2p::NetcodeCodec>,
     pub identify: identify::Behaviour,
     pub ping: ping::Behaviour,

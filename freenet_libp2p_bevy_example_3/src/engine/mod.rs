@@ -49,6 +49,11 @@ mod engine_player_position;
 mod engine_spawn_player;
 mod engine_step;
 
+pub mod engine_sim_state;
+pub use engine_sim_state::EngineSimState;
+
+mod engine_sim;
+
 pub mod run_trace;
 pub use run_trace::run_trace;
 
@@ -61,7 +66,7 @@ pub use engine_reply::EngineReply;
 pub mod engine_handle;
 pub use engine_handle::EngineHandle;
 
-mod engine_handle_recv_engine;
+mod engine_handle_recv_reply;
 mod engine_handle_send_cmd;
 
 pub mod spawn_engine;

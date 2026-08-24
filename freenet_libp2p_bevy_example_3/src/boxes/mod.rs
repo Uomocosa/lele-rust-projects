@@ -18,14 +18,11 @@ pub use constants::*;
 pub mod spawn_box;
 pub use spawn_box::spawn_box;
 
-pub mod pick_spawn_x;
-pub use pick_spawn_x::pick_spawn_x;
-
-pub mod spawn_x_for_player;
-pub use spawn_x_for_player::spawn_x_for_player;
-
 pub mod latest_snapshot;
 pub use latest_snapshot::LatestSnapshot;
+
+pub mod predicted_snapshot;
+pub use predicted_snapshot::PredictedSnapshot;
 
 pub mod sim_state;
 pub use sim_state::SimState;

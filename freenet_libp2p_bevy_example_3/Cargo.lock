@@ -1150,6 +1150,7 @@ dependencies = [
  "async-trait",
  "avian2d",
  "bevy",
+ "bevy_lele_rollback_plugin_1",
  "bincode",
  "clap",
  "derive_more 1.0.0",
@@ -1415,6 +1416,13 @@ dependencies = [
  "bevy_window",
  "bevy_winit",
  "bevy_world_serialization",
+]
+
+[[package]]
+name = "bevy_lele_rollback_plugin_1"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -5638,6 +5646,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_freenet_3",
+ "bevy_lele_rollback_plugin_1",
  "libp2p",
  "testing_3",
  "tokio",

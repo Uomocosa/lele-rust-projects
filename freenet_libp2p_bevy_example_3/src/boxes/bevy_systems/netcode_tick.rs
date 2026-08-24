@@ -5,9 +5,11 @@ use crate::engine;
 use crate::p2p;
 use crate::roster;
 
-/// The per-tick lockstep pipeline: capture local input -> commit + reveal over libp2p -> drain
-/// peers' commits/reveals/state-hashes into the `Lockstep` -> `advance_to` and step the
-/// deterministic sim worker -> broadcast the resulting state hash and compare against peers.
+/// The per-tick lockstep pipeline: capture local input -> commit its hash -> wait until every
+/// synced participant has committed -> reveal the input -> drain peers' reveals -> `advance_to` and
+/// step the plain authoritative engine (driving remote rendering + the convergence hash) -> predict
+/// the local box through the rollback session for immediate rendering -> broadcast the state hash
+/// and compare against peers.
 #[allow(clippy::too_many_arguments)]
 pub fn netcode_tick(
     commands: Res<p2p::P2pCommands>,
@@ -16,6 +18,7 @@ pub fn netcode_tick(
     mut lockstep: ResMut<boxes::NetcodeLockstep>,
     mut state: ResMut<boxes::SimState>,
     mut snapshot: ResMut<boxes::LatestSnapshot>,
+    mut predicted: ResMut<boxes::PredictedSnapshot>,
     keyboard: Res<ButtonInput<KeyCode>>,
     config: Res<boxes::Config>,
     roster: Res<roster::Roster>,
@@ -29,31 +32,8 @@ pub fn netcode_tick(
     let action = read_action(&keyboard);
     let hash = engine::hash_action(&action);
     let _ = lockstep.record_commit(now, own, hash);
-    let _ = lockstep.record_reveal(now, own, action);
-
-    for (id, entry) in roster.iter() {
-        if *id == own {
-            continue;
-        }
-        send(
-            &commands,
-            &entry.peer_id,
-            p2p::NetcodeMsg::Commit {
-                tick: now,
-                player_id: own,
-                hash,
-            },
-        );
-        send(
-            &commands,
-            &entry.peer_id,
-            p2p::NetcodeMsg::Reveal {
-                tick: now,
-                player_id: own,
-                action,
-            },
-        );
-    }
+    broadcast_commit(&commands, &roster, own, now, hash);
+    state.pending_reveals.insert(now, action);
 
     while let Ok(event) = events.try_recv() {
         let p2p::Event::IncomingNetcode { from, msg } = event else {
@@ -98,16 +78,48 @@ pub fn netcode_tick(
         }
     }
 
+    let ready: Vec<u64> = state
+        .pending_reveals
+        .keys()
+        .copied()
+        .filter(|&t| lockstep.all_committed_for(t))
+        .collect();
+    for t in ready {
+        if let Some(&a) = state.pending_reveals.get(&t) {
+            let _ = lockstep.record_reveal(t, own, a);
+            broadcast_reveal(&commands, &roster, own, t, a);
+            state.pending_reveals.remove(&t);
+        }
+    }
+
+    let mut steps = 0;
     for plan in lockstep.advance_to(now) {
         engine.send_cmd(engine::EngineCmd::Step {
             tick: plan.tick,
             actions: plan.ordered_inputs.clone(),
         });
-        let Some(snapshot_value) = engine.recv_engine() else {
-            continue;
-        };
-        **snapshot = Some(snapshot_value.clone());
-        let h = engine::hash_snapshot(&snapshot_value);
+        steps += 1;
+    }
+    engine.send_cmd(engine::EngineCmd::Predict {
+        inputs: vec![(own, action)],
+    });
+
+    let mut last_auth: Option<engine::Snapshot> = None;
+    let mut predicted_snap: Option<engine::Snapshot> = None;
+    for _ in 0..=steps {
+        if let Some(reply) = engine.recv_reply() {
+            match reply {
+                engine::EngineReply::Snapshot(snapshot_value) => last_auth = Some(snapshot_value),
+                engine::EngineReply::Predicted(snapshot_value) => {
+                    predicted_snap = Some(snapshot_value)
+                }
+            }
+        }
+    }
+
+    if let Some(auth) = last_auth {
+        **snapshot = Some(auth.clone());
+        let h = engine::hash_snapshot(&auth);
         state.latest_hash = Some(h);
         for (id, entry) in roster.iter() {
             if *id == own {
@@ -117,25 +129,28 @@ pub fn netcode_tick(
                 &commands,
                 &entry.peer_id,
                 p2p::NetcodeMsg::StateHash {
-                    tick: plan.tick,
+                    tick: auth.tick,
                     hash: h,
                 },
             );
         }
-        for pid in snapshot_value.bodies.keys() {
-            if let Some(theirs) = state.peer_hashes.get(pid).and_then(|m| m.get(&plan.tick))
+        for pid in auth.bodies.keys() {
+            if let Some(theirs) = state.peer_hashes.get(pid).and_then(|m| m.get(&auth.tick))
                 && *theirs != h
             {
                 tracing::warn!(
                     target: "p2p",
                     peer = %hex::encode(pid),
-                    tick = plan.tick,
+                    tick = auth.tick,
                     mine = h,
                     theirs = *theirs,
                     "state hash divergence"
                 );
             }
         }
+    }
+    if let Some(snap) = predicted_snap {
+        **predicted = Some(snap);
     }
 }
 
@@ -158,6 +173,54 @@ fn send(commands: &p2p::P2pCommands, peer_id: &str, msg: p2p::NetcodeMsg) {
         peer_id: peer_id.to_string(),
         msg,
     });
+}
+
+// needed helper:
+fn broadcast_commit(
+    commands: &p2p::P2pCommands,
+    roster: &roster::Roster,
+    own: engine::PlayerId,
+    now: u64,
+    hash: u64,
+) {
+    for (id, entry) in roster.iter() {
+        if *id == own {
+            continue;
+        }
+        send(
+            commands,
+            &entry.peer_id,
+            p2p::NetcodeMsg::Commit {
+                tick: now,
+                player_id: own,
+                hash,
+            },
+        );
+    }
+}
+
+// needed helper:
+fn broadcast_reveal(
+    commands: &p2p::P2pCommands,
+    roster: &roster::Roster,
+    own: engine::PlayerId,
+    now: u64,
+    action: engine::Action,
+) {
+    for (id, entry) in roster.iter() {
+        if *id == own {
+            continue;
+        }
+        send(
+            commands,
+            &entry.peer_id,
+            p2p::NetcodeMsg::Reveal {
+                tick: now,
+                player_id: own,
+                action,
+            },
+        );
+    }
 }
 
 // needed helper:
@@ -188,13 +251,14 @@ mod tests {
             .map(|d| d.as_secs())
             .unwrap_or(0);
         let (cmd_tx, _cmd_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Command>();
-        let (_event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
+        let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event>();
         let mut app = App::new();
         app.insert_resource(p2p::P2pCommands(cmd_tx));
         app.insert_resource(p2p::P2pEvents(event_rx));
         app.insert_resource(boxes::Config::new([1; 32]));
         app.insert_resource(engine::spawn_engine());
         app.insert_resource(boxes::LatestSnapshot::default());
+        app.insert_resource(boxes::PredictedSnapshot::default());
         app.insert_resource(boxes::NetcodeLockstep(netcode::Lockstep::new(vec![])));
         app.insert_resource(boxes::SimState::default());
         let mut entries = roster::RosterState::default();
@@ -210,14 +274,41 @@ mod tests {
         app.insert_resource(roster::Roster(entries));
         app.insert_resource(ButtonInput::<KeyCode>::default());
         app.add_systems(Update, netcode_tick);
-        for _ in 0..30 {
+
+        let from = libp2p::PeerId::random();
+        let remote_action = engine::Action::default();
+        let remote_hash = engine::hash_action(&remote_action);
+        for tick in 1..=40u64 {
+            event_tx
+                .send(p2p::Event::IncomingNetcode {
+                    from,
+                    msg: p2p::NetcodeMsg::Commit {
+                        tick,
+                        player_id: [2; 32],
+                        hash: remote_hash,
+                    },
+                })
+                .ok();
+            event_tx
+                .send(p2p::Event::IncomingNetcode {
+                    from,
+                    msg: p2p::NetcodeMsg::Reveal {
+                        tick,
+                        player_id: [2; 32],
+                        action: remote_action,
+                    },
+                })
+                .ok();
             app.update();
         }
 
         let clock = app.world().resource::<boxes::SimState>().clock;
-        assert!(clock >= 30);
+        assert!(clock >= 40);
         let latest = app.world().resource::<boxes::SimState>().latest_hash;
-        assert!(latest.is_some());
+        assert!(
+            latest.is_some(),
+            "a tick is applied once both peers have revealed for it"
+        );
         let snap = app.world().resource::<boxes::LatestSnapshot>().0.is_some();
         assert!(snap);
     }

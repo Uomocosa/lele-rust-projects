@@ -1,5 +1,8 @@
 use crate::netcode;
 
+/// Advances the applied window up to `now - D`. Ticks are applied once the fixed command delay `D`
+/// has elapsed; a participant missing a reveal for the tick is treated as null and, once its late
+/// streak exceeds the liveness budget `B`, is marked offline and excluded.
 pub fn advance_to(lockstep: &mut netcode::Lockstep, now_tick: u64) -> Vec<netcode::TickPlan> {
     let apply_window = now_tick.saturating_sub(netcode::constants::COMMAND_DELAY);
     let mut applied = Vec::new();
@@ -99,16 +102,27 @@ mod tests {
         for tick in 1..=300 {
             let now = tick + d;
             lockstep
-                .record_commit(now, fast, engine::hash_action(&run_action))
+                .record_commit(tick, fast, engine::hash_action(&run_action))
                 .unwrap();
-            lockstep.record_reveal(now, fast, run_action).unwrap();
+            lockstep
+                .record_commit(tick, slow, engine::hash_action(&run_action))
+                .unwrap();
+            assert_eq!(lockstep.record_reveal(tick, fast, run_action), Ok(()));
             let plans = lockstep.advance_to(now);
             if let Some(plan) = plans.last() {
                 assert!(plan.late.contains(&slow) || lockstep.offline.contains(&slow));
+                let fast_used = plan
+                    .ordered_inputs
+                    .iter()
+                    .any(|(id, action)| *id == fast && !action.is_null());
                 let slow_used = plan
                     .ordered_inputs
                     .iter()
                     .any(|(id, action)| *id == slow && !action.is_null());
+                assert!(
+                    fast_used,
+                    "fast peer's insight is used once all commits are in"
+                );
                 assert!(!slow_used, "slow peer's input is never used");
             }
         }
@@ -117,6 +131,7 @@ mod tests {
             lockstep.offline.contains(&slow),
             "slow peer is excluded once past the liveness budget"
         );
+        assert!(!lockstep.offline.contains(&fast));
         assert_eq!(
             netcode::constants::COMMAND_DELAY,
             d,

@@ -18,6 +18,8 @@ pub fn simulate_lockstep(
             lockstep
                 .record_commit(now, *peer, engine::hash_action(action))
                 .unwrap();
+        }
+        for (peer, action) in tick_inputs {
             lockstep.record_reveal(now, *peer, *action).unwrap();
         }
         apply_plans(&mut lockstep, &mut engine, &mut hashes, now);

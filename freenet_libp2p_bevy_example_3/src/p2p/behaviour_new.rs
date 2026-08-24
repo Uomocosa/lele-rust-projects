@@ -10,14 +10,6 @@ use crate::p2p;
 pub fn new(key: &Keypair, relay_behaviour: relay::client::Behaviour) -> Behaviour {
     let peer_id = key.public().to_peer_id();
     Behaviour {
-        positions: request_response::Behaviour::with_codec(
-            p2p::SnapshotCodec,
-            [(
-                StreamProtocol::new(p2p::constants::PROTOCOL_NAME),
-                ProtocolSupport::Full,
-            )],
-            request_response::Config::default(),
-        ),
         netcode: request_response::Behaviour::with_codec(
             p2p::NetcodeCodec,
             [(

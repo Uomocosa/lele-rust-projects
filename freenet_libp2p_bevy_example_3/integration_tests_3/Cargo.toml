@@ -19,8 +19,13 @@ path = "two_node_roster.rs"
 name = "local_two_node_production_sync"
 path = "local_two_node_production_sync.rs"
 
+[[test]]
+name = "rollback_reconciliation"
+path = "rollback_reconciliation.rs"
+
 [dependencies]
 bevy = "=0.19.0"
+bevy_lele_rollback_plugin_1 = { path = "../../bevy_lele_rollback_plugin_1" }
 freenet-libp2p-bevy-example-3-lib = { path = "..", package = "bevy_freenet_3" }
 libp2p = { version = "=0.56.0", features = ["macros"] }
 tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "net"] }

@@ -10,6 +10,7 @@ pub struct SimState {
     pub latest_hash: Option<u64>,
     pub peer_hashes: BTreeMap<engine::PlayerId, BTreeMap<u64, u64>>,
     pub seen_peers: BTreeSet<engine::PlayerId>,
+    pub pending_reveals: BTreeMap<u64, engine::Action>,
 }
 
 #[cfg(test)]
@@ -23,5 +24,6 @@ mod tests {
         assert!(state.latest_hash.is_none());
         assert!(state.peer_hashes.is_empty());
         assert!(state.seen_peers.is_empty());
+        assert!(state.pending_reveals.is_empty());
     }
 }

@@ -9,6 +9,7 @@ pub fn build(plugin: &boxes::Plugin, app: &mut App) {
     app.insert_resource(**plugin)
         .insert_resource(engine::spawn_engine())
         .insert_resource(boxes::LatestSnapshot::default())
+        .insert_resource(boxes::PredictedSnapshot::default())
         .insert_resource(boxes::NetcodeLockstep(netcode::Lockstep::new(vec![])))
         .insert_resource(sim)
         .add_systems(Startup, boxes::bevy_systems::setup)

@@ -109,7 +109,10 @@ thiserror, no inline `crate::` outside `use`), exactly as example_1/2.
    form/auth/monotonicity and caps; merge commutative.
 6. **Wire `main.rs`** — cli → keypair → p2p::run → build + sign own entry → connect_and_run;
    Bevy render over engine snapshots with prediction + rollback.
-7. **Render feel** — client-side prediction on own input; rollback on tick commit; interpolation.
+7. **Render feel** — client-side prediction + rollback via a **new standalone crate
+   `bevy_lele_rollback_plugin_1`** (generic `Simulation` trait + `RollbackSession`; `src/engine/`
+   implements `Simulation`); local box renders from the predicted session, remote boxes from the
+   committed frames. See [[POLISH]] §2 for the design and rationale.
 8. **Session/liveness** — join via membership; rejoin from contract signed log; exclude offline
    > `B`; resume.
 

@@ -24,6 +24,7 @@ Read why the engine can't live inside the freenet contract itself in
 
 - [[docs/DIFFERENTIATION]] — what's different from example_2, and the goals / non-goals.
 - [[docs/PLAN]] — the complete handoff plan to build the final app.
+- [[docs/POLISH]] — pre-`FINISHED` cleanup, the rollback crate, and the cross-OS/cross-network gate.
 - [[docs/ARCHITECTURE]] — the deterministic-lockstep layout and data flow.
 - [[docs/CONTRACT]] — the contract's enforced role: membership + signed input log.
 - [[docs/NETCODE]] — the lockstep protocol (Option A: deterministic per-tick ordering), hybrid libp2p transport.

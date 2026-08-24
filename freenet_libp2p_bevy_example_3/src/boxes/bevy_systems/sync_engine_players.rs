@@ -57,9 +57,15 @@ mod tests {
         handle.send_cmd(engine::EngineCmd::Spawn([2; 32]));
         handle.send_cmd(engine::EngineCmd::Step {
             tick: 1,
-            actions: Vec::new(),
+            actions: vec![
+                ([1; 32], engine::Action::default()),
+                ([2; 32], engine::Action::default()),
+            ],
         });
-        let snapshot = handle.recv_engine();
-        assert_eq!(snapshot.map(|s| s.bodies.len()), Some(2));
+        let reply = handle.recv_reply();
+        assert!(matches!(
+            reply,
+            Some(engine::EngineReply::Snapshot(s)) if s.bodies.len() == 2
+        ));
     }
 }

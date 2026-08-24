@@ -1,5 +1,8 @@
+use std::collections::BTreeSet;
 use std::sync::mpsc;
 use std::thread;
+
+use bevy_lele_rollback_plugin_1::{RollbackConfig, RollbackSession};
 
 use crate::engine;
 
@@ -22,19 +25,59 @@ fn run_worker(
     cmd_rx: mpsc::Receiver<engine::EngineCmd>,
     reply_tx: mpsc::Sender<engine::EngineReply>,
 ) {
-    let mut sim = engine::Engine::new();
+    let mut auth = engine::Engine::new();
+    let mut spawned: BTreeSet<engine::PlayerId> = BTreeSet::new();
+    let mut session: Option<RollbackSession<engine::Engine>> = None;
     while let Ok(cmd) = cmd_rx.recv() {
         match cmd {
-            engine::EngineCmd::Spawn(id) => sim.spawn_player(id),
-            engine::EngineCmd::Step { tick, actions } => match sim.step(tick, &actions) {
-                Ok(snapshot) => {
-                    let _ = reply_tx.send(engine::EngineReply::Snapshot(snapshot));
+            engine::EngineCmd::Spawn(id) => {
+                auth.spawn_player(id);
+                if spawned.insert(id)
+                    && let Some(s) = session.as_mut()
+                {
+                    let _ = s.mutate(|engine| engine.spawn_player(id));
                 }
-                Err(e) => {
-                    tracing::warn!(target: "engine", tick, error = %e, "engine step failed");
+            }
+            engine::EngineCmd::Step { tick, actions } => {
+                match auth.step(tick, &actions) {
+                    Ok(snapshot) => {
+                        let _ = reply_tx.send(engine::EngineReply::Snapshot(snapshot));
+                    }
+                    Err(e) => {
+                        tracing::warn!(target: "engine", tick, error = %e, "authoritative step failed");
+                    }
                 }
-            },
+                if let Some(s) = session.as_mut() {
+                    let _ = s.commit(actions);
+                }
+            }
+            engine::EngineCmd::Predict { inputs } => {
+                let s = session.get_or_insert_with(|| {
+                    let mut sim = engine::Engine::new();
+                    for id in &spawned {
+                        sim.spawn_player(*id);
+                    }
+                    RollbackSession::new(sim, RollbackConfig::default())
+                });
+                let _ = s.predict(inputs);
+                let _ = reply_tx.send(engine::EngineReply::Predicted(to_snapshot(
+                    &s.predicted_state(),
+                )));
+            }
         }
+    }
+}
+
+// needed helper:
+fn to_snapshot(state: &engine::EngineSimState) -> engine::Snapshot {
+    let bodies = state
+        .bodies
+        .iter()
+        .map(|(pid, body)| (*pid, (body.0, body.1)))
+        .collect();
+    engine::Snapshot {
+        tick: state.tick,
+        bodies,
     }
 }
 
@@ -49,10 +92,10 @@ mod tests {
         let handle = spawn_engine();
         handle.send_cmd(engine::EngineCmd::Spawn([2; 32]));
         handle.send_cmd(engine::EngineCmd::Step {
-            tick: 2,
-            actions: Vec::new(),
+            tick: 1,
+            actions: vec![([2; 32], engine::Action::default())],
         });
-        let snapshot = handle.recv_engine();
-        assert_eq!(snapshot.map(|s| s.bodies.len()), Some(1));
+        let reply = handle.recv_reply();
+        assert!(matches!(reply, Some(engine::EngineReply::Snapshot(s)) if s.bodies.len() == 1));
     }
 }
