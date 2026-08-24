@@ -108,7 +108,7 @@ pub async fn setup_contract(
                         .ok_or("cannot decode roster state")?;
                 tracing::info!(
                     target: "roster",
-                    digest = %roster::roster_digest(&existing),
+                    digest = %roster::digest(&existing),
                     already_present = existing.contains_key(&own_id),
                     "roster GetResponse"
                 );
@@ -124,7 +124,7 @@ pub async fn setup_contract(
                 };
                 tracing::info!(
                     target: "roster",
-                    digest = %roster::roster_digest(&merged),
+                    digest = %roster::digest(&merged),
                     "merging own entry, sending roster Update"
                 );
                 client
@@ -148,7 +148,7 @@ pub async fn setup_contract(
                 }
                 tracing::info!(
                     target: "roster",
-                    digest = %roster::roster_digest(&own_roster),
+                    digest = %roster::digest(&own_roster),
                     "grace window expired, sending roster Put"
                 );
                 let put_req = ContractRequest::Put {

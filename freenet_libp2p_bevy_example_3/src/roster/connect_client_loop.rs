@@ -93,7 +93,7 @@ async fn run_roster_loop(
         target: "roster",
         contract = %contract_key,
         own_id = %hex::encode(own_id),
-        digest = %roster::roster_digest(&known),
+        digest = %roster::digest(&known),
         "roster loop started"
     );
     loop {
@@ -120,12 +120,12 @@ async fn run_roster_loop(
                     ..
                 })) => {
                     if let Some(entries) = roster::decode_roster_update(&update) {
-                        let incoming = roster::roster_digest(&entries);
+                        let incoming = roster::digest(&entries);
                         known = absorb(known, entries, own_id);
                         tracing::info!(
                             target: "roster",
                             incoming = %incoming,
-                            digest = %roster::roster_digest(&known),
+                            digest = %roster::digest(&known),
                             "received roster UpdateNotification"
                         );
                         event_tx.send(roster::Event::Roster {
@@ -142,12 +142,12 @@ async fn run_roster_loop(
                             Some(entries) => entries,
                             None => continue,
                         };
-                    let incoming = roster::roster_digest(&entries);
+                    let incoming = roster::digest(&entries);
                     known = absorb(known, entries, own_id);
                     tracing::info!(
                         target: "roster",
                         incoming = %incoming,
-                        digest = %roster::roster_digest(&known),
+                        digest = %roster::digest(&known),
                         "received roster GetResponse (refresh)"
                     );
                     event_tx.send(roster::Event::Roster {
@@ -175,7 +175,7 @@ async fn run_roster_loop(
                 };
                 tracing::debug!(
                     target: "roster",
-                    digest = %roster::roster_digest(&refreshed),
+                    digest = %roster::digest(&refreshed),
                     bytes = bytes.len(),
                     "sending roster heartbeat Update"
                 );
@@ -200,7 +200,7 @@ async fn run_roster_loop(
                 tracing::trace!(
                     target: "roster",
                     resubscribe,
-                    digest = %roster::roster_digest(&known),
+                    digest = %roster::digest(&known),
                     "sending roster refresh Get"
                 );
                 if let Err(e) = client.send(ClientRequest::ContractOp(get_req)).await {

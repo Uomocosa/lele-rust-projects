@@ -42,6 +42,10 @@ jobs:
     runs-on: [self-hosted, linux]
     outputs:
       crate: ${{ steps.check.outputs.crate }}
+      testing_pkg: ${{ steps.pkgs.outputs.testing_pkg }}
+      crossos_pkg: ${{ steps.pkgs.outputs.crossos_pkg }}
+      determinism_test: ${{ steps.pkgs.outputs.determinism_test }}
+      has_firewall_probe: ${{ steps.pkgs.outputs.has_firewall_probe }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,9 +58,35 @@ jobs:
           [ -f "$CRATE/Cargo.toml" ] || { echo "no Cargo.toml in '$CRATE'" >&2; exit 1; }
           echo "crate=$CRATE" >> "$GITHUB_OUTPUT"
 
+      # Per-crate subcrate names + capabilities. The `_3` suffix (example_3) uses the `_3`
+      # subcrates and ships an `engine_determinism` probe (POLISH §3 cross-OS hash record);
+      # example_1 keeps its original names and has no determinism probe yet.
+      - name: Resolve per-crate subcrate package names
+        id: pkgs
+        run: |
+          set -euo pipefail
+          CRATE="${{ inputs.crate }}"
+          case "$CRATE" in
+            *_3)
+              echo "testing_pkg=testing_3" >> "$GITHUB_OUTPUT"
+              echo "crossos_pkg=cross_os_tests_3" >> "$GITHUB_OUTPUT"
+              echo "determinism_test=engine_determinism" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "testing_pkg=testing" >> "$GITHUB_OUTPUT"
+              echo "crossos_pkg=cross_os_tests" >> "$GITHUB_OUTPUT"
+              echo "determinism_test=" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+          if [ -f "$CRATE/firewall_probe/Cargo.toml" ]; then
+            echo "has_firewall_probe=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_firewall_probe=false" >> "$GITHUB_OUTPUT"
+          fi
+
   firewall-probe:
     needs: resolve
-    if: (inputs.jobs == 'all' || inputs.jobs == 'test' || inputs.jobs == 'test-windows-firewall')
+    if: (inputs.jobs == 'all' || inputs.jobs == 'test' || inputs.jobs == 'test-windows-firewall') && needs.resolve.outputs.has_firewall_probe == 'true'
     uses: ./.github/workflows/firewall-probe.yml
     with:
       crate: ${{ needs.resolve.outputs.crate }}
@@ -120,9 +150,11 @@ jobs:
       - name: Run all workspace tests
         run: cargo test --workspace --all-targets
 
-      # e2e_three_node_production_sync and the two cross-OS probes are #[ignore]d (the first needs
-      # the public mainnet, the latter are driven per-machine by the cross-os job). The 4 local
-      # port-binding harnesses run as integration_tests via the workspace `cargo test` above.
+      # The cross-OS probes are #[ignore]d — driven per-machine by the cross-os jobs (example_1:
+      # cross_os_tests peer_discovery/movement_sync; example_3: cross_os_tests_3 adds
+      # engine_determinism, and its former e2e_tests_3 crate was removed in favour of these
+      # probes + mainnet_automation_3). Local port-binding harnesses run as integration_tests
+      # via the workspace `cargo test` above.
       # With the standing Windows Firewall fix (NotifyOnListen=False + broad Allow rules) hashed
       # test exes no longer re-trigger the prompt, so they need no stable-name [[bin]] path.
 
@@ -308,12 +340,30 @@ jobs:
           cp "$src" "contract/$(basename "$src")"
 
       - name: Clippy testing crate
-        run: cargo clippy --all-targets -p testing -- -D warnings
+        run: cargo clippy --all-targets -p ${{ needs.resolve.outputs.testing_pkg }} -- -D warnings
 
       - name: Build cross-OS probe tests (compile check, not run)
         run: |
           set -euo pipefail
-          cargo test -p cross_os_tests --no-run
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --no-run
+
+      - name: Run engine determinism gate (per-machine POLISH §3 hash record)
+        if: needs.resolve.outputs.determinism_test != ''
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export CROSS_OS_MACHINE="${{ matrix.os }}"
+          export CROSS_OS_LOG_DETERMINISM="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-determinism-${{ matrix.os }}.log"
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} \
+            --test ${{ needs.resolve.outputs.determinism_test }} -- --ignored --nocapture
+
+      - name: Upload cross-OS determinism log
+        if: needs.resolve.outputs.determinism_test != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-os-determinism-log-${{ matrix.os }}
+          path: ${{ needs.resolve.outputs.crate }}/cross-os-determinism-${{ matrix.os }}.log
+          if-no-files-found: error
 
   cross-os-peer-discovery:
     # Build then run, synchronized per test: both machines run the SAME probe at the same time.
@@ -339,6 +389,10 @@ jobs:
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_MACHINE: ${{ matrix.os }}
       CROSS_OS_DURATION_SECS: "300"
+      # Engine/netcode greps ("received peer input", "sending engine snapshot", "state hash")
+      # live on the p2p target at debug/info; roster=trace covers join/merge. freenet_bevy is
+      # example_1-only but an unknown directive is harmless to EnvFilter.
+      RUST_LOG: warn,roster=trace,p2p=debug,freenet_bevy=debug
     defaults:
       run:
         shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
@@ -351,7 +405,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.cargo/bin:$PATH"
           export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-${{ matrix.os }}.log"
-          cargo test -p cross_os_tests \
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} \
             --test peer_discovery -- --ignored --nocapture
 
       - name: Upload cross-OS log
@@ -383,6 +437,8 @@ jobs:
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_MACHINE: ${{ matrix.os }}
       CROSS_OS_DURATION_SECS: "300"
+      # Same rationale as the peer-discovery job's RUST_LOG.
+      RUST_LOG: warn,roster=trace,p2p=debug,freenet_bevy=debug
     defaults:
       run:
         shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
@@ -395,7 +451,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.cargo/bin:$PATH"
           export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log"
-          cargo test -p cross_os_tests \
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} \
             --test movement_sync -- --ignored --nocapture
 
       - name: Upload cross-OS movement log
@@ -407,7 +463,7 @@ jobs:
           if-no-files-found: error
 
   cross-os-verify:
-    needs: cross-os-movement-sync
+    needs: [resolve, cross-os-movement-sync]
     if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && needs.cross-os-movement-sync.result == 'success'
     runs-on: [self-hosted, linux]
     timeout-minutes: 10
@@ -433,6 +489,18 @@ jobs:
         with:
           name: cross-os-movement-log-windows
           path: verify/windows-movement
+
+      - uses: actions/download-artifact@v4
+        if: needs.resolve.outputs.determinism_test != ''
+        with:
+          name: cross-os-determinism-log-linux
+          path: verify/linux-determinism
+
+      - uses: actions/download-artifact@v4
+        if: needs.resolve.outputs.determinism_test != ''
+        with:
+          name: cross-os-determinism-log-windows
+          path: verify/windows-determinism
 
       - name: Assert each OS observed the other's player id and moved
         run: |
@@ -482,6 +550,24 @@ jobs:
                   pass
               return own, remote_xs, local_xs
 
+          def load_determinism(path):
+              # returns the final_state_hash from the engine determinism gate, or None
+              try:
+                  with open(path) as f:
+                      for line in f:
+                          line = line.strip()
+                          if not line:
+                              continue
+                          try:
+                              rec = json.loads(line)
+                          except json.JSONDecodeError:
+                              continue
+                          if "final_state_hash" in rec:
+                              return rec["final_state_hash"]
+              except FileNotFoundError:
+                  pass
+              return None
+
           l_own, l_obs = load("verify/linux/cross-os-linux.log")
           w_own, w_obs = load("verify/windows/cross-os-windows.log")
 
@@ -505,4 +591,17 @@ jobs:
                   if len(remote_x) < 2:
                       sys.exit(f"FAIL: {name} (own={own}) never saw its remote box move ({sorted(remote_x)})")
               print(f"PASS: movement propagated (linux saw remote x-positions {sorted(l_remote_x)}, windows saw {sorted(w_remote_x)})")
+
+          # POLISH §3 cross-OS determinism: the engine determinism gate ran on both machines;
+          # the final state hash must be identical. Crates without the gate (no artifacts) skip.
+          l_hash = load_determinism("verify/linux-determinism/cross-os-determinism-linux.log")
+          w_hash = load_determinism("verify/windows-determinism/cross-os-determinism-windows.log")
+          if l_hash is None and w_hash is None:
+              print("SKIP: no cross-OS determinism records (crate has no engine determinism gate)")
+          elif l_hash is None or w_hash is None:
+              sys.exit(f"FAIL: exactly one machine produced a determinism record (linux={l_hash}, windows={w_hash})")
+          elif l_hash != w_hash:
+              sys.exit(f"FAIL: cross-OS state hashes diverge (linux={l_hash}, windows={w_hash}); see docs/DETERMINISM.md -> fixed-point fallback")
+          else:
+              print(f"PASS: cross-OS engine determinism (final state hash {l_hash} identical on linux and windows)")
           PY

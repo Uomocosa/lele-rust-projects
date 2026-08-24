@@ -10,7 +10,7 @@ use crate::roster;
 ///
 /// The first 8 bytes of the 32-byte ed25519 pubkey are shown; the pubkey is uniformly random
 /// so those suffice to tell ids apart.
-pub fn roster_digest(entries: &roster::RosterState) -> String {
+pub fn digest(entries: &roster::RosterState) -> String {
     let ids: Vec<String> = entries
         .keys()
         .map(|id| id[0..8].iter().map(|b| format!("{b:02x}")).collect())
@@ -20,7 +20,7 @@ pub fn roster_digest(entries: &roster::RosterState) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::roster_digest;
+    use super::digest;
     use crate::roster;
 
     fn entry(peer_id: &str) -> roster::PeerEntry {
@@ -51,7 +51,7 @@ mod tests {
         );
 
         assert_eq!(
-            roster_digest(&entries),
+            digest(&entries),
             "len=2 ids=[1122334455667788,aabbccddeeff0011]"
         );
     }
@@ -66,7 +66,7 @@ mod tests {
         b.insert(key([1, 0, 0, 0, 0, 0, 0, 0]), entry("a"));
         b.insert(key([2, 0, 0, 0, 0, 0, 0, 0]), entry("b"));
 
-        assert_eq!(roster_digest(&a), roster_digest(&b));
+        assert_eq!(digest(&a), digest(&b));
     }
 
     #[test]
@@ -79,14 +79,11 @@ mod tests {
         b.insert(key([1, 0, 0, 0, 0, 0, 0, 0]), entry("a"));
         b.insert(key([3, 0, 0, 0, 0, 0, 0, 0]), entry("c"));
 
-        assert_ne!(roster_digest(&a), roster_digest(&b));
+        assert_ne!(digest(&a), digest(&b));
     }
 
     #[test]
     fn empty_roster_has_a_digest() {
-        assert_eq!(
-            roster_digest(&roster::RosterState::default()),
-            "len=0 ids=[]"
-        );
+        assert_eq!(digest(&roster::RosterState::default()), "len=0 ids=[]");
     }
 }

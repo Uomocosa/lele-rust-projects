@@ -1,22 +1,25 @@
 ---
-description: "Run the full local cross-machine implementation on the two self-hosted runners via the test-orchestrator MCP. Default: fast dev build + tests on Linux AND Windows + cross-OS mainnet sync. Optional 'release' argument switches to a release build. Stops and asks before proceeding if the two machines share a LAN."
+description: "Run the full local cross-machine pipeline on the two self-hosted runners via the test-orchestrator MCP. Default target: freenet_libp2p_bevy_example_3. Pass 'example1'/'example_1'/'ex1' to target example_1 instead. Default build profile is fast dev + tests on Linux AND Windows + cross-OS sync probes (roster, movement, engine determinism); a 'release' argument switches to a release build. Stops and asks before proceeding if the two machines share a LAN."
 ---
 
-You are orchestrating the local cross-machine pipeline for the freenet-libp2p-bevy game crate via the `test-orchestrator` MCP. Everything runs on the two self-hosted runners; you drive it with the MCP tools. The argument `$ARGUMENTS` selects the build profile: if it contains `release` (e.g. `/run-local release` or `release version`), use **release**; otherwise use the default **dev** profile.
+You are orchestrating the local cross-machine pipeline for the target game crate via the `test-orchestrator` MCP. Everything runs on the two self-hosted runners; you drive it with the MCP tools. `$ARGUMENTS` selects both the target crate and the build profile.
 
 Work through these phases in order, and never skip a phase.
 
-## Lead-in — Crate logging verbosity
-The bevy app must be launched with `RUST_LOG` at **trace on `roster`, debug on `p2p` and `freenet_bevy`** so the run produces the detailed logs we need to see what's going on:
-```
-RUST_LOG=warn,roster=trace,p2p=debug,freenet_bevy=debug
-```
-Ensure the pipeline/build launches the app with this filter (the app's own default of `warn,roster=info,p2p=info` is overridden by the env var).
+## Phase 0 — Determine target crate and build mode
+Parse `$ARGUMENTS` into two independent choices:
+- **Target crate**: contains `example1`, `example_1`, or `ex1` → **example_1**. Otherwise → **example_3** (default; `example3`/`ex3` are accepted explicitly).
 
-## Phase 0 — Determine build mode
-Set `MODE` from `$ARGUMENTS`:
-- Contains `release` → `MODE=release`
-- otherwise → `MODE=dev`
+| target | project dir | game binary | RUST_LOG |
+|--------|-------------|-------------|----------|
+| example_1 | `freenet_libp2p_bevy_example_1` | `freenet-libp2p-bevy-example-1` | `warn,roster=trace,p2p=debug,freenet_bevy=debug` |
+| example_3 | `freenet_libp2p_bevy_example_3` | `freenet-libp2p-bevy-example-3` | `warn,roster=trace,p2p=debug` |
+
+- **Build mode**: contains `release` → `MODE=release`; otherwise → `MODE=dev`. The tokens combine (`/run-local ex1 release`).
+- The remaining phases refer to the selected dir as `<crate>` and its RUST_LOG from the table.
+
+## Lead-in — Crate logging verbosity
+The bevy app must be launched with the target's `RUST_LOG` from the table above (**trace on `roster`, debug on `p2p`**, plus `freenet_bevy=debug` for example_1) so the run produces the logs the cross-OS checks rely on — example_3's engine/netcode greps are `"received peer input"`, `"sending engine snapshot"`, and `"state hash"`, all emitted on the `p2p` target. The workflow exports this filter itself in the cross-os jobs; when inspecting logs, confirm the filter took effect (the app/test default is quieter: `warn,roster=info,p2p=info`).
 
 ## Phase 1 — Runner pre-flight (STOP on failure)
 1. Call `list_runners`. Print both machines and their status.
@@ -35,28 +38,29 @@ Set `MODE` from `$ARGUMENTS`:
 
 ## Phase 3 — Trigger the pipeline
 Call `run_pipeline` with:
-- `crate` = `freenet_libp2p_bevy_example_1`
+- `crate` = the selected project dir from Phase 0 (e.g. `freenet_libp2p_bevy_example_3`)
 - `run_tests` = `true`
 - `release_builds` = `true`
 - `build_mode` = `MODE`
 
-This runs: the full test gate on both Linux and Windows, the shared contract WASM build on Linux, the `MODE` binary build on both, and the cross-OS mainnet sync probe on both machines.
+This runs: the full test gate on both Linux and Windows, the shared contract WASM build on Linux, the `MODE` binary build on both, the per-machine engine determinism gate (POLISH §3 hash record), and the cross-OS mainnet sync probes on both machines. Note: crates without a `firewall_probe/` member skip the firewall probe automatically.
 
 ## Phase 4 — Poll to completion
-Poll with `run_status` (and `list_runs` for an overview) until the run is finished. Do not report prematurely. Summarize each job's result (`resolve`, `test (linux)`, `test (windows)`, `build-contract`, `build (linux)`, `build (windows)`, `cross-os (linux)`, `cross-os (windows)`, `cross-os-verify`).
+Poll with `run_status` (and `list_runs` for an overview) until the run is finished. Do not report prematurely. Summarize each job's result (`resolve`, `firewall-probe` (if present), `test (linux)`, `test (windows)`, `build-contract`, `build (linux)`, `build (windows)`, `cross-os-build (linux/windows)`, `cross-os-peer-discovery (linux/windows)`, `cross-os-movement-sync (linux/windows)`, `cross-os-verify`).
 
-Note: with a single Linux runner the whole graph serialises — the Windows leg cannot start until Linux jobs free the runner, and the two `cross-os` legs need the Linux runner idle to run concurrently. Expect the Windows work to be queued behind Linux jobs.
+Note: with a single Linux runner the whole graph serialises — the Windows leg cannot start until Linux jobs free the runner, and the concurrent cross-os legs need the Linux runner idle. Expect the Windows work to be queued behind Linux jobs.
 
 ## Phase 5 — Collect the bevy logs (the investigation artifact)
 1. Determine the run id of the finished pipeline.
-2. `download_artifacts` (pattern `cross-os-log-*`, dest `freenet_libp2p_bevy_example_1/logs/<run_id>/`) so you fetch both `cross-os-log-linux` and `cross-os-log-windows`.
-3. Confirm exactly one `.log` per machine landed in that directory. These JSON-lines files are what the bevy app (embedded via the cross-OS test) reported — each row is `{"machine","own","observed","t"}`.
+2. `download_artifacts` (pattern `cross-os-*`, dest `<crate>/logs/<run_id>/`) so you fetch, per machine: `cross-os-log-linux` / `cross-os-log-windows` (roster JSON-lines), `cross-os-movement-log-*` (positions + remote tick), and — for example_3 — `cross-os-determinism-log-*` (the POLISH §3 final state hashes).
+3. Confirm exactly one `.log` per machine landed **per category** that exists. These JSON-lines files are what the embedded cross-OS tests reported — each row is `{"machine","own","observed","t"}` (roster), `{"machine","own","t",...,"remote_x",...}` (movement), or `{"machine","final_state_hash","t"}` (determinism).
 
 ## Phase 6 — Final report
 Print a concise report to the user:
-- Job matrix with pass/fail (Phase 4 results), including the `cross-os-verify` PASS/FAIL verdict.
-- The exact paths of the two `.log` files (single/double log for investigation).
-- If `cross-os-verify` failed, quote from each log what each machine observed so the user can investigate the bug.
+- Target crate + MODE, and the job matrix with pass/fail (Phase 4 results).
+- The `cross-os-verify` verdicts: roster PASS/FAIL, movement PASS/FAIL, and — for example_3 — the cross-OS determinism verdict (quote both machines' `final_state_hash`; they must be equal).
+- The exact paths of the collected `.log` files under `<crate>/logs/<run_id>/`.
+- If any verify step failed, quote from each log what each machine observed so the user can investigate the bug.
 - Any runner issue you hit, and what the user must do manually (Windows: run `C:\actions-runner\run.cmd`; Linux: you start it yourself).
 
 ## Hard rules

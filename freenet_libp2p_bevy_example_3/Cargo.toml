@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "testing_3", "integration_tests_3", "e2e_tests_3", "mainnet_automation_3"]
+members = [".", "testing_3", "integration_tests_3", "cross_os_tests_3", "mainnet_automation_3"]
 exclude = ["contract"]
 resolver = "3"
 

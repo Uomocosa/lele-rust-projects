@@ -3093,6 +3093,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "790eea4361631c5e7d22598ecd5723ff611904e3344ce8720784c93e3d83d40b"
 
 [[package]]
+name = "cross_os_tests_3"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_freenet_3",
+ "hex",
+ "serde",
+ "serde_json",
+ "testing_3",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3683,17 +3698,6 @@ name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
-
-[[package]]
-name = "e2e_tests_3"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "testing_3",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "ed25519"

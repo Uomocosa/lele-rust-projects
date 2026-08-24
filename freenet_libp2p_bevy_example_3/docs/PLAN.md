@@ -39,7 +39,7 @@ shared engine ([[DIFFERENTIATION]]).
 | Liveness `B` | peer offline > **5 s (300 ticks)** is excluded; rejoin from log | |
 | Render feel | **client-side prediction + rollback** | |
 | Determinism verify | **local** now; cross-OS deferred (escalation recorded) | |
-| Test harness | mirror example_2 → `testing_3`, `integration_tests_3`, `e2e_tests_3`, `mainnet_automation_3` | |
+| Test harness | mirror example_2 → `testing_3`, `integration_tests_3`, `cross_os_tests_3`, `mainnet_automation_3` | |
 | Names | crate `bevy_freenet_3`, lib `freenet_libp2p_bevy_example_3_lib`, bin `freenet-libp2p-bevy-example-3`, own `contract` | |
 | Defaults | buffer `D = 4` ticks (~67 ms); `B = 300` ticks (5 s); avian deterministic schedule | |
 
@@ -62,7 +62,7 @@ shared engine ([[DIFFERENTIATION]]).
 
 ```
 freenet_libp2p_bevy_example_3/
-  Cargo.toml                 # workspace: ., testing_3, integration_tests_3, e2e_tests_3, mainnet_automation_3 ; exclude contract
+  Cargo.toml                 # workspace: ., testing_3, integration_tests_3, cross_os_tests_3, mainnet_automation_3 ; exclude contract
   build.rs                   # build+embed contract/membership_contract_3.wasm
   .cargo/config.toml         # CARGO_TARGET_DIR + mold (mirror example_2)
   Makefile.toml
@@ -83,7 +83,7 @@ freenet_libp2p_bevy_example_3/
     netcode/                 # fixed command delay D, liveness B, commit-then-reveal, Option A sort
     render/                  # bevy display: interpolate snapshots, prediction+rollback
   contract/src/              # membership + signed input log (new code => new key/room)
-  testing_3/ integration_tests_3/ e2e_tests_3/ mainnet_automation_3/
+  testing_3/ integration_tests_3/ cross_os_tests_3/ mainnet_automation_3/
 ```
 
 Follow lele atomic-file conventions (one pub item per file, `test_usage`, module imports,
@@ -122,7 +122,7 @@ thiserror, no inline `crate::` outside `use`), exactly as example_1/2.
   - `testing_3` `TestNode` (freenet gateway/peer) + `ProductionGameApp` (full startup path);
     `unique_params` → new `Params`; deploy/sign entries.
   - `integration_tests_3`: two-node roster converge; `local_two_node_production_sync_3`.
-  - `e2e_tests_3`: mainnet `#[ignore]`.
+  - `cross_os_tests_3`: cross-OS probes (peer discovery, movement sync, engine determinism gate) + mainnet coverage via the same production-startup path; all `#[ignore]`d, driven per-machine by CI. (The former `e2e_tests_3` crate was removed — its multi-machine mainnet value lives here and in `mainnet_automation_3`.)
   - `mainnet_automation_3`: drive N real instances + Telegram video.
 - **Add**, per the plan:
   - **Determinism gate** (local): run a fixed input trace twice (in-process + across two temp

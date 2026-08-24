@@ -1,5 +1,5 @@
 ---
-description: "Run the proper local-mainnet test for the target project by executing its automation crate (not by hand). Default target: freenet_libp2p_bevy_example_2. Pass 'example1' / 'example_1' / 'ex1' to target example_1 instead. The crate builds the game, launches N real independent mainnet instances (no --freenet-local/gateway, shared throwaway --contract-params), waits for mutual convergence, tiles + drives the windows, records a screen video, and sends the MP4 + a report to Telegram — all programmatically. Remaining args (instance count, 'release', '--no-video', '--no-telegram', '--timeout') are passed through to the binary."
+description: "Run the proper local-mainnet test for the target project by executing its automation crate (not by hand). Default target: freenet_libp2p_bevy_example_3. Pass 'example1'/'example_1'/'ex1' or 'example2'/'example_2'/'ex2' to target example_1 or example_2 instead. The crate builds the game, launches N real independent mainnet instances (no --freenet-local/gateway, shared throwaway --contract-params), waits for mutual convergence, tiles + drives the windows, records a screen video, and sends the MP4 + a report to Telegram — all programmatically. Remaining args (instance count, 'release', '--no-video', '--no-telegram', '--timeout') are passed through to the binary."
 ---
 
 You are running the **programmatic local-mainnet test** for the target project — you do NOT
@@ -13,17 +13,19 @@ to pick the target, invoke that crate with the right args, watch it, and report 
 ## Phase 0 — Pick the target project and its automation crate
 Parse `$ARGUMENTS`:
 - Contains `example1`, `example_1`, or `ex1` → target **example_1** (crate `mainnet-automation`).
-- Otherwise → target **example_2** (crate `mainnet-automation-2`). This is the default.
-  (Also accept `example2`, `example_2`, `ex2` explicitly for example_2.)
+- Contains `example2`, `example_2`, or `ex2` → target **example_2** (crate `mainnet-automation-2`).
+- Otherwise → target **example_3** (crate `mainnet-automation-3`). This is the default.
+  (`example3`, `example_3`, and `ex3` are accepted explicitly for example_3.)
 - The remaining tokens are passed straight through to the automation binary: a leading integer
   is the instance count, `release` selects a release build, and `--no-video`, `--no-telegram`,
   `--timeout N` are flags. Build the arg list after removing the target-selection token.
 
 Resolve per target:
-| target | project dir | crate |
-|--------|-------------|-------|
-| example_1 | `freenet_libp2p_bevy_example_1` | `mainnet-automation` |
-| example_2 | `freenet_libp2p_bevy_example_2` | `mainnet-automation-2` |
+| target | project dir | crate | game binary |
+|--------|-------------|-------|-------------|
+| example_1 | `freenet_libp2p_bevy_example_1` | `mainnet-automation` | `freenet-libp2p-bevy-example-1` |
+| example_2 | `freenet_libp2p_bevy_example_2` | `mainnet-automation-2` | `freenet-libp2p-bevy-example-2` |
+| example_3 | `freenet_libp2p_bevy_example_3` | `mainnet-automation-3` | `freenet-libp2p-bevy-example-3` |
 
 ## Phase 1 — Run the automation crate
 ```
@@ -47,12 +49,13 @@ Print a concise report to the user:
   moved/pass-fail line, error signatures (if any).
 - Whether Telegram delivery happened (look for the `send_video` / `send_text` step lines).
 - Cleanup confirmation: after the run, verify no leftover game processes remain with
-  `pgrep -af freenet-libp2p-bevy-example-2` (or `-1` for example_1) — the automation should have
-  killed them; if any remain, `pkill -f` them and say so.
+  `pgrep -af <game binary>` using the game binary column of the Phase 0 table
+  (`freenet-libp2p-bevy-example-{1,2,3}`) — the automation should have killed them;
+  if any remain, `pkill -f` them and say so.
 
 ## Hard rules
 - Never spawn the game instances or drive windows by hand — that is what the cleanup crate does.
 - Never pass `--freenet-local` / `--freenet-gateway` to the automation (the test is mainnet).
-- Default target is example_2; switch to example_1 only when `$ARGUMENTS` says so.
+- Default target is example_3; switch only when `$ARGUMENTS` names example_1 or example_2.
 - Always `CARGO_TARGET_DIR=/tmp/frt-build`.
 - Never end with game processes still alive (Phase 2 cleanup confirmation is mandatory, even on failure).
