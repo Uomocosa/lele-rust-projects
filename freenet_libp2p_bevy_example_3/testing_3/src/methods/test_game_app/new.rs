@@ -20,7 +20,9 @@ pub fn new(
     keypair: Keypair,
     peer_id: &str,
 ) -> structs::TestGameApp {
-    let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (roster_tx, roster_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (_p2p_tx, p2p_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (cmd_tx, _cmd_rx) = tokio::sync::mpsc::unbounded_channel();
     let own_id = p2p::derive_player_id(&keypair);
     let seq = now_unix_secs();
     let own_entry = roster::PeerEntry {
@@ -35,7 +37,8 @@ pub fn new(
     app.add_plugins(bevy::transform::TransformPlugin);
     app.insert_resource(ButtonInput::<KeyCode>::default());
     app.add_plugins(boxes::Plugin(boxes::Config::new(own_id)));
-    app.add_plugins(roster::Plugin(roster::Config::new(event_rx)));
+    app.add_plugins(roster::Plugin(roster::Config::new(roster_rx)));
+    app.add_plugins(p2p::Plugin(p2p::Config::new(cmd_tx, p2p_rx)));
     app.finish();
 
     let wasm = wasm.to_vec();
@@ -52,7 +55,7 @@ pub fn new(
                 own_entry,
                 not_found_grace: std::time::Duration::ZERO,
             },
-            event_tx,
+            roster_tx,
         )
         .await;
     });

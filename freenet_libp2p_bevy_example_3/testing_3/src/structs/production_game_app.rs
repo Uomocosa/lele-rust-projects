@@ -33,6 +33,8 @@ impl ProductionGameApp {
     pub fn own_player_id(&self) -> freenet_libp2p_bevy_example_3_lib::boxes::PlayerId { methods::production_game_app::own_player_id(self) }
     pub fn box_spawns(&mut self) -> Vec<(freenet_libp2p_bevy_example_3_lib::boxes::PlayerId, bevy::math::Vec2, bool)> { methods::production_game_app::box_spawns(self) }
     pub fn remote_snapshots(&mut self) -> Vec<(freenet_libp2p_bevy_example_3_lib::boxes::PlayerId, bevy::math::Vec2, u64)> { methods::production_game_app::remote_snapshots(self) }
+    pub fn state_hash(&self) -> u64 { methods::production_game_app::state_hash(self) }
+    pub fn own_box_position(&self) -> Option<bevy::math::Vec2> { methods::production_game_app::own_box_position(self) }
     pub fn freenet_gateway(&self) -> String { methods::production_game_app::freenet_gateway(self) }
     pub async fn wait_for_box_count(&mut self, expected: usize, timeout: std::time::Duration) -> Result<(), String> {
         methods::production_game_app::wait_for_box_count(self, expected, timeout).await
@@ -49,10 +51,17 @@ impl ProductionGameApp {
     pub fn simulate_move(&mut self, direction: bevy::input::keyboard::KeyCode, frames: u32) {
         methods::production_game_app::simulate_move(self, direction, frames)
     }
+    pub fn press_key(&mut self, key: bevy::input::keyboard::KeyCode) {
+        methods::production_game_app::press_key(self, key)
+    }
+    pub fn release_key(&mut self, key: bevy::input::keyboard::KeyCode) {
+        methods::production_game_app::release_key(self, key)
+    }
     pub fn simulate_move_and_jump(&mut self, direction: bevy::input::keyboard::KeyCode, frames: u32) {
         methods::production_game_app::simulate_move_and_jump(self, direction, frames)
     }
     pub fn tick(&mut self) { self.app.update(); }
+    pub fn sim_clock(&mut self) -> u64 { methods::production_game_app::sim_clock(self) }
 }
 
 impl Drop for ProductionGameApp {

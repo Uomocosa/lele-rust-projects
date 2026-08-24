@@ -4,6 +4,7 @@ use super::lockstep_advance_to;
 use super::lockstep_new;
 use super::lockstep_record_commit;
 use super::lockstep_record_reveal;
+use super::lockstep_sync_participants;
 use crate::engine;
 use crate::netcode;
 
@@ -31,5 +32,6 @@ impl Lockstep {
     pub fn record_commit(&mut self, tick: u64, peer: engine::PlayerId, hash: u64) -> Result<(), netcode::Error> { lockstep_record_commit::record_commit(self, tick, peer, hash) }
     pub fn record_reveal(&mut self, tick: u64, peer: engine::PlayerId, action: engine::Action) -> Result<(), netcode::Error> { lockstep_record_reveal::record_reveal(self, tick, peer, action) }
     pub fn advance_to(&mut self, now_tick: u64) -> Vec<netcode::TickPlan> { lockstep_advance_to::advance_to(self, now_tick) }
+    pub fn sync_participants(&mut self, ids: &[engine::PlayerId]) { lockstep_sync_participants::sync_participants(self, ids) }
 }
 // no test_usage necessary — thin delegates, covered by lockstep tests

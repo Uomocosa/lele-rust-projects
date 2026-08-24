@@ -51,15 +51,6 @@ pub use p2p_events::P2pEvents;
 pub mod dialed_peers;
 pub use dialed_peers::DialedPeers;
 
-pub mod peer_status;
-pub use peer_status::PeerStatus;
-
-pub mod snapshot_tick;
-pub use snapshot_tick::SnapshotTick;
-
-pub mod remote_target;
-pub use remote_target::RemoteTarget;
-
 pub mod config;
 pub use config::Config;
 

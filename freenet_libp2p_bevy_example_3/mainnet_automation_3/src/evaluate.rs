@@ -62,9 +62,9 @@ mod tests {
             &log,
             format!(
                 "embedded node ready\n\
-                 sending snapshot player_id=3 x=0.0\n\
-                 sending snapshot player_id=3 x=120.0\n\
-                 applied remote snapshot player_id={}\n",
+                 sending engine snapshot player_id=3 x=0.0\n\
+                 sending engine snapshot player_id=3 x=120.0\n\
+                 received peer input player_id={}\n",
                 "ab".repeat(32)
             ),
         )

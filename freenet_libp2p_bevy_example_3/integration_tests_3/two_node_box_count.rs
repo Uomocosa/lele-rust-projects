@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use freenet_libp2p_bevy_example_3_lib::boxes;
+use freenet_libp2p_bevy_example_3_lib::engine;
 use libp2p::identity::Keypair;
 
 // needed helper:
@@ -20,15 +20,17 @@ fn assert_boxes(app: &mut testing_3::TestGameApp) -> Result<(), String> {
     assert_eq!(remotes.len(), 1, "exactly one remote box");
 
     let remote = remotes[0];
+    let resting = engine::GROUND_TOP + engine::BOX_SIZE / 2.0;
     assert!(
-        (remote.1.y - boxes::SPAWN_Y).abs() < f32::EPSILON,
-        "remote kinematic box must stay at spawn height"
+        (remote.1.y - resting).abs() < 10.0,
+        "remote box must rest on the ground (was {})",
+        remote.1.y
     );
 
     let mut xs: Vec<f32> = spawns.iter().map(|(_, pos, _)| pos.x).collect();
     xs.sort_by(f32::total_cmp);
     assert!(xs[0] != xs[1], "box x positions must be distinct");
-    let bound = boxes::GROUND_WIDTH / 2.0 - boxes::BOX_SIZE / 2.0;
+    let bound = engine::GROUND_WIDTH / 2.0 - engine::BOX_SIZE / 2.0;
     assert!(
         xs[0] >= -bound && xs[1] <= bound,
         "box x positions must stay on the ground"

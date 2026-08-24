@@ -24,11 +24,14 @@ pub use pick_spawn_x::pick_spawn_x;
 pub mod spawn_x_for_player;
 pub use spawn_x_for_player::spawn_x_for_player;
 
-pub mod move_box;
-pub use move_box::move_box;
+pub mod latest_snapshot;
+pub use latest_snapshot::LatestSnapshot;
 
-pub mod jump_box;
-pub use jump_box::jump_box;
+pub mod sim_state;
+pub use sim_state::SimState;
+
+pub mod netcode_lockstep;
+pub use netcode_lockstep::NetcodeLockstep;
 
 pub mod plugin;
 pub use plugin::Plugin;

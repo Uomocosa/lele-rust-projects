@@ -14,6 +14,7 @@ mod lockstep_advance_to;
 mod lockstep_new;
 mod lockstep_record_commit;
 mod lockstep_record_reveal;
+mod lockstep_sync_participants;
 
 pub mod simulate_lockstep;
 pub use simulate_lockstep::simulate_lockstep;

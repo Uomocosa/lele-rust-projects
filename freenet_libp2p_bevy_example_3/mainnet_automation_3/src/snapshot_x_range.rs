@@ -10,7 +10,7 @@ pub fn snapshot_x_range(log: &Path) -> Result<(f64, f64), Error> {
     let raw = fs::read_to_string(log)
         .map_err(|e| Error::Assertion(format!("reading {}: {e}", log.display())))?;
     let text = strip_ansi::strip_ansi(&raw);
-    let re = Regex::new(r#"sending snapshot.*\bx=([-0-9.eE]+)"#)
+    let re = Regex::new(r#"sending engine snapshot.*\bx=([-0-9.eE]+)"#)
         .map_err(|e| Error::Assertion(format!("regex build: {e:?}")))?;
     let mut xs: Vec<f64> = Vec::new();
     for cap in re.captures_iter(&text) {
@@ -38,7 +38,7 @@ mod tests {
         let p = dir.join("ma_snap.log");
         fs::write(
             &p,
-            "sending snapshot player_id=1 x=0.0\nsending snapshot player_id=1 x=42.5\n",
+            "sending engine snapshot player_id=1 x=0.0\nsending engine snapshot player_id=1 x=42.5\n",
         )
         .unwrap();
         let (min, max) = snapshot_x_range(&p).unwrap();

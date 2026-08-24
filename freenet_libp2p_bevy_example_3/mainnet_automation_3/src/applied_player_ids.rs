@@ -11,7 +11,7 @@ pub fn applied_player_ids(log: &Path) -> Result<HashSet<String>, Error> {
     let raw = fs::read_to_string(log)
         .map_err(|e| Error::Assertion(format!("reading {}: {e}", log.display())))?;
     let text = strip_ansi::strip_ansi(&raw);
-    let re = Regex::new(r#"applied remote snapshot.*\bplayer_id=([0-9a-fA-F]{64})"#)
+    let re = Regex::new(r#"received peer input.*\bplayer_id=([0-9a-fA-F]{64})"#)
         .map_err(|e| Error::Assertion(format!("regex build: {e:?}")))?;
     Ok(re
         .captures_iter(&text)
@@ -34,7 +34,7 @@ mod tests {
         fs::write(
             &p,
             format!(
-                "\u{1b}[2mDEBUG\u{1b}[0m applied remote snapshot \u{1b}[3mplayer_id\u{1b}[0m\u{1b}[2m=\u{1b}[0m{id}\n"
+                "\u{1b}[2mDEBUG\u{1b}[0m received peer input \u{1b}[3mplayer_id\u{1b}[0m\u{1b}[2m=\u{1b}[0m{id}\n"
             ),
         )
         .unwrap();

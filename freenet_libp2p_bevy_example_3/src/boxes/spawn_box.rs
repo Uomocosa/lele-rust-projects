@@ -1,4 +1,3 @@
-use avian2d::prelude::{Collider, LinearVelocity, LockedAxes, RigidBody};
 use bevy::prelude::*;
 
 use crate::boxes;
@@ -12,19 +11,10 @@ pub fn spawn_box(
     let key = *player;
     let hue = (u32::from_le_bytes([key[0], key[1], key[2], key[3]]) % 360) as f32;
     let color = Color::hsl(hue, 0.7, 0.5);
-    let body = if is_local {
-        RigidBody::Dynamic
-    } else {
-        RigidBody::Kinematic
-    };
 
     let mut entity = commands.spawn((
         Sprite::from_color(color, Vec2::splat(boxes::BOX_SIZE)),
         Transform::from_translation(position.extend(0.0)),
-        body,
-        Collider::rectangle(boxes::BOX_SIZE, boxes::BOX_SIZE),
-        LockedAxes::ROTATION_LOCKED,
-        LinearVelocity::ZERO,
         player,
     ));
 
@@ -37,7 +27,6 @@ pub fn spawn_box(
 
 #[cfg(test)]
 mod tests {
-    use avian2d::prelude::RigidBody;
     use bevy::ecs::world::CommandQueue;
     use bevy::prelude::*;
 
@@ -55,11 +44,11 @@ mod tests {
 
         assert!(world.get::<boxes::LocalPlayer>(entity).is_some());
         assert!(world.get::<boxes::Player>(entity).is_some());
-        assert_eq!(world.get::<RigidBody>(entity), Some(&RigidBody::Dynamic));
+        assert!(world.get::<Sprite>(entity).is_some());
     }
 
     #[test]
-    fn remote_box_is_kinematic() {
+    fn remote_box_is_not_local() {
         let mut world = World::new();
         let mut queue = CommandQueue::default();
         let mut commands = Commands::new(&mut queue, &world);
@@ -68,6 +57,6 @@ mod tests {
         queue.apply(&mut world);
 
         assert!(world.get::<boxes::LocalPlayer>(entity).is_none());
-        assert_eq!(world.get::<RigidBody>(entity), Some(&RigidBody::Kinematic));
+        assert!(world.get::<boxes::Player>(entity).is_some());
     }
 }
