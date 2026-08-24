@@ -1,26 +1,35 @@
-# Plan: Fix Intermittent Convergence Failure
+# Plan: Diagnose & Fix Intermittent Convergence Failure
 
 ## Status
-Refined after review. Doomed assumptions removed. A `--bootstrap-roster` / local-special
-discovery path is **explicitly forbidden** — the local run must exercise the identical
-discovery code path as a cross-OS run. Freenet is the discovery layer and the identity gate.
+
+**Diagnostic-first.** The plan has been rewritten around a single question, decided *before* any
+redesign: **"Is the failure Freenet's architecture, or our code/harness?"** We will not add any
+delivery layer (RosterSync, gossipsub, etc.) or make any behavioral change until the evidence
+points at a specific mechanism. Adding a protocol to compensate for a bug we haven't proven exists
+would be both wasteful and (via a faster delivery path) effectively "cheating past" the real issue.
+
+Two hard rules for everything that follows:
+1. **No local-special handling.** A `--bootstrap-roster` / automation-injected discovery path is
+   explicitly forbidden — the local run must exercise the identical discovery code path as a
+   cross-OS run.
+2. **No new delivery layer until proven necessary.** Do not add libp2p roster delivery (Request/
+   gossip) as the assumed fix. First prove where the fault is (Phase 1).
 
 ## Constraints (non-negotiable)
 
-1. **No special-casing the local run.** Anything that only works because the automation
-   spawns a known set of co-located instances is cheating. A fix must work identically when
-   instances run on different machines/networks.
-2. **Discovery is fully Freenet-driven.** Peers are discovered by subscribing to the same
-   roster contract (`ContractKey` = wasm + params). A peer running a different wasm gets a
-   different key and is excluded — this is the contract-identity enforcement lever. Never
-   feed libp2p addresses in from outside Freenet.
-3. **libp2p is the peer-communication layer** (game netcode + roster anti-entropy). It may
-   relay roster entries that peers *already published* to the Freenet contract, to cover a
-   missed `UpdateNotification`. It must not be the origin of any address.
-4. **Live-join semantics** are kept. Peers may join mid-game; the game must not reset to
-   tick 0 on a late join.
-5. **Success criterion = full state-hash convergence** of all engines, not just mutual
-   peer visibility.
+1. **No special-casing the local run.** Anything that only works because the automation spawns a
+   known set of co-located instances is cheating. A fix must work identically when instances run on
+   different machines/networks.
+2. **Discovery is fully Freenet-driven.** Peers are discovered by subscribing to the same roster
+   contract (`ContractKey` = wasm + params). A peer running a different wasm gets a different key
+   and is excluded — this is the contract-identity enforcement lever. Never feed libp2p addresses
+   in from outside Freenet.
+3. **libp2p is the peer-communication layer** (game netcode). It is a candidate *delivery* channel
+   only to be evaluated after Phase 1 evidence — never the origin of any address.
+4. **Live-join semantics** are kept. Peers may join mid-game; the game must not reset to tick 0
+   on a late join.
+5. **Success criterion = full state-hash convergence** of all engines, not just mutual peer
+   visibility.
 
 ## Current Architecture
 
@@ -48,119 +57,151 @@ Two layers:
 - **libp2p**: direct game netcode streams (commit-reveal lockstep protocol).
 
 ### Node mode (important — this is already uniform)
-`start_embedded_node.rs` runs the MAINNET case as `is_gateway: false`,
-`skip_load_from_network: false`, with no public address — each instance joins the real
-public mainnet as a **client node via the gateway index**. The embedded nodes do **not**
-form P2P with each other over loopback. Local and cross-OS runs take the identical code
-path. Therefore local runs ARE a faithful test of discovery; do nothing that treats them
-differently.
+`start_embedded_node.rs` runs the MAINNET case as `is_gateway: false`, `skip_load_from_network:
+false`, with no public address — each instance joins the real public mainnet as a **client node via
+the gateway index**. The embedded nodes do **not** form P2P with each other over loopback. Local and
+cross-OS runs take the identical code path. Therefore local runs ARE a faithful test of discovery;
+do nothing that treats them differently.
 
-## Root Cause Analysis
+## What "eventual consistency" means in wall-clock (grounded in freenet 0.2.128)
 
-### Failure: Instance-2 stuck at 1/2 peers
+Freenet converges through three mechanisms with very different speeds. This is why a 10-minute
+non-convergence is NOT consistent with "just slow anti-entropy" — the 5-minute heartbeat would have
+fired.
 
-Three cascading problems:
+| Mechanism | Source | Timescale |
+|---|---|---|
+| Fast push (broadcast) | node applies update → `broadcast_state_change` to connected interested neighbors (executor_impl.rs:644, 2423). **Best-effort by design** — "a missed broadcast heals via the next UPDATE" (executor_impl.rs:2025-2044). | **seconds** — *if* the mesh is connected |
+| Anti-entropy reconciliation | `INTEREST_HEARTBEAT_INTERVAL = 300s` (ring/interest.rs:72) — the ~5-min InterestSync heartbeat. State fetching also piggybacks on this cadence. | **~5 minutes** |
+| Transport/ring formation | embedded nodes join mainnet via gateways/NAT; flaky (`connect_and_run.rs:6-12`, `RING_TRANSPORT_DESYNC`). | **minutes, or never** |
 
-#### 1. Embedded Node Startup Failure (90s delay)
-Instance-2's freenet node hit `RING_TRANSPORT_DESYNC: transport_connections=2,
-ring_connections=0`. Transport connections existed but were never promoted to ring topology.
-After the 90s `wait_ready` timeout the node aborted and retried (`connect_and_run.rs`).
-Mainnet gateway bootstrap is flaky by nature (documented in `connect_and_run.rs:6-12`).
-The successful run had zero embedded node failures.
+**Conclusion:** if 3 peers never converge in 10 min, the likely fault is the third tier (nodes
+effectively isolated from each other on mainnet) **or a code/harness bug** (contract-identity
+mismatch, dead-ended subscription) — NOT the anti-entropy philosophy. Both must be ruled out with
+evidence before we touch the architecture.
 
-#### 2. Incomplete Roster After Late Join (CORE BUG)
-After retry, instance-2's roster only had instance-0, never instance-1. The roster flow has
-a critical gap documented in `connect_client_loop.rs:227-235`:
+## Root Cause Hypotheses (UNCONFIRMED — to be disproven by Phase 1)
 
-> "Subscribers don't pull on demand — they wait for explicit UPDATE." ... Healing a real
-> split depends on an inbound broadcast or the ~5-minute InterestSync anti-entropy heartbeat,
-> neither of which this loop can force.
+Observed failure: instance-2 stuck at 1/2 peers (roster had instance-0, never instance-1), leading
+to permanent state divergence. Candidate causes, ranked by which we must rule out first:
 
-| Mechanism | What It Does | Why It Fails |
-|-----------|-------------|-------------|
-| Heartbeat | Republishes LOCAL entry every 60s | Only publishes own entry, not full roster |
-| Get refresh | Re-reads contract state | Only reads local node state (freenet-core#4064), not network state |
-| UpdateNotification | Push from Freenet | If missed during the 90s delay, no on-demand recovery exists |
+| # | Hypothesis | Mechanism | Domain |
+|---|------------|-----------|--------|
+| H1 | **Contract identity mismatch** | Two instances derive different `ContractKey` (different wasm bytes or params) → different logical contracts → can never see each other regardless of Freenet health. | Our code/config |
+| H2 | **Subscription dead-ended** | `Get{subscribe:true}` never joined the interest mesh (freenet-core#4414). Node thinks subscribed; neighbors never relay updates; no `UpdateNotification` ever arrives. | Our code (usage) |
+| H3 | **Isolated transports on mainnet** | Embedded nodes failed to form ring connections to each other's region (`RING_TRANSPORT_DESYNC`, NAT/gateway refusal). They are not talking at all. | Environment/mainnet |
+| H4 | **Genuinely >10 min** | Even connected, delivery missed the window. | Rare; needs measurement |
 
-The `absorb` function correctly merges incoming views, but can only merge what it *receives*.
-If the initial `UpdateNotification` containing instance-1's entry was missed, the roster
-stays incomplete — and Freenet has no on-demand pull to fix it.
-
-#### 3. Permanent State Desync (live-join + live-join divergence)
-With incomplete roster:
-- Instance-2 broadcasts commits/reveals to instance-0 only.
-- Never receives reveals from instance-1 (not in roster).
-- Late joiner starts at tick 0 with default positions while the engine is at tick N; there
-  is no state catch-up mechanism.
+H1 and H2 are **our fault** and would not be fixed by any new delivery layer — they must be ruled
+out first.
 
 ## Plan
 
-Uniform mechanisms only. No local/cross-OS branching in behavior — only knobs that apply to
-both deployments.
+Uniform, evidence-gated, no behavior change until Phase 1 says otherwise.
 
-### Phase 1: Diagnostic Logging
-**Goal:** See exactly what's happening at each stage. No behavior change.
+### Phase 1: Diagnostic + Control Experiment — Prove Where the Fault Is
 
-**Files to modify:**
-- `src/roster/connect_client_loop.rs` — Log every roster entry change (add/remove/update) with full entry details.
-- `src/p2p/run.rs` — Log every dial attempt, connection success/failure/disconnect with peer IDs.
-- `src/boxes/bevy_systems/netcode_tick.rs` — Log lockstep state (committed/revealed/missing peers) per tick.
-- `src/roster/bevy_systems/poll_freenet_events.rs` — Log roster merge details.
-- `src/netcode/lockstep_advance_to.rs` — Log when default actions are used for missing reveals.
+**Goal:** Determine, with measurements, whether the non-convergence is Freenet's delivery /
+environment or a code/harness bug. **No behavior change to the roster/protocol logic** — add
+logging and a control topology only.
 
-**New log targets:**
-- `roster::change` — entry-level roster mutations.
-- `p2p::connect` — connection lifecycle.
-- `lockstep::state` — per-tick protocol state.
+**Step 1 — Prove the contract is identical (rules out H1).**
+- Log the full `ContractKey` + params digest per instance at setup. `setup_contract.rs` already has
+  `contract_key` in scope — emit it (target `roster::change`, plus params digest).
+- Assert/log that all N instances share the same key. If two differ → that is the whole bug; fix
+  it (trivially) and stop.
 
-**Risk:** None.
+**Step 2 — Measure real cross-node delivery latency (rules out H4 / confirms H3).**
+- Timestamp `T0` when each instance publishes its own entry (heartbeat/`Update` in
+  `connect_client_loop.rs`).
+- Timestamp when each *other* instance's node **applies** that entry: log on `UpdateNotification`
+  receipt (`connect_client_loop.rs:118`) with the state digest; also log on `GetResponse` the
+  digest actually seen.
+- Record the wall-clock delta per (publisher → observer) pair.
+- Interpretation:
+  - deltas in **seconds** → Freenet delivers fine when connected → bug is elsewhere (H1/H2).
+  - deltas = **never / minutes** → the observers never saw the publisher's replica (H3/transport)
+    or were never subscribed (H2).
+
+**Step 3 — Watch node/ring health over time (rules out H2/H3).**
+- Reuse the `NodeDiagnostics` API already used in `connect_client_loop.rs::log_node_diagnostics`
+  and poll it periodically for the whole run, logging: `active_connections`, ring connection
+  count, and interest/subscription state for the roster contract.
+- This tells us whether the nodes are genuinely connected to the mesh and whether the subscription
+  actually armed — i.e., *why* a broadcast did or did not land.
+- Also log `RING_TRANSPORT_DESYNC`-class events with the ring/transport counts at the moment they
+  occur.
+
+**Step 4 — Connected control run (decisive experiment).**
+- Run the **same binary** on a **guaranteed-connected** topology — all clients dial a single
+  in-process gateway via the `--freenet-gateway` hermetic path in `start_embedded_node.rs`
+  (or an equivalent where transport is known-good), using distinct identity dirs and a distinct
+  `--contract-params` namespace so it is isolated from production.
+- If it converges in **seconds** → contract + app logic proven correct; the culprit is mainnet
+  transport isolation (H3). *Only then* does a potential delivery layer have a real job.
+- If it **also fails** hermetic → it is an app/subscription/identity bug (H1/H2) → fix the code; no
+  delivery layer is needed.
+
+**Files to modify (logging only, unless a bug is found):**
+- `src/roster/connect_client_loop.rs` — log every roster entry change; log `T0` publish + receive
+  timestamps; log contract key/params digest.
+- `src/roster/setup_contract.rs` — log full `ContractKey`.
+- `src/roster/bevy_systems/poll_freenet_events.rs` — log merge details.
+- `src/roster/connect_and_run.rs` / `start_embedded_node.rs` — periodic `NodeDiagnostics` sampling,
+  ring/transport counts.
+- `src/p2p/run.rs` — log every dial attempt, connection success/failure/disconnect.
+- `src/boxes/bevy_systems/netcode_tick.rs`, `src/netcode/lockstep_advance_to.rs` — log lockstep
+  state / missing reveals.
+
+**New log targets:** `roster::change`, `p2p::connect`, `freenet::ring`, `freenet::interest`,
+`lockstep::state`.
+
+**Deliverable:** a written verdict (H1/H2/H3/H4) backed by the steps above, which determines which
+of the following phases (if any) apply. **Do not proceed past Phase 1 without this verdict.**
+
+**Risk:** None (logging-only) except where a bug is found, which is the point.
 
 ---
 
-### Phase 2: RosterSync Anti-Entropy over libp2p
-**Goal:** Make roster convergence deterministic in seconds, once at least one peer-to-peer
-edge exists. Freenet remains the origin of every entry; libp2p merely delivers entries that
-peers already published to the contract, covering missed `UpdateNotification`s.
+### Phase 2 (GATED — only if Phase 1 shows H3 or H4): libp2p gossipsub member topic
 
-**In `src/p2p/netcode_msg.rs`** add:
-```rust
-RosterSync { entries: Vec<(engine::PlayerId, roster::PeerEntry)> }
-```
-Note: `NetcodeMsg` moves between `p2p` and `roster` domain types — place the variant and its
-serde derivation carefully (both domains are in-crate; keep imports to `engine` only in this
-file or extract as needed).
+**Only if** Phase 1 proves the roster logic is sound and the failure is delivery/topology **with
+reachable peers** (i.e., a reliable channel would resolve it). Skip entirely if Phase 1 finds H1/H2.
 
-**In `src/p2p/run.rs`** — no change to message plumbing; `RosterSync` rides the existing
-`request_response::Behaviour<NetcodeCodec>` just like `Commit`/`Reveal`.
+**Rationale / theory:** discovery is the "chicken-and-egg of addresses"; once a peer knows even ONE
+member via Freenet it can join a fast broadcast overlay and learn the rest reliably. Freenet stays
+the source of truth + identity gate; gossipsub is a fast, reliable *delivery* of entries that peers
+already published to the contract. This is a slow-authoritative-bootstrap + fast-gossip-overlay
+pattern, uniform across local and cross-OS.
 
-**In `src/p2p/bevy_systems/dial_roster_peers.rs`**:
-- On a new `PeerConnected` event, send full roster as `NetcodeMsg::RosterSync`.
-- Track a periodic 5s deadline that broadcasts the full roster to all connected peers.
+**Design:**
+- Add `"gossipsub"` to the libp2p features in `Cargo.toml` (not currently enabled).
+- Add a `gossipsub::Behaviour` to `behaviour.rs` / `behaviour_new.rs`.
+- Topic name derived from `Params.namespace` (isolation: different game = different topic).
+- On startup each instance **subscribes** to the topic and **publishes its own `PeerEntry`**
+  (player_id + peer_id + addrs).
+- `run.rs` handles `gossipsub::Event::Message` → decodes `PeerEntry` → routes into the roster merge.
+- Roster merge single point: **one shared `roster::merge_into(&mut Roster, entries)`** helper. Both
+  the Freenet path (`poll_freenet_events`) and the gossipsub path call it — never two parallel
+  writes into `Roster`.
+- Seeding: the first Freenet-learned edge is used to join the gossip mesh (Freenet must deliver at
+  least one edge per connected component; gossipsub floods the rest in seconds).
+- Game netcode (`request_response`) **unchanged** — gossipsub carries only the control-plane member
+  announcements, not per-tick data.
 
-**In `src/boxes/bevy_systems/netcode_tick.rs`**:
-- Handle inbound `RosterSync`: `absorb`-merge into `roster::Roster` (reuse
-  `merge_roster.rs` + `prune_stale`), then write it back through the same path the Freenet
-  events use so `Roster` (a Bevy `Resource`) stays consistent and `dial_roster_peers` picks
-  up any new addresses.
-- Centralize roster mutation (Freenet `UpdateNotification`, `GetResponse`, and libp2p
-  `RosterSync`) through one merge entry point so all three sources join the same
-  `RosterState`.
+**Trust model:** gossip is untrusted transport; trust comes from `PeerEntry` signatures and the
+authoritative Freenet contract (the whitelist of authorized keys). For the cooperative test a
+lenient merge is acceptable (eventual contract prunes phantoms); hardening = verify each gossip
+entry against the contract before trusting.
 
-**Why this works:** libp2p connections are direct and reliable; relaying already-published
-Freenet entries over them heals delivery gaps. This is NOT a bypass of Freenet discovery —
-every address still originates from the contract.
-
-**Risk:** Medium. New message variant; follow the existing `NetcodeCodec` pattern.
+**Risk:** Medium. Libp2p handles forwarding/mesh repair; app code is small (publish + merge).
 
 ---
 
-### Phase 3: Live-Join State Catch-Up via Re-Baseline Snapshot
-**Goal:** A late joiner reaches state-hash convergence with existing peers WITHOUT resetting
-the game to tick 0. This is required by the constraints (live-join + full state-hash
-convergence).
+### Phase 3 (DEFERRED): Live-Join State Catch-Up via Re-Baseline Snapshot
 
-This is dynamic-membership lockstep, the hardest part. Design carefully; build it only after
-Phases 1, 2, 4, 5 are green for the already-together case.
+Required only to meet full state-hash convergence under live-join semantics. Do not design/build
+until Phase 1 is settled and the convergence gate is green for the already-together case.
 
 **New messages in `src/p2p/netcode_msg.rs`:**
 ```rust
@@ -172,134 +213,75 @@ Snapshot {
     from: engine::PlayerId,
 }
 ```
+`restore()` needs velocities (`EngineSimState`, engine_sim_state.rs) to reproduce the exact
+trajectory; the positions-only `Snapshot` (snapshot.rs) is NOT sufficient.
 
-**Why full state (including velocity):** `restore()` re-steps the deterministic sim; it
-needs velocities (`EngineSimState`, engine_sim_state.rs) to reproduce the exact trajectory.
-The existing `Snapshot` (snapshot.rs) is positions-only and is NOT sufficient — do not use it
-for transfer.
+**Handshake:** on first connect, late joiner C sends `RequestSnapshot`; each established peer
+replies with its authoritative `Snapshot`; C picks the deterministic authority (lowest
+`PlayerId.from`) and cross-checks its state hash against a second peer before adopting.
 
-**Handshake:**
-1. On first connect to an established peer (via `PeerConnected`), the late joiner C sends
-   `RequestSnapshot` to every connected peer.
-2. Each established peer replies with its current authoritative `Snapshot` (its
-   `EngineSimState` + participant set + its own id).
-3. C selects the deterministic authority (lowest `PlayerId.from` among the responses) and
-   **cross-checks** its state hash against a second peer's response before adopting, to avoid
-   adopting a diverged peer. If the authority and a second peer disagree, C takes no snapshot
-   and reports/logs the divergence (Phase 1 logging aids this).
+**Re-baseline:** existing peers never saw C's inputs, so C's body is injected deterministically at
+snapshot tick T: all peers spawn C's body at default position at T, C `restore()`s the authoritative
+state + seeds its own body; all set `applied_through = T`, participants = snapshot set + C; continue
+forward. Hashes reconverge from T onward; game does not reset to 0.
 
-**Re-baseline (the join moment):**
-Existing peers never saw C's input history, so they cannot replay it. Therefore C's body is
-injected deterministically at the snapshot tick T:
-1. All peers (A, B, C) **deterministically spawn C's body** at its default position at tick T
-   (see `engine_spawn_player.rs`). This is an explicit, agreed event — not part of the
-   pre-T history.
-2. C `restore()`s the authoritative state (A/B bodies) and seeds its own freshly-spawned body
-   at the same default position/tick.
-3. Every peer sets:
-   - engine clock and lockstep `applied_through = T`
-   - lockstep `participants` = snapshot.participants + C (lockstep.rs:14)
-4. All peers continue from T forward as equal participants, so state hashes reconverge from T
-   onward.
-
-**Clock/state alignment on C:** `Lockstep::applied_through = T`; engine `EngineSimState{tick:
-T} = restored`.
-
-**Risk:** High. Determinism and membership edge cases; verify with a dedicated integration
-test (two peers converge, then a third joins and converges) before wiring into the automation.
+**Risk:** High. Verify with a dedicated integration test (two converge, third joins and converges).
 
 ---
 
-### Phase 4: Node / Ring Health Monitoring
-**Goal:** Detect and recover from node-startup issues early and uniformly.
-
-**Changes:**
-- Log ring connection count, transport connection count, interest sync status on startup and
-  on `wait_ready` failure.
-- `connect_and_run.rs` already retries node startup with capped backoff (keep it). Add
-  visibility so clearly failed runs surface fast instead of stalling the full timeout.
-
-**New log targets:**
-- `freenet::ring` — ring connection count, transport connection count.
-- `freenet::interest` — interest sync status, peer interests.
-
-**Risk:** Low. Monitoring only.
+### Phase 4 (OPTIONAL — only if Freenet stays on the critical path): Ring Health Monitoring + Retry
+- Log ring/transport/interest counts; early-abort clearly-failed node startups.
+- `connect_and_run.rs` already retries node startup with capped backoff (keep). Bounded
+  automation-level retry on convergence timeout. Uniform.
+- **Low priority** if Phase 2 (gossipsub) makes discovery deterministic; likely unnecessary.
 
 ---
 
-### Phase 5: Automation-Level Retry
-**Goal:** Bound the remaining mainnet flakiness with a uniform retry (also applies to cross-OS).
+## Implementation Order (evidence-gated)
 
-**In `mainnet_automation_3/src/launch_instances.rs` (or a new runner module):**
-- On convergence timeout, kill all instances.
-- Wait 5s for ports to free.
-- Retry up to 2 times, logging each attempt.
+| Order | Phase | Gate | Time | Risk |
+|-------|-------|------|------|------|
+| 1 | Phase 1 — Diagnostic + Control Experiment | — | 1-2 days | None (logging) |
+| 2 | **Decision** — write the H1/H2/H3/H4 verdict | Phase 1 results | — | — |
+| 3 | H1/H2 fix (code/config), **OR** | verdict = H1/H2 | small | Low |
+| 4 | Phase 2 gossipsub, **OR** | verdict = H3/H4 | ~1-2 days | Medium |
+| 5 | Phase 3 live-join catch-up | convergence gate green | 2-3 days | High |
 
-**Why needed:** mainnet ring/node startup is non-deterministic even with all fixes
-(`connect_and_run.rs:6-12`). A bounded, logged retry is a reliable finishing layer.
-
-**Risk:** Low. Automation-level only.
-
----
-
-## Implementation Order
-
-| Order | Phase | Time | Risk | Impact |
-|-------|-------|------|------|--------|
-| 1 | Phase 1 — Diagnostics | 1-2h | None | Visibility |
-| 2 | Phase 2 — RosterSync | 3-4h | Medium | Core convergence fix |
-| 3 | Phase 4 — Ring Health | 1h | Low | Early abort |
-| 4 | Phase 5 — Retry | 1h | Low | Reliability |
-| 5 | Phase 3 — Live-Join Catch-Up | 2-3 days | High | Full state-hash convergence, live join |
+**The critical decision gate is after Phase 1.** Do not proceed to Phase 2 or 3 until the verdict is
+written and reviewed.
 
 ## Expected Outcome
 
-After Phases 1, 2, 4, 5:
-- Full visibility of each stage.
-- All peers discover each other deterministically via libp2p `RosterSync` relay of
-  Freenet-published entries.
-- Clearly failed runs abort early; remaining flakiness handled by bounded retry.
-- The already-together case converges to mutual peer visibility.
-
-After Phase 3:
-- A late joiner reaches **full state-hash convergence** with existing peers via the re-baseline
-  snapshot, preserving live-join (no reset to tick 0).
-
-Phase 2 makes mutual-visibility convergence deterministic. Phase 3 makes full state-hash
-convergence deterministic under live join. Phase 5 is a safety net for unavoidable mainnet
-flakiness.
+- **Phase 1:** an evidence-backed answer to "is it Freenet, or our harness?", with per-pair
+  delivery latencies and per-instance contract key + node/ring health. No speculative redesign.
+- **If H1/H2:** a small, honest code fix — Freenet's mesh was fine, we were misusing it.
+- **If H3/H4:** gossipsub member topic makes discovery deterministic in seconds while Freenet
+  remains the identity/authorization gate; possibly ring-health + retry hardening.
+- **Phase 3 (deferred):** full state-hash convergence under live join.
 
 ## Key Files Reference
 
 | File | Purpose |
 |------|---------|
-| `src/roster/connect_client_loop.rs` | Roster loop: heartbeat, refresh, absorb |
-| `src/roster/setup_contract.rs` | Deploy/subscribe to roster contract |
-| `src/roster/start_embedded_node.rs` | Start in-process Freenet node (uniform client-node mode) |
-| `src/roster/connect_and_run.rs` | Node startup retry/backoff |
-| `src/roster/bevy_systems/poll_freenet_events.rs` | Bevy system: drain roster events |
-| `src/roster/merge_roster.rs` | Deterministic roster merge (absorb uses this) |
-| `src/roster/prune_stale.rs` | TTL-based roster pruning |
-| `src/roster/roster.rs` | Bevy `Roster` Resource |
-| `src/p2p/run.rs` | libp2p swarm event loop |
-| `src/p2p/behaviour.rs` | NetworkBehaviour (`request_response::NetcodeCodec`) |
-| `src/p2p/netcode_msg.rs` | NetcodeMsg enum (add RosterSync, RequestSnapshot, Snapshot) |
-| `src/p2p/netcode_codec.rs` | bincode length-prefixed codec |
-| `src/p2p/bevy_systems/dial_roster_peers.rs` | Dial peers from roster; send RosterSync |
-| `src/boxes/bevy_systems/netcode_tick.rs` | Per-tick lockstep pipeline; handle RosterSync/Snapshot |
+| `src/roster/connect_client_loop.rs` | Roster loop: heartbeat, refresh, absorb; Phase 1 timestamps |
+| `src/roster/setup_contract.rs` | Deploy/subscribe; Phase 1 contract-key/digest logging |
+| `src/roster/start_embedded_node.rs` | Start in-process node; hermetic control topology flag |
+| `src/roster/connect_and_run.rs` | Node startup retry/backoff; diagnostics sampling hook |
+| `src/roster/bevy_systems/poll_freenet_events.rs` | Drain roster events → merge (one writer) |
+| `src/roster/merge_roster.rs`, `prune_stale.rs` | Deterministic merge + TTL (used by `merge_into`) |
+| `src/roster/roster.rs` | Bevy `Roster` Resource; shared `merge_into` target |
+| `src/p2p/behaviour.rs`, `behaviour_new.rs` | NetworkBehaviour — add gossipsub if Phase 2 |
+| `src/p2p/run.rs` | Swarm event loop; handle gossipsub Message (Phase 2) |
+| `src/p2p/netcode_msg.rs` | NetcodeMsg enum (add RequestSnapshot/Snapshot for Phase 3) |
+| `src/p2p/bevy_systems/dial_roster_peers.rs` | Dial peers from roster |
+| `src/boxes/bevy_systems/netcode_tick.rs` | Per-tick lockstep pipeline |
 | `src/netcode/lockstep.rs` | Lockstep state (participants, applied_through) |
-| `src/netcode/lockstep_advance_to.rs` | Apply ticks with missing-reveal handling |
-| `src/engine/engine_sim_state.rs` | Full restorable state (tick + bodies w/ velocity) — what Snapshot must carry |
-| `src/engine/engine_spawn_player.rs` | Deterministic player spawn (used for re-baseline injection) |
-| `src/engine/restore` | Full state restoration |
-| `mainnet_automation_3/src/launch_instances.rs` | Launch all instances |
+| `src/engine/engine_sim_state.rs` | Full restorable state (what Snapshot must carry) |
+| `mainnet_automation_3/src/launch_instances.rs` | Launch instances; control-topology wiring |
 | `mainnet_automation_3/src/wait_all_converged.rs` | Convergence check (420s timeout) |
 | `mainnet_automation_3/src/applied_player_ids.rs` | Current gate (peer-visibility) — see note below |
 
 ## Note on the Convergence Gate
-`wait_all_converged.rs` + `applied_player_ids.rs` currently gate on mutual peer visibility
-(seen `received peer input ... player_id=` for n-1 peers). That gate is a necessary but NOT
-sufficient proxy for full state-hash convergence. Phase 3 introduces the mechanism for real
-state-hash convergence; consider extending the automation to also assert equal `StateHash`
-logs between instances once Phase 3 lands, so the gate reflects the true success criterion.
-Do not weaken the gate to make tests pass.
+`wait_all_converged.rs` + `applied_player_ids.rs` gate on mutual peer visibility (seen N-1 distinct
+`received peer input`). Phase 3 introduces the real state-hash mechanism; extend the gate to assert
+equal `StateHash` logs once Phase 3 lands. **Do not weaken the gate to make tests pass.**
