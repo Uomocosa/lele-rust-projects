@@ -79,7 +79,7 @@ pub async fn setup_contract(
     own_roster.insert(own_id, own_entry);
 
     let grace_deadline = tokio::time::Instant::now() + not_found_grace;
-    tracing::debug!(
+    tracing::info!(
         target: "roster",
         contract = %contract_key,
         own_id = %hex::encode(own_id),

@@ -89,7 +89,7 @@ async fn run_roster_loop(
         tokio::time::Instant::now() + Duration::from_secs(roster::ROSTER_RESUBSCRIBE_SECS);
     let started = tokio::time::Instant::now();
     let instance_id = *contract_key.id();
-    tracing::debug!(
+    tracing::info!(
         target: "roster",
         contract = %contract_key,
         own_id = %hex::encode(own_id),

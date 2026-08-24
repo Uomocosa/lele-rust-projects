@@ -46,7 +46,7 @@ pub fn netcode_tick(
                 player_id,
                 hash,
             } => {
-                tracing::debug!(
+                tracing::info!(
                     target: "p2p",
                     tick,
                     player_id = %hex::encode(player_id),
@@ -59,7 +59,7 @@ pub fn netcode_tick(
                 player_id,
                 action,
             } => {
-                tracing::debug!(
+                tracing::info!(
                     target: "p2p",
                     tick,
                     player_id = %hex::encode(player_id),

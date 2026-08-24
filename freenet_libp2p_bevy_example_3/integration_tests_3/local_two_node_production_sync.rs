@@ -43,12 +43,45 @@ async fn local_two_node_production_sync() -> Result<(), Box<dyn std::error::Erro
         .await
         .map_err(|e| format!("guest should render one box per engine player: {e}"))?;
 
-    step_both(&mut host, &mut guest, 120).await;
-    equalize_clocks(&mut host, &mut guest).await;
-    let initial_x = engine::spawn_x_for_player(host.own_player_id());
+    eprintln!("[DEBUG] === POST-INIT ===");
+    eprintln!("[DEBUG] host:  {}", host.debug_snapshot());
+    eprintln!("[DEBUG] guest: {}", guest.debug_snapshot());
+    eprintln!(
+        "[DEBUG] host_hash={} guest_hash={}",
+        host.state_hash(),
+        guest.state_hash()
+    );
 
-    hold_both(&mut host, &mut guest, KeyCode::KeyD, 180).await;
-    step_both(&mut host, &mut guest, 300).await;
+    step_both(&mut host, &mut guest, 120).await;
+    eprintln!("[DEBUG] === AFTER 120 WARMUP TICKS ===");
+    eprintln!("[DEBUG] host:  {}", host.debug_snapshot());
+    eprintln!("[DEBUG] guest: {}", guest.debug_snapshot());
+    eprintln!(
+        "[DEBUG] host_hash={} guest_hash={}",
+        host.state_hash(),
+        guest.state_hash()
+    );
+
+    equalize_clocks(&mut host, &mut guest).await;
+    eprintln!("[DEBUG] === AFTER CLOCK EQUALIZE ===");
+    eprintln!(
+        "[DEBUG] host_clock={} guest_clock={}",
+        host.sim_clock(),
+        guest.sim_clock()
+    );
+    eprintln!("[DEBUG] host:  {}", host.debug_snapshot());
+    eprintln!("[DEBUG] guest: {}", guest.debug_snapshot());
+    eprintln!(
+        "[DEBUG] host_hash={} guest_hash={}",
+        host.state_hash(),
+        guest.state_hash()
+    );
+
+    let initial_x = engine::spawn_x_for_player(host.own_player_id());
+    eprintln!("[DEBUG] initial_x={initial_x}");
+
+    hold_both_with_logging(&mut host, &mut guest, KeyCode::KeyD, 180).await;
+    step_both_with_logging(&mut host, &mut guest, 300).await;
 
     let host_hash = host.state_hash();
     let guest_hash = guest.state_hash();
@@ -56,6 +89,11 @@ async fn local_two_node_production_sync() -> Result<(), Box<dyn std::error::Erro
     let host_end = host
         .own_box_position()
         .ok_or("host engine never positioned its own box")?;
+
+    eprintln!("[DEBUG] === FINAL ===");
+    eprintln!("[DEBUG] host:  {}", host.debug_snapshot());
+    eprintln!("[DEBUG] guest: {}", guest.debug_snapshot());
+    eprintln!("[DEBUG] host_hash={host_hash} guest_hash={guest_hash}");
 
     if host_hash != guest_hash {
         return Err(format!(
@@ -89,6 +127,32 @@ async fn step_both(
 }
 
 // needed helper:
+async fn step_both_with_logging(
+    host: &mut testing_3::ProductionGameApp,
+    guest: &mut testing_3::ProductionGameApp,
+    rounds: u32,
+) {
+    for i in 0..rounds {
+        host.tick();
+        guest.tick();
+        tokio::time::sleep(Duration::from_millis(STEP_DELAY_MS)).await;
+        if (i + 1) % 50 == 0 || i + 1 == rounds {
+            let hh = host.state_hash();
+            let gh = guest.state_hash();
+            let mark = if hh != gh { " *** DIVERGED ***" } else { "" };
+            eprintln!(
+                "[DEBUG] tick={} host_hash={hh} guest_hash={gh}{mark}",
+                i + 1
+            );
+            if hh != gh {
+                eprintln!("[DEBUG]   host:  {}", host.debug_snapshot());
+                eprintln!("[DEBUG]   guest: {}", guest.debug_snapshot());
+            }
+        }
+    }
+}
+
+// needed helper:
 async fn hold_both(
     host: &mut testing_3::ProductionGameApp,
     guest: &mut testing_3::ProductionGameApp,
@@ -98,6 +162,20 @@ async fn hold_both(
     host.press_key(key);
     guest.press_key(key);
     step_both(host, guest, rounds).await;
+    host.release_key(key);
+    guest.release_key(key);
+}
+
+// needed helper:
+async fn hold_both_with_logging(
+    host: &mut testing_3::ProductionGameApp,
+    guest: &mut testing_3::ProductionGameApp,
+    key: KeyCode,
+    rounds: u32,
+) {
+    host.press_key(key);
+    guest.press_key(key);
+    step_both_with_logging(host, guest, rounds).await;
     host.release_key(key);
     guest.release_key(key);
 }

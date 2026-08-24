@@ -1,6 +1,7 @@
 pub mod box_count;
 pub mod box_spawns;
 pub mod build;
+pub mod debug_snapshot;
 pub mod freenet_gateway;
 pub mod new;
 pub mod new_local;
@@ -21,6 +22,7 @@ pub mod wait_for_roster_len;
 
 pub use box_count::box_count;
 pub use box_spawns::box_spawns;
+pub use debug_snapshot::debug_snapshot;
 pub use freenet_gateway::freenet_gateway;
 pub use new::new;
 pub use new_local::new_local;

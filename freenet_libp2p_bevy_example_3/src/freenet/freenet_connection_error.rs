@@ -7,7 +7,7 @@ pub enum FreenetConnectionError {
     #[error("disconnected from node")]
     Disconnected,
     #[error("websocket error: {0}")]
-    WebSocket(#[from] tokio_tungstenite::tungstenite::Error),
+    WebSocket(Box<tokio_tungstenite::tungstenite::Error>),
     #[error("serialization error: {0}")]
     Serialization(#[from] bincode::Error),
     #[error("http error: {0}")]
@@ -32,6 +32,13 @@ pub enum FreenetConnectionError {
 impl From<http::uri::InvalidUri> for FreenetConnectionError {
     fn from(e: http::uri::InvalidUri) -> Self {
         FreenetConnectionError::Http(http::Error::from(e))
+    }
+}
+
+#[rustfmt::skip]
+impl From<tokio_tungstenite::tungstenite::Error> for FreenetConnectionError {
+    fn from(e: tokio_tungstenite::tungstenite::Error) -> Self {
+        FreenetConnectionError::WebSocket(Box::new(e))
     }
 }
 

@@ -34,6 +34,7 @@ impl ProductionGameApp {
     pub fn box_spawns(&mut self) -> Vec<(freenet_libp2p_bevy_example_3_lib::boxes::PlayerId, bevy::math::Vec2, bool)> { methods::production_game_app::box_spawns(self) }
     pub fn remote_snapshots(&mut self) -> Vec<(freenet_libp2p_bevy_example_3_lib::boxes::PlayerId, bevy::math::Vec2, u64)> { methods::production_game_app::remote_snapshots(self) }
     pub fn state_hash(&self) -> u64 { methods::production_game_app::state_hash(self) }
+    pub fn debug_snapshot(&self) -> String { methods::production_game_app::debug_snapshot(self) }
     pub fn own_box_position(&self) -> Option<bevy::math::Vec2> { methods::production_game_app::own_box_position(self) }
     pub fn freenet_gateway(&self) -> String { methods::production_game_app::freenet_gateway(self) }
     pub async fn wait_for_box_count(&mut self, expected: usize, timeout: std::time::Duration) -> Result<(), String> {
