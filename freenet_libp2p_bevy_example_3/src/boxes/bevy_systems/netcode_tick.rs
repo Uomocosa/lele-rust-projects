@@ -40,7 +40,15 @@ pub fn netcode_tick(
             continue;
         };
         let sender = player_id_of(&roster, &from);
+        if sender.is_none() {
+            tracing::debug!(
+                target: "p2p::connect",
+                from = %from,
+                "inbound netcode from a peer not in the roster"
+            );
+        }
         match msg {
+            p2p::NetcodeMsg::Ack => {}
             p2p::NetcodeMsg::Commit {
                 tick,
                 player_id,

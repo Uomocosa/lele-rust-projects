@@ -4,6 +4,10 @@ use crate::engine;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum NetcodeMsg {
+    /// Acknowledges receipt of a request. Resolves libp2p `request_response` pending-request
+    /// state; a no-op for the game loop. Without replying to every inbound request the
+    /// connection accumulates unanswered requests that degrade and stall.
+    Ack,
     Commit {
         tick: u64,
         player_id: engine::PlayerId,

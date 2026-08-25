@@ -35,7 +35,6 @@ pub async fn run(
     let own_peer_id = swarm.local_peer_id().to_base58();
     let mut listen_addrs: Vec<String> = Vec::new();
     let mut ready_deadline: Option<tokio::time::Instant> = None;
-    let latest_netcode: Option<p2p::NetcodeMsg> = None;
 
     loop {
         let ready_sleep = tokio::time::sleep_until(
@@ -59,6 +58,12 @@ pub async fn run(
                             .ok();
                         continue;
                     }
+                    tracing::info!(
+                        target: "p2p::connect",
+                        peer = %peer_id,
+                        addrs = addrs.len(),
+                        "dial attempt"
+                    );
                     for addr in addrs {
                         match addr.parse::<Multiaddr>() {
                             Ok(multiaddr) => {
@@ -95,8 +100,16 @@ pub async fn run(
                         event_tx
                             .send(p2p::Event::IncomingNetcode { from: peer, msg: request })
                             .ok();
-                        if let Some(reply) = latest_netcode {
-                            swarm.behaviour_mut().netcode.send_response(channel, reply).ok();
+                        // Always respond (Experiment A). libp2p `request_response` keeps a
+                        // request pending until it is answered; with thousands of unanswered
+                        // requests per tick the connection degrades and inbound goes dead.
+                        if swarm
+                            .behaviour_mut()
+                            .netcode
+                            .send_response(channel, p2p::NetcodeMsg::Ack)
+                            .is_ok()
+                        {
+                            tracing::trace!(target: "p2p::connect", peer = %peer, "netcode ack sent");
                         }
                     }
                     request_response::Message::Response { response, .. } => {
@@ -105,10 +118,38 @@ pub async fn run(
                             .ok();
                     }
                 },
+                SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Netcode(
+                    request_response::Event::OutboundFailure {
+                        peer, request_id, error, ..
+                    },
+                )) => {
+                    tracing::warn!(
+                        target: "p2p::connect",
+                        peer = %peer,
+                        ?request_id,
+                        error = %error,
+                        "netcode outbound failure (request unanswered or peer unreachable)"
+                    );
+                }
+                SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Netcode(
+                    request_response::Event::InboundFailure {
+                        peer, request_id, error, ..
+                    },
+                )) => {
+                    tracing::warn!(
+                        target: "p2p::connect",
+                        peer = %peer,
+                        ?request_id,
+                        error = %error,
+                        "netcode inbound failure"
+                    );
+                }
                 SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                    tracing::info!(target: "p2p::connect", peer = %peer_id, "connection established");
                     event_tx.send(p2p::Event::PeerConnected(peer_id)).ok();
                 }
                 SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                    tracing::info!(target: "p2p::connect", peer = %peer_id, "connection closed");
                     event_tx.send(p2p::Event::PeerDisconnected(peer_id)).ok();
                 }
                 _ => {}
@@ -160,7 +201,9 @@ mod tests {
         rx: &mut tokio::sync::mpsc::UnboundedReceiver<p2p::Event>,
     ) -> p2p::NetcodeMsg {
         loop {
-            if let Some(p2p::Event::IncomingNetcode { msg, .. }) = rx.recv().await {
+            if let Some(p2p::Event::IncomingNetcode { msg, .. }) = rx.recv().await
+                && !matches!(msg, p2p::NetcodeMsg::Ack)
+            {
                 return msg;
             }
         }

@@ -1,5 +1,11 @@
 # POLISH
 
+> **SUPERSEDED by [`POLISH_2.md`](./POLISH_2.md).** This file predates the convergence fix
+> (`docs/CONVERGENCE_INVESTIGATION.md`): §1 references files from example_2 that no longer exist
+> here and `spawn_box.rs` is in fact used; §2 frames the rollback crate as future work when it is
+> already built and integrated. The authoritative path-to-CONCLUDED plan is `POLISH_2.md`. Keep
+> this file for history only.
+
 Pre-`FINISHED` cleanup and remaining work for `example_3`. Everything here is either code
 cleanup (dead code), the prediction/rollback build, or the final cross-OS/cross-network gate.
 
