@@ -14,12 +14,13 @@ pub async fn connect(
     host: &str,
     port: u16,
     contract_wasm: &[u8],
+    params: &[u8],
     role: Role,
 ) -> Result<crate::ClickerClient, ClickerError> {
     let mut client = FreenetClient::connect(host, port).await?;
 
     let contract_code = Arc::new(ContractCode::from(contract_wasm.to_vec()));
-    let params = Parameters::from(Vec::new());
+    let params = Parameters::from(params.to_vec());
     let wrapped = WrappedContract::new(contract_code, params);
     let contract_key = wrapped.key;
     let instance_id = *contract_key.id();

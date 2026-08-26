@@ -7,7 +7,11 @@ fn main() {
     println!("cargo:rerun-if-changed=contract/Cargo.lock");
     println!("cargo:rerun-if-changed={dst}");
 
-    let src_files = ["contract/src/lib.rs", "contract/Cargo.toml", "contract/Cargo.lock"];
+    let src_files = [
+        "contract/src/lib.rs",
+        "contract/Cargo.toml",
+        "contract/Cargo.lock",
+    ];
     if std::path::Path::new(dst).exists() {
         if let Ok(wasm_meta) = std::fs::metadata(dst) {
             if let Ok(wasm_time) = wasm_meta.modified() {
@@ -24,8 +28,8 @@ fn main() {
         }
     }
 
-    let target_dir = std::env::var("CARGO_TARGET_DIR")
-        .unwrap_or_else(|_| "contract/target".to_string());
+    let target_dir =
+        std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "contract/target".to_string());
 
     let status = Command::new("cargo")
         .args([
@@ -45,7 +49,6 @@ fn main() {
         panic!("contract WASM build failed");
     }
 
-    let wasm_src =
-        format!("{target_dir}/wasm32-unknown-unknown/release/clicker_contract.wasm");
+    let wasm_src = format!("{target_dir}/wasm32-unknown-unknown/release/clicker_contract.wasm");
     std::fs::copy(&wasm_src, dst).expect("failed to copy contract WASM");
 }

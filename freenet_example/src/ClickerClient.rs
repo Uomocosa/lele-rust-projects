@@ -12,7 +12,10 @@ pub struct ClickerClient {
 #[rustfmt::skip]
 impl ClickerClient {
     pub async fn connect(host: &str, port: u16, contract_wasm: &[u8], role: Role) -> Result<Self, crate::ClickerError> {
-        crate::ClickerClientMethod::connect(host, port, contract_wasm, role).await
+        crate::ClickerClientMethod::connect(host, port, contract_wasm, &[], role).await
+    }
+    pub async fn connect_with_params(host: &str, port: u16, contract_wasm: &[u8], params: &[u8], role: Role) -> Result<Self, crate::ClickerError> {
+        crate::ClickerClientMethod::connect(host, port, contract_wasm, params, role).await
     }
     pub fn contract_key(&self) -> ContractKey {
         crate::ClickerClientMethod::contract_key(self)

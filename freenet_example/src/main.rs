@@ -41,7 +41,14 @@ async fn run_client() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(7509);
 
-    let mut clicker = ClickerClient::connect(&node_host, node_port, &contract_wasm, role).await?;
+    let mut clicker = ClickerClient::connect_with_params(
+        &node_host,
+        node_port,
+        &contract_wasm,
+        &contract_params(),
+        role,
+    )
+    .await?;
     info!(target: "freenet_example", key = %clicker.contract_key(), count = clicker.count(), "connected and subscribed");
 
     loop {
@@ -69,9 +76,9 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
     let config_args = ConfigArgs {
         mode: Some(OperationMode::Network),
         network_api: NetworkArgs {
-            is_gateway: true,
-            public_address: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
-            public_port: Some(p2p_port()),
+            is_gateway: !mainnet_client(),
+            public_address: (!mainnet_client()).then_some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            public_port: (!mainnet_client()).then_some(p2p_port()),
             ..Default::default()
         },
         config_paths: ConfigPathsArgs {
@@ -94,10 +101,16 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
     tokio::time::sleep(Duration::from_secs(10)).await;
 
     let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    let mut clicker =
-        ClickerClient::connect("127.0.0.1", port, &contract_wasm, Role::Publish).await?;
+    let mut clicker = ClickerClient::connect_with_params(
+        "127.0.0.1",
+        port,
+        &contract_wasm,
+        &contract_params(),
+        Role::Publish,
+    )
+    .await?;
 
-    info!(key = %clicker.contract_key(), count = clicker.count(), "connected, running indefinitely");
+    info!(mainnet = mainnet_client(), key = %clicker.contract_key(), count = clicker.count(), "connected, running indefinitely");
 
     loop {
         match clicker.tick().await {
@@ -106,6 +119,29 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
+}
+
+/// Test-only: read `--contract-params <hex>` to pin unique contract params so each e2e run
+/// targets a fresh contract key (the clicker defaults to empty params otherwise).
+/// Test-only: run the standalone node as a client peer joining the public mainnet ring
+/// (is_gateway false, no public address, fetch the gateway index) instead of an isolated gateway.
+fn mainnet_client() -> bool {
+    std::env::args().any(|a| a == "--mainnet-client")
+}
+
+/// Test-only: read `--contract-params <hex>` to pin unique contract params so each e2e run
+/// targets a fresh contract key (the clicker defaults to empty params otherwise).
+fn contract_params() -> Vec<u8> {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--contract-params"
+            && let Some(val) = args.next()
+            && let Ok(bytes) = hex::decode(val.trim_start_matches("0x"))
+        {
+            return bytes;
+        }
+    }
+    Vec::new()
 }
 
 fn parse_role() -> Result<Role, String> {

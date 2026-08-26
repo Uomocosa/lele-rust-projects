@@ -24,6 +24,7 @@
       "bevy": "allow",
       "libp2p": "allow",
       "freenet": "allow",
+      "freenet-gateway": "allow",
       "avian": "allow"
     }
   },
