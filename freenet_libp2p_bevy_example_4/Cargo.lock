@@ -5651,9 +5651,13 @@ dependencies = [
  "bevy",
  "bevy_freenet_4",
  "bevy_lele_rollback_plugin_1",
+ "bincode",
  "libp2p",
+ "serde",
+ "tempfile",
  "testing_4",
  "tokio",
+ "tracing-subscriber",
 ]
 
 [[package]]

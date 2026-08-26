@@ -54,7 +54,7 @@ pub fn render_snapshots(
         }
 
         if *id == own {
-            tracing::info!(
+            tracing::debug!(
                 target: "p2p",
                 player_id = %hex::encode(id),
                 x = position.x,

@@ -23,7 +23,8 @@
       "crate-tag-ci": "allow",
       "bevy": "allow",
       "libp2p": "allow",
-      "freenet": "allow"
+      "freenet": "allow",
+      "avian": "allow"
     }
   },
   "mcp": {

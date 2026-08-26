@@ -1,15 +1,46 @@
+use crate::engine;
 use crate::netcode;
 
-/// Advances the applied window up to `now - D`. Ticks are applied once the fixed command delay `D`
-/// has elapsed; a participant missing a reveal for the tick is treated as null and, once its late
-/// streak exceeds the liveness budget `B`, is marked offline and excluded.
+/// Advances the applied window up to `now - D`, but never with an incomplete input set.
+///
+/// A tick `T` is only applied once **every** current participant has revealed an action for `T`
+/// (or been marked offline). This is what makes deterministic-lockstep reproducible: every peer
+/// must derive the identical ordered input set for `T`, so a peer that would otherwise null-fill a
+/// reveal it has not yet received (because its clock ran ahead, or delivery lagged) instead holds,
+/// then applies `T` with the same complete set as everyone else once the reveal arrives.
+///
+/// The fixed command delay `D` is the chance for reveals to land before the apply window; it is a
+/// latency shaping buffer, not the thing that decides whether a tick's inputs are complete.
 pub fn advance_to(lockstep: &mut netcode::Lockstep, now_tick: u64) -> Vec<netcode::TickPlan> {
     let apply_window = now_tick.saturating_sub(netcode::constants::COMMAND_DELAY);
     let mut applied = Vec::new();
     while lockstep.applied_through < apply_window {
         let tick = lockstep.applied_through + 1;
-        apply_tick(lockstep, tick);
-        applied.push(plan_for(lockstep, tick));
+        let missing: Vec<engine::PlayerId> = lockstep
+            .participants
+            .iter()
+            .filter(|peer| {
+                !lockstep.offline.contains(peer) && !lockstep.reveals.contains_key(&(tick, **peer))
+            })
+            .copied()
+            .collect();
+        if missing.is_empty() {
+            lockstep.applied_through = tick;
+            applied.push(plan_for(lockstep, tick));
+            continue;
+        }
+        let previously_offline = lockstep.offline.len();
+        for peer in &missing {
+            let count = lockstep.late_streak.entry(*peer).or_insert(0);
+            *count += 1;
+            if *count >= netcode::constants::LIVENESS_BUDGET && !lockstep.offline.contains(peer) {
+                lockstep.offline.push(*peer);
+            }
+        }
+        if lockstep.offline.len() > previously_offline {
+            continue;
+        }
+        break;
     }
     applied
 }
@@ -42,26 +73,6 @@ fn plan_for(lockstep: &netcode::Lockstep, tick: u64) -> netcode::TickPlan {
 }
 
 // needed helper:
-fn apply_tick(lockstep: &mut netcode::Lockstep, tick: u64) {
-    let participants = lockstep.participants.clone();
-    for peer in &participants {
-        if lockstep.offline.contains(peer) {
-            continue;
-        }
-        if lockstep.reveals.contains_key(&(tick, *peer)) {
-            let count = lockstep.late_streak.entry(*peer).or_insert(0);
-            *count = 0;
-        } else {
-            let count = lockstep.late_streak.entry(*peer).or_insert(0);
-            *count += 1;
-            if *count >= netcode::constants::LIVENESS_BUDGET && !lockstep.offline.contains(peer) {
-                lockstep.offline.push(*peer);
-            }
-        }
-    }
-    lockstep.applied_through = tick;
-}
-
 #[cfg(test)]
 mod tests {
     use crate::engine;

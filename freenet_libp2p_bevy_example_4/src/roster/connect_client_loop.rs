@@ -65,7 +65,17 @@ fn absorb(
 ) -> roster::RosterState {
     let own = known.get(&own_id).cloned();
     let merged = roster::merge_roster(known, incoming);
+    let pre_prune_len = merged.len();
     let mut pruned = roster::prune_stale(merged, now_unix_secs(), roster::ROSTER_ENTRY_TTL_SECS);
+    let pruned_count = pre_prune_len.saturating_sub(pruned.len());
+    if pruned_count > 0 {
+        tracing::warn!(
+            target: "roster::change",
+            pruned_count,
+            remaining = pruned.len(),
+            "absorb pruned stale entries"
+        );
+    }
     if let Some(own) = own {
         pruned.entry(own_id).or_insert(own);
     }
@@ -227,11 +237,6 @@ async fn run_roster_loop(
                 own.signature =
                     roster::sign_entry(&own_keypair, &own.peer_id, &own.addrs, own.seq);
                 known.insert(own_id, own);
-                known = roster::prune_stale(
-                    known,
-                    now_unix_secs(),
-                    roster::ROSTER_ENTRY_TTL_SECS,
-                );
                 let refreshed = known.clone();
                 let Ok(bytes) = bincode::serialize(&refreshed) else {
                     heartbeat_deadline = tokio::time::Instant::now() + heartbeat_interval;

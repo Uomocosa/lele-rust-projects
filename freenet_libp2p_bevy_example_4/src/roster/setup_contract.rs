@@ -39,6 +39,35 @@ async fn recheck_get(
     Ok(())
 }
 
+// needed helper:
+async fn deploy_own_roster(
+    client: &mut freenet::FreenetClient,
+    wrapped: &WrappedContract,
+    own_roster: &roster::RosterState,
+) -> Result<roster::RosterState, String> {
+    tracing::info!(
+        target: "roster",
+        digest = %roster::digest(own_roster),
+        "grace window expired, sending roster Put"
+    );
+    let put_req = ContractRequest::Put {
+        contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped.clone())),
+        state: WrappedState::new(bincode::serialize(own_roster).map_err(|e| format!("ser: {e}"))?),
+        related_contracts: RelatedContracts::default(),
+        subscribe: true,
+        blocking_subscribe: false,
+    };
+    client
+        .send(ClientRequest::ContractOp(put_req))
+        .await
+        .map_err(|e| format!("send put: {e}"))?;
+    match recv_timeout(client).await? {
+        Some(_) => {}
+        None => return Err("put confirmation timed out".into()),
+    }
+    Ok(own_roster.clone())
+}
+
 /// Connects to the embedded node, deploys the roster contract if missing, merges in this
 /// player's own entry, and returns the connected client plus the merged roster.
 ///
@@ -148,29 +177,7 @@ pub async fn setup_contract(
                     recheck_get(&mut client, instance_id).await?;
                     continue;
                 }
-                tracing::info!(
-                    target: "roster",
-                    digest = %roster::digest(&own_roster),
-                    "grace window expired, sending roster Put"
-                );
-                let put_req = ContractRequest::Put {
-                    contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped.clone())),
-                    state: WrappedState::new(
-                        bincode::serialize(&own_roster).map_err(|e| format!("ser: {e}"))?,
-                    ),
-                    related_contracts: RelatedContracts::default(),
-                    subscribe: true,
-                    blocking_subscribe: false,
-                };
-                client
-                    .send(ClientRequest::ContractOp(put_req))
-                    .await
-                    .map_err(|e| format!("send put: {e}"))?;
-                match recv_timeout(&mut client).await? {
-                    Some(_) => {}
-                    None => return Err("put confirmation timed out".into()),
-                }
-                break own_roster.clone();
+                break deploy_own_roster(&mut client, &wrapped, &own_roster).await?;
             }
             Some(HostResponse::ContractResponse(ContractResponse::SubscribeResponse {
                 ..
@@ -188,7 +195,11 @@ pub async fn setup_contract(
                     recheck_get(&mut client, instance_id).await?;
                     continue;
                 }
-                return Err("timeout after 30s".into());
+                tracing::info!(
+                    target: "roster",
+                    "get timed out past grace window, seeding contract with roster Put"
+                );
+                break deploy_own_roster(&mut client, &wrapped, &own_roster).await?;
             }
         }
     };

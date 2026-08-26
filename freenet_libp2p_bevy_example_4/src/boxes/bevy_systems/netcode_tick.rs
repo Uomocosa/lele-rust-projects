@@ -67,7 +67,7 @@ pub fn netcode_tick(
                         player_id,
                         hash,
                     } => {
-                        tracing::info!(
+                        tracing::debug!(
                             target: "p2p",
                             tick,
                             player_id = %hex::encode(player_id),
@@ -80,7 +80,7 @@ pub fn netcode_tick(
                         player_id,
                         action,
                     } => {
-                        tracing::info!(
+                        tracing::debug!(
                             target: "p2p",
                             tick,
                             player_id = %hex::encode(player_id),
@@ -146,67 +146,87 @@ pub fn netcode_tick(
                             from,
                             hash,
                         });
-                        let snapshot_hashes: Vec<(engine::PlayerId, u64)> = state
-                            .pending_snapshots
-                            .iter()
-                            .filter_map(|m| {
-                                if let p2p::NetcodeMsg::Snapshot { from, hash, .. } = m {
-                                    Some((*from, *hash))
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect();
-                        if snapshot_hashes.len() >= 2 {
-                            let first_hash = snapshot_hashes[0].1;
-                            let all_match = snapshot_hashes.iter().all(|(_, h)| *h == first_hash);
-                            if all_match {
-                                tracing::info!(
-                                    target: "p2p",
-                                    tick,
-                                    hash = first_hash,
-                                    peers = snapshot_hashes.len(),
-                                    "snapshot cross-check passed, restoring state"
+                        // A peer answers a join `RequestSnapshot` with its current state; if the
+                        // joiner re-requests (or the connection flaps) the same peer's replies
+                        // arrive at increasing ticks. Keep only the LATEST snapshot per peer so a
+                        // single peer's progression is never mistaken for two agreeing peers.
+                        let mut latest_by_from: std::collections::BTreeMap<
+                            engine::PlayerId,
+                            &p2p::NetcodeMsg,
+                        > = std::collections::BTreeMap::new();
+                        for m in &state.pending_snapshots {
+                            if let p2p::NetcodeMsg::Snapshot { from, tick, .. } = m {
+                                let already_newer = matches!(
+                                    latest_by_from.get(from),
+                                    Some(p2p::NetcodeMsg::Snapshot { tick: pt, .. }) if *pt >= *tick
                                 );
-                                let authoritative = state
-                                    .pending_snapshots
-                                    .iter()
-                                    .filter_map(|m| {
-                                        if let p2p::NetcodeMsg::Snapshot {
+                                if !already_newer {
+                                    latest_by_from.insert(*from, m);
+                                }
+                            }
+                        }
+                        let latest: Vec<&p2p::NetcodeMsg> =
+                            latest_by_from.values().copied().collect();
+                        let first_hash = latest.first().and_then(|m| match m {
+                            p2p::NetcodeMsg::Snapshot { hash, .. } => Some(*hash),
+                            _ => None,
+                        });
+                        if let Some(first_hash) = first_hash {
+                            // BTreeMap keys iterate ascending, so the first key is the lowest
+                            // PlayerId — the deterministic authority.
+                            let authority = latest_by_from.keys().next().copied();
+                            if let Some(authority) = authority {
+                                // With a single distinct peer (2-node session) there is nothing to
+                                // cross-check against, so adopt directly; with 2+ peers require all
+                                // to agree before adopting.
+                                let all_agree = latest.len() < 2
+                                    || latest.iter().all(|m| {
+                                        matches!(m, p2p::NetcodeMsg::Snapshot { hash, .. } if *hash == first_hash)
+                                    });
+                                let peer_count = latest.len();
+                                let authoritative =
+                                    latest_by_from.get(&authority).and_then(|m| match m {
+                                        p2p::NetcodeMsg::Snapshot {
+                                            tick,
                                             bodies,
                                             participants,
-                                            from,
-                                            tick,
                                             ..
-                                        } = m
-                                        {
-                                            Some((from, tick, bodies, participants))
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .min_by_key(|(from, _, _, _)| *from)
-                                    .unwrap();
-                                let sim_state = engine::EngineSimState {
-                                    tick: *authoritative.1,
-                                    bodies: authoritative.2.clone(),
-                                };
-                                engine.send_cmd(engine::EngineCmd::Restore(sim_state));
-                                if !authoritative.2.contains_key(&own) {
-                                    engine.send_cmd(engine::EngineCmd::Spawn(own));
+                                        } => Some((*tick, bodies.clone(), participants.clone())),
+                                        _ => None,
+                                    });
+                                if all_agree
+                                    && let Some((tick, bodies, participants)) = authoritative
+                                    && tick > state.last_adopted_tick
+                                {
+                                    // Adopt only forward progress: never rewind to a tick we have
+                                    // already caught up past, or two symmetric peers would keep
+                                    // restoring each other's stale snapshots forever.
+                                    state.last_adopted_tick = tick;
+                                    tracing::info!(
+                                        target: "p2p",
+                                        tick,
+                                        peers = peer_count,
+                                        "snapshot cross-check passed, restoring state"
+                                    );
+                                    let sim_state = engine::EngineSimState {
+                                        tick,
+                                        bodies: bodies.clone(),
+                                    };
+                                    engine.send_cmd(engine::EngineCmd::Restore(sim_state));
+                                    if !bodies.contains_key(&own) {
+                                        engine.send_cmd(engine::EngineCmd::Spawn(own));
+                                    }
+                                    let mut all_participants = participants.clone();
+                                    if !all_participants.contains(&own) {
+                                        all_participants.push(own);
+                                    }
+                                    lockstep.sync_participants(&all_participants);
+                                } else if !all_agree && peer_count >= 2 {
+                                    tracing::warn!(
+                                        target: "p2p",
+                                        "snapshot cross-check FAILED, peers disagree on hash"
+                                    );
                                 }
-                                let mut all_participants = authoritative.3.clone();
-                                if !all_participants.contains(&own) {
-                                    all_participants.push(own);
-                                }
-                                lockstep.sync_participants(&all_participants);
-                                state.pending_snapshots.clear();
-                            } else {
-                                tracing::warn!(
-                                    target: "p2p",
-                                    tick,
-                                    "snapshot cross-check FAILED, peers disagree on hash"
-                                );
                                 state.pending_snapshots.clear();
                             }
                         }
@@ -261,6 +281,7 @@ pub fn netcode_tick(
         **snapshot = Some(auth.clone());
         let h = engine::hash_snapshot(&auth);
         state.latest_hash = Some(h);
+        state.divergence_count = 0;
         for (id, entry) in roster.iter() {
             if *id == own {
                 continue;
@@ -275,15 +296,21 @@ pub fn netcode_tick(
             );
         }
         for pid in auth.bodies.keys() {
-            if let Some(theirs) = state.peer_hashes.get(pid).and_then(|m| m.get(&auth.tick))
-                && *theirs != h
+            let theirs = state
+                .peer_hashes
+                .get(pid)
+                .and_then(|m| m.get(&auth.tick))
+                .copied();
+            if let Some(theirs) = theirs
+                && theirs != h
             {
+                state.divergence_count += 1;
                 tracing::warn!(
                     target: "p2p",
                     peer = %hex::encode(pid),
                     tick = auth.tick,
                     mine = h,
-                    theirs = *theirs,
+                    theirs,
                     "state hash divergence"
                 );
             }
