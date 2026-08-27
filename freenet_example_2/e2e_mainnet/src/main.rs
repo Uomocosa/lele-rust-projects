@@ -5,6 +5,7 @@ use e2e_mainnet_2::build_game;
 use e2e_mainnet_2::build_report;
 use e2e_mainnet_2::load_creds;
 use e2e_mainnet_2::parse_config;
+use e2e_mainnet_2::restore_screen;
 use e2e_mainnet_2::send_text;
 use e2e_mainnet_2::send_video;
 use e2e_mainnet_2::trial_result;
@@ -50,6 +51,7 @@ fn run() -> Result<(), Error> {
             trials.push(t);
         }
     }
+    restore_screen::restore_screen();
 
     let report_text = build_report::build_report(&trials, cfg.instances);
     println!("{report_text}");

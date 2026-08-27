@@ -19,6 +19,7 @@ use crate::start_record;
 use crate::tile_windows;
 use crate::trial_result;
 use crate::wait_all_ready;
+use crate::wakeup_screen;
 use crate::window_info;
 
 struct TeardownGuard;
@@ -37,6 +38,7 @@ pub fn run_trial(
     let run_dir = new_run_dir::new_run_dir(&format!("{mode}-r{rep}"))?;
     println!("[trial {mode} r{rep}] run-dir: {}", run_dir.root.display());
 
+    wakeup_screen::wakeup_screen();
     let instances = launch_instances::launch_instances(bin, &run_dir, cfg.instances, mode)?;
     let _guard = TeardownGuard;
 
@@ -51,6 +53,7 @@ pub fn run_trial(
     let windows = find_windows(&instances);
     tile_windows::tile_windows(&windows)?;
 
+    wakeup_screen::wakeup_screen();
     let video = if cfg.no_video {
         None
     } else {
