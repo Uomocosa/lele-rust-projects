@@ -1,6 +1,7 @@
 use crate::clicker_client;
 use crate::clicker_error;
 use crate::freenet_client;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
@@ -20,6 +21,7 @@ pub async fn connect(
     contract_wasm: &[u8],
     params: &[u8],
     role: Role,
+    tag: u64,
 ) -> Result<clicker_client::ClickerClient, ClickerError> {
     let mut client = FreenetClient::connect(host, port).await?;
 
@@ -29,15 +31,16 @@ pub async fn connect(
     let contract_key = wrapped.key;
     let instance_id = *contract_key.id();
 
-    let (key, count) = match role {
+    let (key, slots) = match role {
         Role::Publish => {
             let result = recv_after_get(&mut client, instance_id).await;
             match result {
                 Ok(r) => r,
                 Err(_) => {
+                    let initial = BTreeMap::from([(tag, 0u64)]);
                     let put_req = ContractRequest::Put {
                         contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-                        state: WrappedState::new(bincode::serialize(&0u64)?),
+                        state: WrappedState::new(bincode::serialize(&initial)?),
                         related_contracts: RelatedContracts::default(),
                         subscribe: true,
                         blocking_subscribe: false,
@@ -75,7 +78,8 @@ pub async fn connect(
     Ok(clicker_client::ClickerClient {
         client,
         contract_key: key,
-        count,
+        slots,
+        tag,
     })
 }
 
@@ -90,9 +94,9 @@ mod tests {
         let mut client = connect(node.port()).await.unwrap();
         let key = deploy(&mut client, &wasm).await.unwrap();
         assert_eq!(get_count(&mut client, key).await.unwrap(), 0);
-        update_count(&mut client, key, 42).await.unwrap();
+        update_count(&mut client, key, 0, 42).await.unwrap();
         assert_eq!(get_count(&mut client, key).await.unwrap(), 42);
-        update_count(&mut client, key, 99).await.unwrap();
+        update_count(&mut client, key, 0, 99).await.unwrap();
         assert_eq!(get_count(&mut client, key).await.unwrap(), 99);
     }
 }

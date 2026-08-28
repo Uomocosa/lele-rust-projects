@@ -62,7 +62,10 @@ mod tests {
         fs::create_dir_all(dir.join("instance-0")).unwrap();
         fs::write(
             &tent,
-            "connected, running indefinitely\ncount=5\ncount=6\ncontract deployed\n",
+            "connected, running indefinitely\n\
+             tick count=5 owns=5\n\
+             tick count=6 owns=6\n\
+             contract deployed\n",
         )
         .unwrap();
         let inst = instance::Instance {

@@ -7,7 +7,7 @@ async fn test_publish_subscribe() {
     let wasm = load_wasm();
     let mut pub_ = connect(node.port()).await.unwrap();
     let key = deploy(&mut pub_, &wasm).await.unwrap();
-    update_count(&mut pub_, key, 5).await.unwrap();
+    update_count(&mut pub_, key, 0, 5).await.unwrap();
 
     let mut sub = ClickerClient::connect("127.0.0.1", node.port(), &wasm, Role::Subscribe)
         .await

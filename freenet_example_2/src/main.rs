@@ -124,12 +124,13 @@ async fn connect_with_retry(
         let result = match &mode {
             ContractMode::Counter => {
                 let wasm = include_bytes!("../contract/clicker_contract.wasm");
-                ClickerClient::connect_with_params(
+                ClickerClient::connect_with_tag(
                     host,
                     port,
                     wasm,
                     &contract_params(),
                     Role::Publish,
+                    instance_tag(),
                 )
                 .await
                 .map(Connected::Counter)
@@ -159,13 +160,15 @@ async fn run_loop(connected: &mut Connected) -> Result<(), Box<dyn std::error::E
         Connected::Counter(c) => {
             info!(
                 mainnet = mainnet_client(),
+                tag = c.tag,
                 key = %c.contract_key(),
                 count = c.count(),
+                owns = c.own(),
                 "connected, running indefinitely"
             );
             loop {
                 match c.tick().await {
-                    Ok(count) => info!(count, "tick"),
+                    Ok(count) => info!(count, owns = c.own(), "tick"),
                     Err(e) => eprintln!("tick error: {e}"),
                 }
                 tokio::time::sleep(Duration::from_secs(1)).await;

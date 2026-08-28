@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::Error;
 use crate::config;
@@ -21,6 +21,8 @@ use crate::trial_result;
 use crate::wait_all_ready;
 use crate::wakeup_screen;
 use crate::window_info;
+
+const POLL_SECS: u64 = 5;
 
 struct TeardownGuard;
 
@@ -48,7 +50,7 @@ pub fn run_trial(
         println!("[trial {mode} r{rep}] not all connected: {e}");
     }
 
-    std::thread::sleep(Duration::from_secs(cfg.settle_secs));
+    let elapsed = wait_for_convergence(cfg, &instances, mode, rep);
 
     let windows = find_windows(&instances);
     tile_windows::tile_windows(&windows)?;
@@ -74,7 +76,7 @@ pub fn run_trial(
     }
     let rr: reconcile_result::ReconcileResult = reconcile_analyze::analyze(&traces, mode);
 
-    let outcome: outcome::Outcome = evaluate::evaluate(&instances, cfg.settle_secs)?;
+    let outcome: outcome::Outcome = evaluate::evaluate(&instances, elapsed)?;
     let error_sigs = outcome.error_sigs;
     let put_count = outcome.put_count;
     let _killed = kill_all_instances::kill_all_instances().is_ok();
@@ -94,6 +96,40 @@ pub fn run_trial(
         video,
         run_label: run_dir.label.clone(),
     })
+}
+
+// needed helper:
+fn wait_for_convergence(
+    cfg: &config::Config,
+    instances: &[instance::Instance],
+    mode: &str,
+    rep: usize,
+) -> u64 {
+    let start = Instant::now();
+    let mut stable = 0u64;
+    loop {
+        let traces: Vec<_> = instances
+            .iter()
+            .map(|i| read_trace::read_trace(&i.log_path).unwrap_or_default())
+            .collect();
+        let rr: reconcile_result::ReconcileResult = reconcile_analyze::analyze(&traces, mode);
+        if rr.merged_correct == Some(true) {
+            stable += POLL_SECS;
+            if stable >= cfg.settle_secs {
+                let elapsed = start.elapsed().as_secs();
+                println!("[trial {mode} r{rep}] converged after {elapsed}s");
+                return elapsed;
+            }
+        } else {
+            stable = 0;
+        }
+        let elapsed = start.elapsed().as_secs();
+        if elapsed >= cfg.timeout_secs {
+            println!("[trial {mode} r{rep}] timed out waiting for convergence ({elapsed}s)");
+            return elapsed;
+        }
+        std::thread::sleep(Duration::from_secs(POLL_SECS));
+    }
 }
 
 // needed helper:

@@ -3,7 +3,10 @@ pub struct Config {
     pub release: bool,
     pub mode: String,
     pub repeats: usize,
+    /// Hard ceiling: a trial that hasn't reconciled+merged by this time is a failure.
     pub timeout_secs: u64,
+    /// Stabilization window: how long the merged condition must hold continuously
+    /// before a trial ends early on success.
     pub settle_secs: u64,
     pub clip_secs: u64,
     pub no_video: bool,
@@ -17,8 +20,8 @@ impl Default for Config {
             release: true,
             mode: "both".to_string(),
             repeats: 1,
-            timeout_secs: 600,
-            settle_secs: 600,
+            timeout_secs: 900,
+            settle_secs: 30,
             clip_secs: 25,
             no_video: false,
             no_telegram: false,

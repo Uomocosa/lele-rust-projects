@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
@@ -14,7 +16,8 @@ pub async fn subscribe(client: &mut FreenetClient, key: ContractKey) -> Result<u
     client.send(ClientRequest::ContractOp(get_req)).await?;
     match client.recv_response().await? {
         HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-            Ok(bincode::deserialize(state.as_ref())?)
+            let slots: BTreeMap<u64, u64> = bincode::deserialize(state.as_ref())?;
+            Ok(slots.values().sum())
         }
         other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }

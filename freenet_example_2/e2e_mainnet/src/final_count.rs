@@ -6,7 +6,7 @@ use crate::Error;
 pub fn final_count(log: &Path) -> Result<Option<u64>, Error> {
     let text = fs::read_to_string(log)
         .map_err(|e| Error::Assertion(format!("reading {}: {e}", log.display())))?;
-    Ok(regex::Regex::new(r"count=(\d+)")
+    Ok(regex::Regex::new(r"tick count=(\d+)")
         .map_err(|e| Error::Assertion(format!("compiling regex: {e}:")))?
         .captures_iter(&strip_ansi(&text))
         .filter_map(|c| c.get(1)?.as_str().parse::<u64>().ok())
@@ -41,7 +41,14 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("e2e_cnt_{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let p = dir.join("app.log");
-        fs::write(&p, "count=1\ncount=2\ncount=3\n").unwrap();
+        fs::write(
+            &p,
+            "connected, running indefinitely count=999 owns=999\n\
+             tick count=1 owns=1\n\
+             tick count=2 owns=2\n\
+             tick count=3 owns=3\n",
+        )
+        .unwrap();
         assert_eq!(final_count(&p).unwrap(), Some(3));
         let p2 = dir.join("b.log");
         fs::write(&p2, "nothing").unwrap();

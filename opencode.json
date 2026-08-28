@@ -25,6 +25,7 @@
       "libp2p": "allow",
       "freenet": "allow",
       "freenet-gateway": "allow",
+      "freenet-contract-design": "allow",
       "avian": "allow"
     }
   },

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
@@ -7,9 +9,11 @@ use crate::FreenetClient;
 pub async fn update_count(
     client: &mut FreenetClient,
     key: ContractKey,
+    tag: u64,
     count: u64,
 ) -> Result<(), ClientError> {
-    let state = State::from(bincode::serialize(&count)?);
+    let slots = BTreeMap::from([(tag, count)]);
+    let state = State::from(bincode::serialize(&slots)?);
     let req = ContractRequest::Update {
         key,
         data: UpdateData::State(state),

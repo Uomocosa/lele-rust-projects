@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
@@ -31,7 +32,7 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractK
 
     let put_req = ContractRequest::Put {
         contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-        state: WrappedState::new(bincode::serialize(&0u64)?),
+        state: WrappedState::new(bincode::serialize(&BTreeMap::from([(0u64, 0u64)]))?),
         related_contracts: RelatedContracts::default(),
         subscribe: true,
         blocking_subscribe: true,

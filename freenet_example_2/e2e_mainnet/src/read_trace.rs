@@ -13,7 +13,7 @@ pub fn read_trace(log: &Path) -> Result<Vec<tick_sample::TickSample>, Error> {
     let clean = strip_ansi(&text);
 
     let ts_re = Regex::new(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}").unwrap();
-    let count_re = Regex::new(r"count=(\d+)").unwrap();
+    let count_re = Regex::new(r"tick count=(\d+)").unwrap();
     let owns_re = Regex::new(r"owns=(\d+)").unwrap();
 
     let mut out = Vec::new();
@@ -84,7 +84,8 @@ mod tests {
         let p = dir.join("app.log");
         fs::write(
             &p,
-            "2026-08-26T11:56:31Z INFO freenet_example_2: tick count=1 owns=1\n\
+            "2026-08-26T11:56:30Z INFO freenet_example_2: connected, running indefinitely count=5 owns=5\n\
+             2026-08-26T11:56:31Z INFO freenet_example_2: tick count=1 owns=1\n\
              2026-08-26T11:56:32Z INFO freenet_example_2: tick count=2 owns=2\n",
         )
         .unwrap();
