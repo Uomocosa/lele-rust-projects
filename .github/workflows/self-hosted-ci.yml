@@ -46,6 +46,8 @@ jobs:
       crossos_pkg: ${{ steps.pkgs.outputs.crossos_pkg }}
       determinism_test: ${{ steps.pkgs.outputs.determinism_test }}
       has_firewall_probe: ${{ steps.pkgs.outputs.has_firewall_probe }}
+      has_game_probes: ${{ steps.pkgs.outputs.has_game_probes }}
+      has_mainnet_probe: ${{ steps.pkgs.outputs.has_mainnet_probe }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +63,9 @@ jobs:
       # Per-crate subcrate names + capabilities. The `_3` suffix (example_3) uses the `_3`
       # subcrates and ships an `engine_determinism` probe (POLISH §3 cross-OS hash record);
       # example_1 keeps its original names and has no determinism probe yet.
+      # Crates without a `cross_os_tests` subcrate (e.g. freenet_example_2) run their cross-OS
+      # probe as an #[ignore]d integration test of the main package instead, so crossos_pkg
+      # falls back to the main package name and the game-specific probe jobs are skipped.
       - name: Resolve per-crate subcrate package names
         id: pkgs
         run: |
@@ -73,15 +78,34 @@ jobs:
               echo "determinism_test=engine_determinism" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "testing_pkg=testing" >> "$GITHUB_OUTPUT"
-              echo "crossos_pkg=cross_os_tests" >> "$GITHUB_OUTPUT"
               echo "determinism_test=" >> "$GITHUB_OUTPUT"
+              if [ -f "$CRATE/testing/Cargo.toml" ]; then
+                echo "testing_pkg=testing" >> "$GITHUB_OUTPUT"
+              else
+                echo "testing_pkg=" >> "$GITHUB_OUTPUT"
+              fi
+              if [ -f "$CRATE/cross_os_tests/Cargo.toml" ]; then
+                echo "crossos_pkg=cross_os_tests" >> "$GITHUB_OUTPUT"
+              else
+                PKG=$(grep -m1 '^name' "$CRATE/Cargo.toml" | sed 's/^name *= *"\(.*\)"/\1/')
+                echo "crossos_pkg=$PKG" >> "$GITHUB_OUTPUT"
+              fi
               ;;
           esac
           if [ -f "$CRATE/firewall_probe/Cargo.toml" ]; then
             echo "has_firewall_probe=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_firewall_probe=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "$CRATE/cross_os_tests/Cargo.toml" ]; then
+            echo "has_game_probes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_game_probes=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "$CRATE/integration_tests/cross_os_reconcile.rs" ]; then
+            echo "has_mainnet_probe=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_mainnet_probe=false" >> "$GITHUB_OUTPUT"
           fi
 
   firewall-probe:
@@ -340,12 +364,20 @@ jobs:
           cp "$src" "contract/$(basename "$src")"
 
       - name: Clippy testing crate
+        if: needs.resolve.outputs.testing_pkg != ''
         run: cargo clippy --all-targets -p ${{ needs.resolve.outputs.testing_pkg }} -- -D warnings
 
       - name: Build cross-OS probe tests (compile check, not run)
+        if: needs.resolve.outputs.has_game_probes == 'true'
         run: |
           set -euo pipefail
           cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --no-run
+
+      - name: Build cross-OS mainnet reconcile probe (compile check, not run)
+        if: needs.resolve.outputs.has_mainnet_probe == 'true'
+        run: |
+          set -euo pipefail
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --test cross_os_reconcile --no-run
 
       - name: Run engine determinism gate (per-machine POLISH §3 hash record)
         if: needs.resolve.outputs.determinism_test != ''
@@ -370,9 +402,9 @@ jobs:
     # A matrix job's legs run in parallel and the next job's `needs` is satisfied only after ALL
     # legs of the dependency complete, so cross-os-movement-sync cannot start until both machines
     # finished peer_discovery. The generous timeout guarantees the run eventually stops even if a
-    # machine is left idle.
+    # machine is left idle. Game crates only — mainnet-probe crates run cross-os-reconcile below.
     needs: [resolve, cross-os-build]
-    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.cross-os-build.result != 'failure'
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.cross-os-build.result == 'success' && needs.resolve.outputs.has_game_probes == 'true'
     runs-on: [self-hosted, "${{ matrix.os }}"]
     timeout-minutes: 90
     strategy:
@@ -461,6 +493,111 @@ jobs:
           name: cross-os-movement-log-${{ matrix.os }}
           path: ${{ needs.resolve.outputs.crate }}/cross-os-movement-${{ matrix.os }}.log
           if-no-files-found: error
+
+  cross-os-reconcile:
+    # Mainnet-probe crates (e.g. freenet_example_2): both machines start a mainnet client node
+    # and a counter client with the SAME contract params (derived from the run id) at the same
+    # time, tick for the duration, and must observe each other's slot through the network —
+    # the real deployment topology: fresh contract, cross-OS, cross-network.
+    needs: [resolve, cross-os-build]
+    if: (inputs.jobs == 'all' || inputs.jobs == 'cross-os') && (inputs.release-builds || inputs.jobs == 'cross-os') && needs.cross-os-build.result == 'success' && needs.resolve.outputs.has_mainnet_probe == 'true'
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+          - os: windows
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.os == 'windows' && 'C:\\cargo-target\\cross-os' || '/home/uomocosa/.cache/frt-crossos' }}
+      CARGO_BUILD_JOBS: ${{ matrix.os == 'windows' && '1' || '6' }}
+      CROSS_OS_MACHINE: ${{ matrix.os }}
+      CROSS_OS_KEY: cross-os-${{ github.run_id }}
+      CROSS_OS_DEADLINE_SECS: "900"
+      RUST_LOG: warn
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
+        working-directory: ${{ needs.resolve.outputs.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run cross-OS mainnet reconcile probe
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$PATH"
+          export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-reconcile-${{ matrix.os }}.log"
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} \
+            --test cross_os_reconcile -- --ignored --nocapture
+
+      - name: Upload cross-OS reconcile log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-os-reconcile-log-${{ matrix.os }}
+          path: ${{ needs.resolve.outputs.crate }}/cross-os-reconcile-${{ matrix.os }}.log
+          if-no-files-found: error
+
+  cross-os-reconcile-verify:
+    needs: [resolve, cross-os-reconcile]
+    if: always() && needs.resolve.outputs.has_mainnet_probe == 'true' && needs.cross-os-reconcile.result != 'skipped'
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cross-os-reconcile-log-linux
+          path: verify/linux
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cross-os-reconcile-log-windows
+          path: verify/windows
+
+      - name: Assert each OS observed the other through mainnet
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, sys
+
+          def load(path):
+              own = None
+              observed = set()
+              count = 0
+              try:
+                  with open(path) as f:
+                      for line in f:
+                          line = line.strip()
+                          if not line:
+                              continue
+                          try:
+                              rec = json.loads(line)
+                          except json.JSONDecodeError:
+                              continue
+                          own = rec.get("own", own)
+                          observed |= set(rec.get("foreign_tags", []))
+                          count = max(count, rec.get("count", 0))
+              except FileNotFoundError:
+                  pass
+              return own, observed, count
+
+          l_own, l_obs, l_count = load("verify/linux/cross-os-reconcile-linux.log")
+          w_own, w_obs, w_count = load("verify/windows/cross-os-reconcile-windows.log")
+
+          if l_own is None or w_own is None:
+              sys.exit("cross-os-reconcile-verify: a side produced no reconcile log")
+          print(f"linux   own={l_own} observed={sorted(l_obs)} count={l_count}")
+          print(f"windows own={w_own} observed={sorted(w_obs)} count={w_count}")
+
+          if w_own not in l_obs:
+              sys.exit(f"FAIL: linux never observed the windows slot {w_own} on mainnet")
+          if l_own not in w_obs:
+              sys.exit(f"FAIL: windows never observed the linux slot {l_own} on mainnet")
+          if l_count <= 0 or w_count <= 0:
+              sys.exit("FAIL: a side finished with a zero counter")
+          print("PASS: cross-OS mainnet reconcile confirmed (each side merged the other's slot)")
+          PY
 
   cross-os-verify:
     needs: [resolve, cross-os-movement-sync]
