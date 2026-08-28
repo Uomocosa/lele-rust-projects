@@ -10,6 +10,9 @@ pub use contract_key::contract_key;
 pub mod count;
 pub use count::count;
 
+pub mod foreign_tags;
+pub use foreign_tags::foreign_tags;
+
 pub mod merge_slots;
 pub use merge_slots::merge_slots;
 

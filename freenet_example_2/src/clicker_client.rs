@@ -48,6 +48,9 @@ impl ClickerClient {
     pub fn note_foreign_slots(&mut self) {
         clicker_client_method::note_foreign_slots(self);
     }
+    pub fn foreign_tags(&self) -> Vec<u64> {
+        clicker_client_method::foreign_tags(self)
+    }
     pub async fn bridge_tick(&mut self) -> Result<(), clicker_error::ClickerError> {
         clicker_client_method::bridge_tick(self).await
     }
