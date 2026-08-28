@@ -2,6 +2,7 @@ use crate::clicker_client_method;
 use crate::clicker_error;
 use crate::freenet_client;
 use std::collections::BTreeMap;
+use std::time::Instant;
 
 use freenet_stdlib::prelude::*;
 
@@ -13,6 +14,9 @@ pub struct ClickerClient {
     pub(crate) contract_key: ContractKey,
     pub(crate) slots: BTreeMap<u64, u64>,
     pub tag: u64,
+    pub(crate) foreign_seen: Option<Instant>,
+    pub(crate) last_bridge: Option<Instant>,
+    pub(crate) contract: ContractContainer,
 }
 
 #[rustfmt::skip]
@@ -40,6 +44,12 @@ impl ClickerClient {
     }
     pub async fn tick(&mut self) -> Result<u64, clicker_error::ClickerError> {
         clicker_client_method::tick(self).await
+    }
+    pub fn note_foreign_slots(&mut self) {
+        clicker_client_method::note_foreign_slots(self);
+    }
+    pub async fn bridge_tick(&mut self) -> Result<(), clicker_error::ClickerError> {
+        clicker_client_method::bridge_tick(self).await
     }
 }
 

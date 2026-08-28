@@ -1,4 +1,5 @@
 pub mod build_game;
+pub mod bridge_counts;
 pub mod build_report;
 pub mod collect_error_sigs;
 pub mod config;

@@ -171,6 +171,10 @@ async fn run_loop(connected: &mut Connected) -> Result<(), Box<dyn std::error::E
                     Ok(count) => info!(count, owns = c.own(), "tick"),
                     Err(e) => eprintln!("tick error: {e}"),
                 }
+                c.note_foreign_slots();
+                if let Err(e) = c.bridge_tick().await {
+                    eprintln!("bridge error: {e}");
+                }
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
         }

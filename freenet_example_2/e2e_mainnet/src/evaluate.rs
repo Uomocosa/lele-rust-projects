@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::bridge_counts;
 use crate::collect_error_sigs;
 use crate::final_count;
 use crate::has_put;
@@ -37,6 +38,7 @@ pub fn evaluate(
 
     let log_refs: Vec<&std::path::Path> = instances.iter().map(|i| i.log_path.as_path()).collect();
     let error_sigs = collect_error_sigs::collect_error_sigs(&log_refs)?;
+    let (bridge_splits, bridge_merges) = bridge_counts::bridge_counts(&log_refs)?;
 
     Ok(outcome::Outcome {
         instances: outs,
@@ -44,6 +46,8 @@ pub fn evaluate(
         converged,
         aggregated,
         error_sigs,
+        bridge_splits,
+        bridge_merges,
     })
 }
 
@@ -62,10 +66,12 @@ mod tests {
         fs::create_dir_all(dir.join("instance-0")).unwrap();
         fs::write(
             &tent,
-            "connected, running indefinitely\n\
-             tick count=5 owns=5\n\
-             tick count=6 owns=6\n\
-             contract deployed\n",
+             "connected, running indefinitely\n\
+              tick count=5 owns=5\n\
+              tick count=6 owns=6\n\
+              contract deployed\n\
+              bridge: split suspected\n\
+              bridge: merged via resubscribe\n",
         )
         .unwrap();
         let inst = instance::Instance {
@@ -79,6 +85,8 @@ mod tests {
         assert_eq!(outcome.instances[0].final_count, Some(6));
         assert!(outcome.instances[0].put);
         assert_eq!(outcome.put_count, 1);
+        assert_eq!(outcome.bridge_splits, 1);
+        assert_eq!(outcome.bridge_merges, 1);
         assert!(outcome.error_sigs.is_empty());
     }
 }

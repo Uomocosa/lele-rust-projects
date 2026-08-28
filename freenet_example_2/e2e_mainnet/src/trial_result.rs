@@ -10,6 +10,8 @@ pub struct TrialResult {
     pub expected_union: Option<u64>,
     pub merged_correct: Option<bool>,
     pub aggregated: bool,
+    pub bridge_splits: usize,
+    pub bridge_merges: usize,
     pub video: Option<Vec<u8>>,
     pub run_label: String,
 }

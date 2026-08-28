@@ -16,6 +16,7 @@ use crate::read_trace;
 use crate::reconcile_analyze;
 use crate::reconcile_result;
 use crate::start_record;
+use crate::tick_sample;
 use crate::tile_windows;
 use crate::trial_result;
 use crate::wait_all_ready;
@@ -93,6 +94,8 @@ pub fn run_trial(
         expected_union: rr.expected_union,
         merged_correct: rr.merged_correct,
         aggregated: rr.aggregated,
+        bridge_splits: outcome.bridge_splits,
+        bridge_merges: outcome.bridge_merges,
         video,
         run_label: run_dir.label.clone(),
     })
@@ -106,22 +109,29 @@ fn wait_for_convergence(
     rep: usize,
 ) -> u64 {
     let start = Instant::now();
-    let mut stable = 0u64;
+    let mut consecutive = 0usize;
+    let mut last_generation: Option<(u64, u64)> = None;
     loop {
         let traces: Vec<_> = instances
             .iter()
             .map(|i| read_trace::read_trace(&i.log_path).unwrap_or_default())
             .collect();
+        let generation = tick_generation(&traces);
         let rr: reconcile_result::ReconcileResult = reconcile_analyze::analyze(&traces, mode);
-        if rr.merged_correct == Some(true) {
-            stable += POLL_SECS;
-            if stable >= cfg.settle_secs {
+        let advanced = last_generation.is_none_or(|prev| generation > prev);
+        if rr.merged_correct == Some(true) && advanced {
+            consecutive += 1;
+            last_generation = Some(generation);
+            if consecutive >= cfg.consecutive {
                 let elapsed = start.elapsed().as_secs();
-                println!("[trial {mode} r{rep}] converged after {elapsed}s");
+                println!(
+                    "[trial {mode} r{rep}] converged after {elapsed}s ({consecutive} consecutive update observations)"
+                );
                 return elapsed;
             }
         } else {
-            stable = 0;
+            consecutive = 0;
+            last_generation = Some(generation);
         }
         let elapsed = start.elapsed().as_secs();
         if elapsed >= cfg.timeout_secs {
@@ -130,6 +140,17 @@ fn wait_for_convergence(
         }
         std::thread::sleep(Duration::from_secs(POLL_SECS));
     }
+}
+
+// needed helper:
+fn tick_generation(traces: &[Vec<tick_sample::TickSample>]) -> (u64, u64) {
+    let max_count = traces
+        .iter()
+        .filter_map(|t| t.last().map(|s| s.count))
+        .max()
+        .unwrap_or(0);
+    let owns_sum: u64 = traces.iter().filter_map(|t| t.last().map(|s| s.owns)).sum();
+    (max_count, owns_sum)
 }
 
 // needed helper:

@@ -1,4 +1,5 @@
 use crate::clicker_client;
+use crate::clicker_client_method;
 use crate::clicker_error;
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -11,7 +12,7 @@ use clicker_error::ClickerError as Ce;
 // needed helper:
 fn absorb_slots(slots: &mut BTreeMap<u64, u64>, bytes: &[u8]) {
     if let Ok(incoming) = bincode::deserialize::<BTreeMap<u64, u64>>(bytes) {
-        *slots = incoming;
+        clicker_client_method::merge_slots(slots, incoming);
     }
 }
 

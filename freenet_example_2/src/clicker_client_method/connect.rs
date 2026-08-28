@@ -30,16 +30,20 @@ pub async fn connect(
     let wrapped = WrappedContract::new(contract_code, params);
     let contract_key = wrapped.key;
     let instance_id = *contract_key.id();
+    let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
 
     let (key, slots) = match role {
         Role::Publish => {
             let result = recv_after_get(&mut client, instance_id).await;
             match result {
-                Ok(r) => r,
+                Ok(r) => {
+                    let (key, slots) = r;
+                    (key, slots)
+                }
                 Err(_) => {
                     let initial = BTreeMap::from([(tag, 0u64)]);
                     let put_req = ContractRequest::Put {
-                        contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
+                        contract: container.clone(),
                         state: WrappedState::new(bincode::serialize(&initial)?),
                         related_contracts: RelatedContracts::default(),
                         subscribe: true,
@@ -56,30 +60,39 @@ pub async fn connect(
                         }
                         other => return Err(Ce::UnexpectedResponse(format!("{other:?}"))),
                     }
-                    recv_after_get(&mut client, instance_id).await?
+                    let (key, slots) = recv_after_get(&mut client, instance_id).await?;
+                    (key, slots)
                 }
             }
         }
-        Role::Subscribe => loop {
-            match recv_after_get(&mut client, instance_id).await {
-                Ok(r) => break r,
-                Err(_) => {
-                    info!(
-                        target: "freenet_example",
-                        %instance_id,
-                        "contract not found, retrying in 1s"
-                    );
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        Role::Subscribe => {
+            let r = loop {
+                match recv_after_get(&mut client, instance_id).await {
+                    Ok(r) => break r,
+                    Err(_) => {
+                        info!(
+                            target: "freenet_example",
+                            %instance_id,
+                            "contract not found, retrying in 1s"
+                        );
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    }
                 }
-            }
-        },
+            };
+            (r.0, r.1)
+        }
     };
 
+    let has_foreign = slots.keys().any(|t| *t != tag);
     Ok(clicker_client::ClickerClient {
         client,
         contract_key: key,
         slots,
         tag,
+
+        foreign_seen: has_foreign.then(std::time::Instant::now),
+        last_bridge: None,
+        contract: container,
     })
 }
 

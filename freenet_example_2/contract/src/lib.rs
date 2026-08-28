@@ -62,16 +62,29 @@ impl ContractInterface for ClickerContract {
     ) -> Result<StateSummary<'static>, ContractError> {
         let slots = decode_slots(state.as_ref())?;
         let summary =
-            bincode::serialize(&total(&slots)).map_err(|e| ContractError::Deser(e.to_string()))?;
+            bincode::serialize(&slots).map_err(|e| ContractError::Deser(e.to_string()))?;
         Ok(StateSummary::from(summary))
     }
 
     fn get_state_delta(
         _parameters: Parameters<'static>,
         state: State<'static>,
-        _summary: StateSummary<'static>,
+        summary: StateSummary<'static>,
     ) -> Result<StateDelta<'static>, ContractError> {
-        Ok(StateDelta::from(state.as_ref().to_vec()))
+        let ours = decode_slots(state.as_ref())?;
+        let theirs: Slots = match bincode::deserialize(summary.as_ref()) {
+            Ok(s) => s,
+            Err(_) => return Ok(StateDelta::from(state.as_ref().to_vec())),
+        };
+        let mut delta = Slots::new();
+        for (tag, value) in &ours {
+            if theirs.get(tag).copied().unwrap_or(0) < *value {
+                delta.insert(*tag, *value);
+            }
+        }
+        Ok(StateDelta::from(bincode::serialize(&delta).map_err(
+            |e| ContractError::Deser(e.to_string()),
+        )?))
     }
 }
 
@@ -106,16 +119,36 @@ mod tests {
         assert_eq!(merged, 12);
 
         let summary = ClickerContract::summarize_state(params(), slots(&[(0, 5), (1, 3)])).unwrap();
-        assert_eq!(bincode::deserialize::<u64>(summary.as_ref()).unwrap(), 8);
+        let summary_slots: Slots = bincode::deserialize(summary.as_ref()).unwrap();
+        assert_eq!(summary_slots.get(&0), Some(&5));
+        assert_eq!(summary_slots.get(&1), Some(&3));
 
         let delta = ClickerContract::get_state_delta(
             params(),
-            slots(&[(0, 5)]),
-            StateSummary::from(vec![]),
+            slots(&[(0, 5), (1, 3)]),
+            StateSummary::from(bincode::serialize(&Slots::from([(0u64, 5u64)])).unwrap()),
         )
         .unwrap();
-        let got = dbg_total(delta.as_ref());
-        assert_eq!(got, 5);
+        let got: Slots = bincode::deserialize(delta.as_ref()).unwrap();
+        assert_eq!(got.get(&0), None);
+        assert_eq!(got.get(&1), Some(&3));
+
+        let garbage = ClickerContract::get_state_delta(
+            params(),
+            slots(&[(0, 5)]),
+            StateSummary::from(b"not-bincode".to_vec()),
+        )
+        .unwrap();
+        assert_eq!(dbg_total(garbage.as_ref()), 5);
+    }
+
+    #[test]
+    fn test_equal_totals_masked_divergence_detected() {
+        let summary_a =
+            ClickerContract::summarize_state(params(), slots(&[(0, 4), (1, 4)])).unwrap();
+        let summary_b =
+            ClickerContract::summarize_state(params(), slots(&[(0, 8)])).unwrap();
+        assert_ne!(summary_a.as_ref(), summary_b.as_ref());
     }
 
     #[test]

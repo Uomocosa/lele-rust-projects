@@ -6,4 +6,6 @@ pub struct Outcome {
     pub converged: bool,
     pub aggregated: bool,
     pub error_sigs: Vec<String>,
+    pub bridge_splits: usize,
+    pub bridge_merges: usize,
 }

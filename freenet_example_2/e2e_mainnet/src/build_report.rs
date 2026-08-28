@@ -34,8 +34,8 @@ pub fn build_report(trials: &[trial_result::TrialResult], instances: usize) -> S
             "✗ NOT reconciled"
         };
         s.push_str(&format!(
-            "  <b>{}-r{}</b> {status} put={} final=[{counts}] latency={latency} union={union} merged={merged} errs={}\n",
-            t.mode, t.rep, t.put_count, t.error_sigs.len()
+            "  <b>{}-r{}</b> {status} put={} final=[{counts}] latency={latency} union={union} merged={merged} bridges={}/{} errs={}\n",
+            t.mode, t.rep, t.put_count, t.bridge_merges, t.bridge_splits, t.error_sigs.len()
         ));
     }
 

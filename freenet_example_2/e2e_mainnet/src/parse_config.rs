@@ -29,9 +29,9 @@ pub fn parse_config() -> Config {
                     i += 1;
                 }
             }
-            "--settle" => {
-                if let Some(v) = args.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
-                    cfg.settle_secs = v;
+            "--consecutive" => {
+                if let Some(v) = args.get(i + 1).and_then(|s| s.parse::<usize>().ok()) {
+                    cfg.consecutive = v;
                     i += 1;
                 }
             }
