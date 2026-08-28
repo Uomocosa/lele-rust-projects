@@ -17,10 +17,6 @@ fn encode_slots(slots: &Slots) -> State<'static> {
     State::from(bincode::serialize(slots).expect("serialize slots"))
 }
 
-fn total(slots: &Slots) -> u64 {
-    slots.values().sum()
-}
-
 #[contract]
 impl ContractInterface for ClickerContract {
     fn validate_state(
@@ -102,7 +98,9 @@ mod tests {
     }
 
     fn dbg_total(bytes: &[u8]) -> u64 {
-        decode_slots(bytes).map(|s| total(&s)).unwrap_or(0)
+        decode_slots(bytes)
+            .map(|s| s.values().sum())
+            .unwrap_or(0)
     }
 
     #[test]
