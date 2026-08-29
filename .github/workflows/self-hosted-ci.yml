@@ -515,7 +515,10 @@ jobs:
       CROSS_OS_MACHINE: ${{ matrix.os }}
       CROSS_OS_KEY: cross-os-${{ github.run_id }}
       CROSS_OS_DEADLINE_SECS: "900"
-      RUST_LOG: warn
+      # Node-level info (ring connections, broadcast targets, subscribe/put ops) plus the
+      # client's bridge lines — the VPN-exit failure of run 33261445827 was undiagnosable
+      # with RUST_LOG=warn.
+      RUST_LOG: warn,freenet=info,freenet_example=info,freenet_example_2=info
     defaults:
       run:
         shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
