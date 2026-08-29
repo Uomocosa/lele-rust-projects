@@ -83,14 +83,18 @@ pub async fn connect(
         }
     };
 
-    let has_foreign = slots.keys().any(|t| *t != tag);
+    let foreign_sum: u64 = slots
+        .iter()
+        .filter(|(t, _)| **t != tag)
+        .map(|(_, v)| v)
+        .sum();
     Ok(clicker_client::ClickerClient {
         client,
         contract_key: key,
         slots,
         tag,
-
-        foreign_seen: has_foreign.then(std::time::Instant::now),
+        foreign_seen: (foreign_sum > 0).then(std::time::Instant::now),
+        foreign_sum,
         last_bridge: None,
         contract: container,
     })

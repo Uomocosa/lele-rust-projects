@@ -2,38 +2,37 @@ use crate::clicker_client;
 use std::collections::BTreeMap;
 use std::time::Instant;
 
+/// Tracks foreign-slot freshness: `foreign_seen` only advances when the summed
+/// foreign values actually change, so a stale subscription (foreign slots frozen
+/// while peers keep ticking) still arms the bridge.
 pub fn note_foreign_slots(client: &mut clicker_client::ClickerClient) {
-    refresh_foreign(&client.slots, client.tag, &mut client.foreign_seen);
+    let sum = foreign_sum(&client.slots, client.tag);
+    if sum != client.foreign_sum {
+        client.foreign_sum = sum;
+        client.foreign_seen = Some(Instant::now());
+    }
 }
 
 // needed helper:
-fn refresh_foreign(slots: &BTreeMap<u64, u64>, tag: u64, seen: &mut Option<Instant>) {
-    if slots.keys().any(|t| *t != tag) {
-        *seen = Some(Instant::now());
-    }
+fn foreign_sum(slots: &BTreeMap<u64, u64>, tag: u64) -> u64 {
+    slots
+        .iter()
+        .filter(|(t, _)| **t != tag)
+        .map(|(_, v)| v)
+        .sum()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::refresh_foreign;
+    use super::foreign_sum;
     use std::collections::BTreeMap;
-    use std::time::Duration;
 
     #[test]
     fn test_usage() {
-        let mut seen = None;
+        let slots = BTreeMap::from([(0u64, 5u64), (1, 3), (2, 7)]);
+        assert_eq!(foreign_sum(&slots, 0), 10);
+        assert_eq!(foreign_sum(&slots, 1), 12);
         let own_only = BTreeMap::from([(0u64, 5u64)]);
-        refresh_foreign(&own_only, 0, &mut seen);
-        assert!(seen.is_none());
-
-        let mut with_foreign = own_only.clone();
-        with_foreign.insert(1, 3);
-        refresh_foreign(&with_foreign, 0, &mut seen);
-        assert!(seen.is_some());
-
-        let stamped = seen.unwrap();
-        std::thread::sleep(Duration::from_millis(2));
-        refresh_foreign(&own_only, 0, &mut seen);
-        assert_eq!(seen.unwrap(), stamped);
+        assert_eq!(foreign_sum(&own_only, 0), 0);
     }
 }

@@ -1,7 +1,6 @@
 use crate::clicker_client;
 use crate::clicker_client_method;
 use crate::clicker_error;
-use crate::recv_after_get;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -11,7 +10,7 @@ use tracing::info;
 
 const SPLIT_AFTER_SECS: u64 = 30;
 const BRIDGE_INTERVAL_SECS: u64 = 30;
-const RESUBSCRIBE_TIMEOUT: Duration = Duration::from_secs(30);
+const SUBSCRIBE_TIMEOUT: Duration = Duration::from_secs(30);
 const REPUT_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub async fn bridge_tick(
@@ -27,16 +26,15 @@ pub async fn bridge_tick(
     client.last_bridge = Some(std::time::Instant::now());
     info!(target: "freenet_example", tag = client.tag, "bridge: split suspected");
 
-    let (key, incoming) = attempt_resubscribe(client).await?;
-    let merged_now = incoming.keys().any(|t| *t != client.tag);
-    clicker_client_method::merge_slots(&mut client.slots, incoming);
-    note_foreign(client);
+    let merged_now = attempt_subscribe(client).await?;
+    clicker_client_method::note_foreign_slots(client);
     if merged_now {
-        info!(target: "freenet_example", tag = client.tag, key = %key, "bridge: merged via resubscribe");
+        info!(target: "freenet_example", tag = client.tag, "bridge: merged via subscribe");
         return Ok(());
     }
 
     let merged_now = attempt_reput(client).await?;
+    clicker_client_method::note_foreign_slots(client);
     if merged_now {
         info!(target: "freenet_example", tag = client.tag, "bridge: merged via re-put");
     }
@@ -55,26 +53,44 @@ fn bridge_due(
 }
 
 // needed helper:
-fn note_foreign(client: &mut clicker_client::ClickerClient) {
-    if client.slots.keys().any(|t| *t != client.tag) {
-        client.foreign_seen = Some(std::time::Instant::now());
+async fn attempt_subscribe(
+    client: &mut clicker_client::ClickerClient,
+) -> Result<bool, clicker_error::ClickerError> {
+    info!(target: "freenet_example", tag = client.tag, "bridge: subscribe attempt");
+    let instance_id = *client.contract_key.id();
+    let summary = StateSummary::from(bincode::serialize(&client.slots)?);
+    let sub_req = ContractRequest::Subscribe {
+        key: instance_id,
+        summary: Some(summary),
+    };
+    client
+        .client
+        .send(ClientRequest::ContractOp(sub_req))
+        .await?;
+    let response = tokio::time::timeout(SUBSCRIBE_TIMEOUT, client.client.recv_response()).await;
+    match response {
+        Err(_) => {
+            info!(target: "freenet_example", tag = client.tag, "bridge: subscribe timed out");
+            Ok(client.foreign_seen.is_some())
+        }
+        Ok(r) => {
+            info!(target: "freenet_example", tag = client.tag, "bridge: subscribe response={}", response_kind(&r?));
+            Ok(client.foreign_seen.is_some())
+        }
     }
 }
 
 // needed helper:
-async fn attempt_resubscribe(
-    client: &mut clicker_client::ClickerClient,
-) -> Result<(ContractKey, BTreeMap<u64, u64>), clicker_error::ClickerError> {
-    info!(target: "freenet_example", tag = client.tag, "bridge: resubscribe attempt");
-    let instance_id = *client.contract_key.id();
-    let get = tokio::time::timeout(
-        RESUBSCRIBE_TIMEOUT,
-        recv_after_get::recv_after_get(&mut client.client, instance_id),
-    )
-    .await;
-    match get {
-        Ok(Ok((key, slots))) => Ok((key, slots)),
-        _ => Ok((client.contract_key, BTreeMap::new())),
+fn response_kind(response: &HostResponse) -> &'static str {
+    match response {
+        HostResponse::ContractResponse(ContractResponse::SubscribeResponse { .. }) => "subscribed",
+        HostResponse::ContractResponse(ContractResponse::GetResponse { .. }) => "state",
+        HostResponse::ContractResponse(ContractResponse::UpdateNotification { .. }) => {
+            "notification"
+        }
+        HostResponse::ContractResponse(ContractResponse::UpdateResponse { .. }) => "update",
+        HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => "not-found",
+        _ => "other",
     }
 }
 
@@ -98,14 +114,19 @@ async fn attempt_reput(
     let response = tokio::time::timeout(REPUT_TIMEOUT, client.client.recv_response()).await;
     let response = match response {
         Ok(r) => r?,
-        Err(_) => return Ok(client.foreign_seen.is_some()),
+        Err(_) => {
+            info!(target: "freenet_example", tag = client.tag, "bridge: re-put timed out");
+            return Ok(client.foreign_seen.is_some());
+        }
     };
     match response {
         HostResponse::ContractResponse(
             ContractResponse::PutResponse { .. }
             | ContractResponse::SubscribeResponse { .. }
             | ContractResponse::UpdateResponse { .. },
-        ) => {}
+        ) => {
+            info!(target: "freenet_example", tag = client.tag, "bridge: re-put response=put");
+        }
         HostResponse::ContractResponse(ContractResponse::UpdateNotification { update, .. }) => {
             let bytes = match update {
                 UpdateData::State(s) => Some(s.as_ref().to_vec()),
@@ -116,8 +137,6 @@ async fn attempt_reput(
                 && let Ok(incoming) = bincode::deserialize::<BTreeMap<u64, u64>>(&bytes)
             {
                 clicker_client_method::merge_slots(&mut client.slots, incoming);
-                note_foreign(client);
-                return Ok(client.foreign_seen.is_some());
             }
         }
         other => {

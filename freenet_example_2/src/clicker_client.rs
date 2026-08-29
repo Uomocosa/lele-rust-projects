@@ -15,6 +15,7 @@ pub struct ClickerClient {
     pub(crate) slots: BTreeMap<u64, u64>,
     pub tag: u64,
     pub(crate) foreign_seen: Option<Instant>,
+    pub(crate) foreign_sum: u64,
     pub(crate) last_bridge: Option<Instant>,
     pub(crate) contract: ContractContainer,
 }
