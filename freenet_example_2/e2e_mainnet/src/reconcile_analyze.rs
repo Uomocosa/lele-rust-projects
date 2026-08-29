@@ -75,7 +75,8 @@ fn last_divergence_secs(traces: &[Vec<tick_sample::TickSample>], tol: u64) -> u6
             secs.insert(s.secs);
         }
     }
-    let mut last_div = 0;
+    let start = secs.iter().copied().min().unwrap_or(0);
+    let mut last_div = start;
     for sec in secs {
         let vals: Vec<u64> = traces
             .iter()

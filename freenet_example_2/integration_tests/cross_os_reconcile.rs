@@ -19,6 +19,12 @@ use freenet_example_2::Role;
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn cross_os_reconcile() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "warn,freenet_example=info,freenet_example_2=info".into()),
+        )
+        .init();
     let machine = std::env::var("CROSS_OS_MACHINE").unwrap_or_else(|_| "linux".into());
     let key = std::env::var("CROSS_OS_KEY").unwrap_or_else(|_| "cross-os-default".into());
     let log_path =
