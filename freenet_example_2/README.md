@@ -82,6 +82,12 @@ knowledge lives.
    already reconciles once any bridge succeeds.
 5. **Idempotency**: every update carries its monotonic value (`{tag, own}`);
    `update_state` reads new values from `data`, never increments from `state`.
+6. **Ring membership is a prerequisite, and VPN/datacenter NAT breaks it.**
+   Behind a ProtonVPN exit the node reached gateways but never joined the ring
+   (`ring_connections=0`, `RING_TRANSPORT_DESYNC`, peer dials fail NAT
+   traversal): its state still propagated *out* via gateway relays, but it
+   could not receive anything — reconcile impossible regardless of bridging.
+   Run nodes on NATs that permit hole-punching.
 
 ## TRIMMABLE — candidates if you want a smaller codebase
 
