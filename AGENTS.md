@@ -10,8 +10,9 @@ Read [OBJECTIVE.md](./OBJECTIVE.md) for the project's goals, constraints, and cu
 
 | Key | Command |
 |-----|---------|
-| `RUN_ALL_TESTS` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings && cargo fmt -- --check && cargo test --workspace --all-targets && cargo run --manifest-path ../lele_lint/Cargo.toml` |
+| `RUN_ALL_TESTS` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings && cargo fmt -- --check && cargo nextest run --all-targets && bacon clippy -- -- -D warnings && cargo run --manifest-path ../lele_lint/Cargo.toml` |
 | `RUN_BUILD_CLIPPY` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings` |
+| `RUN_BACON_CLIPPY` | `bacon clippy -- -- -D warnings` |
 | `RUN_LELE_LINT` | `cargo run --manifest-path ../lele_lint/Cargo.toml` |
 
 ## Standard Build & Verification Routine
@@ -21,9 +22,21 @@ Verify changes with:
 cargo build --all-targets
 cargo clippy -- -D warnings
 cargo fmt -- --check
-cargo test --all-targets
+cargo nextest run --all-targets
+bacon clippy -- -- -D warnings
 cargo run --manifest-path ../lele_lint/Cargo.toml
 ```
+Via devenv (per-crate `devenv.nix` with `packages = [ cargo-nextest bacon ]`):
+```bash
+devenv shell -- cargo build --all-targets
+devenv shell -- cargo clippy -- -D warnings
+devenv shell -- cargo fmt -- --check
+devenv shell -- cargo nextest run --all-targets
+devenv shell -- bacon clippy -- -- -D warnings
+cargo run --manifest-path ../lele_lint/Cargo.toml
+```
+Test both direct and `devenv shell --` invocations when devenv is present.
+At the end of every non-trivial code change, run `bacon clippy` before `lele_lint`; fix `clippy -D warnings` first, then lint violations.
 
 > **Note:** The `freenet_example` project depends on `freenet` → `tikv-jemalloc-sys`,
 > which fails when the source path contains spaces (the `configure` step rejects them).
@@ -48,7 +61,7 @@ cargo run --manifest-path ../lele_lint/Cargo.toml
   `{ a: A, b: B }`. Positional access (`.0`, `.1`) is banned (E009).
 
 - **`lele_lint`:** Many syntax and structure conventions are automatically checked by
-  `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`).  Run it after changes and fix any violations.
+  `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`). At the end of every non-trivial change run `bacon clippy -- -- -D warnings` before `lele_lint`; fix `clippy -D warnings` first, then lint violations.
   See the lele-lint-rs skill for the full error code reference.
 
 

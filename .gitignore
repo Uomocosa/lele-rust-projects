@@ -8,3 +8,5 @@ target/
 fbx_game.log
 downloads/
 .local-run
+.devenv/
+.direnv/

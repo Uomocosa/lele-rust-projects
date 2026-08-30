@@ -176,8 +176,8 @@ mod tests {
             root: PathBuf::from("."),
             src_dir: PathBuf::from("src"),
             entries: Vec::new(),
-            module_info: Default::default(),
-            parsed_files: Default::default(),
+            module_info: std::collections::HashMap::default(),
+            parsed_files: std::collections::HashMap::default(),
         }
     }
 }

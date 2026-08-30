@@ -11,26 +11,25 @@ fn fixture_path(name: &str) -> PathBuf {
         .join(name)
 }
 
-fn run_checkers(path: &str) -> Vec<Diagnostic> {
-    let p = Project::discover(Some(&fixture_path(path)), None).unwrap();
+fn run_checkers(path: &str) -> Result<Vec<Diagnostic>, Box<dyn std::error::Error>> {
+    let p = Project::discover(Some(&fixture_path(path)), None)?;
     let config = Config::load(&p.root).unwrap_or_default();
     let checkers = build_checkers(&config);
-    checkers.iter().flat_map(|c| c.check(&p)).collect()
+    Ok(checkers.iter().flat_map(|c| c.check(&p)).collect())
 }
 
 #[test]
-fn compliant_crate_has_no_violations() {
-    let diags = run_checkers("compliant_crate");
-    assert!(
-        diags.is_empty(),
-        "expected no violations in compliant crate, got {diags:?}",
-        diags = diags
-    );
+fn compliant_crate_has_no_violations() -> Result<(), Box<dyn std::error::Error>> {
+    let diags = run_checkers("compliant_crate")?;
+    if !diags.is_empty() {
+        return Err(format!("expected no violations in compliant crate, got {diags:?}").into());
+    }
+    Ok(())
 }
 
 #[test]
-fn violation_crate_catches_all_errors() {
-    let diags = run_checkers("violation_crate");
+fn violation_crate_catches_all_errors() -> Result<(), Box<dyn std::error::Error>> {
+    let diags = run_checkers("violation_crate")?;
     let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
 
     let expected = [
@@ -50,12 +49,10 @@ fn violation_crate_catches_all_errors() {
         "E020", // no_crate_paths
     ];
 
-    for code in &expected {
-        assert!(
-            codes.contains(code),
-            "expected {code} in violation crate, got codes: {codes:?}",
-            code = code,
-            codes = codes,
-        );
+    for code in expected {
+        if !codes.contains(&code) {
+            return Err(format!("expected {code} in violation crate, got codes: {codes:?}").into());
+        }
     }
+    Ok(())
 }

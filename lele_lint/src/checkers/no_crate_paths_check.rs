@@ -93,10 +93,10 @@ mod tests {
 
     #[test]
     fn test_usage_flags_inline_crate_path() {
-        let src = r#"
+        let src = r"
             use crate::boxes;
             pub fn connect(own_id: crate::boxes::PlayerId) {}
-        "#;
+        ";
         assert_eq!(hit_lines(src), vec![3]);
     }
 

@@ -77,12 +77,12 @@ pub(crate) fn check(
 mod tests {
     #[test]
     fn test_usage() {
-        let content = r#"
+        let content = r"
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
-"#;
+";
         let value: toml::Value = content.parse().unwrap();
         assert!(value.get("allow-unwrap-in-tests").is_some());
     }

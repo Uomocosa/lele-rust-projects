@@ -1,14 +1,17 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "plan",
-  "model": "opencode-go/deepseek-v4-flash",
   "compaction": {
     "auto": true
   },
   "instructions": [
+    "~/.config/opencode/skills/lele-rs/SKILL.md",
     "~/.config/opencode/skills/lele-syntax-rs/SKILL.md",
     "~/.config/opencode/skills/lele-lint-rs/SKILL.md",
-    "~/.config/opencode/skills/opencode-git-workflow/SKILL.md"
+    "~/.config/opencode/skills/opencode-git-workflow/SKILL.md",
+    "~/.config/opencode/skills/itertools-rs/SKILL.md",
+    "~/.config/opencode/skills/criterion-rs/SKILL.md",
+    "~/.config/opencode/skills/rayon-rs/SKILL.md"
   ],
   "permission": {
     "external_directory": {
@@ -46,37 +49,6 @@
         "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/test_orchestrator_mcp/target/release/test-orchestrator-mcp"
       ],
       "enabled": true
-    }
-  },
-  "provider": {
-    "opencode-go": {
-      "models": {
-        "qwen3.7-plus": {
-          "options": {
-            "reasoningEffort": "none"
-          },
-          "variants": {
-            "minimal": {
-              "reasoningEffort": "none"
-            }
-          }
-        },
-        "deepseek-v4-pro": {
-          "options": {
-            "reasoningEffort": "max"
-          }
-        },
-        "deepseek-v4-flash": {
-          "options": {
-            "reasoningEffort": "low"
-          },
-          "variants": {
-            "high": {
-              "reasoningEffort": "Max"
-            }
-          }
-        }
-      }
     }
   }
 }
