@@ -1,3 +1,9 @@
+#![allow(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::string_slice,
+    clippy::unwrap_used
+)]
 pub mod checker;
 pub mod checkers;
 mod common;

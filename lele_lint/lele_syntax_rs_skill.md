@@ -649,3 +649,41 @@ pub struct Pair(pub String, pub u32);
 // ✓ OK — external crate
 text.0 = format!("{}", count);
 ```
+
+## 14. Clippy Config (CRITICAL)
+
+Every crate must contain **both** a `[lints.clippy]` section in `Cargo.toml` and a `clippy.toml` at the crate root. These are **minimum** defaults — projects may extend them with additional lints or config, but must not weaken them. `workspace.lints.clippy` with `lints.workspace = true` in members also satisfies the `Cargo.toml` requirement.
+
+### Cargo.toml — Minimum `[lints.clippy]`
+
+```toml
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+unchecked_time_subtraction = "deny"
+todo = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+panic = "deny"
+exit = "deny"
+as_conversions = "deny"
+```
+
+`pedantic`/`nursery` must be `{ level = "deny", priority = -1 }` (bare `"deny"` also accepted). All other entries must be `"deny"` (or `{ level = "deny" }`). Enforced as `E021`.
+
+### clippy.toml — Minimum
+
+```toml
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+```
+
+All four must be `true`. Extra keys are allowed. Enforced as `E022`.

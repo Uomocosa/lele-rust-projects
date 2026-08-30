@@ -1,4 +1,6 @@
 use super::atomic_file;
+use super::clippy_config_cargo;
+use super::clippy_config_clippy;
 use super::constructor_no_skip;
 use super::domain_import;
 use super::helper_count;
@@ -37,6 +39,8 @@ pub fn build_checkers(config: &config::Config) -> Vec<Box<dyn checker::Checker>>
     mod_rs_purity::ModRsPurity::register(&mut checkers, config);
     no_crate_paths::NoCratePaths::register(&mut checkers, config);
     single_caller_type::SingleCallerType::register(&mut checkers, config);
+    clippy_config_cargo::ClippyConfigCargo::register(&mut checkers, config);
+    clippy_config_clippy::ClippyConfigClippy::register(&mut checkers, config);
     checkers
 }
 
