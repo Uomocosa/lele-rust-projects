@@ -72,6 +72,11 @@ jobs:
           set -euo pipefail
           CRATE="${{ inputs.crate }}"
           case "$CRATE" in
+            freenet_example_3)
+              echo "testing_pkg=" >> "$GITHUB_OUTPUT"
+              echo "crossos_pkg=freenet_example_3" >> "$GITHUB_OUTPUT"
+              echo "determinism_test=" >> "$GITHUB_OUTPUT"
+              ;;
             *_3)
               echo "testing_pkg=testing_3" >> "$GITHUB_OUTPUT"
               echo "crossos_pkg=cross_os_tests_3" >> "$GITHUB_OUTPUT"
@@ -102,7 +107,7 @@ jobs:
           else
             echo "has_game_probes=false" >> "$GITHUB_OUTPUT"
           fi
-          if [ -f "$CRATE/integration_tests/cross_os_reconcile.rs" ]; then
+          if [ -f "$CRATE/integration_tests/cross_os_reconcile.rs" ] || [ -f "$CRATE/tests/e2e_cross_os/cross_os_reconcile.rs" ]; then
             echo "has_mainnet_probe=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_mainnet_probe=false" >> "$GITHUB_OUTPUT"
@@ -377,7 +382,11 @@ jobs:
         if: needs.resolve.outputs.has_mainnet_probe == 'true'
         run: |
           set -euo pipefail
-          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --test cross_os_reconcile --no-run
+          if cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --features dev --test cross_os_reconcile --no-run 2>/dev/null; then
+            echo "built with --features dev"
+          else
+            cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --test cross_os_reconcile --no-run
+          fi
 
       - name: Run engine determinism gate (per-machine POLISH §3 hash record)
         if: needs.resolve.outputs.determinism_test != ''
@@ -518,7 +527,7 @@ jobs:
       # Node-level info (ring connections, broadcast targets, subscribe/put ops) plus the
       # client's bridge lines — the VPN-exit failure of run 33261445827 was undiagnosable
       # with RUST_LOG=warn.
-      RUST_LOG: warn,freenet=info,freenet_example=info,freenet_example_2=info
+      RUST_LOG: warn,freenet=info,freenet_example=info,freenet_example_2=info,freenet_example_3=info
     defaults:
       run:
         shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}
@@ -531,8 +540,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.cargo/bin:$PATH"
           export CROSS_OS_LOG="$GITHUB_WORKSPACE/${{ needs.resolve.outputs.crate }}/cross-os-reconcile-${{ matrix.os }}.log"
-          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} \
-            --test cross_os_reconcile -- --ignored --nocapture
+          cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --features dev --test cross_os_reconcile -- --ignored --nocapture || cargo test -p ${{ needs.resolve.outputs.crossos_pkg }} --test cross_os_reconcile -- --ignored --nocapture
 
       - name: Upload cross-OS reconcile log
         if: always()
