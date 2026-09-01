@@ -1,13 +1,19 @@
+use crate::client_error;
+use crate::freenet_client;
+use std::collections::BTreeMap;
+
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use crate::ClientError;
 use crate::recv_response;
+use client_error::ClientError;
 
-pub(crate) async fn recv_after_get(
-    client: &mut crate::FreenetClient,
+/// # Errors
+/// Returns `ClientError` if the get fails or the response is unexpected.
+pub async fn recv_after_get(
+    client: &mut freenet_client::FreenetClient,
     instance_id: ContractInstanceId,
-) -> Result<(ContractKey, u64), ClientError> {
+) -> Result<(ContractKey, BTreeMap<u64, u64>), ClientError> {
     let get_req = ContractRequest::Get {
         key: instance_id,
         return_contract_code: false,
@@ -20,16 +26,16 @@ pub(crate) async fn recv_after_get(
             HostResponse::ContractResponse(ContractResponse::GetResponse {
                 key, state, ..
             }) => {
-                let count = bincode::deserialize(state.as_ref()).unwrap_or(0);
-                return Ok((key, count));
+                let slots = bincode::deserialize(state.as_ref()).unwrap_or_default();
+                return Ok((key, slots));
             }
             HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
                 return Err(ClientError::ContractNotFound);
             }
-            HostResponse::ContractResponse(ContractResponse::SubscribeResponse { .. }) => {
-                continue;
-            }
+            HostResponse::ContractResponse(ContractResponse::SubscribeResponse { .. }) => {}
             other => return Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
         }
     }
 }
+
+// no test_usage necessary — exercised via integration tests

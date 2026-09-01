@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
@@ -6,6 +7,8 @@ use freenet_stdlib::prelude::*;
 use crate::ClientError;
 use crate::FreenetClient;
 
+/// # Errors
+/// Returns `ClientError` if the deploy get or put fails.
 pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractKey, ClientError> {
     let code = Arc::new(ContractCode::from(wasm.to_vec()));
     let params = Parameters::from(Vec::new());
@@ -31,7 +34,7 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractK
 
     let put_req = ContractRequest::Put {
         contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-        state: WrappedState::new(bincode::serialize(&0u64)?),
+        state: WrappedState::new(bincode::serialize(&BTreeMap::from([(0u64, 0u64)]))?),
         related_contracts: RelatedContracts::default(),
         subscribe: true,
         blocking_subscribe: true,
@@ -45,3 +48,5 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractK
         other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
 }
+
+// no test_usage necessary — exercised via integration tests

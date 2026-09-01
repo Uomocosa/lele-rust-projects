@@ -1,26 +1,26 @@
-#[path = "Role.rs"]
 pub mod role;
 pub use role::Role;
 
-#[path = "Error.rs"]
-pub mod error;
-pub use error::ClientError;
+pub mod client_error;
+pub use client_error::ClientError;
 
-#[path = "ClickerError.rs"]
 pub mod clicker_error;
 pub use clicker_error::ClickerError;
 
-#[path = "ClickerClient.rs"]
 pub mod clicker_client;
 pub use clicker_client::ClickerClient;
 
-pub mod ClickerClientMethod;
+pub mod clicker_client_method;
 
-#[path = "FreenetClient.rs"]
+pub mod set_client;
+pub use set_client::SetClient;
+
+pub mod set_client_method;
+
 pub mod freenet_client;
 pub use freenet_client::FreenetClient;
 
-pub mod FreenetClientMethod;
+pub mod freenet_client_method;
 
 pub(crate) mod recv_after_get;
 pub(crate) use recv_after_get::recv_after_get;
@@ -28,6 +28,5 @@ pub(crate) use recv_after_get::recv_after_get;
 pub(crate) mod recv_response;
 pub(crate) use recv_response::recv_response;
 
-// The `testing` module is intentionally public so that example binaries
-// and integration tests can reuse TestNode and test helpers.
+#[cfg(feature = "dev")]
 pub mod testing;

@@ -9,3 +9,5 @@ pub async fn drain(client: &mut FreenetClient) {
         .is_some()
     {}
 }
+
+// no test_usage necessary — exercised via integration tests

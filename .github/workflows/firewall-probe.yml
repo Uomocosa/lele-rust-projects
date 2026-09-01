@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       crate:
-        description: Crate folder name (e.g. freenet_libp2p_bevy_example_1)
+        description: Crate folder name (e.g. freenet_libp2p_bevy_example)
         required: false
-        default: freenet_libp2p_bevy_example_1
+        default: freenet_libp2p_bevy_example
   workflow_call:
     inputs:
       crate:
-        description: Crate folder name (e.g. freenet_libp2p_bevy_example_1)
+        description: Crate folder name (e.g. freenet_libp2p_bevy_example)
         required: true
         type: string
 

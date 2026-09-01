@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       crate:
-        description: Crate folder name (e.g. freenet_libp2p_bevy_example_1)
+        description: Crate folder name (e.g. freenet_libp2p_bevy_example)
         required: false
-        default: freenet_libp2p_bevy_example_1
+        default: freenet_libp2p_bevy_example
       run-tests:
         description: Run the full test gate on Linux + Windows (build, fmt, clippy, tests, subcrates, lele_lint)
         type: boolean
@@ -72,9 +72,9 @@ jobs:
           set -euo pipefail
           CRATE="${{ inputs.crate }}"
           case "$CRATE" in
-            freenet_example_3)
+            freenet_example)
               echo "testing_pkg=" >> "$GITHUB_OUTPUT"
-              echo "crossos_pkg=freenet_example_3" >> "$GITHUB_OUTPUT"
+              echo "crossos_pkg=freenet_example" >> "$GITHUB_OUTPUT"
               echo "determinism_test=" >> "$GITHUB_OUTPUT"
               ;;
             *_3)
@@ -527,7 +527,7 @@ jobs:
       # Node-level info (ring connections, broadcast targets, subscribe/put ops) plus the
       # client's bridge lines — the VPN-exit failure of run 33261445827 was undiagnosable
       # with RUST_LOG=warn.
-      RUST_LOG: warn,freenet=info,freenet_example=info,freenet_example_2=info,freenet_example_3=info
+      RUST_LOG: warn,freenet=info,freenet_example=info
     defaults:
       run:
         shell: ${{ matrix.os == 'windows' && format('{0}/.github/scripts/git-bash.cmd', github.workspace) || 'bash --noprofile --norc -eo pipefail' }} {0}

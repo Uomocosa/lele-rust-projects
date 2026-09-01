@@ -1,14 +1,66 @@
 use std::net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket};
+use std::sync::OnceLock;
 use std::time::Duration;
 
+use clap::{Parser, ValueEnum};
 use freenet::config::{ConfigArgs, ConfigPathsArgs, NetworkArgs, WebsocketApiConfig};
 use freenet::local_node::{NodeConfig, OperationMode};
 use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 use tracing::info;
 
-use freenet_example::Role;
-use freenet_example::clicker_client::ClickerClient;
+use freenet_example_3::ClickerClient;
+use freenet_example_3::Role;
+use freenet_example_3::SetClient;
+
+#[derive(Parser, Debug)]
+#[command(name = "freenet-example-3")]
+struct Args {
+    #[arg(long, value_enum, default_value = "counter")]
+    contract_mode: ContractModeArg,
+    #[arg(long)]
+    role: Option<String>,
+    #[arg(long, default_value_t = 0)]
+    instance_tag: u64,
+    #[arg(long)]
+    contract_params: Option<String>,
+    #[arg(long)]
+    p2p_port: Option<u16>,
+    #[arg(long, default_value_t = false)]
+    mainnet_client: bool,
+    #[arg(long, default_value_t = false)]
+    standalone: bool,
+}
+
+#[derive(ValueEnum, Clone, Debug, PartialEq, Eq)]
+enum ContractModeArg {
+    Counter,
+    Set,
+}
+
+enum ContractMode {
+    Counter,
+    Set,
+}
+
+// needed helper:
+fn args() -> &'static Args {
+    static CELL: OnceLock<Args> = OnceLock::new();
+    CELL.get_or_init(Args::parse)
+}
+
+// needed helper:
+fn contract_mode() -> ContractMode {
+    match args().contract_mode {
+        ContractModeArg::Set => ContractMode::Set,
+        ContractModeArg::Counter => ContractMode::Counter,
+    }
+}
+
+enum Connected {
+    Counter(ClickerClient),
+    Set(SetClient),
+}
 
 #[tokio::main]
 async fn main() {
@@ -16,49 +68,33 @@ async fn main() {
         .with_writer(std::io::stdout)
         .init();
 
-    let args: Vec<String> = std::env::args().collect();
-    let has_role = args.iter().any(|a| a == "--role");
+    let has_role = args().role.is_some();
+    let mode = contract_mode();
 
     let result = if has_role {
-        run_client().await
+        run_client(mode).await
     } else {
-        run_standalone().await
+        run_standalone(mode).await
     };
     if let Err(e) = result {
         eprintln!("Error: {e}");
     }
 }
 
-async fn run_client() -> Result<(), Box<dyn std::error::Error>> {
-    let role = parse_role()?;
-
-    let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    info!(target: "freenet_example", size = contract_wasm.len(), "loaded contract wasm");
-
+// needed helper:
+async fn run_client(mode: ContractMode) -> Result<(), Box<dyn std::error::Error>> {
     let node_host = std::env::var("FREENET_HOST").unwrap_or_else(|_| "127.0.0.1".into());
     let node_port: u16 = std::env::var("FREENET_PORT")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(7509);
 
-    let mut clicker = ClickerClient::connect_with_params(
-        &node_host,
-        node_port,
-        &contract_wasm,
-        &contract_params(),
-        role,
-    )
-    .await?;
-    info!(target: "freenet_example", key = %clicker.contract_key(), count = clicker.count(), "connected and subscribed");
-
-    loop {
-        let count = clicker.tick().await?;
-        info!(target: "freenet_example", count, "tick done");
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
+    let mut connected = connect_with_retry(mode, &node_host, node_port).await?;
+    run_loop(&mut connected).await
 }
 
-async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
+// needed helper:
+async fn run_standalone(mode: ContractMode) -> Result<(), Box<dyn std::error::Error>> {
     let tmp = tempfile::tempdir()?;
 
     let listener = TcpListener::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
@@ -77,7 +113,7 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         mode: Some(OperationMode::Network),
         network_api: NetworkArgs {
             is_gateway: !mainnet_client(),
-            public_address: (!mainnet_client()).then_some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            public_address: (!mainnet_client()).then_some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
             public_port: (!mainnet_client()).then_some(p2p_port()),
             ..Default::default()
         },
@@ -98,96 +134,131 @@ async fn run_standalone() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    let mut connected = connect_with_retry(mode, "127.0.0.1", port).await?;
+    run_loop(&mut connected).await
+}
 
-    let contract_wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    let mut clicker = ClickerClient::connect_with_params(
-        "127.0.0.1",
-        port,
-        &contract_wasm,
-        &contract_params(),
-        Role::Publish,
-    )
-    .await?;
-
-    info!(mainnet = mainnet_client(), key = %clicker.contract_key(), count = clicker.count(), "connected, running indefinitely");
-
+// needed helper:
+// needed helper:
+async fn connect_with_retry(
+    mode: ContractMode,
+    host: &str,
+    port: u16,
+) -> Result<Connected, Box<dyn std::error::Error>> {
+    let mut attempt: u64 = 0;
     loop {
-        match clicker.tick().await {
-            Ok(count) => info!(count, "tick"),
-            Err(e) => eprintln!("tick error: {e}"),
+        attempt = attempt.saturating_add(1);
+        let result = match &mode {
+            ContractMode::Counter => {
+                let wasm = include_bytes!("../contract/clicker_contract.wasm");
+                ClickerClient::connect_with_tag(
+                    host,
+                    port,
+                    wasm,
+                    &contract_params(),
+                    Role::Publish,
+                    instance_tag(),
+                )
+                .await
+                .map(Connected::Counter)
+            }
+            ContractMode::Set => {
+                let wasm = include_bytes!("../contract/set_contract.wasm");
+                SetClient::connect(host, port, wasm, &contract_params(), instance_tag())
+                    .await
+                    .map(Connected::Set)
+            }
+        };
+        match result {
+            Ok(c) => return Ok(c),
+            Err(e) => {
+                tracing::warn!(exception = %e, attempt, "connect failed, retrying");
+                let backoff = std::cmp::min(attempt.saturating_mul(3), 30);
+                tokio::time::sleep(Duration::from_secs(backoff)).await;
+            }
         }
-        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
-/// Test-only: read `--contract-params <hex>` to pin unique contract params so each e2e run
-/// targets a fresh contract key (the clicker defaults to empty params otherwise).
-/// Test-only: run the standalone node as a client peer joining the public mainnet ring
-/// (is_gateway false, no public address, fetch the gateway index) instead of an isolated gateway.
-fn mainnet_client() -> bool {
-    std::env::args().any(|a| a == "--mainnet-client")
-}
-
-/// Test-only: read `--contract-params <hex>` to pin unique contract params so each e2e run
-/// targets a fresh contract key (the clicker defaults to empty params otherwise).
-fn contract_params() -> Vec<u8> {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--contract-params"
-            && let Some(val) = args.next()
-            && let Ok(bytes) = hex::decode(val.trim_start_matches("0x"))
-        {
-            return bytes;
-        }
-    }
-    Vec::new()
-}
-
-fn parse_role() -> Result<Role, String> {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--standalone" => {}
-            "--role" => match args.next().as_deref() {
-                Some("subscribe") => return Ok(Role::Subscribe),
-                Some("publish") => return Ok(Role::Publish),
-                Some(other) => {
-                    return Err(format!("unknown role: {other}. Use publish or subscribe"));
+// needed helper:
+// needed helper:
+async fn run_loop(connected: &mut Connected) -> Result<(), Box<dyn std::error::Error>> {
+    match connected {
+        Connected::Counter(c) => {
+            info!(
+                mainnet = mainnet_client(),
+                tag = c.tag,
+                key = %c.contract_key,
+                count = c.count(),
+                owns = c.own(),
+                "connected, running indefinitely"
+            );
+            loop {
+                match c.tick().await {
+                    Ok(count) => info!(count, owns = c.own(), "tick"),
+                    Err(e) => eprintln!("tick error: {e}"),
                 }
-                None => return Err("--role requires an argument: publish or subscribe".into()),
-            },
-            _ => {}
+                c.note_foreign_slots();
+                if let Err(e) = c.bridge_tick().await {
+                    eprintln!("bridge error: {e}");
+                }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+        Connected::Set(s) => {
+            info!(
+                mainnet = mainnet_client(),
+                tag = s.tag,
+                key = %s.contract_key,
+                count = s.count(),
+                "connected, running indefinitely"
+            );
+            loop {
+                match s.tick().await {
+                    Ok(count) => info!(count, owns = s.own_count(), "tick"),
+                    Err(e) => eprintln!("tick error: {e}"),
+                }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
         }
     }
-    Ok(Role::Publish)
+}
+
+// needed helper:
+fn instance_tag() -> u64 {
+    args().instance_tag
+}
+
+// needed helper:
+fn mainnet_client() -> bool {
+    args().mainnet_client
+}
+
+// needed helper:
+fn contract_params() -> Vec<u8> {
+    args()
+        .contract_params
+        .as_deref()
+        .and_then(|v| hex::decode(v.trim_start_matches("0x")).ok())
+        .unwrap_or_default()
 }
 
 fn p2p_port() -> u16 {
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--p2p-port"
-            && let Some(val) = args.next()
-            && let Ok(port) = val.parse::<u16>()
-        {
-            return port;
-        }
+    if let Some(port) = args().p2p_port {
+        return port;
     }
-    let socket = UdpSocket::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
-        .expect("failed to probe an available UDP port");
-    socket
-        .local_addr()
-        .expect("failed to read assigned port")
-        .port()
+    UdpSocket::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+        .and_then(|s| s.local_addr())
+        .map_or(0, |a| a.port())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_role;
+    use super::ContractModeArg;
 
     #[test]
     fn test_usage() {
-        let result = parse_role();
-        assert!(result.is_ok() || result.is_err());
+        let _ = ContractModeArg::Counter;
+        let _ = ContractModeArg::Set;
     }
 }

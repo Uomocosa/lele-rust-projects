@@ -1,13 +1,12 @@
-use freenet_example::ClickerClient;
-use freenet_example::Role;
-use freenet_example::testing::TestNode;
+use freenet_example_3::ClickerClient;
+use freenet_example_3::Role;
+use freenet_example_3::testing::TestNode;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let node = TestNode::start().await?;
     let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    let mut clicker =
-        ClickerClient::connect("127.0.0.1", node.port(), &wasm, Role::Publish).await?;
+    let mut clicker = ClickerClient::connect("127.0.0.1", node.port, &wasm, Role::Publish).await?;
 
     println!("counter deployed, initial count: {}", clicker.count());
 
