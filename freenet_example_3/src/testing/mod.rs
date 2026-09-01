@@ -95,3 +95,6 @@ pub use start_record::start_record;
 
 pub mod wakeup_screen;
 pub use wakeup_screen::wakeup_screen;
+
+pub mod terminal;
+pub use terminal::TerminalGuard;

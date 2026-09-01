@@ -15,8 +15,10 @@
     gnumake
     glibc.dev
     linuxHeaders
-    ffmpeg
+    (if pkgs ? ffmpeg-full then pkgs.ffmpeg-full else ffmpeg)
     xorg.xdpyinfo
+    xterm
+    wmctrl
     xdotool
   ];
 
