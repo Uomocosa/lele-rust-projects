@@ -72,12 +72,19 @@
       cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml
       echo ">>> [lele:taxonomy_check] done"
     '';
+    "freenet:contract-harness".exec = ''
+      set -e
+      echo ">>> [freenet:contract-harness] cargo test --manifest-path ../freenet_contract_harness/Cargo.toml"
+      cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture
+      echo ">>> [freenet:contract-harness] done"
+    '';
     "lele:clippy".after = ["lele:build"];
     "lele:fmt".after = ["lele:clippy"];
     "lele:bacon-clippy".after = ["lele:fmt"];
     "lele:lint".after = ["lele:bacon-clippy"];
     "lele:taxonomy_check".after = ["lele:lint"];
-    "lele:verify".after = ["lele:taxonomy_check"];
+    "freenet:contract-harness".after = ["lele:taxonomy_check"];
+    "lele:verify".after = ["freenet:contract-harness"];
     "freenet:run-local-mainnet".exec = ''
       set -e
       echo ">>> [freenet:run-local-mainnet] cargo nextest run --test mainnet_local --features dev"
