@@ -40,6 +40,19 @@ fn default_true() -> bool {
     true
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ActivateVpnParams {
+    /// Specific server ID e.g. "IT#23" – optional, fastest if empty
+    #[serde(default)]
+    pub server: Option<String>,
+    /// Country code or name e.g. "US" or "United States"
+    #[serde(default)]
+    pub country: Option<String>,
+    /// City name e.g. "New York"
+    #[serde(default)]
+    pub city: Option<String>,
+}
+
 impl Default for Server {
     fn default() -> Self {
         Self::new()
@@ -97,6 +110,15 @@ impl Server {
     async fn record_video(&self, Parameters(params): Parameters<RecordVideoParams>) -> Result<CallToolResult, ErrorData> {
         server_method::record_video(&self.recording, self.bot_token.as_deref(), self.chat_id.as_deref(), self.artifacts_dir.as_deref(), params).await.map_err(ErrorData::from)
     }
+
+    #[tool(description = "Check Proton VPN status: connection state, server, public IP, and default route. No sudo required; uses `protonvpn status` + curl + ip route.")]
+    async fn check_vpn_status(&self) -> Result<CallToolResult, ErrorData> { server_method::vpn_status().await.map_err(ErrorData::from) }
+
+    #[tool(description = "Activate Proton VPN (`protonvpn connect`). No sudo required. Prefer `protonvpn` binary; falls back to `protonvpn-cli` if needed. Optional server/country/city – all empty = fastest server. Already logged in; fails with auth error if session expired.")]
+    async fn activate_vpn(&self, Parameters(params): Parameters<ActivateVpnParams>) -> Result<CallToolResult, ErrorData> { server_method::vpn_connect(params.server, params.country, params.city).await.map_err(ErrorData::from) }
+
+    #[tool(description = "Deactivate Proton VPN (`protonvpn disconnect`). No sudo required.")]
+    async fn deactivate_vpn(&self) -> Result<CallToolResult, ErrorData> { server_method::vpn_disconnect().await.map_err(ErrorData::from) }
 }
 
 #[tool_handler]

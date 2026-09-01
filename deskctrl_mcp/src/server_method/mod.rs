@@ -1,6 +1,9 @@
 mod assert_no_keyboard_grab;
 pub mod click_window;
 pub mod get_info;
+pub mod vpn_connect;
+pub mod vpn_disconnect;
+pub mod vpn_status;
 pub mod html_escape;
 pub mod kill_process;
 pub mod list_processes;
@@ -21,6 +24,9 @@ pub mod write_stdin;
 
 pub use click_window::click_window;
 pub use get_info::get_info;
+pub use vpn_connect::vpn_connect;
+pub use vpn_disconnect::vpn_disconnect;
+pub use vpn_status::vpn_status;
 pub use html_escape::html_escape;
 pub use kill_process::kill_process;
 pub use list_processes::list_processes;
