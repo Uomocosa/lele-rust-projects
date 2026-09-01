@@ -129,8 +129,8 @@ path = "tests/examples/p2p_counter.rs"
 required-features = ["dev"]
 
 [dependencies]
-freenet = "=0.2.101"
-freenet-stdlib = { version = "=0.8.3", features = ["net"] }
+freenet = "=0.2.132"
+freenet-stdlib = { version = "=0.8.5", features = ["net"] }
 tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
 tokio-tungstenite = "=0.27.0"
 http = "=1.4.1"
