@@ -26,8 +26,13 @@ cargo nextest run --all-targets
 bacon clippy -- -- -D warnings
 cargo run --manifest-path ../lele_lint/Cargo.toml
 ```
-Via devenv (per-crate `devenv.nix` with `packages = [ cargo-nextest bacon ]`):
+Via devenv (per-crate `devenv.nix` with `packages = [ cargo-nextest bacon ]` — **when `devenv.nix` defines tasks, always prefer `devenv tasks run <task>` over running the task's underlying `cargo …` command by hand**):
 ```bash
+devenv tasks run lele:verify       # build+clippy+fmt+nextest+bacon clippy+lint (without bacon: via tasks)
+devenv tasks run lele:bacon-clippy # bacon separately (requires TTY)
+devenv tasks run lele:nextest
+devenv tasks run lele:lint
+# fallbacks when devenv is absent or for shell isolation checks:
 devenv shell -- cargo build --all-targets
 devenv shell -- cargo clippy -- -D warnings
 devenv shell -- cargo fmt -- --check
@@ -36,7 +41,7 @@ devenv shell -- bacon clippy -- -- -D warnings
 cargo run --manifest-path ../lele_lint/Cargo.toml
 ```
 Test both direct and `devenv shell --` invocations when devenv is present.
-At the end of every non-trivial code change, run `bacon clippy` before `lele_lint`; fix `clippy -D warnings` first, then lint violations.
+At the end of every non-trivial code change, run `devenv tasks run lele:bacon-clippy` (or `bacon clippy -- -- -D warnings` without devenv) before `lele_lint` (`devenv tasks run lele:lint` or `cargo run --manifest-path ../lele_lint/Cargo.toml`); fix `clippy -D warnings` first, then lint violations.
 
 > **Note:** The `freenet_example` project depends on `freenet` → `tikv-jemalloc-sys`,
 > which fails when the source path contains spaces (the `configure` step rejects them).
@@ -61,7 +66,9 @@ At the end of every non-trivial code change, run `bacon clippy` before `lele_lin
   `{ a: A, b: B }`. Positional access (`.0`, `.1`) is banned (E009).
 
 - **`lele_lint`:** Many syntax and structure conventions are automatically checked by
-  `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`). At the end of every non-trivial change run `bacon clippy -- -- -D warnings` before `lele_lint`; fix `clippy -D warnings` first, then lint violations.
+  `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`). At the end of every non-trivial change run `devenv tasks run lele:bacon-clippy` (or `bacon clippy -- -- -D warnings` without devenv) before `lele_lint` (`devenv tasks run lele:lint` or `cargo run --manifest-path ../lele_lint/Cargo.toml`); fix `clippy -D warnings` first, then lint violations.
   See the lele-lint-rs skill for the full error code reference.
+
+- **`#[allow(clippy::…)]` gate:** No agent may add `#[allow(clippy::pedantic)]` / `#[allow(clippy::nursery)]` (including `Cargo.toml` global `allow` or file-level `#![allow]`) without explicit user approval. Report the lint + `file:line`, propose a rewrite first, then ask. Existing `#[allow]` are gated by the user for usefulness.
 
 

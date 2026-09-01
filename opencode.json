@@ -11,7 +11,10 @@
     "~/.config/opencode/skills/opencode-git-workflow/SKILL.md",
     "~/.config/opencode/skills/itertools-rs/SKILL.md",
     "~/.config/opencode/skills/criterion-rs/SKILL.md",
-    "~/.config/opencode/skills/rayon-rs/SKILL.md"
+    "~/.config/opencode/skills/rayon-rs/SKILL.md",
+    "~/.config/opencode/skills/devenv-rs/SKILL.md",
+    "~/.config/opencode/skills/cargo-nextest-rs/SKILL.md",
+    "~/.config/opencode/skills/definition-function-taxonomy/SKILL.md"
   ],
   "permission": {
     "external_directory": {
@@ -21,15 +24,14 @@
     "skill": {
       "*": "deny",
       "opencode-*": "allow",
+      "definition-*": "allow",
       "*-rs": "allow",
       "deskctrl": "allow",
       "crate-tag-ci": "allow",
-      "bevy": "allow",
       "libp2p": "allow",
       "freenet": "allow",
       "freenet-gateway": "allow",
-      "freenet-contract-design": "allow",
-      "avian": "allow"
+      "freenet-contract-design": "allow"
     }
   },
   "mcp": {

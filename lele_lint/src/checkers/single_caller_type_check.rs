@@ -147,13 +147,24 @@ fn impl_is_all_delegate(impl_block: &syn::ItemImpl) -> bool {
             if method.block.stmts.len() != 1 {
                 return false;
             }
-            if let syn::Stmt::Expr(syn::Expr::Call(call), _) = &method.block.stmts[0] {
-                if let syn::Expr::Path(path) = call.func.as_ref() {
-                    if path.path.segments.len() != 2 {
-                        return false;
-                    }
-                    continue;
+            let expr = match &method.block.stmts[0] {
+                syn::Stmt::Expr(e, _) => e,
+                _ => return false,
+            };
+            let call = match expr {
+                syn::Expr::Call(c) => c,
+                syn::Expr::Await(a) => match &*a.base {
+                    syn::Expr::Call(c) => c,
+                    _ => return false,
+                },
+                _ => return false,
+            };
+            if let syn::Expr::Path(path) = call.func.as_ref() {
+                let len = path.path.segments.len();
+                if !(2..=3).contains(&len) {
+                    return false;
                 }
+                continue;
             }
             return false;
         }
