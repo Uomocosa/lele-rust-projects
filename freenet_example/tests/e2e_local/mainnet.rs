@@ -20,6 +20,24 @@ fn log_contains(path: &std::path::Path, needle: &str) -> bool {
     std::fs::read_to_string(path).is_ok_and(|s| s.contains(needle))
 }
 
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' && chars.peek() == Some(&'[') {
+            chars.next();
+            for cc in chars.by_ref() {
+                if cc == 'm' {
+                    break;
+                }
+            }
+            continue;
+        }
+        out.push(c);
+    }
+    out
+}
+
 fn parse_last_count(path: &std::path::Path) -> Option<u64> {
     let content = std::fs::read_to_string(path).ok()?;
     let mut last = None;
@@ -27,11 +45,12 @@ fn parse_last_count(path: &std::path::Path) -> Option<u64> {
         if !line.contains("tick") {
             continue;
         }
-        if let Some(idx) = line.find("count=") {
+        let stripped = strip_ansi(line);
+        if let Some(idx) = stripped.find("count=") {
             let Some(start) = idx.checked_add(6) else {
                 continue;
             };
-            let Some(rest) = line.get(start..) else {
+            let Some(rest) = stripped.get(start..) else {
                 continue;
             };
             let end = rest
