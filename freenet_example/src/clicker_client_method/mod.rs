@@ -15,7 +15,9 @@ pub use merge_slots::merge_slots;
 
 pub mod note_foreign_slots;
 pub use note_foreign_slots::note_foreign_slots;
-pub use note_foreign_slots::note_foreign_slots_at;
+
+pub mod note_foreign_slots_at;
+pub use note_foreign_slots_at::note_foreign_slots_at;
 
 pub mod own;
 pub use own::own;

@@ -1730,7 +1730,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "freenet_example_3"
+name = "freenet_example"
 version = "0.3.0"
 dependencies = [
  "bincode",

@@ -1,5 +1,5 @@
-use freenet_example_3::testing::*;
-use freenet_example_3::{ClickerClient, Role};
+use freenet_example::testing::*;
+use freenet_example::{ClickerClient, Role};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_standalone_demo() {

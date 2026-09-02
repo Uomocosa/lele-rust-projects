@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use freenet_example_3::testing::{expect_line, spawn_example};
+use freenet_example::testing::{expect_line, spawn_example};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_gateway_subprocess_smoke() {

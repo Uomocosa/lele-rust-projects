@@ -1,11 +1,13 @@
 use std::path::Path;
 use std::process::{Child, Command};
 
+use crate::testing;
+
 const DISPLAY: &str = ":0.0";
 
 #[must_use]
 pub fn start_record(clip_secs: u64, path: &Path) -> Option<Child> {
-    crate::testing::wakeup_screen::wakeup_screen();
+    testing::wakeup_screen();
     std::thread::sleep(std::time::Duration::from_secs(5));
     if let Some(warning) = screensaver_warning() {
         eprintln!("{warning}");
@@ -41,12 +43,13 @@ pub fn start_record(clip_secs: u64, path: &Path) -> Option<Child> {
     std::thread::spawn(move || {
         for _ in 0..clip_secs.div_ceil(30) {
             std::thread::sleep(std::time::Duration::from_secs(30));
-            crate::testing::wakeup_screen::poke();
+            testing::poke();
         }
     });
     Some(child)
 }
 
+// needed helper:
 fn screensaver_warning() -> Option<String> {
     let out = Command::new("cinnamon-screensaver-command")
         .arg("--query")
@@ -62,6 +65,7 @@ fn screensaver_warning() -> Option<String> {
     None
 }
 
+// needed helper:
 fn ffmpeg_bin() -> String {
     for candidate in ["/usr/bin/ffmpeg", "ffmpeg"] {
         if has_x11grab(candidate) {
@@ -71,6 +75,7 @@ fn ffmpeg_bin() -> String {
     "/usr/bin/ffmpeg".to_string()
 }
 
+// needed helper:
 fn has_x11grab(bin: &str) -> bool {
     Command::new(bin)
         .args(["-hide_banner", "-formats"])
@@ -82,6 +87,7 @@ fn has_x11grab(bin: &str) -> bool {
         })
 }
 
+// needed helper:
 fn display_size() -> Option<String> {
     let out = Command::new("xdpyinfo").output().ok()?;
     let text = String::from_utf8_lossy(&out.stdout);

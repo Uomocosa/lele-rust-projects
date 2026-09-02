@@ -25,13 +25,6 @@ pub fn wakeup_screen() {
         .output();
 }
 
-pub fn poke() {
-    let _ = Command::new("xdg-screensaver").arg("reset").output();
-    let _ = Command::new("cinnamon-screensaver-command")
-        .arg("--deactivate")
-        .output();
-}
-
 #[cfg(test)]
 mod tests {
     use super::wakeup_screen;

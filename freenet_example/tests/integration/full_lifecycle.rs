@@ -1,4 +1,4 @@
-use freenet_example_3::testing::*;
+use freenet_example::testing::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_full_lifecycle() {

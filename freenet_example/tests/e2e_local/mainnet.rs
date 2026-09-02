@@ -1,12 +1,13 @@
 use std::time::{Duration, Instant};
 
-use freenet_example_3::testing::finish_record;
-use freenet_example_3::testing::load_telegram_creds;
-use freenet_example_3::testing::send_video_file;
-use freenet_example_3::testing::start_record;
-use freenet_example_3::testing::terminal;
-use freenet_example_3::testing::wakeup_screen;
-use freenet_example_3::testing::{build_game, new_contract_params};
+use freenet_example::testing::finish_record;
+use freenet_example::testing::load_telegram_creds;
+use freenet_example::testing::send_video_file;
+use freenet_example::testing::start_record;
+use freenet_example::testing::wakeup_screen;
+use freenet_example::testing::{
+    build_game, new_contract_params, poke, require_xterm, spawn_xterm, tile_three,
+};
 
 const INSTANCES: usize = 3;
 const TIMEOUT_SECS: u64 = 300;
@@ -27,7 +28,7 @@ async fn local_mainnet() {
     wakeup_screen::wakeup_screen();
     #[allow(clippy::expect_used, clippy::unwrap_used)]
     {
-        terminal::require_xterm().expect("xterm not found — FAIL fast per spec");
+        require_xterm().expect("xterm not found — FAIL fast per spec");
     }
     let contract_params = new_contract_params();
     let build_start = Instant::now();
@@ -46,15 +47,14 @@ async fn local_mainnet() {
         let prefix = &contract_params[..prefix_len];
         let title = format!("freenet-3-{tag}-{prefix}");
         #[allow(clippy::expect_used, clippy::unwrap_used)]
-        let guard = terminal::spawn_xterm(&bin, &contract_params, tag, &log, &title)
+        let guard = spawn_xterm(&bin, &contract_params, tag, &log, &title)
             .unwrap_or_else(|e| panic!("spawn xterm failed: {e}"));
         terms.push(guard);
     }
     let titles: Vec<String> = terms.iter().map(|g| g.window_title.clone()).collect();
     #[allow(clippy::expect_used, clippy::unwrap_used)]
     {
-        terminal::tile_three([&titles[0], &titles[1], &titles[2]])
-            .unwrap_or_else(|e| panic!("{e}"));
+        tile_three([&titles[0], &titles[1], &titles[2]]).unwrap_or_else(|e| panic!("{e}"));
     }
     let spawn_elapsed = spawn_start.elapsed();
 
@@ -68,7 +68,7 @@ async fn local_mainnet() {
             converged = true;
             break;
         }
-        wakeup_screen::poke();
+        poke();
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
     let convergence_elapsed = convergence_start.elapsed();
@@ -95,11 +95,11 @@ async fn local_mainnet() {
     };
     let Some(creds) = load_telegram_creds::load_creds() else {
         panic!(
-            "telegram creds missing: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not found — symlink freenet_example_3/.env -> ../deskctrl_mcp/.env (converged={converged} contract_params={contract_params})"
+            "telegram creds missing: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not found — symlink freenet_example/.env -> ../deskctrl_mcp/.env (converged={converged} contract_params={contract_params})"
         );
     };
     let caption = format!(
-        "freenet_example_3 local-mainnet \u{b7} 3 instances \u{b7} converged={converged} \u{b7} {contract_params}\n\
+        "freenet_example local-mainnet \u{b7} 3 instances \u{b7} converged={converged} \u{b7} {contract_params}\n\
 timings:\n\
 \u{b7} build: {} s\n\
 \u{b7} spawn: {} s\n\

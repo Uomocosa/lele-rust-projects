@@ -1,4 +1,4 @@
-use freenet_example_3::testing::{
+use freenet_example::testing::{
     TestNode, connect, deploy, get_count, load_wasm, subscribe, update_count,
 };
 

@@ -1,6 +1,6 @@
-use freenet_example_3::ClickerClient;
-use freenet_example_3::Role;
-use freenet_example_3::testing::TestNode;
+use freenet_example::ClickerClient;
+use freenet_example::Role;
+use freenet_example::testing::TestNode;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

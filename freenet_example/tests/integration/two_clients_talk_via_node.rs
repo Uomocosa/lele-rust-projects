@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use freenet_example_3::testing::*;
-use freenet_example_3::{ClickerClient, Role};
+use freenet_example::testing::*;
+use freenet_example::{ClickerClient, Role};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_two_clients_talk_via_node() {

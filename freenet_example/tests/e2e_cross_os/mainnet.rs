@@ -1,11 +1,11 @@
 use std::time::{Duration, Instant};
 
-use freenet_example_3::testing::finish_record;
-use freenet_example_3::testing::load_telegram_creds;
-use freenet_example_3::testing::send_video_file;
-use freenet_example_3::testing::start_record;
-use freenet_example_3::testing::wakeup_screen;
-use freenet_example_3::testing::{ReconcileEnv, connect_with_retry, spawn_node, tick_until_merged};
+use freenet_example::testing::finish_record;
+use freenet_example::testing::load_telegram_creds;
+use freenet_example::testing::send_video_file;
+use freenet_example::testing::start_record;
+use freenet_example::testing::wakeup_screen;
+use freenet_example::testing::{ReconcileEnv, connect_with_retry, spawn_node, tick_until_merged};
 
 fn fmt_secs(duration: Duration) -> String {
     format!("{:.2}", duration.as_secs_f64())
@@ -21,7 +21,7 @@ async fn cross_host_mainnet() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "warn,freenet_example=info,freenet_example_3=info".into()),
+                .unwrap_or_else(|_| "warn,freenet_example=info,freenet_example=info".into()),
         )
         .try_init()
         .ok();
@@ -63,7 +63,7 @@ async fn cross_host_mainnet() {
     if let (Some(path), Some(creds)) = (video, load_telegram_creds::load_creds()) {
         let converged = !foreign_tags.is_empty();
         let caption = format!(
-            "freenet_example_3 cross-mainnet \u{b7} machine={} tag={} \u{b7} converged={converged} \u{b7} {}\n\
+            "freenet_example cross-mainnet \u{b7} machine={} tag={} \u{b7} converged={converged} \u{b7} {}\n\
 timings:\n\
 \u{b7} spawn: {} s\n\
 \u{b7} connect: {} s\n\

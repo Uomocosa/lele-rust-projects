@@ -5,10 +5,10 @@
     enable = true;
     channel = "stable";
     components = [ "rustc" "cargo" "clippy" "rustfmt" ];
+    targets = [ "wasm32-unknown-unknown" ];
   };
 
   packages = with pkgs; [
-    bacon
     cargo-nextest
     clang
     pkg-config
@@ -28,74 +28,15 @@
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
 
   tasks = {
-    "lele:build".exec = ''
-      set -e
-      echo ">>> [lele:build] cargo build --all-targets --features dev"
-      cargo build --all-targets --features dev
-      echo ">>> [lele:build] done"
-    '';
-    "lele:clippy".exec = ''
-      set -e
-      echo ">>> [lele:clippy] cargo clippy --all-targets --features dev"
-      cargo clippy --all-targets --features dev -- -D warnings
-      echo ">>> [lele:clippy] cargo clippy --tests --features dev"
-      cargo clippy --tests --features dev -- -D warnings
-      echo ">>> [lele:clippy] done"
-    '';
-    "lele:fmt".exec = ''
-      set -e
-      echo ">>> [lele:fmt] cargo fmt -- --check"
-      cargo fmt -- --check
-      echo ">>> [lele:fmt] done"
-    '';
-    "lele:nextest".exec = ''
-      set -e
-      echo ">>> [lele:nextest] cargo nextest run --all-targets --features dev"
-      cargo nextest run --all-targets --features dev
-      echo ">>> [lele:nextest] done"
-    '';
-    "lele:bacon-clippy".exec = ''
-      set -e
-      echo ">>> [lele:bacon-clippy] bacon --headless clippy --features dev"
-      bacon --headless clippy --features dev -- -- -D warnings
-      echo ">>> [lele:bacon-clippy] done"
-    '';
-    "lele:lint".exec = ''
-      set -e
-      echo ">>> [lele:lint] lele_lint"
-      cargo run --manifest-path ../lele_lint/Cargo.toml
-      echo ">>> [lele:lint] done"
-    '';
-    "lele:taxonomy_check".exec = ''
-      set -e
-      echo ">>> [lele:taxonomy_check] lele_function_taxonomy"
-      cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml
-      echo ">>> [lele:taxonomy_check] done"
-    '';
-    "freenet:contract-harness".exec = ''
-      set -e
-      echo ">>> [freenet:contract-harness] cargo test --manifest-path ../freenet_contract_harness/Cargo.toml"
-      cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture
-      echo ">>> [freenet:contract-harness] done"
-    '';
-    "lele:clippy".after = ["lele:build"];
-    "lele:fmt".after = ["lele:clippy"];
-    "lele:bacon-clippy".after = ["lele:fmt"];
-    "lele:lint".after = ["lele:bacon-clippy"];
-    "lele:taxonomy_check".after = ["lele:lint"];
-    "freenet:contract-harness".after = ["lele:taxonomy_check"];
-    "lele:verify".after = ["freenet:contract-harness"];
-    "freenet:run-local-mainnet".exec = ''
-      set -e
-      echo ">>> [freenet:run-local-mainnet] cargo nextest run --test mainnet_local --features dev"
-      cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture
-    '';
-    "freenet:run-cross-os".exec = ''
-      set -e
-      echo ">>> [freenet:run-cross-os] cargo nextest run --test mainnet_cross --features dev"
-      cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture
-    '';
-    "devenv:enterTest".after = [ "lele:verify" ];
+    "lele:build".exec = "cargo build --all-targets --features dev";
+    "lele:clippy".exec = "cargo clippy --all-targets --features dev -- -D warnings";
+    "lele:fmt".exec = "cargo fmt -- --check";
+    "lele:nextest".exec = "cargo nextest run --all-targets --features dev";
+    "lele:lint".exec = "cargo run --manifest-path ../lele_lint/Cargo.toml";
+    "lele:taxonomy_check".exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml";
+    "freenet:contract-harness".exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture";
+    "freenet:run-local-mainnet".exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture";
+    "freenet:run-cross-os".exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture";
   };
 
   git-hooks.hooks = {

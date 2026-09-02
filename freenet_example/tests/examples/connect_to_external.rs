@@ -1,4 +1,4 @@
-use freenet_example_3::testing::assert_example_contains;
+use freenet_example::testing::assert_example_contains;
 
 #[test]
 fn example_connect_to_external_exists() {

@@ -6,8 +6,8 @@ use freenet::local_node::{NodeConfig, OperationMode};
 use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 
-use freenet_example_3::ClickerClient;
-use freenet_example_3::Role;
+use freenet_example::ClickerClient;
+use freenet_example::Role;
 
 fn detect_public_ip() -> Option<IpAddr> {
     let socket = UdpSocket::bind("0.0.0.0:0").ok()?;

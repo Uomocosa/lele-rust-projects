@@ -93,8 +93,22 @@ pub use send_video_file::send_video_file;
 pub mod start_record;
 pub use start_record::start_record;
 
+pub mod poke;
+pub use poke::poke;
+
 pub mod wakeup_screen;
 pub use wakeup_screen::wakeup_screen;
 
-pub mod terminal;
-pub use terminal::TerminalGuard;
+pub mod terminal_guard;
+pub use terminal_guard::TerminalGuard;
+
+mod terminal_guard_title;
+
+pub mod require_xterm;
+pub use require_xterm::require_xterm;
+
+pub mod spawn_xterm;
+pub use spawn_xterm::spawn_xterm;
+
+pub mod tile_three;
+pub use tile_three::tile_three;

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use freenet_example_3::testing::*;
+use freenet_example::testing::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_two_writers() {

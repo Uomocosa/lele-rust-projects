@@ -9,9 +9,9 @@ use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 use tracing::info;
 
-use freenet_example_3::ClickerClient;
-use freenet_example_3::Role;
-use freenet_example_3::SetClient;
+use freenet_example::ClickerClient;
+use freenet_example::Role;
+use freenet_example::SetClient;
 
 #[derive(Parser, Debug)]
 #[command(name = "freenet-example-3")]

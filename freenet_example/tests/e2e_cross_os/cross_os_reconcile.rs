@@ -5,7 +5,7 @@
 //! (from `CROSS_OS_KEY`) at the same time, tick for up to `CROSS_OS_DEADLINE_SECS`, and must
 //! observe each other's slot through the network. Writes a JSONL record to `CROSS_OS_LOG`.
 
-use freenet_example_3::testing::{ReconcileEnv, connect_with_retry, spawn_node, tick_until_merged};
+use freenet_example::testing::{ReconcileEnv, connect_with_retry, spawn_node, tick_until_merged};
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "needs mainnet env (CROSS_OS_KEY)"]
@@ -13,7 +13,7 @@ async fn cross_os_reconcile() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "warn,freenet_example=info,freenet_example_3=info".into()),
+                .unwrap_or_else(|_| "warn,freenet_example=info,freenet_example=info".into()),
         )
         .init();
     let env = ReconcileEnv::from_env();
