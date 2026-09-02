@@ -204,8 +204,9 @@ async fn local_mainnet() {
             "telegram creds missing: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not found — symlink freenet_example/.env -> ../deskctrl_mcp/.env (converged={converged} contract_params={contract_params})"
         );
     };
+    let params_preview = contract_params.chars().take(16).collect::<String>();
     let caption = format!(
-        "freenet_example local-mainnet \u{b7} 3 instances \u{b7} converged={converged} accumulation_ok={accumulation_ok} \u{b7} {contract_params}\n\
+        "freenet_example local-mainnet \u{b7} 3 instances \u{b7} converged={converged} accumulation_ok={accumulation_ok} \u{b7} {params_preview}..\n\
 {accumulation_detail}\n\
 timings:\n\
 \u{b7} build: {} s\n\
