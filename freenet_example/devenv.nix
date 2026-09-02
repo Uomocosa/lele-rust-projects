@@ -68,5 +68,12 @@
       pass_filenames = false;
       always_run = true;
     };
+    freenet-contract-harness = {
+      enable = true;
+      name = "contract-harness (freenet_example)";
+      entry = "bash -c 'cd freenet_example && devenv tasks run freenet:contract-harness 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
   };
 }
