@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 #![allow(clippy::assertions_on_constants)]
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::type_complexity)]

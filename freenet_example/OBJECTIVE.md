@@ -13,6 +13,9 @@ dependencies.
 The counter persists on the network — restarting the binary fetches the
 current global state, not a local cache.
 
+The contract guarantees CRDT convergence and contract-fork isolation
+(via `ContractKey = Blake3(WASM || params)`), not anti-cheat.
+
 ## How it works
 
 ```
@@ -35,6 +38,33 @@ The subscriber:
 4. Once found, joins the increment loop alongside the publisher
 5. Both see each other's updates via pub/sub notifications
 
+## Threat model — what "cheating" means here
+
+On the canonical WASM `contract/src/lib.rs:7 GlobalCounterContract`,
+values are client-reported and unauthenticated (`freenet-contract-design §6`):
+
+- **Primary cheat to solve (P0): single-update jump-to-`MAX`.**
+  Trivially send `BTreeMap{tag: u64::MAX}` as `UpdateData::State` and honest
+  peers `max`-merge to it. Fix in candidates `CANDIDATE_1 (+1 bound, O(users))`
+  and hardened in `CANDIDATE_2`.
+
+- **Primary cheat to solve (P0): cross-tag impersonation.**
+  `tag: u64` has no owner binding today. Any key can advance any tag.
+  Fix is `CANDIDATE_2` — `Parameters` allow-list or derived `tag = hash(pubkey)`
+  and per-update `ed25519` signature verified in `update_state`.
+
+- **Secondary goal (P1, deprioritized): fast self-spam `+1,+1,...` at network rate.**
+  Attacker loops honest `+1` to outrun 1Hz ticks. This is *spam, not cheat*
+  (`CANDIDATE_1:39`, `freenet-contract-design choose-2` guidance). At the moment
+  we do not rate-limit users at the contract layer — each `+1` is still one
+  message, one honest unit of work. Contract enforces `value ≤ cur+1` (P0) but
+  not `updates per wall-clock second`.
+
+Non-goals for this example: server-trusted counter, Sybil resistance, global
+ordering, rate-limiting, monetary settlement. Harder anti-cheat options deferred
+to `docs/candidates/{CANDIDATE_1,CANDIDATE_2,CANDIDATE_3}` with scale/WASM tradeoffs
+per skill choose-2.
+
 ## Achieved
 
 - A single executable that starts an in-process Freenet node, deploys the
@@ -46,7 +76,9 @@ The subscriber:
 - No dependencies: WASM embedded at compile time via `build.rs`, node runs
   in-process
 - A `GlobalCounterContract` WASM contract with validate, update, summarize, and delta logic
-  (commutative monoid — correct idempotent `update_state`)
+  (commutative monoid — correct idempotent `update_state`); current contract is
+  honest-but-cheatable on same key (forked-client `MAX`/cross-tag not yet blocked)
+  — hardened variants staged as `docs/candidates/` worktrees
 - A WebSocket client library (`FreenetClient`) for talking to a Freenet node
 - A `GlobalCounterClient` that handles the full lifecycle (deploy, subscribe,
   update, pub/sub notification draining)

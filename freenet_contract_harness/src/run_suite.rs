@@ -9,11 +9,14 @@ pub fn run_suite<C: ContractInterface>(cfg: suite_config::SuiteConfig) {
     assert_summarize_detects_structural_divergence::<C>(&cfg);
     assert_delta_nonempty_and_roundtrips::<C>(&cfg);
     assert_delta_handles_bad_summary::<C>(&cfg);
+    assert_self_delta_empty::<C>(&cfg);
+    assert_delta_equivalence::<C>(&cfg);
     assert_update_idempotent::<C>(&cfg);
     assert_update_commutative::<C>(&cfg);
     assert_update_associative::<C>(&cfg);
     assert_update_reads_data_not_state_plus1::<C>(&cfg);
     assert_update_empty_and_unknown_noop::<C>(&cfg);
+    assert_update_state_and_delta::<C>(&cfg);
     assert_update_rejects_garbage_data_without_panic::<C>(&cfg);
 }
 
@@ -280,6 +283,128 @@ fn assert_update_empty_and_unknown_noop<C: ContractInterface>(cfg: &suite_config
 }
 
 // needed helper:
+fn assert_self_delta_empty<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+    let state = (cfg.gen_state)();
+    let Ok(summary) = C::summarize_state(cfg.params.clone(), state.clone()) else {
+        assert!(false, "self_delta_empty: summarize failed");
+        return;
+    };
+    let Ok(delta) = C::get_state_delta(cfg.params.clone(), state.clone(), summary) else {
+        assert!(false, "self_delta_empty: get_state_delta failed");
+        return;
+    };
+    assert!(
+        delta.as_ref().is_empty(),
+        "self_delta_empty: delta against own summary must be empty (self_delta_empty #5072)"
+    );
+}
+
+// needed helper:
+fn assert_delta_equivalence<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+    let base = (cfg.gen_state)();
+    let update = (cfg.gen_update)(&base);
+    let Some(ahead) = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update]) else {
+        assert!(false, "delta_equivalence: ahead apply failed");
+        return;
+    };
+    if ahead.as_ref() == base.as_ref() {
+        return;
+    }
+    let Ok(summary) = C::summarize_state(cfg.params.clone(), base.clone()) else {
+        assert!(false, "delta_equivalence: summarize base failed");
+        return;
+    };
+    let Ok(delta) = C::get_state_delta(cfg.params.clone(), ahead.clone(), summary) else {
+        assert!(false, "delta_equivalence: get_state_delta failed");
+        return;
+    };
+    assert!(
+        !delta.as_ref().is_empty(),
+        "delta_equivalence: delta should be non-empty"
+    );
+    let Some(via_delta) =
+        try_apply::<C>(cfg.params.clone(), base.clone(), vec![UpdateData::Delta(delta)])
+    else {
+        assert!(false, "delta_equivalence: via_delta apply failed");
+        return;
+    };
+    let Some(via_state) = try_apply::<C>(cfg.params.clone(), base, vec![UpdateData::State(ahead.clone())])
+    else {
+        assert!(false, "delta_equivalence: via_state apply failed");
+        return;
+    };
+    assert_eq!(
+        via_delta.as_ref(),
+        via_state.as_ref(),
+        "delta_equivalence: delta and whole-state merge must be equivalent (R ∪ (S\\R) == R ∪ S)"
+    );
+    assert_eq!(
+        via_delta.as_ref(),
+        ahead.as_ref(),
+        "delta_equivalence: result must equal ahead"
+    );
+}
+
+// needed helper:
+fn assert_update_state_and_delta<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+    let base = (cfg.gen_state)();
+    let update_a = (cfg.gen_update)(&base);
+    let Some(ahead_a) = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update_a.clone()])
+    else {
+        assert!(false, "state_and_delta: first update apply failed");
+        return;
+    };
+    if ahead_a.as_ref() == base.as_ref() {
+        return;
+    }
+    let delta_bytes = match &update_a {
+        UpdateData::State(s) => s.as_ref().to_vec(),
+        UpdateData::Delta(d) => d.as_ref().to_vec(),
+        _ => return,
+    };
+    let state_bytes = ahead_a.as_ref().to_vec();
+    let Ok(empty_apply) = C::update_state(
+        cfg.params.clone(),
+        base.clone(),
+        vec![UpdateData::StateAndDelta {
+            state: State::from(Vec::new()),
+            delta: StateDelta::from(Vec::new()),
+        }],
+    ) else {
+        assert!(false, "state_and_delta: empty StateAndDelta must not error");
+        return;
+    };
+    let Some(empty_state) = empty_apply.new_state else {
+        assert!(false, "state_and_delta: empty returned no state");
+        return;
+    };
+    assert_eq!(
+        empty_state.as_ref(),
+        base.as_ref(),
+        "state_and_delta: empty StateAndDelta must be no-op"
+    );
+    let Ok(both) = C::update_state(
+        cfg.params.clone(),
+        base.clone(),
+        vec![UpdateData::StateAndDelta {
+            state: State::from(state_bytes),
+            delta: StateDelta::from(delta_bytes),
+        }],
+    ) else {
+        assert!(false, "state_and_delta: combined apply failed");
+        return;
+    };
+    let Some(combined) = both.new_state else {
+        assert!(false, "state_and_delta: combined returned no state");
+        return;
+    };
+    assert!(
+        combined.as_ref().len() >= base.as_ref().len(),
+        "state_and_delta: combined must not shrink base"
+    );
+}
+
+// needed helper:
 fn assert_update_rejects_garbage_data_without_panic<C: ContractInterface>(
     cfg: &suite_config::SuiteConfig,
 ) {
@@ -338,18 +463,48 @@ mod tests {
         ) -> Result<UpdateModification<'static>, ContractError> {
             let mut current = decode_slots(state.as_ref()).unwrap_or_default();
             for update in data {
-                let bytes = match update {
-                    UpdateData::State(s) => Some(s.as_ref().to_vec()),
-                    UpdateData::Delta(d) => Some(d.as_ref().to_vec()),
-                    _ => None,
-                };
-                let Some(bytes) = bytes else {
-                    continue;
-                };
-                let incoming = decode_slots(&bytes).map_err(|_| ContractError::InvalidUpdate)?;
-                for (tag, value) in incoming {
-                    let entry = current.entry(tag).or_insert(0);
-                    *entry = (*entry).max(value);
+                match update {
+                    UpdateData::State(s) => {
+                        if s.as_ref().is_empty() {
+                            continue;
+                        }
+                        let incoming = decode_slots(s.as_ref())
+                            .map_err(|_| ContractError::InvalidUpdate)?;
+                        for (tag, value) in incoming {
+                            let entry = current.entry(tag).or_insert(0);
+                            *entry = (*entry).max(value);
+                        }
+                    }
+                    UpdateData::Delta(d) => {
+                        if d.as_ref().is_empty() {
+                            continue;
+                        }
+                        let incoming = decode_slots(d.as_ref())
+                            .map_err(|_| ContractError::InvalidUpdate)?;
+                        for (tag, value) in incoming {
+                            let entry = current.entry(tag).or_insert(0);
+                            *entry = (*entry).max(value);
+                        }
+                    }
+                    UpdateData::StateAndDelta { state: s, delta: d } => {
+                        if !s.as_ref().is_empty() {
+                            let incoming = decode_slots(s.as_ref())
+                                .map_err(|_| ContractError::InvalidUpdate)?;
+                            for (tag, value) in incoming {
+                                let entry = current.entry(tag).or_insert(0);
+                                *entry = (*entry).max(value);
+                            }
+                        }
+                        if !d.as_ref().is_empty() {
+                            let incoming = decode_slots(d.as_ref())
+                                .map_err(|_| ContractError::InvalidUpdate)?;
+                            for (tag, value) in incoming {
+                                let entry = current.entry(tag).or_insert(0);
+                                *entry = (*entry).max(value);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
             let new_state = encode_slots(&current);
@@ -381,6 +536,9 @@ mod tests {
                 if theirs.get(tag).copied().unwrap_or(0) < *value {
                     delta.insert(*tag, *value);
                 }
+            }
+            if delta.is_empty() {
+                return Ok(StateDelta::from(Vec::new()));
             }
             Ok(StateDelta::from(
                 bincode::serialize(&delta).map_err(|e| ContractError::Deser(e.to_string()))?,
@@ -461,6 +619,21 @@ mod tests {
     #[test]
     fn update_rejects_garbage_data_without_panic() {
         super::assert_update_rejects_garbage_data_without_panic::<DummyContract>(&cfg());
+    }
+
+    #[test]
+    fn self_delta_empty() {
+        super::assert_self_delta_empty::<DummyContract>(&cfg());
+    }
+
+    #[test]
+    fn delta_equivalence() {
+        super::assert_delta_equivalence::<DummyContract>(&cfg());
+    }
+
+    #[test]
+    fn state_and_delta() {
+        super::assert_update_state_and_delta::<DummyContract>(&cfg());
     }
 
     #[test]
