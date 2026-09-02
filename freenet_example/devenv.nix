@@ -39,7 +39,5 @@
     "freenet:run-cross-os".exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture";
   };
 
-  git-hooks.hooks = {
-    rustfmt.enable = true;
-  };
+  git-hooks.hooks = {};
 }

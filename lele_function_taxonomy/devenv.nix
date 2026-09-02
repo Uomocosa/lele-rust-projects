@@ -20,5 +20,5 @@
     "lele:lint".exec = "cargo run --features rustc-private -- --manifest-path ./Cargo.toml";
   };
 
-  git-hooks.hooks.rustfmt.enable = true;
+  git-hooks.hooks = {};
 }

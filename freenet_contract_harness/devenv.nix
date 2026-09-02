@@ -19,7 +19,5 @@
     "lele:lint".exec = "cargo run --manifest-path ../lele_lint/Cargo.toml";
   };
 
-  git-hooks.hooks = {
-    rustfmt.enable = true;
-  };
+  git-hooks.hooks = {};
 }
