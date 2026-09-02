@@ -115,4 +115,32 @@ mod tests {
         let summary = GlobalCounterContract::summarize_state(params(), next_state.clone()).unwrap();
         let _delta = GlobalCounterContract::get_state_delta(params(), next_state, summary).unwrap();
     }
+
+    #[test]
+    fn harness_candidate_1() {
+        let cfg = freenet_contract_harness::SuiteConfig {
+            params: params(),
+            gen_state: || slots(&[(0, 5), (1, 3)]),
+            gen_update: |_| UpdateData::State(slots(&[(1, 6)])),
+            gen_divergent_equal_total: Some(|| Some((slots(&[(0, 4), (1, 4)]), slots(&[(0, 8)])))),
+            empty_state: || slots(&[]),
+        };
+        freenet_contract_harness::run_suite::<GlobalCounterContract>(cfg);
+    }
+
+    #[test]
+    fn bounded_increment_blocks_max_jump() {
+        let state = slots(&[(0, 5)]);
+        let max_jump = vec![UpdateData::State(slots(&[(0, 1_000_000)]))];
+        let result = GlobalCounterContract::update_state(params(), state.clone(), max_jump).unwrap();
+        let next = result.unwrap_valid();
+        let decoded = bincode::deserialize::<Slots>(next.as_ref()).unwrap();
+        assert_eq!(decoded.get(&0), Some(&5), "MAX jump should be ignored by bound");
+
+        let ok_step = vec![UpdateData::State(slots(&[(0, 6)]))];
+        let result = GlobalCounterContract::update_state(params(), state, ok_step).unwrap();
+        let next = result.unwrap_valid();
+        let decoded = bincode::deserialize::<Slots>(next.as_ref()).unwrap();
+        assert_eq!(decoded.get(&0), Some(&6), "valid +1 should be accepted");
+    }
 }
