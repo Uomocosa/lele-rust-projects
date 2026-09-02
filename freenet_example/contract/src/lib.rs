@@ -44,6 +44,10 @@ impl ContractInterface for GlobalCounterContract {
             };
             let incoming = decode_slots(&bytes).map_err(|_| ContractError::InvalidUpdate)?;
             for (tag, value) in incoming {
+                let cur = current.get(&tag).copied().unwrap_or(0);
+                if value > cur.saturating_add(1) {
+                    continue;
+                }
                 let entry = current.entry(tag).or_insert(0);
                 *entry = (*entry).max(value);
             }
