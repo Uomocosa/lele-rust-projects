@@ -14,7 +14,7 @@ pub fn build_game() -> Result<PathBuf, String> {
         )
         .arg("build")
         .arg("--bin")
-        .arg("freenet-example-3")
+        .arg("freenet-example")
         .arg("--release");
     let output = cmd
         .output()
@@ -24,7 +24,7 @@ pub fn build_game() -> Result<PathBuf, String> {
         return Err(format!("cargo build failed:\n{stderr}"));
     }
     let target = target_dir_from_metadata(&game_dir)?;
-    let bin = target.join("release").join("freenet-example-3");
+    let bin = target.join("release").join("freenet-example");
     if !bin.exists() {
         return Err(format!("expected build output {} not found", bin.display()));
     }
