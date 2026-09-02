@@ -43,26 +43,42 @@ mod tests {
         assert_eq!(subscribe(&mut subscriber_alpha, key).await.unwrap(), 0);
         let mut subscriber_beta = connect(node.port).await.unwrap();
         assert_eq!(subscribe(&mut subscriber_beta, key).await.unwrap(), 0);
-        update_count(&mut publisher, key, 0, 5).await.unwrap();
-        let notification_alpha =
-            recv_notification(&mut subscriber_alpha, std::time::Duration::from_secs(10))
-                .await
-                .expect("subscriber_alpha: update notification not received");
-        let notification_beta =
-            recv_notification(&mut subscriber_beta, std::time::Duration::from_secs(10))
-                .await
-                .expect("subscriber_beta: update notification not received");
+        update_count_incrementally(&mut publisher, key, 0, 5)
+            .await
+            .unwrap();
+        let mut notification_alpha = 0;
+        for _ in 0..5 {
+            notification_alpha =
+                recv_notification(&mut subscriber_alpha, std::time::Duration::from_secs(10))
+                    .await
+                    .expect("subscriber_alpha: update notification not received");
+        }
+        let mut notification_beta = 0;
+        for _ in 0..5 {
+            notification_beta =
+                recv_notification(&mut subscriber_beta, std::time::Duration::from_secs(10))
+                    .await
+                    .expect("subscriber_beta: update notification not received");
+        }
         assert_eq!(notification_alpha, 5);
         assert_eq!(notification_beta, 5);
-        update_count(&mut publisher, key, 0, 10).await.unwrap();
-        let second_alpha =
-            recv_notification(&mut subscriber_alpha, std::time::Duration::from_secs(10))
-                .await
-                .expect("subscriber_alpha: second update notification not received");
-        let second_beta =
-            recv_notification(&mut subscriber_beta, std::time::Duration::from_secs(10))
-                .await
-                .expect("subscriber_beta: second update notification not received");
+        update_count_incrementally(&mut publisher, key, 0, 10)
+            .await
+            .unwrap();
+        let mut second_alpha = 0;
+        for _ in 0..5 {
+            second_alpha =
+                recv_notification(&mut subscriber_alpha, std::time::Duration::from_secs(10))
+                    .await
+                    .expect("subscriber_alpha: second update notification not received");
+        }
+        let mut second_beta = 0;
+        for _ in 0..5 {
+            second_beta =
+                recv_notification(&mut subscriber_beta, std::time::Duration::from_secs(10))
+                    .await
+                    .expect("subscriber_beta: second update notification not received");
+        }
         assert_eq!(second_alpha, 10);
         assert_eq!(second_beta, 10);
         assert_eq!(get_count(&mut subscriber_alpha, key).await.unwrap(), 10);

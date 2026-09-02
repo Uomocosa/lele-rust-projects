@@ -9,9 +9,13 @@ async fn test_full_lifecycle() {
 
     assert_eq!(get_count(&mut client, key).await.unwrap(), 0);
 
-    update_count(&mut client, key, 0, 42).await.unwrap();
+    update_count_incrementally(&mut client, key, 0, 42)
+        .await
+        .unwrap();
     assert_eq!(get_count(&mut client, key).await.unwrap(), 42);
 
-    update_count(&mut client, key, 0, 99).await.unwrap();
+    update_count_incrementally(&mut client, key, 0, 99)
+        .await
+        .unwrap();
     assert_eq!(get_count(&mut client, key).await.unwrap(), 99);
 }

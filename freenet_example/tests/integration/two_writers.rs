@@ -13,12 +13,16 @@ async fn test_two_writers() {
     subscribe(&mut writer_b, key).await.unwrap();
     subscribe(&mut verifier, key).await.unwrap();
 
-    update_count(&mut writer_a, key, 0, 3).await.unwrap();
+    update_count_incrementally(&mut writer_a, key, 0, 3)
+        .await
+        .unwrap();
     recv_notification(&mut verifier, Duration::from_secs(10))
         .await
         .expect("verifier: first update notification not received");
 
-    update_count(&mut writer_b, key, 1, 7).await.unwrap();
+    update_count_incrementally(&mut writer_b, key, 1, 7)
+        .await
+        .unwrap();
     recv_notification(&mut verifier, Duration::from_secs(10))
         .await
         .expect("verifier: second update notification not received");

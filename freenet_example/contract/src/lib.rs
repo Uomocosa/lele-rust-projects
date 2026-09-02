@@ -34,48 +34,22 @@ impl ContractInterface for GlobalCounterContract {
     ) -> Result<UpdateModification<'static>, ContractError> {
         let mut current = decode_slots(state.as_ref()).unwrap_or_default();
         for update in data {
-            match update {
-                UpdateData::State(s) => {
-                    if s.as_ref().is_empty() {
-                        continue;
-                    }
-                    let incoming =
-                        decode_slots(s.as_ref()).map_err(|_| ContractError::InvalidUpdate)?;
-                    for (tag, value) in incoming {
-                        let entry = current.entry(tag).or_insert(0);
-                        *entry = (*entry).max(value);
-                    }
+            let bytes = match update {
+                UpdateData::State(s) => Some(s.as_ref().to_vec()),
+                UpdateData::Delta(d) => Some(d.as_ref().to_vec()),
+                _ => None,
+            };
+            let Some(bytes) = bytes else {
+                continue;
+            };
+            let incoming = decode_slots(&bytes).map_err(|_| ContractError::InvalidUpdate)?;
+            for (tag, value) in incoming {
+                let cur = current.get(&tag).copied().unwrap_or(0);
+                if value > cur.saturating_add(1) {
+                    continue;
                 }
-                UpdateData::Delta(d) => {
-                    if d.as_ref().is_empty() {
-                        continue;
-                    }
-                    let incoming =
-                        decode_slots(d.as_ref()).map_err(|_| ContractError::InvalidUpdate)?;
-                    for (tag, value) in incoming {
-                        let entry = current.entry(tag).or_insert(0);
-                        *entry = (*entry).max(value);
-                    }
-                }
-                UpdateData::StateAndDelta { state: s, delta: d } => {
-                    if !s.as_ref().is_empty() {
-                        let incoming = decode_slots(s.as_ref())
-                            .map_err(|_| ContractError::InvalidUpdate)?;
-                        for (tag, value) in incoming {
-                            let entry = current.entry(tag).or_insert(0);
-                            *entry = (*entry).max(value);
-                        }
-                    }
-                    if !d.as_ref().is_empty() {
-                        let incoming = decode_slots(d.as_ref())
-                            .map_err(|_| ContractError::InvalidUpdate)?;
-                        for (tag, value) in incoming {
-                            let entry = current.entry(tag).or_insert(0);
-                            *entry = (*entry).max(value);
-                        }
-                    }
-                }
-                _ => {}
+                let entry = current.entry(tag).or_insert(0);
+                *entry = (*entry).max(value);
             }
         }
         let new_state = encode_slots(&current);
@@ -108,9 +82,6 @@ impl ContractInterface for GlobalCounterContract {
                 delta.insert(*tag, *value);
             }
         }
-        if delta.is_empty() {
-            return Ok(StateDelta::from(Vec::new()));
-        }
         Ok(StateDelta::from(bincode::serialize(&delta).map_err(
             |e| ContractError::Deser(e.to_string()),
         )?))
@@ -132,6 +103,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
+        // Contract validity (CRDT laws, validate/summarize/delta) is verified by freenet_contract_harness::run_suite; this test only shows API wiring.
         let state = slots(&[(0, 5), (1, 3)]);
         let related = RelatedContracts::default();
         assert!(GlobalCounterContract::validate_state(params(), state.clone(), related).is_ok());
@@ -142,5 +114,33 @@ mod tests {
 
         let summary = GlobalCounterContract::summarize_state(params(), next_state.clone()).unwrap();
         let _delta = GlobalCounterContract::get_state_delta(params(), next_state, summary).unwrap();
+    }
+
+    #[test]
+    fn harness_candidate_1() {
+        let cfg = freenet_contract_harness::SuiteConfig {
+            params: params(),
+            gen_state: || slots(&[(0, 5), (1, 3)]),
+            gen_update: |_| UpdateData::State(slots(&[(1, 6)])),
+            gen_divergent_equal_total: Some(|| Some((slots(&[(0, 4), (1, 4)]), slots(&[(0, 8)])))),
+            empty_state: || slots(&[]),
+        };
+        freenet_contract_harness::run_suite::<GlobalCounterContract>(cfg);
+    }
+
+    #[test]
+    fn bounded_increment_blocks_max_jump() {
+        let state = slots(&[(0, 5)]);
+        let max_jump = vec![UpdateData::State(slots(&[(0, 1_000_000)]))];
+        let result = GlobalCounterContract::update_state(params(), state.clone(), max_jump).unwrap();
+        let next = result.unwrap_valid();
+        let decoded = bincode::deserialize::<Slots>(next.as_ref()).unwrap();
+        assert_eq!(decoded.get(&0), Some(&5), "MAX jump should be ignored by bound");
+
+        let ok_step = vec![UpdateData::State(slots(&[(0, 6)]))];
+        let result = GlobalCounterContract::update_state(params(), state, ok_step).unwrap();
+        let next = result.unwrap_valid();
+        let decoded = bincode::deserialize::<Slots>(next.as_ref()).unwrap();
+        assert_eq!(decoded.get(&0), Some(&6), "valid +1 should be accepted");
     }
 }
