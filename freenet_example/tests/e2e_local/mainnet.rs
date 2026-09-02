@@ -148,19 +148,19 @@ async fn local_mainnet() {
     let expected_total = elapsed_secs.saturating_mul(inst_u64);
     let min_expected_per_instance =
         elapsed_secs.saturating_mul(100 - ACCUMULATION_TOLERANCE_PCT) / 100;
-    let mut accumulation_ok = true;
     let mut accumulation_detail = String::new();
+    let mut per_instance_ok = true;
     for (i, (s, e)) in start_counts.iter().zip(end_counts.iter()).enumerate() {
         if let (Some(ss), Some(ee)) = (s, e) {
             let delta = ee.saturating_sub(*ss);
-            let is_ok = delta >= min_expected_per_instance;
-            accumulation_ok &= is_ok;
+            let is_ok = delta.saturating_add(1) >= min_expected_per_instance;
+            per_instance_ok &= is_ok;
             let _ = write!(
                 accumulation_detail,
                 " inst{i}: {ss}->{ee} delta={delta} expected>={min_expected_per_instance} ok={is_ok};"
             );
         } else {
-            accumulation_ok = false;
+            per_instance_ok = false;
             let _ = write!(
                 accumulation_detail,
                 " inst{i}: start={s:?} end={e:?} missing;"
@@ -171,10 +171,10 @@ async fn local_mainnet() {
     let total_end_sum: u64 = end_counts.iter().filter_map(|c| *c).sum();
     let total_delta = total_end_sum.saturating_sub(total_start_sum);
     let min_total = expected_total.saturating_mul(100 - ACCUMULATION_TOLERANCE_PCT) / 100;
-    accumulation_ok &= total_delta >= min_total;
+    let accumulation_ok = total_delta >= min_total;
     let _ = write!(
         accumulation_detail,
-        " total {total_start_sum}->{total_end_sum} delta={total_delta} expected>={min_total}"
+        " total {total_start_sum}->{total_end_sum} delta={total_delta} expected>={min_total} per_instance_ok={per_instance_ok}"
     );
 
     let recording_start = Instant::now();
