@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use freenet_stdlib::prelude::*;
 
 use super::set_client_method;
-use crate::clicker_error;
+use crate::global_counter_error;
 use freenet_client::FreenetClient;
 
 pub struct SetClient {
@@ -18,8 +18,8 @@ pub struct SetClient {
 #[rustfmt::skip]
 impl SetClient {
     /// # Errors
-    /// Returns `ClickerError` if the connection or contract deployment fails.
-    pub async fn connect(host: &str, port: u16, contract_wasm: &[u8], params: &[u8], tag: u64) -> Result<Self, clicker_error::ClickerError> {
+    /// Returns `GlobalCounterError` if the connection or contract deployment fails.
+    pub async fn connect(host: &str, port: u16, contract_wasm: &[u8], params: &[u8], tag: u64) -> Result<Self, global_counter_error::GlobalCounterError> {
         set_client_method::connect(host, port, contract_wasm, params, tag).await
     }
     #[must_use]
@@ -31,8 +31,8 @@ impl SetClient {
         set_client_method::own_count(self)
     }
     /// # Errors
-    /// Returns `ClickerError` if the update fails or the response is unexpected.
-    pub async fn tick(&mut self) -> Result<u64, clicker_error::ClickerError> {
+    /// Returns `GlobalCounterError` if the update fails or the response is unexpected.
+    pub async fn tick(&mut self) -> Result<u64, global_counter_error::GlobalCounterError> {
         set_client_method::tick(self).await
     }
 }

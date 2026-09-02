@@ -27,8 +27,7 @@ fn main() {
         }
     }
 
-    let target_dir =
-        std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "contract/target".to_string());
+    let wasm_target_dir = "contract/target".to_string();
 
     let status = Command::new("cargo")
         .args([
@@ -37,7 +36,7 @@ fn main() {
             "--target",
             "wasm32-unknown-unknown",
             "--target-dir",
-            &target_dir,
+            &wasm_target_dir,
             "--manifest-path",
             "contract/Cargo.toml",
         ])
@@ -48,6 +47,6 @@ fn main() {
         panic!("contract WASM build failed");
     }
 
-    let wasm_src = format!("{target_dir}/wasm32-unknown-unknown/release/clicker_contract.wasm");
+    let wasm_src = format!("{wasm_target_dir}/wasm32-unknown-unknown/release/clicker_contract.wasm");
     std::fs::copy(&wasm_src, dst).expect("failed to copy contract WASM");
 }

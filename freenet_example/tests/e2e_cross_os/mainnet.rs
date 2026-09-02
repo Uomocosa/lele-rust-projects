@@ -30,7 +30,7 @@ async fn cross_host_mainnet() {
     let spawn_start = Instant::now();
     let port = spawn_node(&tmp).await.expect("spawn node");
     let spawn_elapsed = spawn_start.elapsed();
-    let wasm = include_bytes!("../../contract/clicker_contract.wasm");
+    let wasm = include_bytes!("../../contract/global_counter_contract.wasm");
     let params = hex::encode(env.key.as_bytes());
     let connect_start = Instant::now();
     let mut client = connect_with_retry(port, wasm, params.as_bytes(), env.tag).await;

@@ -1,7 +1,7 @@
-use crate::clicker_client;
+use crate::global_counter_client;
 
 #[must_use]
-pub fn count(client: &clicker_client::ClickerClient) -> u64 {
+pub fn count(client: &global_counter_client::GlobalCounterClient) -> u64 {
     client.slots.values().sum()
 }
 

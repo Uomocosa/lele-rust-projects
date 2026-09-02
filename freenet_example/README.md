@@ -1,4 +1,4 @@
-# Freenet Clicker Example 2
+# Freenet Global Counter Example
 
 A shared counter that runs across the Freenet P2P network. The binary starts its
 own Freenet node, joins mainnet, and increments a shared counter every second.
@@ -55,8 +55,8 @@ knowledge lives.
 
 | Part | Why it exists |
 |---|---|
-| `contract/src/lib.rs` | The whole contract: `Slots = BTreeMap<u64, u64>` CRDT. `update_state` max-merges per tag (the ONLY merge rule), `summarize_state` returns the per-tag map (not a total — equal totals can mask divergence), `get_state_delta` returns only lagging tags. The committed `contract/clicker_contract.wasm` pins the contract key: **never rebuild per deployment** (rebuild ⇒ new code hash ⇒ new key ⇒ different "room"). |
-| `src/clicker_client.rs` + `src/clicker_client_method/` | The counter client. `connect.rs` does Get → Put-only-on-NotFound (putting unconditionally overwrites network state). `tick.rs` absorbs notifications (max-merge, never replace), increments own tag, sends single-tag `UpdateData::State`. `bridge_tick.rs` is split recovery: `ContractRequest::Subscribe { key, summary }` every 30s while no foreign activity, then an idempotent re-Put. `note_foreign_slots.rs` tracks foreign freshness (see invariants). `merge_slots.rs`, `foreign_tags.rs`, `count/own/state/contract_key` support these. |
+| `contract/src/lib.rs` | The whole contract: `Slots = BTreeMap<u64, u64>` CRDT. `update_state` max-merges per tag (the ONLY merge rule), `summarize_state` returns the per-tag map (not a total — equal totals can mask divergence), `get_state_delta` returns only lagging tags. The committed `contract/global_counter_contract.wasm` pins the contract key: **never rebuild per deployment** (rebuild ⇒ new code hash ⇒ new key ⇒ different "room"). |
+| `src/global_counter_client.rs` + `src/global_counter_client_method/` | The counter client. `connect.rs` does Get → Put-only-on-NotFound (putting unconditionally overwrites network state). `tick.rs` absorbs notifications (max-merge, never replace), increments own tag, sends single-tag `UpdateData::State`. `bridge_tick.rs` is split recovery: `ContractRequest::Subscribe { key, summary }` every 30s while no foreign activity, then an idempotent re-Put. `note_foreign_slots.rs` tracks foreign freshness (see invariants). `merge_slots.rs`, `foreign_tags.rs`, `count/own/state/contract_key` support these. |
 | `src/freenet_client.rs` (+ methods), `src/recv_after_get.rs`, `src/recv_response.rs` | Minimal WebSocket client for `ws://127.0.0.1:<port>/v1/contract/command?encodingProtocol=native`. `recv_after_get`/`recv_response` encode the response-loop discipline: messages arrive FIFO with no request correlation — loop and skip `SubscribeResponse`/`UpdateNotification`. |
 | `src/main.rs` | Node bootstrap (in-process network-mode node, mainnet client) + 1s tick loop calling `tick → note_foreign_slots → bridge_tick`. |
 | `build.rs` | Builds + commits `contract/*.wasm` (mtime-checked). |

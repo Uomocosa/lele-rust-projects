@@ -1,4 +1,4 @@
-use crate::clicker_error;
+use crate::global_counter_error;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
@@ -6,7 +6,7 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 
 use crate::set_client;
-use clicker_error::ClickerError as Ce;
+use global_counter_error::GlobalCounterError as Ce;
 
 // needed helper:
 fn absorb_set(set: &mut BTreeSet<u64>, bytes: &[u8]) {
@@ -21,7 +21,7 @@ const fn mine_value(tag: u64, seq: u64) -> u64 {
 }
 
 /// # Errors
-/// Returns `ClickerError` if serialization fails or the update response is unexpected.
+/// Returns `GlobalCounterError` if serialization fails or the update response is unexpected.
 pub async fn tick(client: &mut set_client::SetClient) -> Result<u64, Ce> {
     while let Some(result) = client.client.recv_timeout(Duration::from_millis(10)).await {
         if let Ok(HostResponse::ContractResponse(ContractResponse::UpdateNotification {

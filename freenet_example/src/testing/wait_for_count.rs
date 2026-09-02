@@ -1,11 +1,11 @@
 use std::time::{Duration, Instant};
 
-use crate::ClickerClient;
+use crate::GlobalCounterClient;
 
 /// # Errors
 /// Returns `Err` if the deadline overflows or the count does not reach `expected` within `timeout`.
 pub async fn wait_for_count(
-    client: &mut ClickerClient,
+    client: &mut GlobalCounterClient,
     expected: u64,
     timeout: Duration,
 ) -> Result<u64, String> {

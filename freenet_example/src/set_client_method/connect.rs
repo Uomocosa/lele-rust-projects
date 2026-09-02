@@ -1,5 +1,5 @@
-use crate::clicker_error;
 use crate::freenet_client;
+use crate::global_counter_error;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,8 +8,8 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 
 use crate::set_client;
-use clicker_error::ClickerError as Ce;
 use freenet_client::FreenetClient;
+use global_counter_error::GlobalCounterError as Ce;
 
 // needed helper:
 async fn recv_set(client: &mut FreenetClient) -> Result<Option<BTreeSet<u64>>, Ce> {
@@ -39,7 +39,7 @@ async fn recv_set(client: &mut FreenetClient) -> Result<Option<BTreeSet<u64>>, C
 }
 
 /// # Errors
-/// Returns `ClickerError` if the connection or contract get/put fails.
+/// Returns `GlobalCounterError` if the connection or contract get/put fails.
 pub async fn connect(
     host: &str,
     port: u16,

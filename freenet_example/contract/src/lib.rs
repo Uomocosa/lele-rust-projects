@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use freenet_stdlib::prelude::*;
 
 #[allow(dead_code)]
-struct ClickerContract;
+struct GlobalCounterContract;
 
 type Slots = BTreeMap<u64, u64>;
 
@@ -18,7 +18,7 @@ fn encode_slots(slots: &Slots) -> State<'static> {
 }
 
 #[contract]
-impl ContractInterface for ClickerContract {
+impl ContractInterface for GlobalCounterContract {
     fn validate_state(
         _parameters: Parameters<'static>,
         state: State<'static>,
@@ -102,13 +102,13 @@ mod tests {
         // Contract validity (CRDT laws, validate/summarize/delta) is verified by freenet_contract_harness::run_suite; this test only shows API wiring.
         let state = slots(&[(0, 5), (1, 3)]);
         let related = RelatedContracts::default();
-        assert!(ClickerContract::validate_state(params(), state.clone(), related).is_ok());
+        assert!(GlobalCounterContract::validate_state(params(), state.clone(), related).is_ok());
 
         let update = vec![UpdateData::State(slots(&[(1, 7)]))];
-        let result = ClickerContract::update_state(params(), state.clone(), update).unwrap();
+        let result = GlobalCounterContract::update_state(params(), state.clone(), update).unwrap();
         let next_state = result.unwrap_valid();
 
-        let summary = ClickerContract::summarize_state(params(), next_state.clone()).unwrap();
-        let _delta = ClickerContract::get_state_delta(params(), next_state, summary).unwrap();
+        let summary = GlobalCounterContract::summarize_state(params(), next_state.clone()).unwrap();
+        let _delta = GlobalCounterContract::get_state_delta(params(), next_state, summary).unwrap();
     }
 }

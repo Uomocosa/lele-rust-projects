@@ -19,7 +19,7 @@ async fn cross_os_reconcile() {
     let env = ReconcileEnv::from_env();
     let tmp = tempfile::tempdir().expect("tempdir");
     let port = spawn_node(&tmp).await.expect("spawn node");
-    let wasm = include_bytes!("../../contract/clicker_contract.wasm");
+    let wasm = include_bytes!("../../contract/global_counter_contract.wasm");
     let params = hex::encode(env.key.as_bytes());
     let mut client = connect_with_retry(port, wasm, params.as_bytes(), env.tag).await;
     println!(

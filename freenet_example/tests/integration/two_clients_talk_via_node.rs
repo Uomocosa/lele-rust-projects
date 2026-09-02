@@ -1,19 +1,19 @@
 use std::time::Duration;
 
 use freenet_example::testing::*;
-use freenet_example::{ClickerClient, Role};
+use freenet_example::{GlobalCounterClient, Role};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_two_clients_talk_via_node() {
     let node = TestNode::start().await.unwrap();
     let wasm = load_wasm();
 
-    let mut pub_ = ClickerClient::connect("127.0.0.1", node.port, &wasm, Role::Publish)
+    let mut pub_ = GlobalCounterClient::connect("127.0.0.1", node.port, &wasm, Role::Publish)
         .await
         .unwrap();
     assert_eq!(pub_.tick().await.unwrap(), 1);
 
-    let mut sub = ClickerClient::connect("127.0.0.1", node.port, &wasm, Role::Subscribe)
+    let mut sub = GlobalCounterClient::connect("127.0.0.1", node.port, &wasm, Role::Subscribe)
         .await
         .unwrap();
     assert_eq!(sub.state().await.unwrap(), 1);

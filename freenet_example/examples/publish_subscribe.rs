@@ -1,14 +1,14 @@
-use freenet_example::ClickerClient;
+use freenet_example::GlobalCounterClient;
 use freenet_example::Role;
 use freenet_example::testing::TestNode;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let node = TestNode::start().await?;
-    let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
+    let wasm = include_bytes!("../contract/global_counter_contract.wasm").to_vec();
 
     let mut publisher =
-        ClickerClient::connect("127.0.0.1", node.port, &wasm, Role::Publish).await?;
+        GlobalCounterClient::connect("127.0.0.1", node.port, &wasm, Role::Publish).await?;
     println!("publisher connected, initial count: {}", publisher.count());
 
     for i in 1..=3 {
@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut subscriber =
-        ClickerClient::connect("127.0.0.1", node.port, &wasm, Role::Subscribe).await?;
+        GlobalCounterClient::connect("127.0.0.1", node.port, &wasm, Role::Subscribe).await?;
     let sub_state = subscriber.state().await?;
     println!("subscriber state after sync: {sub_state}");
 

@@ -1,6 +1,6 @@
-use crate::clicker_client;
-use crate::clicker_client_method;
-use crate::clicker_error;
+use crate::global_counter_client;
+use crate::global_counter_client_method;
+use crate::global_counter_error;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -14,11 +14,11 @@ const SUBSCRIBE_TIMEOUT: Duration = Duration::from_secs(30);
 const REPUT_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// # Errors
-/// Returns `ClickerError` if the bridge subscribe or re-put fails.
+/// Returns `GlobalCounterError` if the bridge subscribe or re-put fails.
 pub async fn bridge_tick(
-    client: &mut clicker_client::ClickerClient,
+    client: &mut global_counter_client::GlobalCounterClient,
     now: std::time::Instant,
-) -> Result<(), clicker_error::ClickerError> {
+) -> Result<(), global_counter_error::GlobalCounterError> {
     if !bridge_due(client.foreign_seen, client.last_bridge, now) {
         return Ok(());
     }
@@ -26,14 +26,14 @@ pub async fn bridge_tick(
     info!(target: "freenet_example", tag = client.tag, "bridge: split suspected");
 
     let merged_now = attempt_subscribe(client).await?;
-    clicker_client_method::note_foreign_slots_at(client, now);
+    global_counter_client_method::note_foreign_slots_at(client, now);
     if merged_now {
         info!(target: "freenet_example", tag = client.tag, "bridge: merged via subscribe");
         return Ok(());
     }
 
     let merged_now = attempt_reput(client).await?;
-    clicker_client_method::note_foreign_slots_at(client, now);
+    global_counter_client_method::note_foreign_slots_at(client, now);
     if merged_now {
         info!(target: "freenet_example", tag = client.tag, "bridge: merged via re-put");
     }
@@ -59,8 +59,8 @@ fn bridge_due(
 
 // needed helper:
 async fn attempt_subscribe(
-    client: &mut clicker_client::ClickerClient,
-) -> Result<bool, clicker_error::ClickerError> {
+    client: &mut global_counter_client::GlobalCounterClient,
+) -> Result<bool, global_counter_error::GlobalCounterError> {
     info!(target: "freenet_example", tag = client.tag, "bridge: subscribe attempt");
     let instance_id = *client.contract_key.id();
     let summary = StateSummary::from(bincode::serialize(&client.slots)?);
@@ -101,8 +101,8 @@ const fn response_kind(response: &HostResponse) -> &'static str {
 
 // needed helper:
 async fn attempt_reput(
-    client: &mut clicker_client::ClickerClient,
-) -> Result<bool, clicker_error::ClickerError> {
+    client: &mut global_counter_client::GlobalCounterClient,
+) -> Result<bool, global_counter_error::GlobalCounterError> {
     info!(target: "freenet_example", tag = client.tag, "bridge: re-put attempt");
     let state = WrappedState::new(bincode::serialize(&client.slots)?);
     let put_req = ContractRequest::Put {
@@ -140,13 +140,13 @@ async fn attempt_reput(
             if let Some(bytes) = bytes
                 && let Ok(incoming) = bincode::deserialize::<BTreeMap<u64, u64>>(&bytes)
             {
-                clicker_client_method::merge_slots(&mut client.slots, incoming);
+                global_counter_client_method::merge_slots(&mut client.slots, incoming);
             }
         }
         other => {
-            return Err(clicker_error::ClickerError::UnexpectedResponse(format!(
-                "{other:?}"
-            )));
+            return Err(
+                global_counter_error::GlobalCounterError::UnexpectedResponse(format!("{other:?}")),
+            );
         }
     }
     Ok(client.foreign_seen.is_some())

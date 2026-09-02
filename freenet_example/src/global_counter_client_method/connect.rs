@@ -1,6 +1,6 @@
-use crate::clicker_client;
-use crate::clicker_error;
 use crate::freenet_client;
+use crate::global_counter_client;
+use crate::global_counter_error;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -11,12 +11,12 @@ use tracing::info;
 use crate::Role;
 use crate::recv_after_get;
 use crate::recv_response;
-use clicker_error::ClickerError;
-use clicker_error::ClickerError as Ce;
 use freenet_client::FreenetClient;
+use global_counter_error::GlobalCounterError;
+use global_counter_error::GlobalCounterError as Ce;
 
 /// # Errors
-/// Returns `ClickerError` if the connection or contract get/put fails.
+/// Returns `GlobalCounterError` if the connection or contract get/put fails.
 pub async fn connect(
     host: &str,
     port: u16,
@@ -24,7 +24,7 @@ pub async fn connect(
     params: &[u8],
     role: Role,
     tag: u64,
-) -> Result<clicker_client::ClickerClient, ClickerError> {
+) -> Result<global_counter_client::GlobalCounterClient, GlobalCounterError> {
     let mut client = FreenetClient::connect(host, port).await?;
 
     let contract_code = Arc::new(ContractCode::from(contract_wasm.to_vec()));
@@ -85,7 +85,7 @@ pub async fn connect(
         .filter(|(t, _)| **t != tag)
         .map(|(_, v)| v)
         .sum();
-    Ok(clicker_client::ClickerClient {
+    Ok(global_counter_client::GlobalCounterClient {
         client,
         contract_key: key,
         slots,

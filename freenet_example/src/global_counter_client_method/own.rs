@@ -1,7 +1,7 @@
-use crate::clicker_client;
+use crate::global_counter_client;
 
 #[must_use]
-pub fn own(client: &clicker_client::ClickerClient) -> u64 {
+pub fn own(client: &global_counter_client::GlobalCounterClient) -> u64 {
     client.slots.get(&client.tag).copied().unwrap_or(0)
 }
 

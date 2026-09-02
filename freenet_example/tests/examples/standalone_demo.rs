@@ -4,7 +4,7 @@ use freenet_example::testing::{TestNode, load_wasm};
 async fn example_standalone_demo_runs() {
     let node = TestNode::start().await.expect("node");
     let wasm = load_wasm();
-    let mut client = freenet_example::ClickerClient::connect(
+    let mut client = freenet_example::GlobalCounterClient::connect(
         "127.0.0.1",
         node.port,
         &wasm,

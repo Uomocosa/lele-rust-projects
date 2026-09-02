@@ -1,5 +1,5 @@
 [package]
-name = "clicker_contract"
+name = "global_counter_contract"
 version = "0.1.0"
 edition = "2024"
 

@@ -42,8 +42,8 @@ pub use expect_line::expect_line;
 pub mod assert_example_contains;
 pub use assert_example_contains::assert_example_contains;
 
-pub mod clicker_connect;
-pub use clicker_connect::clicker_connect;
+pub mod global_counter_connect;
+pub use global_counter_connect::global_counter_connect;
 
 pub mod node_args;
 pub use node_args::node_args;

@@ -28,15 +28,15 @@
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
 
   tasks = {
-    "lele:build".exec = "cargo build --all-targets --features dev";
-    "lele:clippy".exec = "cargo clippy --all-targets --features dev -- -D warnings";
-    "lele:fmt".exec = "cargo fmt -- --check";
-    "lele:nextest".exec = "cargo nextest run --all-targets --features dev";
-    "lele:lint".exec = "cargo run --manifest-path ../lele_lint/Cargo.toml";
-    "lele:taxonomy_check".exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml";
-    "freenet:contract-harness".exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture";
-    "freenet:run-local-mainnet".exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture";
-    "freenet:run-cross-os".exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture";
+    "lele:build" = { exec = "cargo build --all-targets --features dev"; showOutput = true; };
+    "lele:clippy" = { exec = "cargo clippy --all-targets --features dev -- -D warnings"; showOutput = true; };
+    "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
+    "lele:nextest" = { exec = "cargo nextest run --all-targets --features dev"; showOutput = true; };
+    "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
+    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
+    "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
+    "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture"; showOutput = true; };
   };
 
   git-hooks.hooks = {

@@ -7,7 +7,7 @@ use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 use freenet::transport::TransportKeypair;
 
-use freenet_example::ClickerClient;
+use freenet_example::GlobalCounterClient;
 use freenet_example::Role;
 
 #[tokio::main]
@@ -98,12 +98,16 @@ async fn run_gateway(upstream_gateway: Option<String>) -> Result<(), Box<dyn std
 
     tokio::time::sleep(Duration::from_secs(5)).await;
 
-    let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    let mut clicker = ClickerClient::connect("127.0.0.1", ws_port, &wasm, Role::Publish).await?;
-    println!("counter deployed, initial count: {}", clicker.count());
+    let wasm = include_bytes!("../contract/global_counter_contract.wasm").to_vec();
+    let mut global_counter =
+        GlobalCounterClient::connect("127.0.0.1", ws_port, &wasm, Role::Publish).await?;
+    println!(
+        "counter deployed, initial count: {}",
+        global_counter.count()
+    );
 
     for i in 1..=10 {
-        let count = clicker.tick().await?;
+        let count = global_counter.tick().await?;
         println!("tick {i}: count = {count}");
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
@@ -149,12 +153,16 @@ async fn run_peer(connect_str: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::time::sleep(Duration::from_secs(5)).await;
 
-    let wasm = include_bytes!("../contract/clicker_contract.wasm").to_vec();
-    let mut clicker = ClickerClient::connect("127.0.0.1", ws_port, &wasm, Role::Subscribe).await?;
-    println!("connected to gateway, counter state: {}", clicker.count());
+    let wasm = include_bytes!("../contract/global_counter_contract.wasm").to_vec();
+    let mut global_counter =
+        GlobalCounterClient::connect("127.0.0.1", ws_port, &wasm, Role::Subscribe).await?;
+    println!(
+        "connected to gateway, counter state: {}",
+        global_counter.count()
+    );
 
     for i in 1..=10 {
-        let count = clicker.tick().await?;
+        let count = global_counter.tick().await?;
         println!("peer tick {i}: count = {count}");
         tokio::time::sleep(Duration::from_secs(1)).await;
     }

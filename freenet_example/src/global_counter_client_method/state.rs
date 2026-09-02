@@ -1,15 +1,15 @@
-use crate::clicker_client;
-use crate::clicker_error;
+use crate::global_counter_client;
+use crate::global_counter_error;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use clicker_error::ClickerError as Ce;
+use global_counter_error::GlobalCounterError as Ce;
 
 /// # Errors
-/// Returns `ClickerError` if the get request fails or the response is unexpected.
+/// Returns `GlobalCounterError` if the get request fails or the response is unexpected.
 pub async fn state(
-    client: &mut clicker_client::ClickerClient,
-) -> Result<u64, clicker_error::ClickerError> {
+    client: &mut global_counter_client::GlobalCounterClient,
+) -> Result<u64, global_counter_error::GlobalCounterError> {
     let get_req = ContractRequest::Get {
         key: *client.contract_key.id(),
         return_contract_code: false,

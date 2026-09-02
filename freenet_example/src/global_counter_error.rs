@@ -4,7 +4,7 @@ use thiserror::Error;
 use client_error::ClientError;
 
 #[derive(Error, Debug)]
-pub enum ClickerError {
+pub enum GlobalCounterError {
     #[error("client error: {0}")]
     Client(#[from] ClientError),
     #[error("contract not found")]
@@ -18,6 +18,6 @@ pub enum ClickerError {
 }
 
 #[rustfmt::skip]
-impl From<bincode::Error> for ClickerError {
+impl From<bincode::Error> for GlobalCounterError {
     fn from(e: bincode::Error) -> Self { Self::Serialization(e.to_string()) }
 }

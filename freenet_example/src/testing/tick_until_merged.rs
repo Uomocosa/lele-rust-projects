@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 
-use crate::clicker_client;
+use crate::global_counter_client;
 
 /// Tick until a foreign slot is observed or the deadline elapses.
 pub async fn tick_until_merged(
-    client: &mut clicker_client::ClickerClient,
+    client: &mut global_counter_client::GlobalCounterClient,
     deadline: Duration,
 ) -> (u64, Vec<u64>, u64) {
     let start = Instant::now();

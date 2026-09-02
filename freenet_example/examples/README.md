@@ -99,7 +99,7 @@ shared counter.
   *not* see other peers' increments reflected in your own `tick` output even though
   they are landing on the contract state. To visibly converge in real time, either:
   1. Lengthen the notification drain window (e.g. change `recv_timeout(Duration::from_millis(10))`
-     to `recv_timeout(Duration::from_millis(500))` in `src/ClickerClientMethod/tick.rs`), or
+     to `recv_timeout(Duration::from_millis(500))` in `src/GlobalCounterClientMethod/tick.rs`), or
   2. Periodically issue a `get` to refresh local state from the contract.
 
 The contract state itself is authoritative and shared across the planet — only the

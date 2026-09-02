@@ -4,13 +4,13 @@ pub use role::Role;
 pub mod client_error;
 pub use client_error::ClientError;
 
-pub mod clicker_error;
-pub use clicker_error::ClickerError;
+pub mod global_counter_error;
+pub use global_counter_error::GlobalCounterError;
 
-pub mod clicker_client;
-pub use clicker_client::ClickerClient;
+pub mod global_counter_client;
+pub use global_counter_client::GlobalCounterClient;
 
-pub mod clicker_client_method;
+pub mod global_counter_client_method;
 
 pub mod set_client;
 pub use set_client::SetClient;

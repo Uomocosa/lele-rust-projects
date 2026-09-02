@@ -1,26 +1,26 @@
-use crate::clicker_client;
-use crate::clicker_client_method;
-use crate::clicker_error;
+use crate::global_counter_client;
+use crate::global_counter_client_method;
+use crate::global_counter_error;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use clicker_error::ClickerError as Ce;
+use global_counter_error::GlobalCounterError as Ce;
 
 // needed helper:
 fn absorb_slots(slots: &mut BTreeMap<u64, u64>, bytes: &[u8]) {
     if let Ok(incoming) = bincode::deserialize::<BTreeMap<u64, u64>>(bytes) {
-        clicker_client_method::merge_slots(slots, incoming);
+        global_counter_client_method::merge_slots(slots, incoming);
     }
 }
 
 /// # Errors
-/// Returns `ClickerError` if serialization fails or the update response is unexpected.
+/// Returns `GlobalCounterError` if serialization fails or the update response is unexpected.
 pub async fn tick(
-    client: &mut clicker_client::ClickerClient,
-) -> Result<u64, clicker_error::ClickerError> {
+    client: &mut global_counter_client::GlobalCounterClient,
+) -> Result<u64, global_counter_error::GlobalCounterError> {
     while let Some(result) = client.client.recv_timeout(Duration::from_millis(10)).await {
         if let Ok(HostResponse::ContractResponse(ContractResponse::UpdateNotification {
             update,

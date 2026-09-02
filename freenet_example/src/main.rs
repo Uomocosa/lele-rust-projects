@@ -9,7 +9,7 @@ use freenet::run_network_node;
 use freenet::server::serve_client_api_with_listener;
 use tracing::info;
 
-use freenet_example::ClickerClient;
+use freenet_example::GlobalCounterClient;
 use freenet_example::Role;
 use freenet_example::SetClient;
 
@@ -58,7 +58,7 @@ fn contract_mode() -> ContractMode {
 }
 
 enum Connected {
-    Counter(ClickerClient),
+    Counter(GlobalCounterClient),
     Set(SetClient),
 }
 
@@ -150,8 +150,8 @@ async fn connect_with_retry(
         attempt = attempt.saturating_add(1);
         let result = match &mode {
             ContractMode::Counter => {
-                let wasm = include_bytes!("../contract/clicker_contract.wasm");
-                ClickerClient::connect_with_tag(
+                let wasm = include_bytes!("../contract/global_counter_contract.wasm");
+                GlobalCounterClient::connect_with_tag(
                     host,
                     port,
                     wasm,

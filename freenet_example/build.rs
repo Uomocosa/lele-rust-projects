@@ -43,15 +43,14 @@ fn build_contract(manifest: &str, crate_name: &str, target_dir: &str, out: &str)
 }
 
 fn main() {
-    let target_dir =
-        std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "contract/target".to_string());
+    let wasm_target_dir = "contract/target".to_string();
 
     let counter_proto = [
         "contract/src/lib.rs",
         "contract/Cargo.toml",
         "contract/Cargo.lock",
     ];
-    let counter_out = "contract/clicker_contract.wasm";
+    let counter_out = "contract/global_counter_contract.wasm";
     for p in counter_proto {
         println!("cargo:rerun-if-changed={p}");
     }
@@ -59,8 +58,8 @@ fn main() {
     if needs_build(&counter_proto, counter_out) {
         build_contract(
             "contract/Cargo.toml",
-            "clicker_contract.wasm",
-            &target_dir,
+            "global_counter_contract.wasm",
+            &wasm_target_dir,
             counter_out,
         );
     }
@@ -78,7 +77,7 @@ fn main() {
         build_contract(
             "contract/set_contract/Cargo.toml",
             "set_contract.wasm",
-            &target_dir,
+            &wasm_target_dir,
             set_out,
         );
     }

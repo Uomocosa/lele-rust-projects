@@ -1,8 +1,8 @@
-use crate::clicker_client;
+use crate::global_counter_client;
 use std::collections::BTreeMap;
 
 #[must_use]
-pub fn foreign_tags(client: &clicker_client::ClickerClient) -> Vec<u64> {
+pub fn foreign_tags(client: &global_counter_client::GlobalCounterClient) -> Vec<u64> {
     foreign_in(&client.slots, client.tag)
 }
 
