@@ -4,7 +4,7 @@ use std::process::Child;
 use super::terminal_guard_title;
 
 pub struct TerminalGuard {
-    pub child: Child,
+    pub child: Option<Child>,
     pub window_title: String,
     pub log: PathBuf,
 }
@@ -12,7 +12,7 @@ pub struct TerminalGuard {
 impl Default for TerminalGuard {
     fn default() -> Self {
         Self {
-            child: std::process::Command::new("true").spawn().unwrap(),
+            child: None,
             window_title: String::new(),
             log: PathBuf::new(),
         }

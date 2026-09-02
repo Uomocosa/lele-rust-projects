@@ -82,8 +82,10 @@ async fn local_mainnet() {
     let recording_elapsed = recording_start.elapsed();
 
     for mut g in terms {
-        let _ = g.child.kill();
-        let _ = g.child.wait();
+        if let Some(child) = g.child.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
     }
 
     let total_elapsed = total_start.elapsed();

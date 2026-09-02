@@ -45,7 +45,7 @@ pub fn spawn_xterm(
         .map_err(|e| format!("spawn xterm failed: {e}"))?;
     std::thread::sleep(std::time::Duration::from_millis(600));
     Ok(testing::TerminalGuard {
-        child,
+        child: Some(child),
         window_title: title.to_string(),
         log: log.to_path_buf(),
     })
