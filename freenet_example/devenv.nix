@@ -39,5 +39,34 @@
     "freenet:run-cross-os".exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture";
   };
 
-  git-hooks.hooks = {};
+  git-hooks.hooks = {
+    lele-clippy = {
+      enable = true;
+      name = "clippy (freenet_example)";
+      entry = "bash -c 'devenv tasks run lele:clippy 2>&1'";
+      pass_filenames = false;
+      types = [ "rust" ];
+    };
+    lele-fmt = {
+      enable = true;
+      name = "fmt (freenet_example)";
+      entry = "bash -c 'devenv tasks run lele:fmt 2>&1'";
+      pass_filenames = false;
+      types = [ "rust" ];
+    };
+    lele-lint = {
+      enable = true;
+      name = "lele_lint (freenet_example)";
+      entry = "bash -c 'devenv tasks run lele:lint 2>&1'";
+      pass_filenames = false;
+      types = [ "rust" ];
+    };
+    lele-taxonomy = {
+      enable = true;
+      name = "taxonomy_check (freenet_example)";
+      entry = "bash -c 'devenv tasks run lele:taxonomy_check 2>&1'";
+      pass_filenames = false;
+      types = [ "rust" ];
+    };
+  };
 }
