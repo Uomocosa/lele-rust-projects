@@ -11,3 +11,6 @@ downloads/
 .devenv/
 .direnv/
 __OLD__/
+.pre-commit-config.yaml
+**/.pre-commit-config.yaml
+.pre-commit-config.json
