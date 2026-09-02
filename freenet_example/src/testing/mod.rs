@@ -10,6 +10,7 @@ pub mod recv_notification;
 pub mod subscribe;
 pub mod test_node_method;
 pub mod update_count;
+pub mod update_count_incrementally;
 pub mod wait_for_count;
 
 pub mod reconcile_env;
@@ -64,6 +65,7 @@ pub use load_wasm::load_wasm;
 pub use recv_notification::recv_notification;
 pub use subscribe::subscribe;
 pub use update_count::update_count;
+pub use update_count_incrementally::update_count_incrementally;
 pub use wait_for_count::wait_for_count;
 
 pub mod build_game;

@@ -10,14 +10,18 @@ async fn test_persistence() {
     {
         let mut client = connect(node.port).await.unwrap();
         key = deploy(&mut client, &wasm).await.unwrap();
-        update_count(&mut client, key, 0, 5).await.unwrap();
+        update_count_incrementally(&mut client, key, 0, 5)
+            .await
+            .unwrap();
         assert_eq!(get_count(&mut client, key).await.unwrap(), 5);
     }
     tokio::time::sleep(Duration::from_secs(1)).await;
     {
         let mut client = connect(node.port).await.unwrap();
         assert_eq!(get_count(&mut client, key).await.unwrap(), 5);
-        update_count(&mut client, key, 0, 8).await.unwrap();
+        update_count_incrementally(&mut client, key, 0, 8)
+            .await
+            .unwrap();
         assert_eq!(get_count(&mut client, key).await.unwrap(), 8);
     }
 }
