@@ -13,13 +13,15 @@ use global_counter_error::GlobalCounterError as Ce;
 
 #[derive(Serialize, Deserialize)]
 struct SignedSlots {
-    slots: BTreeMap<u64, u64>,
-    sigs: BTreeMap<u64, Vec<u8>>,
+    slots: BTreeMap<global_counter_client::Pubkey, u64>,
+    sigs: BTreeMap<global_counter_client::Pubkey, Vec<u8>>,
 }
 
 // needed helper:
-fn absorb_slots(slots: &mut BTreeMap<u64, u64>, bytes: &[u8]) {
-    if let Ok(incoming) = bincode::deserialize::<BTreeMap<u64, u64>>(bytes) {
+fn absorb_slots(slots: &mut BTreeMap<global_counter_client::Pubkey, u64>, bytes: &[u8]) {
+    if let Ok(incoming) =
+        bincode::deserialize::<BTreeMap<global_counter_client::Pubkey, u64>>(bytes)
+    {
         global_counter_client_method::merge_slots(slots, incoming);
         return;
     }
@@ -32,6 +34,12 @@ fn signing_key_for_tag(tag: u64) -> SigningKey {
     let mut seed = [0u8; 32];
     seed[0..8].copy_from_slice(&tag.to_le_bytes());
     SigningKey::from_bytes(&seed)
+}
+
+fn pubkey_for_tag(tag: u64) -> global_counter_client::Pubkey {
+    let sk = signing_key_for_tag(tag);
+    let vk = ed25519_dalek::VerifyingKey::from(&sk);
+    *vk.as_bytes()
 }
 
 /// # Errors
@@ -57,18 +65,20 @@ pub async fn tick(
 
     let own = client
         .slots
-        .get(&client.tag)
+        .get(&client.pubkey)
         .copied()
         .unwrap_or(0)
         .wrapping_add(1);
-    client.slots.insert(client.tag, own);
+    client.slots.insert(client.pubkey, own);
     let mut sigs = BTreeMap::new();
     let sk = signing_key_for_tag(client.tag);
-    let msg = bincode::serialize(&(client.tag, own))?;
+    let pk = pubkey_for_tag(client.tag);
+    debug_assert_eq!(pk, client.pubkey);
+    let msg = bincode::serialize(&(pk, own))?;
     let sig = sk.sign(&msg);
-    sigs.insert(client.tag, sig.to_bytes().to_vec());
+    sigs.insert(pk, sig.to_bytes().to_vec());
     let signed = SignedSlots {
-        slots: BTreeMap::from([(client.tag, own)]),
+        slots: BTreeMap::from([(pk, own)]),
         sigs,
     };
     let new_state = State::from(bincode::serialize(&signed)?);
@@ -92,14 +102,21 @@ pub async fn tick(
 #[cfg(test)]
 mod tests {
     use super::absorb_slots;
+    use crate::global_counter_client;
     use std::collections::BTreeMap;
+
+    fn pk(n: u8) -> global_counter_client::Pubkey {
+        let mut p = [0u8; 32];
+        p[0] = n;
+        p
+    }
 
     #[test]
     fn test_usage() {
         let mut slots = BTreeMap::new();
-        let bytes = bincode::serialize(&BTreeMap::from([(0u64, 5u64), (2, 7)])).unwrap();
+        let bytes = bincode::serialize(&BTreeMap::from([(pk(0), 5u64), (pk(2), 7)])).unwrap();
         absorb_slots(&mut slots, &bytes);
-        assert_eq!(slots.get(&0), Some(&5));
+        assert_eq!(slots.get(&pk(0)), Some(&5));
         assert_eq!(slots.values().sum::<u64>(), 12);
     }
 }

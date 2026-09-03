@@ -32,9 +32,16 @@ pub async fn deploy(client: &mut FreenetClient, wasm: &[u8]) -> Result<ContractK
         other => return Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
 
+    let pk = {
+        let mut seed = [0u8; 32];
+        seed[0..8].copy_from_slice(&0u64.to_le_bytes());
+        let sk = ed25519_dalek::SigningKey::from_bytes(&seed);
+        let vk = ed25519_dalek::VerifyingKey::from(&sk);
+        *vk.as_bytes()
+    };
     let put_req = ContractRequest::Put {
         contract: ContractContainer::from(ContractWasmAPIVersion::V1(wrapped)),
-        state: WrappedState::new(bincode::serialize(&BTreeMap::from([(0u64, 0u64)]))?),
+        state: WrappedState::new(bincode::serialize(&BTreeMap::from([(pk, 0u64)]))?),
         related_contracts: RelatedContracts::default(),
         subscribe: true,
         blocking_subscribe: true,

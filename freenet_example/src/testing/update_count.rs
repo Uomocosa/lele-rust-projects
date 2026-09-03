@@ -7,11 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::ClientError;
 use crate::FreenetClient;
+use crate::global_counter_client;
 
 #[derive(Serialize, Deserialize)]
 struct SignedSlots {
-    slots: BTreeMap<u64, u64>,
-    sigs: BTreeMap<u64, Vec<u8>>,
+    slots: BTreeMap<global_counter_client::Pubkey, u64>,
+    sigs: BTreeMap<global_counter_client::Pubkey, Vec<u8>>,
 }
 
 /// # Errors
@@ -25,12 +26,14 @@ pub async fn update_count(
     let mut seed = [0u8; 32];
     seed[0..8].copy_from_slice(&tag.to_le_bytes());
     let sk = SigningKey::from_bytes(&seed);
-    let msg = bincode::serialize(&(tag, count))?;
+    let vk = ed25519_dalek::VerifyingKey::from(&sk);
+    let pk = *vk.as_bytes();
+    let msg = bincode::serialize(&(pk, count))?;
     let sig = sk.sign(&msg);
     let mut sigs = BTreeMap::new();
-    sigs.insert(tag, sig.to_bytes().to_vec());
+    sigs.insert(pk, sig.to_bytes().to_vec());
     let signed = SignedSlots {
-        slots: BTreeMap::from([(tag, count)]),
+        slots: BTreeMap::from([(pk, count)]),
         sigs,
     };
     let state = State::from(bincode::serialize(&signed)?);

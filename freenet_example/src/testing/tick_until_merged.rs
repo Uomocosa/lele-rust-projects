@@ -6,7 +6,7 @@ use crate::global_counter_client;
 pub async fn tick_until_merged(
     client: &mut global_counter_client::GlobalCounterClient,
     deadline: Duration,
-) -> (u64, Vec<u64>, u64) {
+) -> (u64, Vec<global_counter_client::Pubkey>, u64) {
     let start = Instant::now();
     let mut ticks = 0u64;
     loop {
@@ -31,7 +31,7 @@ pub async fn tick_until_merged(
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
-    let foreign_tags: Vec<u64> = client.foreign_tags();
+    let foreign_tags: Vec<global_counter_client::Pubkey> = client.foreign_tags();
     let count = client.count();
     let elapsed = start.elapsed().as_secs();
     let _ = elapsed;

@@ -1,5 +1,6 @@
 use crate::client_error;
 use crate::freenet_client;
+use crate::global_counter_client;
 use std::collections::BTreeMap;
 
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
@@ -13,7 +14,7 @@ use client_error::ClientError;
 pub async fn recv_after_get(
     client: &mut freenet_client::FreenetClient,
     instance_id: ContractInstanceId,
-) -> Result<(ContractKey, BTreeMap<u64, u64>), ClientError> {
+) -> Result<(ContractKey, BTreeMap<global_counter_client::Pubkey, u64>), ClientError> {
     let get_req = ContractRequest::Get {
         key: instance_id,
         return_contract_code: false,

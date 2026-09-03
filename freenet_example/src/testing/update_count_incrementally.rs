@@ -7,11 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::ClientError;
 use crate::FreenetClient;
+use crate::global_counter_client;
 
 #[derive(Serialize, Deserialize)]
 struct SignedSlots {
-    slots: BTreeMap<u64, u64>,
-    sigs: BTreeMap<u64, Vec<u8>>,
+    slots: BTreeMap<global_counter_client::Pubkey, u64>,
+    sigs: BTreeMap<global_counter_client::Pubkey, Vec<u8>>,
 }
 
 async fn get_slot(
@@ -28,8 +29,16 @@ async fn get_slot(
     client.send(ClientRequest::ContractOp(get_req)).await?;
     match client.recv_response().await? {
         HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-            let slots: BTreeMap<u64, u64> = bincode::deserialize(state.as_ref())?;
-            Ok(slots.get(&tag).copied().unwrap_or(0))
+            let slots: BTreeMap<global_counter_client::Pubkey, u64> =
+                bincode::deserialize(state.as_ref())?;
+            let pk = {
+                let mut seed = [0u8; 32];
+                seed[0..8].copy_from_slice(&tag.to_le_bytes());
+                let sk = SigningKey::from_bytes(&seed);
+                let vk = ed25519_dalek::VerifyingKey::from(&sk);
+                *vk.as_bytes()
+            };
+            Ok(slots.get(&pk).copied().unwrap_or(0))
         }
         other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),
     }
@@ -51,13 +60,15 @@ pub async fn update_count_incrementally(
         let mut seed = [0u8; 32];
         seed[0..8].copy_from_slice(&tag.to_le_bytes());
         let sk = SigningKey::from_bytes(&seed);
+        let vk = ed25519_dalek::VerifyingKey::from(&sk);
+        let pk = *vk.as_bytes();
         let msg =
-            bincode::serialize(&(tag, v)).map_err(|e| ClientError::Serialization(e.to_string()))?;
+            bincode::serialize(&(pk, v)).map_err(|e| ClientError::Serialization(e.to_string()))?;
         let sig = sk.sign(&msg);
         let mut sigs = BTreeMap::new();
-        sigs.insert(tag, sig.to_bytes().to_vec());
+        sigs.insert(pk, sig.to_bytes().to_vec());
         let signed = SignedSlots {
-            slots: BTreeMap::from([(tag, v)]),
+            slots: BTreeMap::from([(pk, v)]),
             sigs,
         };
         let state = State::from(

@@ -1,8 +1,11 @@
 use crate::freenet_client;
 use crate::global_counter_client;
 use crate::global_counter_error;
+use global_counter_client::Pubkey;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+
+use ed25519_dalek::{SigningKey, VerifyingKey};
 
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
@@ -41,7 +44,14 @@ pub async fn connect(
                 let (key, slots) = r;
                 (key, slots)
             } else {
-                let initial = BTreeMap::from([(tag, 0u64)]);
+                let pk = {
+                    let mut seed = [0u8; 32];
+                    seed[0..8].copy_from_slice(&tag.to_le_bytes());
+                    let sk = SigningKey::from_bytes(&seed);
+                    let vk = VerifyingKey::from(&sk);
+                    *vk.as_bytes()
+                };
+                let initial: BTreeMap<Pubkey, u64> = BTreeMap::from([(pk, 0u64)]);
                 let put_req = ContractRequest::Put {
                     contract: container.clone(),
                     state: WrappedState::new(bincode::serialize(&initial)?),
@@ -80,9 +90,16 @@ pub async fn connect(
         }
     };
 
+    let pubkey: Pubkey = {
+        let mut seed = [0u8; 32];
+        seed[0..8].copy_from_slice(&tag.to_le_bytes());
+        let sk = SigningKey::from_bytes(&seed);
+        let vk = VerifyingKey::from(&sk);
+        *vk.as_bytes()
+    };
     let foreign_sum: u64 = slots
         .iter()
-        .filter(|(t, _)| **t != tag)
+        .filter(|(t, _)| **t != pubkey)
         .map(|(_, v)| v)
         .sum();
     Ok(global_counter_client::GlobalCounterClient {
@@ -90,6 +107,7 @@ pub async fn connect(
         contract_key: key,
         slots,
         tag,
+        pubkey,
         foreign_seen: (foreign_sum > 0).then(std::time::Instant::now),
         foreign_sum,
         last_bridge: None,

@@ -138,7 +138,8 @@ async fn attempt_reput(
                 _ => None,
             };
             if let Some(bytes) = bytes
-                && let Ok(incoming) = bincode::deserialize::<BTreeMap<u64, u64>>(&bytes)
+                && let Ok(incoming) =
+                    bincode::deserialize::<BTreeMap<global_counter_client::Pubkey, u64>>(&bytes)
             {
                 global_counter_client_method::merge_slots(&mut client.slots, incoming);
             }

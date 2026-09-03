@@ -5,6 +5,7 @@ use freenet_stdlib::prelude::*;
 
 use crate::ClientError;
 use crate::FreenetClient;
+use crate::global_counter_client;
 
 /// # Errors
 /// Returns `ClientError` if the get request fails or the response is unexpected.
@@ -18,7 +19,8 @@ pub async fn get_count(client: &mut FreenetClient, key: ContractKey) -> Result<u
     client.send(ClientRequest::ContractOp(get_req)).await?;
     match client.recv_response().await? {
         HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-            let slots: BTreeMap<u64, u64> = bincode::deserialize(state.as_ref())?;
+            let slots: BTreeMap<global_counter_client::Pubkey, u64> =
+                bincode::deserialize(state.as_ref())?;
             Ok(slots.values().sum())
         }
         other => Err(ClientError::UnexpectedResponse(format!("{other:?}"))),

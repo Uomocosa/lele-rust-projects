@@ -9,11 +9,14 @@ use freenet_stdlib::prelude::*;
 use crate::Role;
 use freenet_client::FreenetClient;
 
+pub type Pubkey = [u8; 32];
+
 pub struct GlobalCounterClient {
     pub(crate) client: FreenetClient,
     pub contract_key: ContractKey,
-    pub(crate) slots: BTreeMap<u64, u64>,
+    pub(crate) slots: BTreeMap<Pubkey, u64>,
     pub tag: u64,
+    pub pubkey: Pubkey,
     pub(crate) foreign_seen: Option<Instant>,
     pub(crate) foreign_sum: u64,
     pub(crate) last_bridge: Option<Instant>,
@@ -59,7 +62,7 @@ impl GlobalCounterClient {
         global_counter_client_method::note_foreign_slots(self);
     }
     #[must_use]
-    pub fn foreign_tags(&self) -> Vec<u64> {
+    pub fn foreign_tags(&self) -> Vec<Pubkey> {
         global_counter_client_method::foreign_tags(self)
     }
     /// # Errors
