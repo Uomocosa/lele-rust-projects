@@ -66,7 +66,7 @@ impl ContractInterface for GlobalCounterContract {
         let mut current = decode_slots(state.as_ref()).unwrap_or_default();
         let allow_list = decode_params(parameters.as_ref());
         let use_allow = !allow_list.is_empty();
-        let window: u64 = 5;
+        let window: u64 = 1;
         for update in data {
             match update {
                 UpdateData::State(s) => {
@@ -244,11 +244,17 @@ mod tests {
         let pk = pubkey_for_tag(0);
         assert_eq!(decoded.get(&pk), Some(&5), "MAX jump should be blocked by window");
 
-        let ok_step = vec![UpdateData::State(signed_state(&[(0, 9)]))];
+        let ok_step = vec![UpdateData::State(signed_state(&[(0, 6)]))];
         let result = GlobalCounterContract::update_state(p.clone(), state.clone(), ok_step).unwrap();
         let next = result.unwrap_valid();
         let decoded = bincode::deserialize::<Slots>(next.as_ref()).unwrap();
-        assert_eq!(decoded.get(&pk), Some(&9), "value within window +5 should be accepted");
+        assert_eq!(decoded.get(&pk), Some(&6), "value within window +1 should be accepted");
+
+        let plus_two = vec![UpdateData::State(signed_state(&[(0, 7)]))];
+        let result = GlobalCounterContract::update_state(p.clone(), state.clone(), plus_two).unwrap();
+        let next = result.unwrap_valid();
+        let decoded = bincode::deserialize::<Slots>(next.as_ref()).unwrap();
+        assert_eq!(decoded.get(&pk), Some(&5), "value +2 should be rejected with window 1");
 
         let bad_sig = {
             let pk = pubkey_for_tag(0);
