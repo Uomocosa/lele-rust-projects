@@ -3,7 +3,7 @@
 
   languages.rust = {
     enable = true;
-    channel = "stable";
+    channel = "nightly";
     components = [ "rustc" "cargo" "clippy" "rustfmt" ];
     targets = [ "wasm32-unknown-unknown" ];
   };

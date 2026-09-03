@@ -30,6 +30,9 @@ mod tests {
         assert_eq!(foreign_in(&slots, pk(0)), vec![pk(1), pk(2)]);
         assert_eq!(foreign_in(&slots, pk(1)), vec![pk(0), pk(2)]);
         let own_only = BTreeMap::from([(pk(0), 5u64)]);
-        assert!(foreign_in(&own_only, pk(0)).is_empty());
+        assert_eq!(
+            foreign_in(&own_only, pk(0)),
+            Vec::<global_counter_client::Pubkey>::new()
+        );
     }
 }

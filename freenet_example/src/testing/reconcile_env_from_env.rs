@@ -34,7 +34,7 @@ mod tests {
     #[test]
     fn test_usage() {
         let env = from_env();
-        assert!(!env.machine.is_empty());
-        assert!(!env.key.is_empty());
+        assert_ne!(env.machine, "");
+        assert_ne!(env.key, "");
     }
 }

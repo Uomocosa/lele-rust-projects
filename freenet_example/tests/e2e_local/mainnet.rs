@@ -1,4 +1,3 @@
-use std::fmt::Write as FmtWrite;
 use std::time::{Duration, Instant};
 
 use freenet_example::testing::finish_record;
@@ -69,6 +68,10 @@ fn parse_last_count(path: &std::path::Path) -> Option<u64> {
 
 fn fmt_secs(duration: Duration) -> String {
     format!("{:.2}", duration.as_secs_f64())
+}
+
+const fn check_emoji(ok: bool) -> &'static str {
+    if ok { "✅" } else { "❌" }
 }
 
 #[allow(clippy::too_many_lines)]
@@ -148,23 +151,25 @@ async fn local_mainnet() {
     let expected_total = elapsed_secs.saturating_mul(inst_u64);
     let min_expected_per_instance =
         elapsed_secs.saturating_mul(100 - ACCUMULATION_TOLERANCE_PCT) / 100;
-    let mut accumulation_detail = String::new();
+    let mut per_peer_lines: Vec<String> = Vec::new();
     let mut per_instance_ok = true;
     for (i, (s, e)) in start_counts.iter().zip(end_counts.iter()).enumerate() {
+        let n = i.saturating_add(1);
         if let (Some(ss), Some(ee)) = (s, e) {
             let delta = ee.saturating_sub(*ss);
             let is_ok = delta.saturating_add(1) >= min_expected_per_instance;
             per_instance_ok &= is_ok;
-            let _ = write!(
-                accumulation_detail,
-                " inst{i}: {ss}->{ee} delta={delta} expected>={min_expected_per_instance} ok={is_ok};"
-            );
+            per_peer_lines.push(format!(
+                "{n}. inst{i}: {ss}->{ee} delta={delta} expected>={min_expected_per_instance} {} {}",
+                check_emoji(is_ok),
+                if is_ok { "PASS" } else { "FAIL" }
+            ));
         } else {
             per_instance_ok = false;
-            let _ = write!(
-                accumulation_detail,
-                " inst{i}: start={s:?} end={e:?} missing;"
-            );
+            per_peer_lines.push(format!(
+                "{n}. inst{i}: start={s:?} end={e:?} {} FAIL (missing)",
+                check_emoji(false)
+            ));
         }
     }
     let total_start_sum: u64 = start_counts.iter().filter_map(|c| *c).sum();
@@ -172,10 +177,15 @@ async fn local_mainnet() {
     let total_delta = total_end_sum.saturating_sub(total_start_sum);
     let min_total = expected_total.saturating_mul(100 - ACCUMULATION_TOLERANCE_PCT) / 100;
     let accumulation_ok = total_delta >= min_total;
-    let _ = write!(
-        accumulation_detail,
-        " total {total_start_sum}->{total_end_sum} delta={total_delta} expected>={min_total} per_instance_ok={per_instance_ok}"
+    let peers_block = per_peer_lines.join("\n");
+    let total_line = format!(
+        "total: {total_start_sum}->{total_end_sum} delta={total_delta} expected>={min_total} {} {} per_instance_ok={} {}",
+        check_emoji(accumulation_ok),
+        if accumulation_ok { "PASS" } else { "FAIL" },
+        per_instance_ok,
+        check_emoji(per_instance_ok)
     );
+    let accumulation_detail = format!("{peers_block}\n{total_line}");
 
     let recording_start = Instant::now();
     let clip_path = tmp_path.join("clip.mp4");
@@ -206,16 +216,18 @@ async fn local_mainnet() {
     };
     let params_preview = contract_params.chars().take(16).collect::<String>();
     let caption = format!(
-        "freenet_example local-mainnet \u{b7} 3 instances \u{b7} converged={converged} accumulation_ok={accumulation_ok} \u{b7} {params_preview}..\n\
+        "freenet_example local-mainnet · 3 instances · {} converged={converged} {} accumulation_ok={accumulation_ok} · {params_preview}..\n\
 {accumulation_detail}\n\
 timings:\n\
-\u{b7} build: {} s\n\
-\u{b7} spawn: {} s\n\
-\u{b7} convergence: {} s\n\
-\u{b7} accumulation: {} s ({}% gap)\n\
-\u{b7} recording: {} s\n\
-\u{b7} total: {} s\n\
+· build: {} s\n\
+· spawn: {} s\n\
+· convergence: {} s\n\
+· accumulation: {} s ({}% gap)\n\
+· recording: {} s\n\
+· total: {} s\n\
 logs: {}",
+        check_emoji(converged),
+        check_emoji(accumulation_ok),
         fmt_secs(build_elapsed),
         fmt_secs(spawn_elapsed),
         fmt_secs(convergence_elapsed),

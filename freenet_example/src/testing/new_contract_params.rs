@@ -37,7 +37,7 @@ mod tests {
     fn test_usage() {
         let a = new_contract_params();
         let b = new_contract_params();
-        assert!(!a.is_empty());
+        assert_ne!(a, "");
         assert_ne!(a, b);
     }
 }

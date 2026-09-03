@@ -22,6 +22,6 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_usage() {
         let fixture = new().await.unwrap();
-        assert!(!fixture.key.id().as_bytes().is_empty());
+        assert_ne!(fixture.key.id().as_bytes().len(), 0);
     }
 }

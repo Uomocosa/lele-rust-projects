@@ -76,13 +76,12 @@ async fn attempt_subscribe(
     match response {
         Err(_) => {
             info!(target: "freenet_example", tag = client.tag, "bridge: subscribe timed out");
-            Ok(client.foreign_seen.is_some())
         }
         Ok(r) => {
             info!(target: "freenet_example", tag = client.tag, "bridge: subscribe response={}", response_kind(&r?));
-            Ok(client.foreign_seen.is_some())
         }
     }
+    Ok(client.foreign_seen.is_some())
 }
 
 // needed helper:
