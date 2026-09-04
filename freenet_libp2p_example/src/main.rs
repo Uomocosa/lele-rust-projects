@@ -168,6 +168,7 @@ async fn do_tick(
     last_next: &mut u8,
     signing: &ed25519_dalek::SigningKey,
     pubkey: &[u8; 32],
+    swarm: &mut libp2p::Swarm<freenet_libp2p_example::relay::behaviour::Behaviour>,
 ) {
     discovery.poll().await;
     discovery.bridge_tick(std::time::Instant::now()).await;
@@ -197,6 +198,31 @@ async fn do_tick(
     info!(seq=frame.seq, prev=%char::from(frame.prev), next=%char::from(frame.next), author=?pubkey, "tick broadcast seq={} prev={} next={}", frame.seq, char::from(frame.prev), char::from(frame.next));
     discovery.publish_frame(&frame).await.ok();
     gossip.insert(frame.clone());
+    // Freenet-only dial — no mDNS: send via request_response to each Freenet-discovered peer
+    for (peer_pubkey, rec) in discovery.peers.clone() {
+        if peer_pubkey == *pubkey {
+            continue;
+        }
+        let Ok(peer_id) = libp2p::PeerId::from_bytes(&rec.peer_id) else {
+            continue;
+        };
+        for addr_str in rec.addrs {
+            let Ok(addr) = addr_str.parse::<Multiaddr>() else {
+                continue;
+            };
+            swarm.add_peer_address(peer_id, addr.clone());
+            // dial if not already connected — real Freenet discovery, not mDNS
+            if swarm.is_connected(&peer_id) {
+                let req = freenet_libp2p_example::relay::LetterRequest(frame.clone());
+                let _ = swarm.behaviour_mut().send_request(&peer_id, req);
+                tracing::debug!(peer=%peer_id, addr=%addr, seq=frame.seq, "dial via Freenet-discovered addr");
+            } else {
+                let _ = swarm.dial(addr.clone());
+                tracing::debug!(peer=%peer_id, addr=%addr, "dial via Freenet-discovered addr");
+            }
+            break;
+        }
+    }
     *next_seq = next_seq.checked_add(1).unwrap_or(*next_seq);
     *last_next = frame.next;
 }
@@ -269,11 +295,19 @@ async fn run_loop(discovery: &mut Discovery) -> Result<(), Box<dyn std::error::E
         chain=discovery.chain.len(),
         "connected, running indefinitely"
     );
+    // publish our own PeerRecord for Freenet discovery (127.0.0.1 learned via contract is acceptable for same-host run)
+    {
+        let addrs: Vec<String> = swarm.listeners().map(ToString::to_string).collect();
+        let peer_id_bytes = swarm.local_peer_id().to_bytes();
+        let _ = discovery
+            .publish_peer(pubkey, &signing, peer_id_bytes, addrs)
+            .await;
+    }
     let mut tick_interval = tokio::time::interval(Duration::from_millis(100));
     loop {
         tokio::select! {
             _ = tick_interval.tick() => {
-                do_tick(discovery, &mut gossip, &mut next_seq, &mut last_next, &signing, &pubkey).await;
+                do_tick(discovery, &mut gossip, &mut next_seq, &mut last_next, &signing, &pubkey, &mut swarm).await;
             }
             () = freenet_libp2p_example::relay::drive_swarm::drive_swarm(&mut swarm, &mut gossip) => {
             }

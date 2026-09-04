@@ -1,8 +1,14 @@
+use libp2p::StreamProtocol;
+use libp2p::request_response::{self, Config, ProtocolSupport};
+
 use crate::relay;
 
 #[must_use]
-pub fn new_behaviour() -> relay::behaviour::Behaviour {
-    libp2p::ping::Behaviour::new(libp2p::ping::Config::new())
+pub fn new_behaviour() -> relay::Behaviour {
+    request_response::Behaviour::<relay::LetterCodec>::new(
+        [(StreamProtocol::new("/letters/1.0.0"), ProtocolSupport::Full)],
+        Config::default(),
+    )
 }
 
 #[cfg(test)]

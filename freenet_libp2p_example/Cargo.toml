@@ -43,7 +43,9 @@ required-features = ["dev"]
 [dependencies]
 freenet = "=0.2.132"
 freenet-stdlib = { version = "=0.8.5", features = ["net"] }
+# no mdns — local test must use Freenet discovery only (127.0.0.1 learned via contract is acceptable for same-host run)
 libp2p = { version = "=0.56.0", features = ["tcp", "quic", "noise", "yamux", "tokio", "dns", "request-response", "ping"] }
+async-trait = "=0.1.89"
 tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
 tokio-tungstenite = "=0.27.0"
 http = "=1.4.1"

@@ -1883,6 +1883,7 @@ dependencies = [
 name = "freenet_libp2p_example"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "chrono",
  "clap",

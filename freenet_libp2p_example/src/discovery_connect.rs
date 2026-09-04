@@ -75,7 +75,29 @@ pub async fn connect(
             subscribe: true,
             blocking_subscribe: false,
         });
-        let _ = client.send(put_req).await;
+        client.send(put_req).await?;
+        let put_timeout = Duration::from_secs(10);
+        if let Some(res) = client.recv_with_timeout(put_timeout).await {
+            match res {
+                Ok(HostResponse::ContractResponse(
+                    freenet_stdlib::client_api::ContractResponse::PutResponse { key }
+                    | freenet_stdlib::client_api::ContractResponse::SubscribeResponse { key, .. }
+                    | freenet_stdlib::client_api::ContractResponse::UpdateResponse { key, .. },
+                )) => {
+                    tracing::info!(key=%key, lobby=%lobby, "contract deployed via PutResponse wait");
+                }
+                Ok(other) => tracing::warn!(other=?other, "put unexpected response"),
+                Err(e) => tracing::warn!(error=%e, "put error"),
+            }
+        }
+        // re-Get to confirm store, retry until joined
+        let retry_get = ClientRequest::ContractOp(ContractRequest::Get {
+            key: instance,
+            return_contract_code: false,
+            subscribe: true,
+            blocking_subscribe: false,
+        });
+        let _ = client.send(retry_get).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
     }
     Ok(discovery::Discovery {
