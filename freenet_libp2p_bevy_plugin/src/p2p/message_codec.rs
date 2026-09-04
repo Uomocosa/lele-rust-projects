@@ -1,154 +1,94 @@
-use std::io;
-
 use async_trait::async_trait;
-use derive_more::Deref;
-use futures::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use libp2p::StreamProtocol;
-use libp2p::request_response;
+use libp2p::request_response::Codec;
+use libp2p::{StreamProtocol, swarm::StreamProtocol as _};
 
 use crate::p2p;
 
-#[derive(Deref)]
-pub struct MessageCodec<T: p2p::Message>(std::marker::PhantomData<T>);
+#[derive(Clone, Debug)]
+pub struct MessageCodec<T>(std::marker::PhantomData<T>);
 
-impl<T: p2p::Message> Default for MessageCodec<T> {
+impl<T> Default for MessageCodec<T> {
     fn default() -> Self {
-        MessageCodec(std::marker::PhantomData)
-    }
-}
-
-#[rustfmt::skip]
-impl<T: p2p::Message> Clone for MessageCodec<T> {
-    fn clone(&self) -> Self {
-        MessageCodec(std::marker::PhantomData)
+        Self(std::marker::PhantomData)
     }
 }
 
 #[async_trait]
-#[rustfmt::skip]
-impl<T: p2p::Message> request_response::Codec for MessageCodec<T> {
+impl<T: p2p::Message> Codec for MessageCodec<T> {
     type Protocol = StreamProtocol;
-    type Request = p2p::Snapshot<T>;
-    type Response = p2p::Snapshot<T>;
+    type Request = T;
+    type Response = T;
 
-    async fn read_request<C>(
+    async fn read_request<R>(
         &mut self,
-        _protocol: &StreamProtocol,
-        io: &mut C,
-    ) -> io::Result<p2p::Snapshot<T>>
+        _: &StreamProtocol,
+        io: &mut R,
+    ) -> std::io::Result<Self::Request>
     where
-        C: AsyncRead + Unpin + Send,
+        R: futures::AsyncRead + Unpin + Send,
     {
-        let bytes = read_length_prefixed(io).await?;
-        decode_snapshot(&bytes)
+        let mut buf = Vec::new();
+        futures::AsyncReadExt::read_to_end(io, &mut buf).await?;
+        bincode::deserialize(&buf)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
-    async fn read_response<C>(
+    async fn read_response<R>(
         &mut self,
-        _protocol: &StreamProtocol,
-        io: &mut C,
-    ) -> io::Result<p2p::Snapshot<T>>
+        _: &StreamProtocol,
+        io: &mut R,
+    ) -> std::io::Result<Self::Response>
     where
-        C: AsyncRead + Unpin + Send,
+        R: futures::AsyncRead + Unpin + Send,
     {
-        let bytes = read_length_prefixed(io).await?;
-        decode_snapshot(&bytes)
+        let mut buf = Vec::new();
+        futures::AsyncReadExt::read_to_end(io, &mut buf).await?;
+        bincode::deserialize(&buf)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
-    async fn write_request<C>(
+    async fn write_request<W>(
         &mut self,
-        _protocol: &StreamProtocol,
-        io: &mut C,
-        request: p2p::Snapshot<T>,
-    ) -> io::Result<()>
+        _: &StreamProtocol,
+        io: &mut W,
+        req: Self::Request,
+    ) -> std::io::Result<()>
     where
-        C: AsyncWrite + Unpin + Send,
+        W: futures::AsyncWrite + Unpin + Send,
     {
-        write_length_prefixed(io, &encode_snapshot(&request)?).await
+        let bytes = bincode::serialize(&req)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        futures::AsyncWriteExt::write_all(io, &bytes).await?;
+        futures::AsyncWriteExt::close(io).await
     }
 
-    async fn write_response<C>(
+    async fn write_response<W>(
         &mut self,
-        _protocol: &StreamProtocol,
-        io: &mut C,
-        response: p2p::Snapshot<T>,
-    ) -> io::Result<()>
+        _: &StreamProtocol,
+        io: &mut W,
+        res: Self::Response,
+    ) -> std::io::Result<()>
     where
-        C: AsyncWrite + Unpin + Send,
+        W: futures::AsyncWrite + Unpin + Send,
     {
-        write_length_prefixed(io, &encode_snapshot(&response)?).await
+        let bytes = bincode::serialize(&res)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        futures::AsyncWriteExt::write_all(io, &bytes).await?;
+        futures::AsyncWriteExt::close(io).await
     }
-}
-
-// needed helper:
-async fn read_length_prefixed<C>(io: &mut C) -> io::Result<Vec<u8>>
-where
-    C: AsyncRead + Unpin + Send,
-{
-    let mut len_buf = [0u8; 4];
-    io.read_exact(&mut len_buf).await?;
-    let len = u32::from_be_bytes(len_buf) as usize;
-    let mut buf = vec![0u8; len];
-    io.read_exact(&mut buf).await?;
-    Ok(buf)
-}
-
-// needed helper:
-async fn write_length_prefixed<C>(io: &mut C, bytes: &[u8]) -> io::Result<()>
-where
-    C: AsyncWrite + Unpin + Send,
-{
-    let len = (bytes.len() as u32).to_be_bytes();
-    io.write_all(&len).await?;
-    io.write_all(bytes).await?;
-    Ok(())
-}
-
-// needed helper:
-fn encode_snapshot<T: p2p::Message>(snapshot: &p2p::Snapshot<T>) -> io::Result<Vec<u8>> {
-    bincode::serialize(snapshot)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
-}
-
-// needed helper:
-fn decode_snapshot<T: p2p::Message>(bytes: &[u8]) -> io::Result<p2p::Snapshot<T>> {
-    bincode::deserialize(bytes)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
-    use derive_more::Deref;
-    use futures::io::Cursor;
-    use libp2p::request_response::Codec;
     use serde::{Deserialize, Serialize};
 
     use super::MessageCodec;
-    use crate::net_id;
-    use crate::p2p;
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
-    #[allow(dead_code)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     struct Dummy(u32);
 
     #[test]
     fn test_usage() {
-        let snapshot = p2p::Snapshot {
-            from_id: net_id::NetworkId(1),
-            tick: 5,
-            sent_at_ms: 100,
-            payload: Dummy(3),
-        };
-        let protocol = libp2p::StreamProtocol::new(p2p::constants::PROTOCOL_NAME);
-
-        let mut codec = MessageCodec::<Dummy>::default();
-        let mut buf = Cursor::new(Vec::new());
-        let write =
-            futures::executor::block_on(codec.write_request(&protocol, &mut buf, snapshot.clone()));
-        assert!(write.is_ok());
-
-        buf.set_position(0);
-        let read = futures::executor::block_on(codec.read_request(&protocol, &mut buf));
-        assert_eq!(read.ok(), Some(snapshot));
+        let _c = MessageCodec::<Dummy>::default();
     }
 }

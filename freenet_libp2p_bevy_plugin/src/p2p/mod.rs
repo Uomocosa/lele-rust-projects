@@ -1,46 +1,14 @@
-pub mod constants;
-pub use constants::*;
-
-pub mod error;
-pub use error::Error;
-
 pub mod message;
 pub use message::Message;
-
-pub mod snapshot;
-pub use snapshot::Snapshot;
 
 pub mod message_codec;
 pub use message_codec::MessageCodec;
 
-pub mod command;
-pub use command::Command;
-
-pub mod event;
-pub use event::Event;
-
-pub mod incoming_snapshot;
-pub use incoming_snapshot::IncomingSnapshot;
-
-pub mod connected;
-pub use connected::Connected;
-
-pub mod disconnected;
-pub use disconnected::Disconnected;
-
 pub mod behaviour;
 pub use behaviour::Behaviour;
 
-mod behaviour_new;
-
-pub mod load_or_create_keypair;
-pub use load_or_create_keypair::load_or_create_keypair;
-
-pub mod derive_network_id;
-pub use derive_network_id::derive_network_id;
-
-pub mod peer_id_to_network_id;
-pub use peer_id_to_network_id::peer_id_to_network_id;
+pub mod history;
+pub use history::{HISTORY_CHUNK, decode_chunk, encode_chunk, history_key};
 
 pub mod build_swarm;
 pub use build_swarm::build_swarm;
@@ -48,23 +16,17 @@ pub use build_swarm::build_swarm;
 pub mod run;
 pub use run::run;
 
+pub mod command;
+pub use command::Command;
+
+pub mod event;
+pub use event::Event;
+
 pub mod p2p_commands;
-pub use p2p_commands::P2pCommands;
+pub use p2p_commands::P2PCommands;
 
 pub mod p2p_events;
-pub use p2p_events::P2pEvents;
-
-pub mod dialed_peers;
-pub use dialed_peers::DialedPeers;
-
-pub mod peer_status;
-pub use peer_status::PeerStatus;
-
-pub mod snapshot_tick;
-pub use snapshot_tick::SnapshotTick;
-
-pub mod remote_target;
-pub use remote_target::RemoteTarget;
+pub use p2p_events::P2PEvents;
 
 pub mod config;
 pub use config::Config;

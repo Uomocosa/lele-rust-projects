@@ -1,2 +1,2 @@
-logs/
-.local-run/
+/target
+/.devenv

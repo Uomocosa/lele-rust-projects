@@ -7,33 +7,28 @@ pub fn take_event_rx<T: p2p::Message>(config: &Config<T>) -> UnboundedReceiver<p
     config
         .event_rx
         .lock()
-        .ok()
-        .and_then(|mut slot| slot.take())
-        .unwrap_or_else(|| {
-            let (_, rx) = tokio::sync::mpsc::unbounded_channel();
-            rx
-        })
+        .unwrap()
+        .take()
+        .expect("event_rx already taken")
 }
 
 #[cfg(test)]
 mod tests {
-    use derive_more::Deref;
-    use serde::{Deserialize, Serialize};
-
     use tokio::sync::mpsc;
 
-    use super::take_event_rx;
+    use crate::net_id::NetworkId;
     use crate::p2p;
+    use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     struct Dummy(u32);
 
     #[test]
     fn test_usage() {
-        let (cmd_tx, _cmd_rx) = mpsc::unbounded_channel();
-        let (_event_tx, event_rx) = mpsc::unbounded_channel();
-        let config = p2p::Config::<Dummy>::new(cmd_tx, event_rx);
-        let rx = take_event_rx(&config);
-        drop(rx);
+        let (cmd_tx, _) = mpsc::unbounded_channel();
+        let (_, event_rx) = mpsc::unbounded_channel::<p2p::Event<Dummy>>();
+        let cfg = p2p::Config::new(NetworkId(1), cmd_tx, event_rx);
+        let rx = take_event_rx(&cfg);
+        assert!(rx.is_empty());
     }
 }

@@ -1,12 +1,9 @@
-[workspace]
-members = [".", "testing_4", "integration_tests_4", "cross_os_tests_4", "mainnet_automation_4"]
-exclude = ["contract"]
-resolver = "3"
-
 [package]
 name = "freenet_libp2p_bevy_example"
 version = "0.1.0"
 edition = "2024"
+description = "Shared blackboard game (lobbies, tool per player, Kademlia history) on P2PBevyPlugin"
+license = "MIT OR Apache-2.0"
 
 [lib]
 name = "freenet_libp2p_bevy_example_lib"
@@ -16,33 +13,34 @@ crate-type = ["lib", "cdylib"]
 name = "freenet-libp2p-bevy-example"
 path = "src/main.rs"
 
-[dependencies]
-clap = { version = "4", features = ["derive"] }
-bevy = "=0.19.0"
-avian2d = { version = "=0.7.0", default-features = false, features = [
-    "2d", "f32", "parry-f32", "debug-plugin", "xpbd_joints", "enhanced-determinism",
-] }
-derive_more = { version = "=1.0.0", features = ["deref", "deref_mut"] }
-bevy_lele_rollback_plugin_1 = { path = "../bevy_lele_rollback_plugin_1" }
-freenet = "=0.2.128"
-freenet-stdlib = { version = "=0.8.5", features = ["net"] }
-libp2p = { version = "=0.56.0", features = [
-    "tokio", "quic", "tcp", "noise", "yamux", "dns",
-    "identify", "ping", "autonat", "relay", "dcutr",
-    "request-response", "macros",
-] }
-tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
-tokio-tungstenite = "=0.27.0"
-thiserror = "=2.0.20"
-tracing = { version = "=0.1.44", features = ["release_max_level_debug"] }
-tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
-serde = { version = "=1.0.229", features = ["derive"] }
-bincode = "=1.3.3"
-async-trait = "=0.1.92"
-futures = "=0.3.33"
-futures-util = "=0.3.33"
-http = "=1.5.0"
-hex = "=0.4.3"
-tempfile = "=3.27.0"
+[lints.rust]
+non_snake_case = "allow"
 
-[dev-dependencies]
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+unchecked_time_subtraction = "deny"
+todo = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+panic = "deny"
+exit = "deny"
+as_conversions = "deny"
+
+[dependencies]
+freenet-libp2p-bevy-plugin = { path = "../freenet_libp2p_bevy_plugin" }
+bevy = "=0.19.0"
+derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+bincode = "=1.3.3"
+blake3 = "=1.8.3"
+thiserror = "=2.0.18"
+tracing = "=0.1.44"
+clap = { version = "=4.5.39", features = ["derive"] }
+tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }

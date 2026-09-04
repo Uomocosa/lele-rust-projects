@@ -1,10 +1,19 @@
 use std::collections::BTreeMap;
 
 use bevy::prelude::Resource;
-use derive_more::{Deref, DerefMut};
 
-use crate::net_id;
-use crate::roster;
+#[derive(Debug, Clone, Default, Resource)]
+pub struct Roster {
+    pub lobbies: BTreeMap<String, BTreeMap<[u8; 32], String>>,
+}
 
-#[derive(Resource, Debug, Default, Clone, Deref, DerefMut)]
-pub struct Roster(pub BTreeMap<net_id::NetworkId, roster::PeerEntry>);
+#[cfg(test)]
+mod tests {
+    use super::Roster;
+
+    #[test]
+    fn test_usage() {
+        let r = Roster::default();
+        assert!(r.lobbies.is_empty());
+    }
+}
