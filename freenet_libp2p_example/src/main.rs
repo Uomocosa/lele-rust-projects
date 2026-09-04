@@ -66,8 +66,17 @@ fn standalone_flag() -> bool {
 
 #[tokio::main]
 async fn main() {
+    let log_dir = std::env::var("FREENET_LOG_DIR").unwrap_or_else(|_| "/tmp".to_string());
+    let file_appender =
+        tracing_appender::rolling::never(&log_dir, format!("freenet-libp2p-{}.log", seed()));
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    std::mem::forget(guard);
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("debug"));
     tracing_subscriber::fmt()
-        .with_writer(std::io::stdout)
+        .with_env_filter(filter)
+        .with_writer(non_blocking)
+        .with_ansi(false)
         .init();
     let use_standalone = standalone_flag() || args().host.is_none();
     let result = if use_standalone {
