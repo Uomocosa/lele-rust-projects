@@ -1,39 +1,50 @@
-[workspace]
-members = ["."]
-exclude = ["contract"]
-resolver = "3"
-
 [package]
 name = "freenet-libp2p-bevy-plugin"
 version = "0.1.0"
 edition = "2024"
+description = "Generic P2PBevyPlugin (Freenet discovery + libp2p Kademlia history) — Directory + Board contracts"
+license = "MIT OR Apache-2.0"
 
-[lib]
-name = "freenet_libp2p_bevy_plugin_lib"
-crate-type = ["lib", "cdylib"]
+[lints.rust]
+non_snake_case = "allow"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+unchecked_time_subtraction = "deny"
+todo = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+panic = "deny"
+exit = "deny"
+as_conversions = "deny"
 
 [dependencies]
-clap = { version = "4", features = ["derive"] }
 bevy = "=0.19.0"
-avian2d = "=0.7.0"
-derive_more = { version = "=1.0.0", features = ["deref", "deref_mut"] }
-freenet = "=0.2.128"
+derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
+freenet = "=0.2.132"
 freenet-stdlib = { version = "=0.8.5", features = ["net"] }
-libp2p = { version = "=0.56.0", features = [
-    "tokio", "quic", "tcp", "noise", "yamux", "dns",
-    "identify", "ping", "autonat", "relay", "dcutr",
-    "request-response", "macros",
-] }
-tokio = { version = "=1.53.1", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
+libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "macros"] }
+tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
 tokio-tungstenite = "=0.27.0"
-thiserror = "=2.0.20"
+thiserror = "=2.0.18"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
-serde = { version = "=1.0.229", features = ["derive"] }
+serde = { version = "=1.0.228", features = ["derive"] }
 bincode = "=1.3.3"
-async-trait = "=0.1.92"
-futures = "=0.3.33"
-futures-util = "=0.3.33"
-http = "=1.5.0"
+async-trait = "=0.1.89"
+futures = "=0.3.32"
+futures-util = "=0.3.32"
+http = "=1.4.1"
 hex = "=0.4.3"
+blake3 = "=1.8.3"
 tempfile = "=3.27.0"
+clap = { version = "=4.5.39", features = ["derive"] }
+
+[dev-dependencies]

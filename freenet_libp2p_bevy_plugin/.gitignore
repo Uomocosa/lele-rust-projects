@@ -1,0 +1,6 @@
+.devenv/
+target/
+contract/directory/target/
+contract/board/target/
+.pre-commit-config.yaml
+.pre-commit-config.json
