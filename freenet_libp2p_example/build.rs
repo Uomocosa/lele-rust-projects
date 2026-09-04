@@ -1,7 +1,3 @@
-#![allow(clippy::expect_used)]
-#![allow(clippy::panic)]
-#![allow(clippy::manual_assert)]
-
 use std::path::Path;
 use std::process::Command;
 
@@ -21,7 +17,12 @@ fn needs_build(proto: &[&str], out: &str) -> bool {
     })
 }
 
-fn build_contract(manifest: &str, crate_name: &str, target_dir: &str, out: &str) {
+fn build_contract(
+    manifest: &str,
+    crate_name: &str,
+    target_dir: &str,
+    out: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let status = Command::new("cargo")
         .args([
             "build",
@@ -33,16 +34,16 @@ fn build_contract(manifest: &str, crate_name: &str, target_dir: &str, out: &str)
             "--manifest-path",
             manifest,
         ])
-        .status()
-        .expect("failed to build contract WASM");
+        .status()?;
     if !status.success() {
-        panic!("contract WASM build failed for {manifest}");
+        return Err(format!("contract WASM build failed for {manifest}").into());
     }
     let wasm_src = format!("{target_dir}/wasm32-unknown-unknown/release/{crate_name}");
-    std::fs::copy(&wasm_src, out).expect("failed to copy contract WASM");
+    std::fs::copy(&wasm_src, out).map_err(|e| format!("failed to copy contract WASM: {e}"))?;
+    Ok(())
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let wasm_target_dir = "contract/target".to_string();
     let proto = [
         "contract/src/lib.rs",
@@ -60,6 +61,7 @@ fn main() {
             "letter_contract.wasm",
             &wasm_target_dir,
             out,
-        );
+        )?;
     }
+    Ok(())
 }

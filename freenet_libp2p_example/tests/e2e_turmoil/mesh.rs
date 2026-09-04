@@ -60,7 +60,6 @@ fn spawn_host(sim: &mut turmoil::Sim<'_>, name: &'static str, lobby: String, log
     });
 }
 
-#[allow(clippy::redundant_clone, clippy::too_many_lines)]
 #[test]
 #[ignore = "turmoil: real tcp via turmoil net — single xterm video; run with --ignored --nocapture"]
 fn turmoil_mesh() {
