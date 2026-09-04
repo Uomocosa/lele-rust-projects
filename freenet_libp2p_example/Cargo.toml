@@ -33,12 +33,24 @@ path = "src/main.rs"
 
 [features]
 dev = ["dep:serde_json", "dep:reqwest", "dep:dotenvy", "dep:chrono"]
+turmoil = ["dep:turmoil"]
+turmoil-deterministic = ["turmoil"]
 default = []
 
 [[test]]
 name = "mainnet_local"
 path = "tests/e2e_local/mainnet.rs"
 required-features = ["dev"]
+
+[[test]]
+name = "turmoil_mesh"
+path = "tests/e2e_turmoil/mesh.rs"
+required-features = ["turmoil", "dev"]
+
+[[test]]
+name = "turmoil_mesh_mem"
+path = "tests/e2e_turmoil/mesh_mem.rs"
+required-features = ["turmoil-deterministic", "dev"]
 
 [dependencies]
 freenet = "=0.2.132"
@@ -68,3 +80,4 @@ serde_json = { version = "=1.0.150", optional = true }
 chrono = { version = "=0.4.45", default-features = false, features = ["clock"], optional = true }
 reqwest = { version = "=0.12.28", default-features = false, features = ["blocking", "multipart", "rustls-tls", "json"], optional = true }
 dotenvy = { version = "=0.15.7", optional = true }
+turmoil = { version = "=0.7", optional = true }

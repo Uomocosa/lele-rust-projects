@@ -1909,6 +1909,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "turmoil",
 ]
 
 [[package]]
