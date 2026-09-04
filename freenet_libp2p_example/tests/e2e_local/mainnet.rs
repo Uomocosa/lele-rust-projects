@@ -164,7 +164,7 @@ fn build_peers_block(
             all_ok &= ok;
             let display_idx = i.checked_add(1).unwrap_or(1);
             per_peer.push(format!(
-                "{display_idx}. inst{i}: seq {ss}->{ee} delta={delta} (start offset {ss} from convergence) broadcasts={cnt_s} {} {}",
+                "{display_idx}. inst{i}: seq {ss}->{ee} delta={delta} (start offset {ss} from convergence) broadcasts={cnt_s} {} {} {}",
                 check(ok),
                 check(ok),
                 if ok { "PASS" } else { "FAIL" }
