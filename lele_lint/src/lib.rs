@@ -1,30 +1,40 @@
-#![allow(
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::string_slice,
-    clippy::unwrap_used
-)]
 pub mod checker;
+pub use checker::Checker;
 pub mod checkers;
 mod common;
 pub mod config;
+pub use config::Config;
 mod config_checker_enabled;
 mod config_load;
 pub mod diagnostic;
+pub use diagnostic::Diagnostic;
 pub mod entry;
+pub use entry::Entry;
 pub mod entry_kind;
+pub use entry_kind::EntryKind;
 pub mod error;
+pub use error::Error;
 pub mod lele_lint_section;
+pub use lele_lint_section::LeleLintSection;
 pub mod mod_decl;
+pub use mod_decl::ModDecl;
 pub mod module_info;
+pub use module_info::ModuleInfo;
+pub mod module_info_map;
+pub use module_info_map::ModuleInfoMap;
 mod module_info_build;
-pub mod print_checker_list;
-pub mod print_diagnostics;
+mod print_checker_list;
+pub use print_checker_list::print_checker_list;
+mod print_diagnostics;
+pub use print_diagnostics::print_diagnostics;
 pub mod project;
+pub use project::Project;
 mod project_discover;
 mod project_find_cargo_root;
 mod project_get_parsed;
 mod project_parse_source_files;
 mod project_walk_entries;
 pub mod reexport;
+pub use reexport::Reexport;
 pub mod severity;
+pub use severity::Severity;

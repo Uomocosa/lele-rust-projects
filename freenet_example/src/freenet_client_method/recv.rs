@@ -1,12 +1,11 @@
-use crate::client_error;
-use crate::freenet_client;
 use freenet_stdlib::client_api::HostResponse;
 
-use client_error::ClientError as Ce;
+use crate::client_error::ClientError as Ce;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns `ClientError` if the channel is disconnected or the node returns an error.
-pub async fn recv(client: &mut freenet_client::FreenetClient) -> Result<HostResponse, Ce> {
+pub async fn recv(client: &mut FreenetClient) -> Result<HostResponse, Ce> {
     match client.read.recv().await {
         Some(Ok(response)) => Ok(response),
         Some(Err(e)) => Err(Ce::from(e)),

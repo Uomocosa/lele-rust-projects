@@ -5,14 +5,11 @@ use syn::visit::Visit;
 
 use super::single_caller_type::SingleCallerType;
 use crate::common;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(
-    _self: &SingleCallerType,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let defined_types = collect_defined_types(&project.parsed_files);
     let defined_names: HashSet<String> = defined_types.iter().map(|(n, _)| n.clone()).collect();
@@ -29,7 +26,7 @@ pub(crate) fn check(
         let Some(file) = project.parsed_files.get(rel_path) else {
             continue;
         };
-        if has_thin_delegate(file, name) {
+        if has_atomic_delegate(file, name) {
             continue;
         }
 
@@ -39,17 +36,17 @@ pub(crate) fn check(
             .map(|(f, _)| f)
             .collect();
 
-        if callers.len() == 1 {
-            diags.push(diagnostic::Diagnostic {
+        if let [caller] = callers.as_slice() {
+            diags.push(Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
                 code: "E016".to_string(),
                 message: format!(
-                    "type `{name}` has exactly one caller in `{}` and no thin-delegate methods — define it in the caller's file instead of its own file",
-                    callers[0].display()
+                    "type `{name}` has exactly one caller in `{}` and no atomic-delegate methods — define it in the caller's file instead of its own file",
+                    caller.display()
                 ),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             });
         }
     }
@@ -125,8 +122,8 @@ fn collect_type_paths(ty: &syn::Type, names: &mut HashSet<String>) {
     Collect(names).visit_type(ty);
 }
 
-// needed helper: thin delegate method presence check
-fn has_thin_delegate(file: &syn::File, type_name: &str) -> bool {
+// needed helper: atomic delegate method presence check
+fn has_atomic_delegate(file: &syn::File, type_name: &str) -> bool {
     file.items.iter().any(|item| {
         let syn::Item::Impl(impl_block) = item else {
             return false;
@@ -144,10 +141,10 @@ fn impl_is_all_delegate(impl_block: &syn::ItemImpl) -> bool {
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
             has_fn = true;
-            if method.block.stmts.len() != 1 {
+            let [stmt] = method.block.stmts.as_slice() else {
                 return false;
-            }
-            let expr = match &method.block.stmts[0] {
+            };
+            let expr = match stmt {
                 syn::Stmt::Expr(e, _) => e,
                 _ => return false,
             };
@@ -229,7 +226,7 @@ fn collect_refs_from_items(
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_defined_types, collect_embedded_type_names, has_thin_delegate};
+    use super::{collect_defined_types, collect_embedded_type_names, has_atomic_delegate};
     use std::collections::HashMap;
 
     #[test]
@@ -269,19 +266,19 @@ mod tests {
     }
 
     #[test]
-    fn test_usage_has_thin_delegate() {
+    fn test_usage_has_atomic_delegate() {
         let file: syn::File = syn::parse_str(
             "#[rustfmt::skip] impl Foo { pub fn new() -> Self { config_new::new() } }",
         )
         .unwrap();
-        assert!(has_thin_delegate(&file, "Foo"));
+        assert!(has_atomic_delegate(&file, "Foo"));
     }
 
     #[test]
-    fn test_usage_no_thin_delegate() {
+    fn test_usage_no_atomic_delegate() {
         let file: syn::File =
             syn::parse_str("impl Foo { pub fn new() -> Self { Self { x: 1 } } }").unwrap();
-        assert!(!has_thin_delegate(&file, "Foo"));
+        assert!(!has_atomic_delegate(&file, "Foo"));
     }
 }
 

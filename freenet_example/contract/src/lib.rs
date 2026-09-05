@@ -230,7 +230,7 @@ mod tests {
             gen_divergent_equal_total: Some(|| Some((slots(&[(0, 4), (1, 4)]), slots(&[(0, 8)])))),
             empty_state: || slots(&[]),
         };
-        freenet_contract_harness::run_suite::<GlobalCounterContract>(cfg);
+        freenet_contract_harness::run_suite::<GlobalCounterContract>(&cfg);
     }
 
     #[test]

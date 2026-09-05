@@ -1,7 +1,6 @@
-#![allow(clippy::missing_const_for_fn)]
 use crate::clicker;
 use bevy::prelude::*;
-pub fn render(_counters: Query<(&clicker::Owner, &clicker::ClickCounter)>) {}
+pub const fn render(_counters: Query<(&clicker::Owner, &clicker::ClickCounter)>) {}
 #[cfg(test)]
 mod tests {
     use super::render;

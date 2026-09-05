@@ -1,6 +1,5 @@
 use crate::testing;
 
-#[allow(clippy::expect_used)]
 pub fn send_video(creds: &testing::Creds, bytes: &[u8], caption: &str) {
     let token = creds.token.clone();
     let chat_id = creds.chat_id.clone();

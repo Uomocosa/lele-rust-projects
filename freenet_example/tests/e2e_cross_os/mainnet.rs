@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use freenet_example::testing::finish_record;
-use freenet_example::testing::load_telegram_creds;
+use freenet_example::testing::load_creds;
 use freenet_example::testing::send_video_file;
 use freenet_example::testing::start_record;
 use freenet_example::testing::wakeup_screen;
@@ -60,7 +60,7 @@ async fn cross_host_mainnet() {
     });
     std::fs::write(&env.log_path, format!("{record}\n")).expect("write log");
     println!("reconcile record: {record}");
-    if let (Some(path), Some(creds)) = (video, load_telegram_creds::load_creds()) {
+    if let (Some(path), Some(creds)) = (video, load_creds()) {
         let converged = !foreign_tags.is_empty();
         let caption = format!(
             "freenet_example cross-mainnet \u{b7} machine={} tag={} \u{b7} converged={converged} \u{b7} {}\n\

@@ -2,11 +2,11 @@ use freenet_stdlib::client_api::HostResponse;
 use futures_util::StreamExt;
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::freenet_client;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns error if stream closed or message invalid.
-pub async fn recv(client: &mut freenet_client::FreenetClient) -> Result<HostResponse, String> {
+pub async fn recv(client: &mut FreenetClient) -> Result<HostResponse, String> {
     loop {
         let msg = client
             .0

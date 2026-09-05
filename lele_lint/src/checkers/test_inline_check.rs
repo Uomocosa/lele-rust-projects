@@ -1,18 +1,18 @@
 use super::test_inline::TestInline;
-use crate::diagnostic;
-use crate::entry_kind;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::EntryKind;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(_self: &TestInline, project: &project::Project) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &TestInline, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for entry in &project.entries {
-        if entry.kind != entry_kind::EntryKind::Directory {
+        if entry.kind != EntryKind::Directory {
             continue;
         }
         if has_tests_component(&entry.relative_path) {
-            diags.push(diagnostic::Diagnostic {
+            diags.push(Diagnostic {
                 file: entry.absolute_path.clone(),
                 line: 1,
                 col: 0,
@@ -21,7 +21,7 @@ pub(crate) fn check(_self: &TestInline, project: &project::Project) -> Vec<diagn
                     "unit tests must be in the same file as the primary item — delete `{}` and move the tests inline",
                     entry.relative_path.display()
                 ),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             });
         }
     }

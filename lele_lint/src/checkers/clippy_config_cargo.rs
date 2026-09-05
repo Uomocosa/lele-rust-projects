@@ -1,7 +1,7 @@
-use crate::checker;
-use crate::config;
-use crate::diagnostic;
-use crate::project;
+use crate::Checker;
+use crate::Config;
+use crate::Diagnostic;
+use crate::Project;
 
 use super::clippy_config_cargo_check;
 use super::clippy_config_cargo_register;
@@ -14,15 +14,15 @@ impl ClippyConfigCargo {
 }
 
 #[rustfmt::skip]
-impl checker::Checker for ClippyConfigCargo {
+impl Checker for ClippyConfigCargo {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { clippy_config_cargo_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { clippy_config_cargo_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl ClippyConfigCargo {
-    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
         clippy_config_cargo_register::register(checkers, config)
     }
 }

@@ -24,15 +24,13 @@ panic_in_result_fn = "deny"
 panic = "deny"
 exit = "deny"
 as_conversions = "deny"
+module_inception = "allow"
 
 [dependencies]
 bevy = "=0.19.0"
 derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
-freenet = "=0.2.132"
-freenet-stdlib = { version = "=0.8.5", features = ["net"] }
 libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "macros"] }
 tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
-tokio-tungstenite = "=0.27.0"
 thiserror = "=2.0.18"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
@@ -41,10 +39,8 @@ bincode = "=1.3.3"
 async-trait = "=0.1.89"
 futures = "=0.3.32"
 futures-util = "=0.3.32"
-http = "=1.4.1"
 hex = "=0.4.3"
 blake3 = "=1.8.3"
-tempfile = "=3.27.0"
 clap = { version = "=4.5.39", features = ["derive"] }
 
 [dev-dependencies]

@@ -26,8 +26,9 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     use super::Command;
+    use derive_more::Deref;
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
     struct Dummy(u32);
 
     #[test]

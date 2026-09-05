@@ -4,8 +4,9 @@ use freenet_libp2p_bevy_plugin::net_id;
 
 use crate::clicker;
 
-#[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-#[allow(clippy::missing_const_for_fn)]
+#[derive(Component, Debug, Default, Clone, Copy)]
+struct ClickTarget;
+
 pub fn spawn_target(
     commands: &mut Commands,
     owner: net_id::NetworkId,
@@ -15,14 +16,18 @@ pub fn spawn_target(
     let color = if is_local {
         Color::srgb(0.2, 0.7, 0.3)
     } else {
-        Color::hsl(f32::from((*owner % 360) as u16), 0.7, 0.5)
+        Color::hsl(
+            f32::from(u16::try_from(*owner % 360).unwrap_or(0)),
+            0.7,
+            0.5,
+        )
     };
-    let x = index as f32 * clicker::TARGET_SPACING;
+    let x = f32::from(i16::try_from(index).unwrap_or(0)) * clicker::TARGET_SPACING;
     commands
         .spawn((
             clicker::Owner(owner),
             clicker::ClickCounter::default(),
-            clicker::ClickTarget,
+            ClickTarget,
             Sprite::from_color(color, Vec2::splat(clicker::TARGET_SIZE)),
             Transform::from_translation(Vec3::new(x, clicker::ROW_Y, 0.0)),
         ))
@@ -34,6 +39,7 @@ mod tests {
     use bevy::ecs::world::CommandQueue;
     use bevy::prelude::*;
 
+    use super::ClickTarget;
     use super::spawn_target;
     use crate::clicker;
     use freenet_libp2p_bevy_plugin::net_id;
@@ -52,6 +58,6 @@ mod tests {
             **world.get::<clicker::Owner>(entity).unwrap(),
             net_id::NetworkId(7)
         );
-        assert!(world.get::<clicker::ClickTarget>(entity).is_some());
+        assert!(world.get::<ClickTarget>(entity).is_some());
     }
 }

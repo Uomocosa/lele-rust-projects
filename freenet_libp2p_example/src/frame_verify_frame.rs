@@ -1,9 +1,9 @@
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
-use crate::frame;
+use crate::frame::Frame;
 
 #[must_use]
-pub fn verify_frame(frame: &frame::Frame) -> bool {
+pub fn verify_frame(frame: &Frame) -> bool {
     let Ok(vk) = VerifyingKey::from_bytes(&frame.author) else {
         return false;
     };

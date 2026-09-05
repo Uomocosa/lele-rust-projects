@@ -15,14 +15,15 @@ pub struct Config<T: p2p::Message> {
 
 #[rustfmt::skip]
 impl<T: p2p::Message> Config<T> {
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         own_id: net_id::NetworkId,
         cmd_tx: UnboundedSender<p2p::Command<T>>,
         event_rx: UnboundedReceiver<p2p::Event<T>>,
     ) -> Self {
         config_new::new(own_id, cmd_tx, event_rx)
     }
-    pub fn take_event_rx(&self) -> UnboundedReceiver<p2p::Event<T>> {
+    pub fn take_event_rx(&self) -> Option<UnboundedReceiver<p2p::Event<T>>> {
         config_take_event_rx::take_event_rx(self)
     }
 }

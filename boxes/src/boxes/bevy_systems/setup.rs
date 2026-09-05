@@ -1,4 +1,3 @@
-#![allow(clippy::missing_const_for_fn)]
 use bevy::prelude::*;
 pub fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);

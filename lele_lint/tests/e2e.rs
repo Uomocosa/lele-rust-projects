@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use lele_lint::checkers::build_checkers;
 use lele_lint::config::Config;
-use lele_lint::diagnostic::Diagnostic;
-use lele_lint::project::Project;
+use lele_lint::Diagnostic;
+use lele_lint::Project;
 
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -33,6 +33,7 @@ fn violation_crate_catches_all_errors() -> Result<(), Box<dyn std::error::Error>
     let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
 
     let expected = [
+        "E001", // atomic_file (orphan method file has no parent type)
         "E002", // snake_case_files
         "E003", // method_visibility
         "E004", // no_cross_domain_reexport
@@ -41,12 +42,16 @@ fn violation_crate_catches_all_errors() -> Result<(), Box<dyn std::error::Error>
         "E009", // no_positional
         "E010", // no_trivial_accessors
         "E011", // domain_import
-        "E012", // thin_delegates
+        "E012", // atomic_delegates
         "E013", // constructor_no_skip
         "E016", // single_caller_type
+        "E017", // method_file_co_location (orphan method file)
         "E018", // single_field_newtype
         "E019", // mod_rs_purity
         "E020", // no_crate_paths
+        "E024", // root_reexport
+        "E025", // no_stuttered_path
+        "E027", // no_stuttered_type
     ];
 
     for code in expected {

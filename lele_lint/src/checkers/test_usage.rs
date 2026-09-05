@@ -1,7 +1,7 @@
-use crate::checker;
-use crate::config;
-use crate::diagnostic;
-use crate::project;
+use crate::Checker;
+use crate::Config;
+use crate::Diagnostic;
+use crate::Project;
 
 use super::test_usage_check;
 use super::test_usage_register;
@@ -14,15 +14,15 @@ impl TestUsage {
 }
 
 #[rustfmt::skip]
-impl checker::Checker for TestUsage {
+impl Checker for TestUsage {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { test_usage_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { test_usage_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl TestUsage {
-    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
         test_usage_register::register(checkers, config)
     }
 }

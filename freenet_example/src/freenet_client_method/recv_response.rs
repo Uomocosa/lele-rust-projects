@@ -1,14 +1,11 @@
-use crate::client_error;
-use crate::freenet_client;
 use freenet_stdlib::client_api::{ContractResponse, HostResponse};
 
-use client_error::ClientError;
+use crate::client_error::ClientError;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns `ClientError` if the channel is disconnected or the node returns an error.
-pub async fn recv_response(
-    client: &mut freenet_client::FreenetClient,
-) -> Result<HostResponse, ClientError> {
+pub async fn recv_response(client: &mut FreenetClient) -> Result<HostResponse, ClientError> {
     loop {
         match client.recv().await? {
             HostResponse::ContractResponse(ContractResponse::UpdateNotification { .. }) => {}

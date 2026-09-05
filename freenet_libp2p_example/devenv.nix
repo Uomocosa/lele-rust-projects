@@ -36,6 +36,7 @@
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture"; showOutput = true; };
     "lele:run-turmoil" = { exec = "cargo nextest run --test turmoil_mesh --features turmoil,dev --run-ignored all -- --nocapture"; showOutput = true; };
     "lele:run-turmoil-deterministic" = { exec = "cargo nextest run --test turmoil_mesh_mem --features turmoil-deterministic,dev --run-ignored all -- --nocapture"; showOutput = true; };
   };

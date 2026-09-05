@@ -2,8 +2,7 @@ use super::config::Config;
 use freenet_libp2p_bevy_plugin::net_id;
 
 #[must_use]
-#[allow(clippy::missing_const_for_fn)]
-pub fn new(own_id: net_id::NetworkId) -> Config {
+pub const fn new(own_id: net_id::NetworkId) -> Config {
     Config(own_id)
 }
 

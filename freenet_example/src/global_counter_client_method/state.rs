@@ -1,15 +1,13 @@
-use crate::global_counter_client;
-use crate::global_counter_error;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use global_counter_error::GlobalCounterError as Ce;
+use crate::global_counter_client::GlobalCounterClient;
+use crate::global_counter_error::GlobalCounterError as Ce;
+use crate::global_counter_error::GlobalCounterError;
 
 /// # Errors
 /// Returns `GlobalCounterError` if the get request fails or the response is unexpected.
-pub async fn state(
-    client: &mut global_counter_client::GlobalCounterClient,
-) -> Result<u64, global_counter_error::GlobalCounterError> {
+pub async fn state(client: &mut GlobalCounterClient) -> Result<u64, GlobalCounterError> {
     let get_req = ContractRequest::Get {
         key: *client.contract_key.id(),
         return_contract_code: false,

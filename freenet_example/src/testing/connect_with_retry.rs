@@ -1,7 +1,6 @@
 use crate::Role;
-use crate::global_counter_client;
 
-use global_counter_client::GlobalCounterClient;
+use crate::global_counter_client::GlobalCounterClient;
 
 /// # Errors
 /// Returns an error if the client cannot be connected after retries.

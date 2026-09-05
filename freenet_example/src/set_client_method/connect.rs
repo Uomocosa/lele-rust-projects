@@ -1,5 +1,3 @@
-use crate::freenet_client;
-use crate::global_counter_error;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,9 +5,9 @@ use std::time::Duration;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 use freenet_stdlib::prelude::*;
 
-use crate::set_client;
-use freenet_client::FreenetClient;
-use global_counter_error::GlobalCounterError as Ce;
+use crate::freenet_client::FreenetClient;
+use crate::global_counter_error::GlobalCounterError as Ce;
+use crate::set_client::SetClient;
 
 // needed helper:
 async fn recv_set(client: &mut FreenetClient) -> Result<Option<BTreeSet<u64>>, Ce> {
@@ -46,7 +44,7 @@ pub async fn connect(
     contract_wasm: &[u8],
     params: &[u8],
     tag: u64,
-) -> Result<set_client::SetClient, Ce> {
+) -> Result<SetClient, Ce> {
     let mut client = FreenetClient::connect(host, port).await?;
 
     let code = Arc::new(ContractCode::from(contract_wasm.to_vec()));
@@ -84,7 +82,7 @@ pub async fn connect(
         recv_set(&mut client).await?.ok_or(Ce::ContractNotFound)?
     };
 
-    Ok(set_client::SetClient {
+    Ok(SetClient {
         client,
         contract_key: key,
         set,

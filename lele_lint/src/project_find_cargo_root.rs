@@ -1,7 +1,7 @@
-use crate::error;
+use crate::Error;
 use std::path::{Path, PathBuf};
 
-pub fn find_cargo_root(start: &Path) -> Result<PathBuf, error::Error> {
+pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {
     let mut current = start.to_path_buf();
     loop {
         let cargo_toml = current.join("Cargo.toml");
@@ -9,7 +9,7 @@ pub fn find_cargo_root(start: &Path) -> Result<PathBuf, error::Error> {
             return Ok(current);
         }
         if !current.pop() {
-            return Err(error::Error::NoCargoRoot(start.display().to_string()));
+            return Err(Error::NoCargoRoot(start.display().to_string()));
         }
     }
 }

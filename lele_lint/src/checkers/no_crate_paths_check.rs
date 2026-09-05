@@ -5,32 +5,33 @@ use syn::spanned::Spanned;
 use syn::visit::Visit;
 
 use super::no_crate_paths::NoCratePaths;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(
-    _self: &NoCratePaths,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &NoCratePaths, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
         if is_crate_root(rel_path) {
             continue;
         }
-        let mut visitor = CratePathVisitor::default();
-        visitor.visit_file(file);
-        for (line, path_str) in std::mem::take(&mut *visitor) {
-            diags.push(diagnostic::Diagnostic {
+        let mut hits = Vec::new();
+        {
+            let mut visitor = CratePathVisitor(&mut hits);
+            visitor.visit_file(file);
+        }
+        for hit in std::mem::take(&mut hits) {
+            diags.push(Diagnostic {
                 file: project.src_dir.join(rel_path),
-                line,
+                line: hit.line,
                 col: 0,
                 code: "E020".to_string(),
                 message: format!(
-                    "`{path_str}` path used outside a top-level `use` declaration — add `use crate::<module>;` at the top of the file or use a `super::`-relative path instead"
+                    "`{}` path used outside a top-level `use` declaration — add `use crate::<module>;` at the top of the file or use a `super::`-relative path instead",
+                    hit.path
                 ),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             });
         }
     }
@@ -47,10 +48,15 @@ fn is_crate_root(rel_path: &Path) -> bool {
 }
 
 // needed helper: AST visitor collecting `crate::` paths outside `use` items
-#[derive(Default, Deref, DerefMut)]
-struct CratePathVisitor(Vec<(usize, String)>);
+struct CratePathHit {
+    line: usize,
+    path: String,
+}
 
-impl<'ast> Visit<'ast> for CratePathVisitor {
+#[derive(Deref, DerefMut)]
+struct CratePathVisitor<'a>(&'a mut Vec<CratePathHit>);
+
+impl<'ast> Visit<'ast> for CratePathVisitor<'_> {
     fn visit_path(&mut self, path: &'ast syn::Path) {
         if path
             .segments
@@ -63,7 +69,10 @@ impl<'ast> Visit<'ast> for CratePathVisitor {
                 .map(|seg| seg.ident.to_string())
                 .collect::<Vec<_>>()
                 .join("::");
-            self.push((path.span().start().line, path_str));
+            self.push(CratePathHit {
+                line: path.span().start().line,
+                path: path_str,
+            });
         }
         syn::visit::visit_path(self, path);
     }
@@ -83,11 +92,14 @@ mod tests {
 
     fn hit_lines(src: &str) -> Vec<usize> {
         let file = syn::parse_file(src).unwrap();
-        let mut visitor = CratePathVisitor::default();
-        visitor.visit_file(&file);
-        std::mem::take(&mut *visitor)
+        let mut hits = Vec::new();
+        {
+            let mut visitor = CratePathVisitor(&mut hits);
+            visitor.visit_file(&file);
+        }
+        std::mem::take(&mut hits)
             .into_iter()
-            .map(|(line, _)| line)
+            .map(|hit| hit.line)
             .collect()
     }
 
@@ -103,18 +115,18 @@ mod tests {
     #[test]
     fn test_usage_allows_top_level_use() {
         let src = "use crate::boxes;\nfn f() -> boxes::PlayerId { boxes::PlayerId::default() }\n";
-        assert!(hit_lines(src).is_empty());
+        assert_eq!(hit_lines(src), Vec::<usize>::new());
     }
 
     #[test]
     fn test_usage_allows_pub_crate_visibility() {
         let src = "pub(crate) mod boxes;\npub(crate) use boxes::PlayerId;\n";
-        assert!(hit_lines(src).is_empty());
+        assert_eq!(hit_lines(src), Vec::<usize>::new());
     }
 
     #[test]
     fn test_usage_allows_super_and_self() {
         let src = "use super::player;\nfn f() { super::player::Player::default(); }\n";
-        assert!(hit_lines(src).is_empty());
+        assert_eq!(hit_lines(src), Vec::<usize>::new());
     }
 }

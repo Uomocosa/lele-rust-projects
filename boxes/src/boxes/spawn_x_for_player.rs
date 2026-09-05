@@ -5,11 +5,13 @@ use crate::boxes;
 /// Deterministic spawn x for a player, derived from their id so every client independently
 /// computes the same position without coordinating.
 #[must_use]
-#[allow(clippy::cast_precision_loss, clippy::as_conversions)]
 pub fn spawn_x_for_player(id: net_id::NetworkId) -> f32 {
     let bound = boxes::GROUND_WIDTH / 2.0 - boxes::BOX_SIZE / 2.0;
     let hashed = (*id).wrapping_mul(0x9E37_79B9_7F4A_7C15);
-    let frac = (hashed >> 40) as f32 / (1u64 << 24) as f32;
+    let low24 = u32::try_from(hashed >> 40).unwrap_or(u32::MAX);
+    let hi = u16::try_from(low24 >> 12).unwrap_or(u16::MAX);
+    let lo = u16::try_from(low24 & 0xFFF).unwrap_or(u16::MAX);
+    let frac = f32::from(hi).mul_add(4096.0, f32::from(lo)) / 16_777_216.0;
     frac.mul_add(2.0 * bound, -bound)
 }
 

@@ -4,10 +4,11 @@ use std::time::{Duration, Instant};
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest};
 
 use crate::discovery;
+use crate::discovery::Discovery;
 
 /// # Panics
 /// May panic if serialization fails.
-pub async fn bridge_tick(d: &mut discovery::Discovery, now: Instant) {
+pub async fn bridge_tick(d: &mut Discovery, now: Instant) {
     if d.last_bridge
         .is_none_or(|t| now.duration_since(t) >= Duration::from_secs(30))
     {

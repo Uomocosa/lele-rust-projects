@@ -1,9 +1,10 @@
 use crate::global_counter_client;
+use crate::global_counter_client::GlobalCounterClient;
 use global_counter_client::Pubkey;
 use std::collections::BTreeMap;
 
 #[must_use]
-pub fn foreign_tags(client: &global_counter_client::GlobalCounterClient) -> Vec<Pubkey> {
+pub fn foreign_tags(client: &GlobalCounterClient) -> Vec<Pubkey> {
     foreign_in(&client.slots, client.pubkey)
 }
 
@@ -16,6 +17,7 @@ fn foreign_in(slots: &BTreeMap<Pubkey, u64>, pubkey: Pubkey) -> Vec<Pubkey> {
 mod tests {
     use super::foreign_in;
     use crate::global_counter_client;
+
     use std::collections::BTreeMap;
 
     fn pk(n: u8) -> global_counter_client::Pubkey {

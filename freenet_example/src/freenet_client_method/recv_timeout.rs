@@ -1,13 +1,12 @@
-use crate::client_error;
-use crate::freenet_client;
 use std::time::Duration;
 
 use freenet_stdlib::client_api::HostResponse;
 
-use client_error::ClientError;
+use crate::client_error::ClientError;
+use crate::freenet_client::FreenetClient;
 
 pub async fn recv_timeout(
-    client: &mut freenet_client::FreenetClient,
+    client: &mut FreenetClient,
     timeout: Duration,
 ) -> Option<Result<HostResponse, ClientError>> {
     tokio::time::timeout(timeout, client.recv()).await.ok()

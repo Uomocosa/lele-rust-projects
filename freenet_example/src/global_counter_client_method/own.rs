@@ -1,7 +1,7 @@
-use crate::global_counter_client;
+use crate::global_counter_client::GlobalCounterClient;
 
 #[must_use]
-pub fn own(client: &global_counter_client::GlobalCounterClient) -> u64 {
+pub fn own(client: &GlobalCounterClient) -> u64 {
     client.slots.get(&client.pubkey).copied().unwrap_or(0)
 }
 

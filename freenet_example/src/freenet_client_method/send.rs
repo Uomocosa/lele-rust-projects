@@ -1,17 +1,13 @@
-use crate::client_error;
-use crate::freenet_client;
 use tokio_tungstenite::tungstenite::Message;
 
 use freenet_stdlib::client_api::ClientRequest;
 
-use client_error::ClientError as Ce;
+use crate::client_error::ClientError as Ce;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns `ClientError` if serialization fails or the channel is closed.
-pub async fn send(
-    client: &freenet_client::FreenetClient,
-    request: ClientRequest<'_>,
-) -> Result<(), Ce> {
+pub async fn send(client: &FreenetClient, request: ClientRequest<'_>) -> Result<(), Ce> {
     let bytes = bincode::serialize(&request)?;
     client
         .write

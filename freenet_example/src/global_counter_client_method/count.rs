@@ -1,7 +1,7 @@
-use crate::global_counter_client;
+use crate::global_counter_client::GlobalCounterClient;
 
 #[must_use]
-pub fn count(client: &global_counter_client::GlobalCounterClient) -> u64 {
+pub fn count(client: &GlobalCounterClient) -> u64 {
     client.slots.values().sum()
 }
 

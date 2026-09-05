@@ -28,8 +28,8 @@ pub use finish_record::finish_record;
 pub mod creds;
 pub use creds::Creds;
 
-pub mod load_telegram_creds;
-pub use load_telegram_creds::load_creds;
+pub mod load_creds;
+pub use load_creds::load_creds;
 
 pub mod send_video;
 pub use send_video::send_video;

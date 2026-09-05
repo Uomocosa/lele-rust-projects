@@ -1,8 +1,8 @@
 use super::snake_case_files::SnakeCaseFiles;
-use crate::checker;
-use crate::config;
+use crate::Checker;
+use crate::Config;
 
-pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
+pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
     if config.checker_enabled("snake_case_files") {
         checkers.push(Box::new(SnakeCaseFiles));
     }

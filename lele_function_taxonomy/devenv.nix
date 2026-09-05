@@ -18,7 +18,37 @@
     "lele:nextest" = { exec = "cargo nextest run --features rustc-private --all-targets"; showOutput = true; };
     "lele:taxonomy" = { exec = "cargo run -p lele_function_taxonomy --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "lele:lint" = { exec = "cargo run --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
+    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
   };
 
-  git-hooks.hooks = {};
+  git-hooks.hooks = {
+    lele-clippy = {
+      enable = true;
+      name = "clippy (lele_function_taxonomy)";
+      entry = "bash -c 'cd lele_function_taxonomy && devenv tasks run lele:clippy 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-fmt = {
+      enable = true;
+      name = "fmt (lele_function_taxonomy)";
+      entry = "bash -c 'cd lele_function_taxonomy && devenv tasks run lele:fmt 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-lint = {
+      enable = true;
+      name = "lele_lint (lele_function_taxonomy)";
+      entry = "bash -c 'cd lele_function_taxonomy && devenv tasks run lele:lint 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-taxonomy = {
+      enable = true;
+      name = "taxonomy_check (lele_function_taxonomy)";
+      entry = "bash -c 'cd lele_function_taxonomy && devenv tasks run lele:taxonomy_check 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+  };
 }

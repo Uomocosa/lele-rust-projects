@@ -1,10 +1,10 @@
-use crate::diagnostic;
-use crate::project;
+use crate::Diagnostic;
+use crate::Project;
 
 pub trait Checker {
     fn name(&self) -> &'static str;
     fn code(&self) -> &'static str;
-    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic>;
+    fn check(&self, project: &Project) -> Vec<Diagnostic>;
 }
 
 // no test_usage necessary

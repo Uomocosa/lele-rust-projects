@@ -1,33 +1,31 @@
 // needed helper: syn parsing utilities for mod.rs declarations
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::entry;
-use crate::mod_decl;
-use crate::reexport;
+use crate::Entry;
+use crate::ModDecl;
+use crate::ModuleInfoMap;
+use crate::Reexport;
 
 use super::module_info_build;
-
-pub type ModuleInfoMap = HashMap<PathBuf, ModuleInfo>;
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub rel_path: PathBuf,
-    pub declarations: Vec<mod_decl::ModDecl>,
-    pub reexports: Vec<reexport::Reexport>,
+    pub declarations: Vec<ModDecl>,
+    pub reexports: Vec<Reexport>,
 }
 
 #[rustfmt::skip]
 impl ModuleInfo {
-    pub fn build(_src_dir: &Path, entries: &[entry::Entry]) -> ModuleInfoMap {
+    pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
         module_info_build::build(_src_dir, entries)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::mod_decl;
-    use crate::reexport;
+    use crate::ModDecl;
+    use crate::Reexport;
 
     #[test]
     fn test_usage() {
@@ -42,7 +40,7 @@ mod tests {
         for item in file.items {
             match item {
                 syn::Item::Mod(m) => {
-                    decls.push(mod_decl::ModDecl {
+                    decls.push(ModDecl {
                         name: m.ident.to_string(),
                         is_public: matches!(m.vis, syn::Visibility::Public(_)),
                     });
@@ -70,7 +68,7 @@ mod tests {
         assert_eq!(reexports[0].segments, vec!["player", "Player"]);
     }
 
-    fn walk_tree(tree: &syn::UseTree) -> Vec<reexport::Reexport> {
+    fn walk_tree(tree: &syn::UseTree) -> Vec<Reexport> {
         match tree {
             syn::UseTree::Path(p) => {
                 let mut results = walk_tree(&p.tree);
@@ -79,15 +77,15 @@ mod tests {
                 }
                 results
             }
-            syn::UseTree::Name(n) => vec![reexport::Reexport {
+            syn::UseTree::Name(n) => vec![Reexport {
                 segments: vec![n.ident.to_string()],
                 is_glob: false,
             }],
-            syn::UseTree::Glob(_) => vec![reexport::Reexport {
+            syn::UseTree::Glob(_) => vec![Reexport {
                 segments: Vec::new(),
                 is_glob: true,
             }],
-            syn::UseTree::Rename(r) => vec![reexport::Reexport {
+            syn::UseTree::Rename(r) => vec![Reexport {
                 segments: vec![r.ident.to_string()],
                 is_glob: false,
             }],

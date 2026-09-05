@@ -10,6 +10,7 @@ use freenet::server::serve_client_api_with_listener;
 use tracing::info;
 
 use freenet_libp2p_example::discovery::Discovery;
+use freenet_libp2p_example::frame::Frame;
 use freenet_libp2p_example::frame_random_letter::random_letter;
 use freenet_libp2p_example::frame_sign_frame::sign_frame;
 use freenet_libp2p_example::identity_bridge::libp2p_keypair_from_seed::libp2p_keypair_from_seed;
@@ -173,7 +174,7 @@ async fn do_tick(
     discovery.poll().await;
     discovery.bridge_tick(std::time::Instant::now()).await;
     for (seq, entry) in discovery.chain.clone() {
-        let frame = freenet_libp2p_example::frame::Frame {
+        let frame = Frame {
             seq,
             prev: entry.prev,
             next: entry.next,
@@ -258,7 +259,7 @@ async fn run_loop(discovery: &mut Discovery) -> Result<(), Box<dyn std::error::E
     tokio::time::sleep(Duration::from_millis(500)).await;
     let mut gossip = GossipState::new();
     for (seq, entry) in discovery.chain.clone() {
-        let frame = freenet_libp2p_example::frame::Frame {
+        let frame = Frame {
             seq,
             prev: entry.prev,
             next: entry.next,

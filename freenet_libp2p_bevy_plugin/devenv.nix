@@ -15,6 +15,10 @@
     gnumake
     glibc.dev
     linuxHeaders
+    wayland
+    alsa-lib
+    udev
+    libxkbcommon
     (if pkgs ? ffmpeg-full then pkgs.ffmpeg-full else ffmpeg)
     xorg.xdpyinfo
     xterm
@@ -35,6 +39,8 @@
     "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
+    "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture"; showOutput = true; };
   };
 
   git-hooks.hooks = {

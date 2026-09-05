@@ -12,11 +12,12 @@ pub struct Fixture {
     pub key: ContractKey,
 }
 
-#[rustfmt::skip]
 impl Fixture {
     /// # Errors
     /// Returns an error if the node or contract setup fails.
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> { super::fixture_new::new().await }
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        super::fixture_new::new().await
+    }
 }
 
 // no test_usage necessary

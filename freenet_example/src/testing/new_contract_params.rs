@@ -1,6 +1,3 @@
-#[allow(clippy::expect_used)]
-/// # Panics
-/// Panics if serialization fails, which is propagated as hex encoding.
 #[must_use]
 pub fn new_contract_params() -> String {
     use ed25519_dalek::{SigningKey, VerifyingKey};
@@ -25,7 +22,7 @@ pub fn new_contract_params() -> String {
     let sk = SigningKey::from_bytes(&seed);
     let vk = VerifyingKey::from(&sk);
     m.insert(*vk.as_bytes());
-    let bytes = bincode::serialize(&m).expect("serialize params");
+    let bytes = bincode::serialize(&m).unwrap_or_default();
     hex::encode(bytes)
 }
 

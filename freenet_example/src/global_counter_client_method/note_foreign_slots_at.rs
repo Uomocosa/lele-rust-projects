@@ -1,11 +1,9 @@
 use crate::global_counter_client;
+use crate::global_counter_client::GlobalCounterClient;
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-pub fn note_foreign_slots_at(
-    client: &mut global_counter_client::GlobalCounterClient,
-    now: Instant,
-) {
+pub fn note_foreign_slots_at(client: &mut GlobalCounterClient, now: Instant) {
     let sum = foreign_sum(&client.slots, client.pubkey);
     if sum != client.foreign_sum {
         client.foreign_sum = sum;
@@ -29,6 +27,7 @@ fn foreign_sum(
 mod tests {
     use super::foreign_sum;
     use crate::global_counter_client;
+
     use std::collections::BTreeMap;
 
     fn pk(n: u8) -> global_counter_client::Pubkey {

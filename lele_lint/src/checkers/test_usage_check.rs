@@ -2,14 +2,14 @@ use std::path::Path;
 
 use super::test_usage::TestUsage;
 use crate::common;
-use crate::diagnostic;
-use crate::entry_kind;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::EntryKind;
+use crate::Project;
+use crate::Severity;
 
 const OPT_OUT: &str = "// no test_usage necessary";
 
-pub(crate) fn check(_self: &TestUsage, project: &project::Project) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -22,7 +22,7 @@ pub(crate) fn check(_self: &TestUsage, project: &project::Project) -> Vec<diagno
         }
 
         if !has_test_usage(file) {
-            diags.push(diagnostic::Diagnostic {
+            diags.push(Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
@@ -31,7 +31,7 @@ pub(crate) fn check(_self: &TestUsage, project: &project::Project) -> Vec<diagno
                     "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
                     rel_path.display()
                 ),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             });
         }
     }
@@ -40,11 +40,11 @@ pub(crate) fn check(_self: &TestUsage, project: &project::Project) -> Vec<diagno
 }
 
 // needed helper: opt-out comment lookup on disk
-fn has_test_usage_opt_out(project: &project::Project, rel_path: &Path) -> bool {
+fn has_test_usage_opt_out(project: &Project, rel_path: &Path) -> bool {
     let entry = match project
         .entries
         .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == entry_kind::EntryKind::File)
+        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)
     {
         Some(e) => e,
         None => return false,
@@ -90,7 +90,7 @@ fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
         return true;
     }
 
-    is_type_only(file) || is_thin_delegate_only(file)
+    is_type_only(file) || is_atomic_delegate_only(file)
 }
 
 // needed helper: pure module tree detection
@@ -145,8 +145,8 @@ fn is_default_only_impl(impl_block: &syn::ItemImpl) -> bool {
     true
 }
 
-// needed helper: thin-delegate-only file detection
-fn is_thin_delegate_only(file: &syn::File) -> bool {
+// needed helper: atomic-delegate-only file detection
+fn is_atomic_delegate_only(file: &syn::File) -> bool {
     let mut has_default = false;
     let mut delegate_impls = false;
 

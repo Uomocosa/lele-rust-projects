@@ -1,7 +1,7 @@
-use crate::entry_kind;
+use crate::EntryKind;
 
 pub struct Entry {
     pub relative_path: std::path::PathBuf,
     pub absolute_path: std::path::PathBuf,
-    pub kind: entry_kind::EntryKind,
+    pub kind: EntryKind,
 }

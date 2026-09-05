@@ -1,6 +1,5 @@
-#![allow(clippy::missing_const_for_fn)]
 use bevy::prelude::*;
-pub fn read_input(_input: Res<ButtonInput<KeyCode>>) {}
+pub const fn read_input(_input: Res<ButtonInput<KeyCode>>) {}
 #[cfg(test)]
 mod tests {
     #[test]

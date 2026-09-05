@@ -1,7 +1,9 @@
 pub(crate) fn has_rustfmt_skip(impl_block: &syn::ItemImpl) -> bool {
     impl_block.attrs.iter().any(|a| {
         let segs: Vec<_> = a.path().segments.iter().collect();
-        segs.len() == 2 && segs[0].ident == "rustfmt" && segs[1].ident == "skip"
+        segs.len() == 2
+            && segs.first().is_some_and(|s| s.ident == "rustfmt")
+            && segs.get(1).is_some_and(|s| s.ident == "skip")
     })
 }
 

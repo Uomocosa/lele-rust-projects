@@ -1,5 +1,3 @@
-use crate::client_error;
-use crate::freenet_client;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
@@ -9,11 +7,12 @@ use tracing::info;
 
 use freenet_stdlib::client_api::{ClientError, HostResponse};
 
-use client_error::ClientError as Ce;
+use crate::client_error::ClientError as Ce;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns `ClientError` if the WebSocket connection fails or times out.
-pub async fn connect(host: &str, port: u16) -> Result<freenet_client::FreenetClient, Ce> {
+pub async fn connect(host: &str, port: u16) -> Result<FreenetClient, Ce> {
     let url = format!("ws://{host}:{port}/v1/contract/command?encodingProtocol=native");
     info!(target: "freenet_example", url = %url, "connecting to freenet node");
 
@@ -64,7 +63,7 @@ pub async fn connect(host: &str, port: u16) -> Result<freenet_client::FreenetCli
         }
     });
 
-    Ok(freenet_client::FreenetClient {
+    Ok(FreenetClient {
         write: write_tx,
         read: read_rx,
     })

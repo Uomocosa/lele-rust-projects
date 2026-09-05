@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-#[allow(clippy::missing_const_for_fn)]
-pub fn handle_click(_input: Res<ButtonInput<MouseButton>>) {}
+pub const fn handle_click(_input: Res<ButtonInput<MouseButton>>) {}
 
 #[cfg(test)]
 mod tests {

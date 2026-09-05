@@ -1,7 +1,7 @@
-use crate::frame;
+use crate::frame::Frame;
 use crate::relay;
 
-pub fn insert(state: &mut relay::gossip_state::GossipState, frame: frame::Frame) {
+pub fn insert(state: &mut relay::gossip_state::GossipState, frame: Frame) {
     if state.seen.contains_key(&frame.seq) {
         return;
     }

@@ -1,4 +1,4 @@
-use crate::severity;
+use crate::Severity;
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -7,5 +7,5 @@ pub struct Diagnostic {
     pub col: usize,
     pub code: String,
     pub message: String,
-    pub severity: severity::Severity,
+    pub severity: Severity,
 }

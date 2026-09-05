@@ -11,7 +11,6 @@ type WsStream =
 #[derive(Deref)]
 pub struct FreenetClient(pub WsStream);
 
-#[rustfmt::skip]
 impl FreenetClient {
     /// # Errors
     /// Returns error if websocket connection fails.
@@ -21,7 +20,10 @@ impl FreenetClient {
 
     /// # Errors
     /// Returns error if serialization or send fails.
-    pub async fn send(&mut self, req: freenet_stdlib::client_api::ClientRequest<'_>) -> Result<(), String> {
+    pub async fn send(
+        &mut self,
+        req: freenet_stdlib::client_api::ClientRequest<'_>,
+    ) -> Result<(), String> {
         freenet_client_send::send(self, req).await
     }
 

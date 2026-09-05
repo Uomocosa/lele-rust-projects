@@ -2,14 +2,11 @@ use std::ffi::OsStr;
 use std::path::Path;
 use walkdir::WalkDir;
 
-use crate::entry;
-use crate::entry_kind;
-use crate::error;
+use crate::Entry;
+use crate::EntryKind;
+use crate::Error;
 
-pub(crate) fn walk_entries(
-    walk_root: &Path,
-    strip_base: &Path,
-) -> Result<Vec<entry::Entry>, error::Error> {
+pub(crate) fn walk_entries(walk_root: &Path, strip_base: &Path) -> Result<Vec<Entry>, Error> {
     let mut entries = Vec::new();
     let walker = WalkDir::new(walk_root)
         .min_depth(1)
@@ -20,19 +17,19 @@ pub(crate) fn walk_entries(
         let absolute_path = entry.path().to_path_buf();
         let relative_path = absolute_path
             .strip_prefix(strip_base)
-            .map_err(|_| error::Error::Io(std::io::Error::other("entry not under strip base")))?
+            .map_err(|_| Error::Io(std::io::Error::other("entry not under strip base")))?
             .to_path_buf();
         if entry.file_type().is_dir() {
-            entries.push(entry::Entry {
+            entries.push(Entry {
                 relative_path,
                 absolute_path,
-                kind: entry_kind::EntryKind::Directory,
+                kind: EntryKind::Directory,
             });
         } else if entry.path().extension() == Some(OsStr::new("rs")) {
-            entries.push(entry::Entry {
+            entries.push(Entry {
                 relative_path,
                 absolute_path,
-                kind: entry_kind::EntryKind::File,
+                kind: EntryKind::File,
             });
         }
     }
@@ -59,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        use crate::entry_kind::EntryKind;
+        use crate::EntryKind;
 
         let base = tempfile::tempdir().unwrap();
         let root = base.path();

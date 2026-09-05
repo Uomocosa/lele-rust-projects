@@ -1,4 +1,3 @@
-#![allow(clippy::missing_const_for_fn)]
 use crate::clicker;
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::net_id;

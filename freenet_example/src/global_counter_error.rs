@@ -1,7 +1,6 @@
-use crate::client_error;
 use thiserror::Error;
 
-use client_error::ClientError;
+use crate::client_error::ClientError;
 
 #[derive(Error, Debug)]
 pub enum GlobalCounterError {

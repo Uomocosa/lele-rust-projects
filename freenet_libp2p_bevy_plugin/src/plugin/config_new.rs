@@ -6,7 +6,7 @@ use super::config::Config;
 use crate::net_id;
 use crate::p2p;
 
-pub fn new<T: p2p::Message>(
+pub const fn new<T: p2p::Message>(
     own_id: net_id::NetworkId,
     cmd_tx: UnboundedSender<p2p::Command<T>>,
     event_rx: UnboundedReceiver<p2p::Event<T>>,
@@ -24,9 +24,10 @@ mod tests {
 
     use super::new;
     use crate::net_id::NetworkId;
+    use derive_more::Deref;
     use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
     struct Dummy(u32);
 
     #[test]

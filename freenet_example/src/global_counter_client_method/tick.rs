@@ -1,6 +1,5 @@
 use crate::global_counter_client;
 use crate::global_counter_client_method;
-use crate::global_counter_error;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -9,7 +8,9 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use global_counter_error::GlobalCounterError as Ce;
+use crate::global_counter_client::GlobalCounterClient;
+use crate::global_counter_error::GlobalCounterError as Ce;
+use crate::global_counter_error::GlobalCounterError;
 
 #[derive(Serialize, Deserialize)]
 struct SignedSlots {
@@ -46,9 +47,7 @@ fn pubkey_for_tag(tag: u64) -> global_counter_client::Pubkey {
 /// Returns `GlobalCounterError` if serialization fails or the update response is unexpected.
 /// # Panics
 /// Panics only if serialization fails due to internal error, which is propagated as `GlobalCounterError`.
-pub async fn tick(
-    client: &mut global_counter_client::GlobalCounterClient,
-) -> Result<u64, global_counter_error::GlobalCounterError> {
+pub async fn tick(client: &mut GlobalCounterClient) -> Result<u64, GlobalCounterError> {
     while let Some(result) = client.client.recv_timeout(Duration::from_millis(10)).await {
         if let Ok(HostResponse::ContractResponse(ContractResponse::UpdateNotification {
             update,
@@ -103,6 +102,7 @@ pub async fn tick(
 mod tests {
     use super::absorb_slots;
     use crate::global_counter_client;
+
     use std::collections::BTreeMap;
 
     fn pk(n: u8) -> global_counter_client::Pubkey {

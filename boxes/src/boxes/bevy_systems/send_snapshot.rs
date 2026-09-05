@@ -1,8 +1,7 @@
-#![allow(clippy::missing_const_for_fn)]
 use crate::boxes;
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::p2p;
-pub fn send_snapshot(_commands: ResMut<p2p::P2PCommands<boxes::Payload>>) {}
+pub const fn send_snapshot(_commands: ResMut<p2p::Commands<boxes::Payload>>) {}
 #[cfg(test)]
 mod tests {
     #[test]

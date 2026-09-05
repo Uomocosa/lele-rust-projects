@@ -1,27 +1,27 @@
 use freenet_stdlib::prelude::*;
 
-use crate::suite_config;
+use crate::SuiteConfig;
 
-pub fn run_suite<C: ContractInterface>(cfg: suite_config::SuiteConfig) {
-    assert_validate_accepts_gen::<C>(&cfg);
-    assert_validate_rejects_garbage::<C>(&cfg);
-    assert_summarize_deterministic::<C>(&cfg);
-    assert_summarize_detects_structural_divergence::<C>(&cfg);
-    assert_delta_nonempty_and_roundtrips::<C>(&cfg);
-    assert_delta_handles_bad_summary::<C>(&cfg);
-    assert_self_delta_empty::<C>(&cfg);
-    assert_delta_equivalence::<C>(&cfg);
-    assert_update_idempotent::<C>(&cfg);
-    assert_update_commutative::<C>(&cfg);
-    assert_update_associative::<C>(&cfg);
-    assert_update_reads_data_not_state_plus1::<C>(&cfg);
-    assert_update_empty_and_unknown_noop::<C>(&cfg);
-    assert_update_state_and_delta::<C>(&cfg);
-    assert_update_rejects_garbage_data_without_panic::<C>(&cfg);
+pub fn run_suite<C: ContractInterface>(cfg: &SuiteConfig) {
+    assert_validate_accepts_gen::<C>(cfg);
+    assert_validate_rejects_garbage::<C>(cfg);
+    assert_summarize_deterministic::<C>(cfg);
+    assert_summarize_detects_structural_divergence::<C>(cfg);
+    assert_delta_nonempty_and_roundtrips::<C>(cfg);
+    assert_delta_handles_bad_summary::<C>(cfg);
+    assert_self_delta_empty::<C>(cfg);
+    assert_delta_equivalence::<C>(cfg);
+    assert_update_idempotent::<C>(cfg);
+    assert_update_commutative::<C>(cfg);
+    assert_update_associative::<C>(cfg);
+    assert_update_reads_data_not_state_plus1::<C>(cfg);
+    assert_update_empty_and_unknown_noop::<C>(cfg);
+    assert_update_state_and_delta::<C>(cfg);
+    assert_update_rejects_garbage_data_without_panic::<C>(cfg);
 }
 
 // needed helper:
-fn assert_validate_accepts_gen<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_validate_accepts_gen<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let result = C::validate_state(cfg.params.clone(), state, RelatedContracts::default());
     assert!(
@@ -31,7 +31,7 @@ fn assert_validate_accepts_gen<C: ContractInterface>(cfg: &suite_config::SuiteCo
 }
 
 // needed helper:
-fn assert_validate_rejects_garbage<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_validate_rejects_garbage<C: ContractInterface>(cfg: &SuiteConfig) {
     for bad in [Vec::new(), b"not-bincode".to_vec(), vec![0xFF; 32]] {
         let result = C::validate_state(
             cfg.params.clone(),
@@ -46,14 +46,22 @@ fn assert_validate_rejects_garbage<C: ContractInterface>(cfg: &suite_config::Sui
 }
 
 // needed helper:
-fn assert_summarize_deterministic<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_summarize_deterministic<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
-    let Ok(a) = C::summarize_state(cfg.params.clone(), state.clone()) else {
-        assert!(false, "summarize_deterministic: first summarize failed");
+    let checked_1 = C::summarize_state(cfg.params.clone(), state.clone());
+    assert!(
+        checked_1.is_ok(),
+        "summarize_deterministic: first summarize failed"
+    );
+    let Ok(a) = checked_1 else {
         return;
     };
-    let Ok(b) = C::summarize_state(cfg.params.clone(), state) else {
-        assert!(false, "summarize_deterministic: second summarize failed");
+    let checked_2 = C::summarize_state(cfg.params.clone(), state);
+    assert!(
+        checked_2.is_ok(),
+        "summarize_deterministic: second summarize failed"
+    );
+    let Ok(b) = checked_2 else {
         return;
     };
     assert_eq!(
@@ -64,21 +72,21 @@ fn assert_summarize_deterministic<C: ContractInterface>(cfg: &suite_config::Suit
 }
 
 // needed helper:
-fn assert_summarize_detects_structural_divergence<C: ContractInterface>(
-    cfg: &suite_config::SuiteConfig,
-) {
+fn assert_summarize_detects_structural_divergence<C: ContractInterface>(cfg: &SuiteConfig) {
     let Some(divergent) = cfg.gen_divergent_equal_total else {
         return;
     };
     let Some((a, b)) = divergent() else {
         return;
     };
-    let Ok(sa) = C::summarize_state(cfg.params.clone(), a) else {
-        assert!(false, "summarize divergent a failed");
+    let checked_3 = C::summarize_state(cfg.params.clone(), a);
+    assert!(checked_3.is_ok(), "summarize divergent a failed");
+    let Ok(sa) = checked_3 else {
         return;
     };
-    let Ok(sb) = C::summarize_state(cfg.params.clone(), b) else {
-        assert!(false, "summarize divergent b failed");
+    let checked_4 = C::summarize_state(cfg.params.clone(), b);
+    assert!(checked_4.is_ok(), "summarize divergent b failed");
+    let Ok(sb) = checked_4 else {
         return;
     };
     assert_ne!(
@@ -89,35 +97,42 @@ fn assert_summarize_detects_structural_divergence<C: ContractInterface>(
 }
 
 // needed helper:
-fn assert_delta_nonempty_and_roundtrips<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_delta_nonempty_and_roundtrips<C: ContractInterface>(cfg: &SuiteConfig) {
     let base = (cfg.gen_state)();
     let update = (cfg.gen_update)(&base);
-    let Some(ahead) = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update]) else {
-        assert!(false, "delta_nonempty_and_roundtrips: apply ahead failed");
+    let checked_5 = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update]);
+    assert!(
+        checked_5.is_some(),
+        "delta_nonempty_and_roundtrips: apply ahead failed"
+    );
+    let Some(ahead) = checked_5 else {
         return;
     };
     if ahead.as_ref() == base.as_ref() {
         return;
     }
-    let Ok(summary) = C::summarize_state(cfg.params.clone(), base.clone()) else {
-        assert!(false, "summarize base for delta failed");
+    let checked_6 = C::summarize_state(cfg.params.clone(), base.clone());
+    assert!(checked_6.is_ok(), "summarize base for delta failed");
+    let Ok(summary) = checked_6 else {
         return;
     };
-    let Ok(delta) = C::get_state_delta(cfg.params.clone(), ahead.clone(), summary) else {
-        assert!(false, "get_state_delta failed");
+    let checked_7 = C::get_state_delta(cfg.params.clone(), ahead.clone(), summary);
+    assert!(checked_7.is_ok(), "get_state_delta failed");
+    let Ok(delta) = checked_7 else {
         return;
     };
     assert!(
         !delta.as_ref().is_empty(),
         "delta_nonempty_and_roundtrips: empty delta disables anti-entropy"
     );
-    let Ok(merged) = C::update_state(cfg.params.clone(), base, vec![UpdateData::Delta(delta)])
-    else {
-        assert!(false, "delta update failed");
+    let checked_8 = C::update_state(cfg.params.clone(), base, vec![UpdateData::Delta(delta)]);
+    assert!(checked_8.is_ok(), "delta update failed");
+    let Ok(merged) = checked_8 else {
         return;
     };
-    let Some(merged_state) = merged.new_state else {
-        assert!(false, "delta merge returned no state");
+    let checked_9 = merged.new_state;
+    assert!(checked_9.is_some(), "delta merge returned no state");
+    let Some(merged_state) = checked_9 else {
         return;
     };
     assert_eq!(
@@ -128,11 +143,15 @@ fn assert_delta_nonempty_and_roundtrips<C: ContractInterface>(cfg: &suite_config
 }
 
 // needed helper:
-fn assert_delta_handles_bad_summary<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_delta_handles_bad_summary<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let bad = StateSummary::from(b"garbage".to_vec());
-    let Ok(delta) = C::get_state_delta(cfg.params.clone(), state.clone(), bad) else {
-        assert!(false, "get_state_delta with bad summary must not error");
+    let checked_10 = C::get_state_delta(cfg.params.clone(), state.clone(), bad);
+    assert!(
+        checked_10.is_ok(),
+        "get_state_delta with bad summary must not error"
+    );
+    let Ok(delta) = checked_10 else {
         return;
     };
     let empty = (cfg.empty_state)();
@@ -144,19 +163,21 @@ fn assert_delta_handles_bad_summary<C: ContractInterface>(cfg: &suite_config::Su
 }
 
 // needed helper:
-fn assert_update_idempotent<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_update_idempotent<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let data = (cfg.gen_update)(&state);
-    let Some(once) = try_apply::<C>(cfg.params.clone(), state.clone(), vec![data.clone()]) else {
-        assert!(false, "update_idempotent once failed");
+    let checked_11 = try_apply::<C>(cfg.params.clone(), state.clone(), vec![data.clone()]);
+    assert!(checked_11.is_some(), "update_idempotent once failed");
+    let Some(once) = checked_11 else {
         return;
     };
-    let Some(twice) = try_apply::<C>(
+    let checked_12 = try_apply::<C>(
         cfg.params.clone(),
         state.clone(),
         vec![data.clone(), data.clone()],
-    ) else {
-        assert!(false, "update_idempotent twice failed");
+    );
+    assert!(checked_12.is_some(), "update_idempotent twice failed");
+    let Some(twice) = checked_12 else {
         return;
     };
     assert_eq!(
@@ -164,8 +185,9 @@ fn assert_update_idempotent<C: ContractInterface>(cfg: &suite_config::SuiteConfi
         twice.as_ref(),
         "update_idempotent: applying same update twice must equal once"
     );
-    let Some(reapply) = try_apply::<C>(cfg.params.clone(), once.clone(), vec![data]) else {
-        assert!(false, "reapply failed");
+    let checked_13 = try_apply::<C>(cfg.params.clone(), once.clone(), vec![data]);
+    assert!(checked_13.is_some(), "reapply failed");
+    let Some(reapply) = checked_13 else {
         return;
     };
     assert_eq!(
@@ -176,20 +198,22 @@ fn assert_update_idempotent<C: ContractInterface>(cfg: &suite_config::SuiteConfi
 }
 
 // needed helper:
-fn assert_update_commutative<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_update_commutative<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let a = (cfg.gen_update)(&state);
     let b = (cfg.gen_update)(&state);
-    let Some(ab) = try_apply::<C>(
+    let checked_14 = try_apply::<C>(
         cfg.params.clone(),
         state.clone(),
         vec![a.clone(), b.clone()],
-    ) else {
-        assert!(false, "commutative ab failed");
+    );
+    assert!(checked_14.is_some(), "commutative ab failed");
+    let Some(ab) = checked_14 else {
         return;
     };
-    let Some(ba) = try_apply::<C>(cfg.params.clone(), state, vec![b, a]) else {
-        assert!(false, "commutative ba failed");
+    let checked_15 = try_apply::<C>(cfg.params.clone(), state, vec![b, a]);
+    assert!(checked_15.is_some(), "commutative ba failed");
+    let Some(ba) = checked_15 else {
         return;
     };
     assert_eq!(
@@ -200,25 +224,28 @@ fn assert_update_commutative<C: ContractInterface>(cfg: &suite_config::SuiteConf
 }
 
 // needed helper:
-fn assert_update_associative<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_update_associative<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let a = (cfg.gen_update)(&state);
     let b = (cfg.gen_update)(&state);
     let c = (cfg.gen_update)(&state);
-    let Some(ab) = try_apply::<C>(
+    let checked_16 = try_apply::<C>(
         cfg.params.clone(),
         state.clone(),
         vec![a.clone(), b.clone()],
-    ) else {
-        assert!(false, "associative ab failed");
+    );
+    assert!(checked_16.is_some(), "associative ab failed");
+    let Some(ab) = checked_16 else {
         return;
     };
-    let Some(ab_c) = try_apply::<C>(cfg.params.clone(), ab, vec![c.clone()]) else {
-        assert!(false, "associative ab_c failed");
+    let checked_17 = try_apply::<C>(cfg.params.clone(), ab, vec![c.clone()]);
+    assert!(checked_17.is_some(), "associative ab_c failed");
+    let Some(ab_c) = checked_17 else {
         return;
     };
-    let Some(a_bc) = try_apply::<C>(cfg.params.clone(), state, vec![a, b, c]) else {
-        assert!(false, "associative a_bc failed");
+    let checked_18 = try_apply::<C>(cfg.params.clone(), state, vec![a, b, c]);
+    assert!(checked_18.is_some(), "associative a_bc failed");
+    let Some(a_bc) = checked_18 else {
         return;
     };
     assert_eq!(
@@ -229,15 +256,17 @@ fn assert_update_associative<C: ContractInterface>(cfg: &suite_config::SuiteConf
 }
 
 // needed helper:
-fn assert_update_reads_data_not_state_plus1<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_update_reads_data_not_state_plus1<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let data = (cfg.gen_update)(&state);
-    let Some(once) = try_apply::<C>(cfg.params.clone(), state.clone(), vec![data.clone()]) else {
-        assert!(false, "reads_data once failed");
+    let checked_19 = try_apply::<C>(cfg.params.clone(), state.clone(), vec![data.clone()]);
+    assert!(checked_19.is_some(), "reads_data once failed");
+    let Some(once) = checked_19 else {
         return;
     };
-    let Some(twice) = try_apply::<C>(cfg.params.clone(), state, vec![data.clone(), data]) else {
-        assert!(false, "reads_data twice failed");
+    let checked_20 = try_apply::<C>(cfg.params.clone(), state, vec![data.clone(), data]);
+    assert!(checked_20.is_some(), "reads_data twice failed");
+    let Some(twice) = checked_20 else {
         return;
     };
     assert_eq!(
@@ -248,10 +277,11 @@ fn assert_update_reads_data_not_state_plus1<C: ContractInterface>(cfg: &suite_co
 }
 
 // needed helper:
-fn assert_update_empty_and_unknown_noop<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_update_empty_and_unknown_noop<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
-    let Some(empty) = try_apply::<C>(cfg.params.clone(), state.clone(), vec![]) else {
-        assert!(false, "empty apply failed");
+    let checked_21 = try_apply::<C>(cfg.params.clone(), state.clone(), vec![]);
+    assert!(checked_21.is_some(), "empty apply failed");
+    let Some(empty) = checked_21 else {
         return;
     };
     assert_eq!(
@@ -260,19 +290,21 @@ fn assert_update_empty_and_unknown_noop<C: ContractInterface>(cfg: &suite_config
         "update_empty_and_unknown_noop: empty data must be no-op"
     );
     let related_to = ContractInstanceId::new([9u8; 32]);
-    let Ok(with_related) = C::update_state(
+    let checked_22 = C::update_state(
         cfg.params.clone(),
         state.clone(),
         vec![UpdateData::RelatedState {
             related_to,
             state: State::from(Vec::new()),
         }],
-    ) else {
-        assert!(false, "Related variant must not error");
+    );
+    assert!(checked_22.is_ok(), "Related variant must not error");
+    let Ok(with_related) = checked_22 else {
         return;
     };
-    let Some(related_state) = with_related.new_state else {
-        assert!(false, "Related returned no state");
+    let checked_23 = with_related.new_state;
+    assert!(checked_23.is_some(), "Related returned no state");
+    let Some(related_state) = checked_23 else {
         return;
     };
     assert_eq!(
@@ -283,14 +315,19 @@ fn assert_update_empty_and_unknown_noop<C: ContractInterface>(cfg: &suite_config
 }
 
 // needed helper:
-fn assert_self_delta_empty<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_self_delta_empty<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
-    let Ok(summary) = C::summarize_state(cfg.params.clone(), state.clone()) else {
-        assert!(false, "self_delta_empty: summarize failed");
+    let checked_24 = C::summarize_state(cfg.params.clone(), state.clone());
+    assert!(checked_24.is_ok(), "self_delta_empty: summarize failed");
+    let Ok(summary) = checked_24 else {
         return;
     };
-    let Ok(delta) = C::get_state_delta(cfg.params.clone(), state.clone(), summary) else {
-        assert!(false, "self_delta_empty: get_state_delta failed");
+    let checked_25 = C::get_state_delta(cfg.params.clone(), state.clone(), summary);
+    assert!(
+        checked_25.is_ok(),
+        "self_delta_empty: get_state_delta failed"
+    );
+    let Ok(delta) = checked_25 else {
         return;
     };
     assert!(
@@ -300,37 +337,62 @@ fn assert_self_delta_empty<C: ContractInterface>(cfg: &suite_config::SuiteConfig
 }
 
 // needed helper:
-fn assert_delta_equivalence<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_delta_equivalence<C: ContractInterface>(cfg: &SuiteConfig) {
     let base = (cfg.gen_state)();
     let update = (cfg.gen_update)(&base);
-    let Some(ahead) = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update]) else {
-        assert!(false, "delta_equivalence: ahead apply failed");
+    let checked_26 = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update]);
+    assert!(
+        checked_26.is_some(),
+        "delta_equivalence: ahead apply failed"
+    );
+    let Some(ahead) = checked_26 else {
         return;
     };
     if ahead.as_ref() == base.as_ref() {
         return;
     }
-    let Ok(summary) = C::summarize_state(cfg.params.clone(), base.clone()) else {
-        assert!(false, "delta_equivalence: summarize base failed");
+    let checked_27 = C::summarize_state(cfg.params.clone(), base.clone());
+    assert!(
+        checked_27.is_ok(),
+        "delta_equivalence: summarize base failed"
+    );
+    let Ok(summary) = checked_27 else {
         return;
     };
-    let Ok(delta) = C::get_state_delta(cfg.params.clone(), ahead.clone(), summary) else {
-        assert!(false, "delta_equivalence: get_state_delta failed");
+    let checked_28 = C::get_state_delta(cfg.params.clone(), ahead.clone(), summary);
+    assert!(
+        checked_28.is_ok(),
+        "delta_equivalence: get_state_delta failed"
+    );
+    let Ok(delta) = checked_28 else {
         return;
     };
     assert!(
         !delta.as_ref().is_empty(),
         "delta_equivalence: delta should be non-empty"
     );
-    let Some(via_delta) =
-        try_apply::<C>(cfg.params.clone(), base.clone(), vec![UpdateData::Delta(delta)])
-    else {
-        assert!(false, "delta_equivalence: via_delta apply failed");
+    let checked_29 = try_apply::<C>(
+        cfg.params.clone(),
+        base.clone(),
+        vec![UpdateData::Delta(delta)],
+    );
+    assert!(
+        checked_29.is_some(),
+        "delta_equivalence: via_delta apply failed"
+    );
+    let Some(via_delta) = checked_29 else {
         return;
     };
-    let Some(via_state) = try_apply::<C>(cfg.params.clone(), base, vec![UpdateData::State(ahead.clone())])
-    else {
-        assert!(false, "delta_equivalence: via_state apply failed");
+    let checked_35 = try_apply::<C>(
+        cfg.params.clone(),
+        base,
+        vec![UpdateData::State(ahead.clone())],
+    );
+    assert!(
+        checked_35.is_some(),
+        "delta_equivalence: via_state apply failed"
+    );
+    let Some(via_state) = checked_35 else {
         return;
     };
     assert_eq!(
@@ -346,12 +408,15 @@ fn assert_delta_equivalence<C: ContractInterface>(cfg: &suite_config::SuiteConfi
 }
 
 // needed helper:
-fn assert_update_state_and_delta<C: ContractInterface>(cfg: &suite_config::SuiteConfig) {
+fn assert_update_state_and_delta<C: ContractInterface>(cfg: &SuiteConfig) {
     let base = (cfg.gen_state)();
     let update_a = (cfg.gen_update)(&base);
-    let Some(ahead_a) = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update_a.clone()])
-    else {
-        assert!(false, "state_and_delta: first update apply failed");
+    let checked_30 = try_apply::<C>(cfg.params.clone(), base.clone(), vec![update_a.clone()]);
+    assert!(
+        checked_30.is_some(),
+        "state_and_delta: first update apply failed"
+    );
+    let Some(ahead_a) = checked_30 else {
         return;
     };
     if ahead_a.as_ref() == base.as_ref() {
@@ -363,19 +428,27 @@ fn assert_update_state_and_delta<C: ContractInterface>(cfg: &suite_config::Suite
         _ => return,
     };
     let state_bytes = ahead_a.as_ref().to_vec();
-    let Ok(empty_apply) = C::update_state(
+    let checked_31 = C::update_state(
         cfg.params.clone(),
         base.clone(),
         vec![UpdateData::StateAndDelta {
             state: State::from(Vec::new()),
             delta: StateDelta::from(Vec::new()),
         }],
-    ) else {
-        assert!(false, "state_and_delta: empty StateAndDelta must not error");
+    );
+    assert!(
+        checked_31.is_ok(),
+        "state_and_delta: empty StateAndDelta must not error"
+    );
+    let Ok(empty_apply) = checked_31 else {
         return;
     };
-    let Some(empty_state) = empty_apply.new_state else {
-        assert!(false, "state_and_delta: empty returned no state");
+    let checked_32 = empty_apply.new_state;
+    assert!(
+        checked_32.is_some(),
+        "state_and_delta: empty returned no state"
+    );
+    let Some(empty_state) = checked_32 else {
         return;
     };
     assert_eq!(
@@ -383,19 +456,24 @@ fn assert_update_state_and_delta<C: ContractInterface>(cfg: &suite_config::Suite
         base.as_ref(),
         "state_and_delta: empty StateAndDelta must be no-op"
     );
-    let Ok(both) = C::update_state(
+    let checked_33 = C::update_state(
         cfg.params.clone(),
         base.clone(),
         vec![UpdateData::StateAndDelta {
             state: State::from(state_bytes),
             delta: StateDelta::from(delta_bytes),
         }],
-    ) else {
-        assert!(false, "state_and_delta: combined apply failed");
+    );
+    assert!(checked_33.is_ok(), "state_and_delta: combined apply failed");
+    let Ok(both) = checked_33 else {
         return;
     };
-    let Some(combined) = both.new_state else {
-        assert!(false, "state_and_delta: combined returned no state");
+    let checked_34 = both.new_state;
+    assert!(
+        checked_34.is_some(),
+        "state_and_delta: combined returned no state"
+    );
+    let Some(combined) = checked_34 else {
         return;
     };
     assert!(
@@ -405,9 +483,7 @@ fn assert_update_state_and_delta<C: ContractInterface>(cfg: &suite_config::Suite
 }
 
 // needed helper:
-fn assert_update_rejects_garbage_data_without_panic<C: ContractInterface>(
-    cfg: &suite_config::SuiteConfig,
-) {
+fn assert_update_rejects_garbage_data_without_panic<C: ContractInterface>(cfg: &SuiteConfig) {
     let state = (cfg.gen_state)();
     let bad = State::from(b"not-state".to_vec());
     let result = C::update_state(cfg.params.clone(), state, vec![UpdateData::State(bad)]);
@@ -430,7 +506,7 @@ fn try_apply<C: ContractInterface>(
 
 #[cfg(test)]
 mod tests {
-    use crate::suite_config::SuiteConfig;
+    use crate::SuiteConfig;
     use freenet_stdlib::prelude::*;
     use std::collections::BTreeMap;
 
@@ -446,7 +522,6 @@ mod tests {
         State::from(bincode::serialize(slots).unwrap())
     }
 
-    #[contract]
     impl ContractInterface for DummyContract {
         fn validate_state(
             _parameters: Parameters<'static>,
@@ -468,8 +543,8 @@ mod tests {
                         if s.as_ref().is_empty() {
                             continue;
                         }
-                        let incoming = decode_slots(s.as_ref())
-                            .map_err(|_| ContractError::InvalidUpdate)?;
+                        let incoming =
+                            decode_slots(s.as_ref()).map_err(|_| ContractError::InvalidUpdate)?;
                         for (tag, value) in incoming {
                             let entry = current.entry(tag).or_insert(0);
                             *entry = (*entry).max(value);
@@ -479,8 +554,8 @@ mod tests {
                         if d.as_ref().is_empty() {
                             continue;
                         }
-                        let incoming = decode_slots(d.as_ref())
-                            .map_err(|_| ContractError::InvalidUpdate)?;
+                        let incoming =
+                            decode_slots(d.as_ref()).map_err(|_| ContractError::InvalidUpdate)?;
                         for (tag, value) in incoming {
                             let entry = current.entry(tag).or_insert(0);
                             *entry = (*entry).max(value);
@@ -638,6 +713,6 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        super::run_suite::<DummyContract>(cfg());
+        super::run_suite::<DummyContract>(&cfg());
     }
 }

@@ -1,11 +1,12 @@
 use std::path::Path;
 
-use super::module_info::{ModuleInfo, ModuleInfoMap};
-use crate::entry;
-use crate::mod_decl;
-use crate::reexport;
+use crate::Entry;
+use crate::ModDecl;
+use crate::ModuleInfo;
+use crate::ModuleInfoMap;
+use crate::Reexport;
 
-pub fn build(_src_dir: &Path, entries: &[entry::Entry]) -> ModuleInfoMap {
+pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
     let mut map = ModuleInfoMap::new();
 
     for entry in entries {
@@ -41,7 +42,7 @@ fn is_mod_rs(path: &Path) -> bool {
 }
 
 // needed helper: mod.rs AST parsing for declarations and re-exports
-fn parse_mod_rs(content: &str) -> (Vec<mod_decl::ModDecl>, Vec<reexport::Reexport>) {
+fn parse_mod_rs(content: &str) -> (Vec<ModDecl>, Vec<Reexport>) {
     let file = match syn::parse_file(content) {
         Ok(f) => f,
         Err(_) => return (Vec::new(), Vec::new()),
@@ -53,7 +54,7 @@ fn parse_mod_rs(content: &str) -> (Vec<mod_decl::ModDecl>, Vec<reexport::Reexpor
     for item in file.items {
         match item {
             syn::Item::Mod(m) => {
-                decls.push(mod_decl::ModDecl {
+                decls.push(ModDecl {
                     name: m.ident.to_string(),
                     is_public: matches!(m.vis, syn::Visibility::Public(_)),
                 });
@@ -73,13 +74,13 @@ fn parse_mod_rs(content: &str) -> (Vec<mod_decl::ModDecl>, Vec<reexport::Reexpor
 }
 
 // needed helper: re-export path extraction from use tree
-fn extract_reexport(tree: &syn::UseTree) -> Option<reexport::Reexport> {
+fn extract_reexport(tree: &syn::UseTree) -> Option<Reexport> {
     match tree {
         syn::UseTree::Path(p) => {
             let mut segments = vec![p.ident.to_string()];
             if let Some(child) = extract_reexport(&p.tree) {
                 segments.extend(child.segments);
-                Some(reexport::Reexport {
+                Some(Reexport {
                     segments,
                     is_glob: child.is_glob,
                 })
@@ -87,15 +88,15 @@ fn extract_reexport(tree: &syn::UseTree) -> Option<reexport::Reexport> {
                 None
             }
         }
-        syn::UseTree::Name(n) => Some(reexport::Reexport {
+        syn::UseTree::Name(n) => Some(Reexport {
             segments: vec![n.ident.to_string()],
             is_glob: false,
         }),
-        syn::UseTree::Glob(_) => Some(reexport::Reexport {
+        syn::UseTree::Glob(_) => Some(Reexport {
             segments: Vec::new(),
             is_glob: true,
         }),
-        syn::UseTree::Rename(r) => Some(reexport::Reexport {
+        syn::UseTree::Rename(r) => Some(Reexport {
             segments: vec![r.ident.to_string()],
             is_glob: false,
         }),

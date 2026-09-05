@@ -2,14 +2,11 @@ use freenet_stdlib::client_api::ClientRequest;
 use futures_util::SinkExt;
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::freenet_client;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns error if serialization or websocket send fails.
-pub async fn send(
-    client: &mut freenet_client::FreenetClient,
-    req: ClientRequest<'_>,
-) -> Result<(), String> {
+pub async fn send(client: &mut FreenetClient, req: ClientRequest<'_>) -> Result<(), String> {
     let bytes = bincode::serialize(&req).map_err(|e| e.to_string())?;
     client
         .0

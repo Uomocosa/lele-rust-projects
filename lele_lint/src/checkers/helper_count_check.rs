@@ -3,19 +3,16 @@ use std::path::Path;
 use syn::spanned::Spanned;
 
 use super::helper_count::HelperCount;
-use crate::diagnostic;
-use crate::entry_kind;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::EntryKind;
+use crate::Project;
+use crate::Severity;
 
 const MAX_PRIVATE_HELPERS: usize = 2;
 
 const ANNOTATION: &str = "// needed helper:";
 
-pub(crate) fn check(
-    _self: &HelperCount,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -39,18 +36,18 @@ pub(crate) fn check(
         let private_count = count_unannotated_private_helpers(file, &source);
 
         if private_count > MAX_PRIVATE_HELPERS {
-            diags.push(diagnostic::Diagnostic {
+            diags.push(Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
                 code: "E015".to_string(),
                 message: format!(
-                    "{} unannotated helper functions (max {}). Annotate context-specific helpers with `{}` on the line above each function; extract reusable ones into thin delegate files",
+                    "{} unannotated helper functions (max {}). Annotate context-specific helpers with `{}` on the line above each function; extract reusable ones into atomic delegate files",
                     private_count,
                     MAX_PRIVATE_HELPERS,
                     ANNOTATION
                 ),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             });
         }
 
@@ -58,7 +55,7 @@ pub(crate) fn check(
 
         if pub_like_fns.len() > 1 {
             for func in &pub_like_fns {
-                diags.push(diagnostic::Diagnostic {
+                diags.push(Diagnostic {
                     file: project.src_dir.join(rel_path),
                     line: func.sig.fn_token.span().start().line,
                     col: 0,
@@ -68,7 +65,7 @@ pub(crate) fn check(
                         pub_like_fns.len(),
                         func.sig.ident
                     ),
-                    severity: severity::Severity::Error,
+                    severity: Severity::Error,
                 });
             }
         }
@@ -77,11 +74,11 @@ pub(crate) fn check(
     diags
 }
 
-fn read_source(project: &project::Project, rel_path: &Path) -> Option<String> {
+fn read_source(project: &Project, rel_path: &Path) -> Option<String> {
     let entry = project
         .entries
         .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == entry_kind::EntryKind::File)?;
+        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)?;
 
     std::fs::read_to_string(&entry.absolute_path).ok()
 }
@@ -102,7 +99,7 @@ fn count_unannotated_private_helpers(file: &syn::File, source: &str) -> usize {
             let mut idx = line.saturating_sub(1);
 
             while idx > 0 {
-                idx -= 1;
+                idx = idx.saturating_sub(1);
                 let candidate = lines.get(idx).map(|l| l.trim()).unwrap_or("");
                 if candidate.is_empty() || candidate.starts_with("#[") {
                     continue;

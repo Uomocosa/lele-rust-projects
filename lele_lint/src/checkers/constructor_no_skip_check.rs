@@ -1,13 +1,10 @@
 use super::constructor_no_skip::ConstructorNoSkip;
 use crate::common;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(
-    _self: &ConstructorNoSkip,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &ConstructorNoSkip, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -21,7 +18,7 @@ pub(crate) fn check(
                     continue;
                 }
 
-                if is_thin_delegate(impl_block) {
+                if is_atomic_delegate(impl_block) {
                     continue;
                 }
 
@@ -34,13 +31,13 @@ pub(crate) fn check(
                     continue;
                 };
 
-                diags.push(diagnostic::Diagnostic {
+                diags.push(Diagnostic {
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
                     code: "E013".to_string(),
                     message: format!("{blurb} must not have #[rustfmt::skip]",),
-                    severity: severity::Severity::Error,
+                    severity: Severity::Error,
                 });
             }
         }
@@ -63,8 +60,8 @@ fn type_name_string(ty: &syn::Type) -> String {
     quote::quote!(#ty).to_string()
 }
 
-// needed helper: thin delegate body detection
-fn is_thin_delegate(impl_block: &syn::ItemImpl) -> bool {
+// needed helper: atomic delegate body detection
+fn is_atomic_delegate(impl_block: &syn::ItemImpl) -> bool {
     if impl_block.items.is_empty() {
         return false;
     }
@@ -73,7 +70,7 @@ fn is_thin_delegate(impl_block: &syn::ItemImpl) -> bool {
     }
     for item in &impl_block.items {
         if let syn::ImplItem::Fn(method) = item {
-            if !common::is_short_body(&method.block) {
+            if !common::is_delegate_call(&method.block) {
                 return false;
             }
         }
@@ -92,7 +89,7 @@ fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
             if matches!(sig.output, syn::ReturnType::Default) {
                 continue;
             }
-            if common::is_short_body(&method.block) {
+            if common::is_delegate_call(&method.block) {
                 continue;
             }
             return true;
@@ -103,7 +100,7 @@ fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_any_real_constructor, is_thin_delegate};
+    use super::{has_any_real_constructor, is_atomic_delegate};
     use syn::ItemImpl;
 
     #[test]
@@ -111,7 +108,7 @@ mod tests {
         let code =
             "#[rustfmt::skip] impl Default for Bar { fn default() -> Self { Bar { x: 1 } } }";
         let parsed: ItemImpl = syn::parse_str(code).unwrap();
-        assert!(!is_thin_delegate(&parsed));
+        assert!(!is_atomic_delegate(&parsed));
     }
 
     #[test]
@@ -121,15 +118,31 @@ mod tests {
         )
         .unwrap();
         assert!(has_any_real_constructor(&parsed));
-        assert!(!is_thin_delegate(&parsed));
+        assert!(!is_atomic_delegate(&parsed));
     }
 
     #[test]
-    fn test_usage_thin_delegate_has_no_real_constructor() {
+    fn test_usage_atomic_delegate_has_no_real_constructor() {
         let parsed: ItemImpl =
             syn::parse_str("impl Foo { pub fn new() -> Self { config_new::new() } }").unwrap();
         assert!(!has_any_real_constructor(&parsed));
-        assert!(is_thin_delegate(&parsed));
+        assert!(is_atomic_delegate(&parsed));
+    }
+
+    #[test]
+    fn test_usage_struct_literal_is_real_constructor() {
+        let parsed: ItemImpl =
+            syn::parse_str("impl Foo { pub fn new(x: i32) -> Self { Self { x } } }").unwrap();
+        assert!(has_any_real_constructor(&parsed));
+        assert!(!is_atomic_delegate(&parsed));
+    }
+
+    #[test]
+    fn test_usage_self_constructor_call_is_real_constructor() {
+        let parsed: ItemImpl =
+            syn::parse_str("impl Foo { pub fn coop() -> Self { Self::new() } }").unwrap();
+        assert!(has_any_real_constructor(&parsed));
+        assert!(!is_atomic_delegate(&parsed));
     }
 }
 

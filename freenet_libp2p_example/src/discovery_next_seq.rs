@@ -1,7 +1,7 @@
-use crate::discovery;
+use crate::discovery::Discovery;
 
 #[must_use]
-pub fn next_seq(d: &discovery::Discovery) -> u64 {
+pub fn next_seq(d: &Discovery) -> u64 {
     d.chain
         .keys()
         .copied()

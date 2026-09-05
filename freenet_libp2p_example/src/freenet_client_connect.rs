@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use crate::freenet_client;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns error if connection fails.
-pub async fn connect(host: &str, port: u16) -> Result<freenet_client::FreenetClient, String> {
+pub async fn connect(host: &str, port: u16) -> Result<FreenetClient, String> {
     use tokio_tungstenite::tungstenite::client::IntoClientRequest;
     let url = format!("ws://{host}:{port}/v1/contract/command?encodingProtocol=native");
     let mut request = url.into_client_request().map_err(|e| e.to_string())?;
@@ -17,7 +17,7 @@ pub async fn connect(host: &str, port: u16) -> Result<freenet_client::FreenetCli
         .await
         .map_err(|_| "ws connect timeout".to_string())?
         .map_err(|e| e.to_string())?;
-    Ok(freenet_client::FreenetClient(stream))
+    Ok(FreenetClient(stream))
 }
 
 #[cfg(test)]

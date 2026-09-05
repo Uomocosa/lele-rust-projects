@@ -1,14 +1,16 @@
 use bevy::prelude::Component;
 use derive_more::{Deref, DerefMut};
 
+use super::click_counter_decrement;
+use super::click_counter_increment;
+
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Deref, DerefMut)]
 pub struct ClickCounter(pub i32);
 
 #[rustfmt::skip]
-#[allow(clippy::arithmetic_side_effects)]
 impl ClickCounter {
-    pub fn increment(&mut self) { **self += 1; }
-    pub fn decrement(&mut self) { **self -= 1; }
+    pub fn increment(&mut self) { click_counter_increment::increment(self) }
+    pub fn decrement(&mut self) { click_counter_decrement::decrement(self) }
 }
 
 #[cfg(test)]

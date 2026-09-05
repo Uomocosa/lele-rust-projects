@@ -12,11 +12,7 @@ pub use payload::Payload;
 pub mod player;
 pub use player::Player;
 
-pub mod local_player;
-pub use local_player::LocalPlayer;
-
-pub mod spawn_box;
-pub use spawn_box::spawn_box;
+mod player_spawn_box;
 
 pub mod pick_spawn_x;
 pub use pick_spawn_x::pick_spawn_x;

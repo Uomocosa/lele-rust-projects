@@ -1,8 +1,7 @@
 use crate::Role;
-use crate::global_counter_client;
-use crate::global_counter_error;
 
-use global_counter_client::GlobalCounterClient;
+use crate::global_counter_client::GlobalCounterClient;
+use crate::global_counter_error::GlobalCounterError;
 
 /// # Errors
 /// Returns an error if the `GlobalCounterClient` connection fails.
@@ -10,7 +9,7 @@ pub async fn global_counter_connect(
     port: u16,
     wasm: &[u8],
     role: Role,
-) -> Result<GlobalCounterClient, global_counter_error::GlobalCounterError> {
+) -> Result<GlobalCounterClient, GlobalCounterError> {
     GlobalCounterClient::connect("127.0.0.1", port, wasm, role).await
 }
 

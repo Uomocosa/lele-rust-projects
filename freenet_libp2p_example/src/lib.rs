@@ -23,6 +23,9 @@ pub mod freenet_client_recv_with_timeout;
 pub mod freenet_client_send;
 pub mod identity_bridge;
 pub mod relay;
+pub use discovery::Discovery;
+pub use frame::Frame;
+pub use freenet_client::FreenetClient;
 
 #[cfg(feature = "dev")]
 pub mod testing;

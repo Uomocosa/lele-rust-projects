@@ -1,4 +1,3 @@
-#![allow(clippy::missing_const_for_fn)]
 pub mod apply_delta;
 pub use apply_delta::apply_delta;
 pub mod despawn_on_leave;

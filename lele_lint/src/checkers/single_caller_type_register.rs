@@ -1,8 +1,8 @@
 use super::single_caller_type::SingleCallerType;
-use crate::checker;
-use crate::config;
+use crate::Checker;
+use crate::Config;
 
-pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
+pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
     if config.checker_enabled("single_caller_type") {
         checkers.push(Box::new(SingleCallerType));
     }

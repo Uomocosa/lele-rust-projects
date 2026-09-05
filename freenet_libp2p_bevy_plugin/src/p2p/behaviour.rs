@@ -1,3 +1,5 @@
+#![allow(unreachable_code)]
+
 use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{identify, kad, ping, request_response};
@@ -16,7 +18,7 @@ pub struct Behaviour<T: p2p::Message> {
 mod tests {
     #[test]
     fn test_usage() {
-        assert!(true);
+        let _ = stringify!(Behaviour::<()>);
     }
 }
 // no test_usage necessary

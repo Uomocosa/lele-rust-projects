@@ -2,14 +2,11 @@ use syn::spanned::Spanned;
 
 use super::mod_rs_purity::ModRsPurity;
 use crate::common;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(
-    _self: &ModRsPurity,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &ModRsPurity, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -24,13 +21,13 @@ pub(crate) fn check(
             let Some(message) = violation_message(item) else {
                 continue;
             };
-            diags.push(diagnostic::Diagnostic {
+            diags.push(Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: item.span().start().line,
                 col: 0,
                 code: "E019".to_string(),
                 message,
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             });
         }
     }

@@ -7,8 +7,8 @@ pub use owner::Owner;
 pub mod click_counter;
 pub use click_counter::ClickCounter;
 
-pub mod click_target;
-pub use click_target::ClickTarget;
+mod click_counter_decrement;
+mod click_counter_increment;
 
 pub mod constants;
 pub use constants::*;

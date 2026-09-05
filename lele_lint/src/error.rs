@@ -19,8 +19,4 @@ pub enum Error {
 
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-
-    #[allow(dead_code)]
-    #[error("no such error code: {0}")]
-    UnknownErrorCode(String),
 }

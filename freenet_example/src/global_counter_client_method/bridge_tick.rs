@@ -1,6 +1,7 @@
 use crate::global_counter_client;
+use crate::global_counter_client::GlobalCounterClient;
 use crate::global_counter_client_method;
-use crate::global_counter_error;
+use crate::global_counter_error::GlobalCounterError;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -16,9 +17,9 @@ const REPUT_TIMEOUT: Duration = Duration::from_secs(60);
 /// # Errors
 /// Returns `GlobalCounterError` if the bridge subscribe or re-put fails.
 pub async fn bridge_tick(
-    client: &mut global_counter_client::GlobalCounterClient,
+    client: &mut GlobalCounterClient,
     now: std::time::Instant,
-) -> Result<(), global_counter_error::GlobalCounterError> {
+) -> Result<(), GlobalCounterError> {
     if !bridge_due(client.foreign_seen, client.last_bridge, now) {
         return Ok(());
     }
@@ -58,9 +59,7 @@ fn bridge_due(
 }
 
 // needed helper:
-async fn attempt_subscribe(
-    client: &mut global_counter_client::GlobalCounterClient,
-) -> Result<bool, global_counter_error::GlobalCounterError> {
+async fn attempt_subscribe(client: &mut GlobalCounterClient) -> Result<bool, GlobalCounterError> {
     info!(target: "freenet_example", tag = client.tag, "bridge: subscribe attempt");
     let instance_id = *client.contract_key.id();
     let summary = StateSummary::from(bincode::serialize(&client.slots)?);
@@ -99,9 +98,7 @@ const fn response_kind(response: &HostResponse) -> &'static str {
 }
 
 // needed helper:
-async fn attempt_reput(
-    client: &mut global_counter_client::GlobalCounterClient,
-) -> Result<bool, global_counter_error::GlobalCounterError> {
+async fn attempt_reput(client: &mut GlobalCounterClient) -> Result<bool, GlobalCounterError> {
     info!(target: "freenet_example", tag = client.tag, "bridge: re-put attempt");
     let state = WrappedState::new(bincode::serialize(&client.slots)?);
     let put_req = ContractRequest::Put {
@@ -144,9 +141,7 @@ async fn attempt_reput(
             }
         }
         other => {
-            return Err(
-                global_counter_error::GlobalCounterError::UnexpectedResponse(format!("{other:?}")),
-            );
+            return Err(GlobalCounterError::UnexpectedResponse(format!("{other:?}")));
         }
     }
     Ok(client.foreign_seen.is_some())

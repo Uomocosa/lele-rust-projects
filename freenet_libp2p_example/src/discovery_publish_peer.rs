@@ -2,11 +2,12 @@ use ed25519_dalek::SigningKey;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest};
 
 use crate::discovery;
+use crate::discovery::Discovery;
 
 /// # Errors
 /// Returns error if send fails.
 pub async fn publish_peer(
-    d: &mut discovery::Discovery,
+    d: &mut Discovery,
     pubkey: [u8; 32],
     signing: &SigningKey,
     peer_id: Vec<u8>,

@@ -7,8 +7,17 @@ pub use message_codec::MessageCodec;
 pub mod behaviour;
 pub use behaviour::Behaviour;
 
-pub mod history;
-pub use history::{HISTORY_CHUNK, decode_chunk, encode_chunk, history_key};
+pub mod decode_chunk;
+pub use decode_chunk::decode_chunk;
+
+pub mod encode_chunk;
+pub use encode_chunk::encode_chunk;
+
+pub mod history_key;
+pub use history_key::history_key;
+
+pub mod constants;
+pub use constants::*;
 
 pub mod build_swarm;
 pub use build_swarm::build_swarm;
@@ -22,11 +31,15 @@ pub use command::Command;
 pub mod event;
 pub use event::Event;
 
-pub mod p2p_commands;
-pub use p2p_commands::P2PCommands;
+pub mod commands;
+pub use commands::Commands;
 
-pub mod p2p_events;
-pub use p2p_events::P2PEvents;
+mod commands_take_all;
+
+pub mod events;
+pub use events::Events;
+
+mod events_take_all;
 
 pub mod config;
 pub use config::Config;

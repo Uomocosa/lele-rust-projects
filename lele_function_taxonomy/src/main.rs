@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use lele_function_taxonomy::driver;
+use lele_function_taxonomy::run;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "lele_function_taxonomy",
+    name = "lele-function-taxonomy",
     about = "Precise function honesty taxonomy via rustc TyCtxt"
 )]
 struct Args {
@@ -22,6 +22,6 @@ fn main() {
         .init();
 
     let args = Args::parse();
-    let code = driver::run(args.manifest_path, Some(args.honesty_depth));
+    let code = run(args.manifest_path, Some(args.honesty_depth));
     std::process::exit(code);
 }

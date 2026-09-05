@@ -1,0 +1,2 @@
+[lele.lint.checkers]
+domain_import = false

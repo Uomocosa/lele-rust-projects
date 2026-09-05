@@ -1,7 +1,7 @@
-use crate::checker;
-use crate::config;
-use crate::diagnostic;
-use crate::project;
+use crate::Checker;
+use crate::Config;
+use crate::Diagnostic;
+use crate::Project;
 
 use super::constructor_no_skip_check;
 use super::constructor_no_skip_register;
@@ -14,15 +14,15 @@ impl ConstructorNoSkip {
 }
 
 #[rustfmt::skip]
-impl checker::Checker for ConstructorNoSkip {
+impl Checker for ConstructorNoSkip {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &project::Project) -> Vec<diagnostic::Diagnostic> { constructor_no_skip_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { constructor_no_skip_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl ConstructorNoSkip {
-    pub fn register(checkers: &mut Vec<Box<dyn checker::Checker>>, config: &config::Config) {
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
         constructor_no_skip_register::register(checkers, config)
     }
 }

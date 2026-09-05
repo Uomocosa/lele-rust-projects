@@ -1,7 +1,7 @@
 { pkgs, lib, config, inputs, ... }: {
   languages.rust = {
     enable = true;
-    channel = "stable";
+    channel = "nightly";
     components = [ "rustc" "cargo" "clippy" "rustfmt" ];
   };
 
@@ -17,7 +17,37 @@
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
     "lele:nextest" = { exec = "cargo nextest run --all-targets"; showOutput = true; };
     "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
+    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
   };
 
-  git-hooks.hooks = {};
+  git-hooks.hooks = {
+    lele-clippy = {
+      enable = true;
+      name = "clippy (lele_lint)";
+      entry = "bash -c 'cd lele_lint && devenv tasks run lele:clippy 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-fmt = {
+      enable = true;
+      name = "fmt (lele_lint)";
+      entry = "bash -c 'cd lele_lint && devenv tasks run lele:fmt 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-lint = {
+      enable = true;
+      name = "lele_lint (lele_lint)";
+      entry = "bash -c 'cd lele_lint && devenv tasks run lele:lint 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-taxonomy = {
+      enable = true;
+      name = "taxonomy_check (lele_lint)";
+      entry = "bash -c 'cd lele_lint && devenv tasks run lele:taxonomy_check 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+  };
 }

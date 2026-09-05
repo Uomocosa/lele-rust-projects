@@ -8,3 +8,23 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(Update, clicker::bevy_systems::apply_delta)
         .add_systems(Update, clicker::bevy_systems::render);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::build;
+    use bevy::prelude::*;
+    use freenet_libp2p_bevy_plugin::{p2p, roster};
+
+    use crate::clicker;
+
+    #[test]
+    fn test_usage() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
+        app.insert_resource(roster::Roster::default());
+        build(&clicker::Plugin, &mut app);
+        app.update();
+    }
+}

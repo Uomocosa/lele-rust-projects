@@ -1,9 +1,9 @@
-use crate::frame;
+use crate::frame::Frame;
 use crate::frame_verify_frame;
 use crate::relay;
 
 #[must_use]
-pub fn should_accept(state: &relay::gossip_state::GossipState, frame: &frame::Frame) -> bool {
+pub fn should_accept(state: &relay::gossip_state::GossipState, frame: &Frame) -> bool {
     if !frame_verify_frame::verify_frame(frame) {
         return false;
     }

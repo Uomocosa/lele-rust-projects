@@ -1,5 +1,4 @@
-#![allow(clippy::missing_const_for_fn)]
-pub fn interpolate_remote() {}
+pub const fn interpolate_remote() {}
 #[cfg(test)]
 mod tests {
     #[test]

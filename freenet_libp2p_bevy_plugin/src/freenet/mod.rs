@@ -1,2 +1,2 @@
 pub mod client;
-pub use client::FreenetClient;
+pub use client::Client;

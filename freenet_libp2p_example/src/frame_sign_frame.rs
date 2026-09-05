@@ -1,13 +1,13 @@
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 
-use crate::frame;
+use crate::frame::Frame;
 
 #[must_use]
-pub fn sign_frame(sk: &SigningKey, seq: u64, prev: u8, next: u8) -> frame::Frame {
+pub fn sign_frame(sk: &SigningKey, seq: u64, prev: u8, next: u8) -> Frame {
     let pk = *VerifyingKey::from(sk).as_bytes();
     let msg = bincode::serialize(&(seq, pk, prev, next)).unwrap_or_default();
     let sig = sk.sign(&msg).to_bytes().to_vec();
-    frame::Frame {
+    Frame {
         seq,
         prev,
         next,

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use lele_function_taxonomy::hir_visitor::analyze_stub;
-use lele_function_taxonomy::taxonomy::FunctionTaxonomy;
+use lele_function_taxonomy::analyze_stub;
+use lele_function_taxonomy::dishonest_reason::DishonestReason;
+use lele_function_taxonomy::function_taxonomy::FunctionTaxonomy;
 use lele_function_taxonomy::taxonomy_ctx::TaxonomyCtx;
 
 fn is_const_fn(content: &str) -> bool {
@@ -119,11 +120,7 @@ fn test_usage_factory_dishonest() {
         if callees.contains(&"get_time_inner".to_string()) {
             callee_map.insert(
                 "get_time_inner".to_string(),
-                FunctionTaxonomy::Dishonest(
-                    lele_function_taxonomy::taxonomy::DishonestReason::HiddenRead(
-                        "time".to_string(),
-                    ),
-                ),
+                FunctionTaxonomy::Dishonest(DishonestReason::HiddenRead("time".to_string())),
             );
         }
         let has_hidden_read = has_hidden || !callees.is_empty();

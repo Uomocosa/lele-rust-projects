@@ -1,8 +1,4 @@
-#![allow(unexpected_cfgs)]
-#![allow(clippy::assertions_on_constants)]
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::type_complexity)]
-pub mod run_suite;
+mod run_suite;
 pub mod suite_config;
 
 pub use run_suite::run_suite;

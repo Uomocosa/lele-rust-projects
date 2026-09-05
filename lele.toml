@@ -1,0 +1,2 @@
+[lele.config]
+exclude = ["__OLD__", "downloads", "target", ".devenv", ".git", "node_modules", "casa_rossa_discord", "deskctrl_mcp", "test_orchestrator_mcp"]

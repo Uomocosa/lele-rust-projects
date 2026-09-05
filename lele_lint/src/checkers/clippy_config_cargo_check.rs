@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use super::clippy_config_cargo::ClippyConfigCargo;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
 const REQUIRED_LINTS: &[&str] = &[
     "unwrap_used",
@@ -21,34 +21,31 @@ const REQUIRED_LINTS: &[&str] = &[
     "as_conversions",
 ];
 
-pub(crate) fn check(
-    _self: &ClippyConfigCargo,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &ClippyConfigCargo, project: &Project) -> Vec<Diagnostic> {
     let cargo_path = project.root.join("Cargo.toml");
     let content = match std::fs::read_to_string(&cargo_path) {
         Ok(c) => c,
         Err(_) => {
-            return vec![diagnostic::Diagnostic {
+            return vec![Diagnostic {
                 file: cargo_path,
                 line: 1,
                 col: 0,
                 code: ClippyConfigCargo::CODE.to_string(),
                 message: "Cargo.toml not found or unreadable — add [lints.clippy] with minimum clippy config".to_string(),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             }];
         }
     };
     let value: toml::Value = match content.parse() {
         Ok(v) => v,
         Err(e) => {
-            return vec![diagnostic::Diagnostic {
+            return vec![Diagnostic {
                 file: cargo_path,
                 line: 1,
                 col: 0,
                 code: ClippyConfigCargo::CODE.to_string(),
                 message: format!("Cargo.toml parse error: {e}"),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             }];
         }
     };
@@ -70,20 +67,20 @@ pub(crate) fn check(
             }
             diags
         }
-        None => vec![diagnostic::Diagnostic {
+        None => vec![Diagnostic {
             file: cargo_path.clone(),
             line: 1,
             col: 0,
             code: ClippyConfigCargo::CODE.to_string(),
             message: "missing [lints.clippy] in Cargo.toml — add minimum clippy config (pedantic/nursery + 13 deny lints)".to_string(),
-            severity: severity::Severity::Error,
+            severity: Severity::Error,
         }],
     }
 }
 
 fn resolve_clippy_table(
     value: &toml::Value,
-    project: &project::Project,
+    project: &Project,
     cargo_path: &PathBuf,
 ) -> Option<toml::value::Table> {
     if let Some(table) = value
@@ -133,7 +130,7 @@ fn inherits_workspace_lints(value: &toml::Value) -> bool {
 }
 
 // needed helper:
-fn find_workspace_root(project: &project::Project) -> Option<PathBuf> {
+fn find_workspace_root(project: &Project) -> Option<PathBuf> {
     let mut cur = project.root.parent().map(|p| p.to_path_buf());
     while let Some(dir) = cur {
         if dir.join("Cargo.toml").exists() {
@@ -177,8 +174,8 @@ fn is_deny_with_priority(value: &toml::Value, require_priority: bool) -> bool {
 }
 
 // needed helper:
-fn diag_for_key(path: &PathBuf, key: &str, expected: &str) -> diagnostic::Diagnostic {
-    diagnostic::Diagnostic {
+fn diag_for_key(path: &PathBuf, key: &str, expected: &str) -> Diagnostic {
+    Diagnostic {
         file: path.clone(),
         line: 1,
         col: 0,
@@ -186,7 +183,7 @@ fn diag_for_key(path: &PathBuf, key: &str, expected: &str) -> diagnostic::Diagno
         message: format!(
             "Cargo.toml [lints.clippy].{key} {expected} — minimum clippy config requires it"
         ),
-        severity: severity::Severity::Error,
+        severity: Severity::Error,
     }
 }
 

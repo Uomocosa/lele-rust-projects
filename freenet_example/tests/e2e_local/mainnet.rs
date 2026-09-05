@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use freenet_example::testing::finish_record;
-use freenet_example::testing::load_telegram_creds;
+use freenet_example::testing::load_creds;
 use freenet_example::testing::send_video_file;
 use freenet_example::testing::start_record;
 use freenet_example::testing::wakeup_screen;
@@ -209,7 +209,7 @@ async fn local_mainnet() {
             "telegram video missing: clip not recorded at {clip_path:?} converged={converged} contract_params={contract_params}"
         );
     };
-    let Some(creds) = load_telegram_creds::load_creds() else {
+    let Some(creds) = load_creds() else {
         panic!(
             "telegram creds missing: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not found — symlink freenet_example/.env -> ../deskctrl_mcp/.env (converged={converged} contract_params={contract_params})"
         );

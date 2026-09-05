@@ -1,4 +1,3 @@
-#![allow(clippy::missing_const_for_fn)]
 pub mod apply_snapshot;
 pub use apply_snapshot::apply_snapshot;
 pub mod despawn_on_leave;

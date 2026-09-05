@@ -1,7 +1,7 @@
 use super::clippy_config_clippy::ClippyConfigClippy;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
 const REQUIRED_KEYS: &[&str] = &[
     "allow-unwrap-in-tests",
@@ -10,47 +10,44 @@ const REQUIRED_KEYS: &[&str] = &[
     "allow-indexing-slicing-in-tests",
 ];
 
-pub(crate) fn check(
-    _self: &ClippyConfigClippy,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &ClippyConfigClippy, project: &Project) -> Vec<Diagnostic> {
     let path = project.root.join("clippy.toml");
     let content = match std::fs::read_to_string(&path) {
         Ok(c) => c,
         Err(_) => {
-            return vec![diagnostic::Diagnostic {
+            return vec![Diagnostic {
                 file: path,
                 line: 1,
                 col: 0,
                 code: ClippyConfigClippy::CODE.to_string(),
                 message: "clippy.toml not found — add it with allow-unwrap-in-tests, allow-expect-in-tests, allow-panic-in-tests, allow-indexing-slicing-in-tests = true".to_string(),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             }];
         }
     };
     let value: toml::Value = match content.parse() {
         Ok(v) => v,
         Err(e) => {
-            return vec![diagnostic::Diagnostic {
+            return vec![Diagnostic {
                 file: path,
                 line: 1,
                 col: 0,
                 code: ClippyConfigClippy::CODE.to_string(),
                 message: format!("clippy.toml parse error: {e}"),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             }];
         }
     };
     let table = match value.as_table() {
         Some(t) => t,
         None => {
-            return vec![diagnostic::Diagnostic {
+            return vec![Diagnostic {
                 file: path,
                 line: 1,
                 col: 0,
                 code: ClippyConfigClippy::CODE.to_string(),
                 message: "clippy.toml must be a table with allow-* = true entries".to_string(),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             }];
         }
     };
@@ -58,7 +55,7 @@ pub(crate) fn check(
     for key in REQUIRED_KEYS {
         match table.get(*key) {
             Some(toml::Value::Boolean(true)) => {}
-            _ => diags.push(diagnostic::Diagnostic {
+            _ => diags.push(Diagnostic {
                 file: path.clone(),
                 line: 1,
                 col: 0,
@@ -66,7 +63,7 @@ pub(crate) fn check(
                 message: format!(
                     "clippy.toml missing {key} = true — minimum clippy config requires it"
                 ),
-                severity: severity::Severity::Error,
+                severity: Severity::Error,
             }),
         }
     }

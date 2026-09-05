@@ -3,17 +3,14 @@ use std::path::Path;
 
 use super::method_visibility::MethodVisibility;
 use crate::common;
-use crate::diagnostic;
-use crate::entry;
-use crate::entry_kind;
-use crate::module_info;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Entry;
+use crate::EntryKind;
+use crate::ModuleInfoMap;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(
-    _self: &MethodVisibility,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     let dir_groups = group_entries_by_parent_dir(&project.entries);
@@ -27,12 +24,12 @@ pub(crate) fn check(
                     continue;
                 }
 
-                let method_mod_name = file_name.strip_suffix(".rs").unwrap();
+                let method_mod_name = file_name.strip_suffix(".rs").unwrap_or(file_name);
 
                 if let Some(declared_pub) =
                     declared_as_pub_mod(&project.module_info, parent_dir, method_mod_name)
                 {
-                    diags.push(diagnostic::Diagnostic {
+                    diags.push(Diagnostic {
                         file: declared_pub,
                         line: 1,
                         col: 0,
@@ -41,14 +38,14 @@ pub(crate) fn check(
                             "method file `{}` of struct `{}` must be declared with `mod` (private), not `pub mod`",
                             file_name, struct_name
                         ),
-                        severity: severity::Severity::Error,
+                        severity: Severity::Error,
                     });
                 }
 
                 if let Some(reexported_at) =
                     reexported_in_pub_use(&project.module_info, parent_dir, method_mod_name)
                 {
-                    diags.push(diagnostic::Diagnostic {
+                    diags.push(Diagnostic {
                         file: reexported_at,
                         line: 1,
                         col: 0,
@@ -57,7 +54,7 @@ pub(crate) fn check(
                             "method file `{}` of struct `{}` must not appear in a `pub use` re-export",
                             file_name, struct_name
                         ),
-                        severity: severity::Severity::Error,
+                        severity: Severity::Error,
                     });
                 }
             }
@@ -68,7 +65,7 @@ pub(crate) fn check(
 }
 
 // needed helper: method-file classification (no type definition)
-fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &project::Project) -> bool {
+fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &Project) -> bool {
     let rel_path = if parent_dir.is_empty() {
         Path::new(file_name).to_path_buf()
     } else {
@@ -97,12 +94,12 @@ fn is_actually_method_file(file_name: &str, parent_dir: &str, project: &project:
 
 // needed helper: directory-grouped entry map
 fn group_entries_by_parent_dir(
-    entries: &[entry::Entry],
+    entries: &[Entry],
 ) -> std::collections::BTreeMap<String, Vec<String>> {
     let mut map: std::collections::BTreeMap<String, Vec<String>> =
         std::collections::BTreeMap::new();
     for entry in entries {
-        if entry.kind != entry_kind::EntryKind::File {
+        if entry.kind != EntryKind::File {
             continue;
         }
         let parent = entry
@@ -111,12 +108,10 @@ fn group_entries_by_parent_dir(
             .unwrap_or(Path::new(""))
             .to_string_lossy()
             .to_string();
-        let file_name = entry
-            .relative_path
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
+        let Some(file_name) = entry.relative_path.file_name() else {
+            continue;
+        };
+        let file_name = file_name.to_string_lossy().to_string();
         map.entry(parent).or_default().push(file_name);
     }
     map
@@ -126,7 +121,7 @@ fn group_entries_by_parent_dir(
 fn collect_struct_names(
     file_names: &[String],
     parent_dir: &str,
-    project: &project::Project,
+    project: &Project,
 ) -> HashSet<String> {
     let mut names = HashSet::new();
     for f in file_names {
@@ -153,7 +148,9 @@ fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<Str
     let stem = file_name.strip_suffix(".rs")?;
     let underscores: Vec<usize> = stem.match_indices('_').map(|(i, _)| i).collect();
     for &pos in underscores.iter().rev() {
-        let prefix = &stem[..pos];
+        let Some(prefix) = stem.get(..pos) else {
+            continue;
+        };
         if struct_names.contains(prefix) {
             return Some(prefix.to_string());
         }
@@ -163,7 +160,7 @@ fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<Str
 
 // needed helper: pub mod declaration check
 fn declared_as_pub_mod(
-    module_info: &module_info::ModuleInfoMap,
+    module_info: &ModuleInfoMap,
     parent_dir: &str,
     mod_name: &str,
 ) -> Option<std::path::PathBuf> {
@@ -185,7 +182,7 @@ fn declared_as_pub_mod(
 
 // needed helper: pub use re-export check
 fn reexported_in_pub_use(
-    module_info: &module_info::ModuleInfoMap,
+    module_info: &ModuleInfoMap,
     parent_dir: &str,
     mod_name: &str,
 ) -> Option<std::path::PathBuf> {
@@ -198,10 +195,11 @@ fn reexported_in_pub_use(
     let info = module_info.get(&mod_rs_path)?;
 
     for reexport in &info.reexports {
-        if reexport.segments.len() == 1 && reexport.segments[0] == mod_name {
+        if reexport.segments.len() == 1 && reexport.segments.first().is_some_and(|s| s == mod_name)
+        {
             return Some(info.rel_path.clone());
         }
-        if reexport.segments.len() == 2 && reexport.segments[1] == mod_name {
+        if reexport.segments.len() == 2 && reexport.segments.get(1).is_some_and(|s| s == mod_name) {
             return Some(info.rel_path.clone());
         }
     }

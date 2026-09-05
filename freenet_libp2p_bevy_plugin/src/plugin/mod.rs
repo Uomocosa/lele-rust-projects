@@ -4,7 +4,7 @@ pub use config::Config;
 mod config_new;
 mod config_take_event_rx;
 
-pub mod plugin;
-pub use plugin::P2PPlugin;
+pub mod p2p_plugin;
+pub use p2p_plugin::P2PPlugin;
 
-pub mod plugin_build;
+mod p2p_plugin_build;

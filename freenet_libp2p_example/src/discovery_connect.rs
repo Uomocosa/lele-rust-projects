@@ -9,21 +9,17 @@ use freenet_stdlib::prelude::{
 };
 
 use crate::discovery;
+use crate::discovery::Discovery;
 use crate::discovery_update_data_bytes;
-use crate::freenet_client;
+use crate::freenet_client::FreenetClient;
 
 /// # Errors
 /// Returns error if connection fails.
 ///
 /// # Panics
 /// May panic if serialization fails.
-pub async fn connect(
-    host: &str,
-    port: u16,
-    wasm: &[u8],
-    lobby: &str,
-) -> Result<discovery::Discovery, String> {
-    let mut client = freenet_client::FreenetClient::connect(host, port).await?;
+pub async fn connect(host: &str, port: u16, wasm: &[u8], lobby: &str) -> Result<Discovery, String> {
+    let mut client = FreenetClient::connect(host, port).await?;
     let serialized = bincode::serialize(&lobby.to_string()).unwrap_or_default();
     let params = Parameters::from(serialized);
     let code = Arc::new(ContractCode::from(wasm.to_vec()));
@@ -100,7 +96,7 @@ pub async fn connect(
         let _ = client.send(retry_get).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
     }
-    Ok(discovery::Discovery {
+    Ok(Discovery {
         client,
         key,
         lobby: lobby.to_string(),

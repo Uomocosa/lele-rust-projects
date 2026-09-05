@@ -2,14 +2,11 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use super::no_trivial_accessors::NoTrivialAccessors;
-use crate::diagnostic;
-use crate::project;
-use crate::severity;
+use crate::Diagnostic;
+use crate::Project;
+use crate::Severity;
 
-pub(crate) fn check(
-    _self: &NoTrivialAccessors,
-    project: &project::Project,
-) -> Vec<diagnostic::Diagnostic> {
+pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -36,7 +33,7 @@ pub(crate) fn check(
                         }
                         if let Some(field) = is_trivial_accessor(method, &pub_fields) {
                             let vis = vis_fields.get(&field).cloned().unwrap_or_default();
-                            diags.push(diagnostic::Diagnostic {
+                            diags.push(Diagnostic {
                                 file: project.src_dir.join(rel_path),
                                 line: 1,
                                 col: 0,
@@ -45,11 +42,11 @@ pub(crate) fn check(
                                     "trivial accessor `{}` reads {vis} field `{field}`, make field public/pub(crate) and access directly",
                                     method.sig.ident
                                 ),
-                                severity: severity::Severity::Error,
+                                severity: Severity::Error,
                             });
                         } else if let Some(field) = is_trivial_setter(method, &pub_fields) {
                             let vis = vis_fields.get(&field).cloned().unwrap_or_default();
-                            diags.push(diagnostic::Diagnostic {
+                            diags.push(Diagnostic {
                                 file: project.src_dir.join(rel_path),
                                 line: 1,
                                 col: 0,
@@ -58,7 +55,7 @@ pub(crate) fn check(
                                     "trivial setter `{}` assigns {vis} field `{field}`, make field public/pub(crate) and assign directly",
                                     method.sig.ident
                                 ),
-                                severity: severity::Severity::Error,
+                                severity: Severity::Error,
                             });
                         }
                     }
@@ -68,11 +65,6 @@ pub(crate) fn check(
     }
 
     diags
-}
-
-#[allow(dead_code)]
-fn collect_pub_fields(file: &syn::File) -> HashSet<String> {
-    collect_vis_fields(file).keys().cloned().collect()
 }
 
 // needed helper: visible field collection — pub + all Visibility::Restricted
@@ -180,11 +172,9 @@ fn is_trivial_accessor(method: &syn::ImplItemFn, pub_fields: &HashSet<String>) -
     }
 
     let stmts = filtered_stmts(&method.block);
-    if stmts.len() != 1 {
+    let [stmt] = stmts.as_slice() else {
         return None;
-    }
-
-    let stmt = stmts[0];
+    };
 
     let expr = match stmt {
         syn::Stmt::Expr(expr, _) => expr,
@@ -208,11 +198,9 @@ fn is_trivial_setter(method: &syn::ImplItemFn, pub_fields: &HashSet<String>) -> 
     }
 
     let stmts = filtered_stmts(&method.block);
-    if stmts.len() != 1 {
+    let [stmt] = stmts.as_slice() else {
         return None;
-    }
-
-    let stmt = stmts[0];
+    };
     let expr = match stmt {
         syn::Stmt::Expr(expr, _) => expr,
         _ => return None,
@@ -370,7 +358,6 @@ mod tests {
     fn test_usage_allows_builder() {
         let method: syn::ImplItemFn =
             syn::parse_str("fn with_tag(self, tag: u64) -> Self { Self { tag, ..self } }").unwrap();
-        let fields: HashSet<String> = HashSet::new();
         assert!(super::is_builder(&method));
     }
 }

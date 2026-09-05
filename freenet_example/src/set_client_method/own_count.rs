@@ -1,7 +1,7 @@
-use crate::set_client;
+use crate::set_client::SetClient;
 
 #[must_use]
-pub const fn own_count(client: &set_client::SetClient) -> u64 {
+pub const fn own_count(client: &SetClient) -> u64 {
     client.seq
 }
 

@@ -1,17 +1,15 @@
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest};
 
 use crate::discovery;
-use crate::frame;
+use crate::discovery::Discovery;
+use crate::frame::Frame;
 
 /// # Errors
 /// Returns error if send fails.
 ///
 /// # Panics
 /// May panic if serialization fails.
-pub async fn publish_frame(
-    d: &mut discovery::Discovery,
-    frame: &frame::Frame,
-) -> Result<(), String> {
+pub async fn publish_frame(d: &mut Discovery, frame: &Frame) -> Result<(), String> {
     let mut delta = discovery::StateData::default();
     delta.chain.insert(
         frame.seq,

@@ -1,16 +1,16 @@
 use std::path::Path;
 
 use super::project::Project;
-use crate::error;
-use crate::module_info;
 use crate::project_find_cargo_root;
 use crate::project_parse_source_files;
 use crate::project_walk_entries;
+use crate::Error;
+use crate::ModuleInfo;
 
 pub fn discover(
     start_dir: Option<&Path>,
     scan_folders: Option<&[String]>,
-) -> Result<Project, error::Error> {
+) -> Result<Project, Error> {
     let cwd = std::env::current_dir()?;
     let base = start_dir.unwrap_or(&cwd);
 
@@ -21,10 +21,10 @@ pub fn discover(
     let root = project_find_cargo_root::find_cargo_root(base)?;
     let src_dir = root.join("src");
     if !src_dir.exists() || !src_dir.is_dir() {
-        return Err(error::Error::NoSrcDirectory(src_dir.display().to_string()));
+        return Err(Error::NoSrcDirectory(src_dir.display().to_string()));
     }
     let entries = project_walk_entries::walk_entries(&src_dir, &src_dir)?;
-    let module_info = module_info::ModuleInfo::build(&src_dir, &entries);
+    let module_info = ModuleInfo::build(&src_dir, &entries);
     let parsed_files = project_parse_source_files::parse_source_files(&src_dir, &entries);
     Ok(Project {
         root,
@@ -36,17 +36,17 @@ pub fn discover(
 }
 
 // needed helper: aggregate scanning over explicitly-passed folders (relative to the invocation base)
-fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, error::Error> {
+fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, Error> {
     let mut entries = Vec::new();
     for folder in folders {
         let rel = folder.trim_start_matches('/');
         let abs = base.join(rel);
         if !abs.exists() || !abs.is_dir() {
-            return Err(error::Error::NoScanFolder(abs.display().to_string()));
+            return Err(Error::NoScanFolder(abs.display().to_string()));
         }
         entries.extend(project_walk_entries::walk_entries(&abs, base)?);
     }
-    let module_info = module_info::ModuleInfo::build(base, &entries);
+    let module_info = ModuleInfo::build(base, &entries);
     let parsed_files = project_parse_source_files::parse_source_files(base, &entries);
     let owned_base = base.to_path_buf();
     Ok(Project {
@@ -64,6 +64,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use super::discover;
+    use crate::Error;
 
     fn write_file(base: &Path, p: &str) {
         let path = base.join(p);
@@ -110,7 +111,7 @@ mod tests {
         let folders = vec!["nope".to_string()];
         assert!(matches!(
             discover(Some(root), Some(&folders)),
-            Err(crate::error::Error::NoScanFolder(_))
+            Err(Error::NoScanFolder(_))
         ));
     }
 }

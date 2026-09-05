@@ -1,10 +1,11 @@
 use async_trait::async_trait;
+use derive_more::Deref;
+use libp2p::StreamProtocol;
 use libp2p::request_response::Codec;
-use libp2p::{StreamProtocol, swarm::StreamProtocol as _};
 
 use crate::p2p;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deref)]
 pub struct MessageCodec<T>(std::marker::PhantomData<T>);
 
 impl<T> Default for MessageCodec<T> {
@@ -83,8 +84,9 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     use super::MessageCodec;
+    use derive_more::Deref;
 
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
     struct Dummy(u32);
 
     #[test]
