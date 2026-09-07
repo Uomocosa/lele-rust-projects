@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use super::config::Config;
@@ -11,11 +9,7 @@ pub const fn new<T: p2p::Message>(
     cmd_tx: UnboundedSender<p2p::Command<T>>,
     event_rx: UnboundedReceiver<p2p::Event<T>>,
 ) -> Config<T> {
-    Config {
-        own_id,
-        cmd_tx,
-        event_rx: Mutex::new(Some(event_rx)),
-    }
+    Config(p2p::Config::new(own_id, cmd_tx, event_rx))
 }
 
 #[cfg(test)]
@@ -36,5 +30,6 @@ mod tests {
         let (_, event_rx) = mpsc::unbounded_channel();
         let cfg = new::<Dummy>(NetworkId(1), cmd_tx, event_rx);
         assert_eq!(*cfg.own_id, 1);
+        assert!(cfg.take_event_rx().is_some());
     }
 }

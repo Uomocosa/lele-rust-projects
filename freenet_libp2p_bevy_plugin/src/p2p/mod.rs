@@ -28,6 +28,12 @@ pub use run::run;
 pub mod command;
 pub use command::Command;
 
+pub mod bridge;
+pub use bridge::Bridge;
+
+pub mod spawn_runner;
+pub use spawn_runner::spawn_runner;
+
 pub mod event;
 pub use event::Event;
 

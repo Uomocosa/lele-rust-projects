@@ -1,10 +1,72 @@
 use bevy::prelude::*;
+
+use freenet_libp2p_bevy_plugin::net_id;
 use freenet_libp2p_bevy_plugin::roster;
-pub const fn spawn_on_join(_roster: Res<roster::Roster>) {}
+
+use crate::clicker;
+
+pub fn spawn_on_join(
+    mut commands: Commands,
+    roster: Res<roster::Roster>,
+    owners: Query<&clicker::Owner>,
+    lobby: Res<clicker::ActiveLobby>,
+    own: Res<net_id::NetworkId>,
+) {
+    let roster = roster.into_inner();
+    let lobby = lobby.into_inner();
+    let own = own.into_inner();
+    let mut known = Vec::new();
+    for owner in &owners {
+        known.push(**owner);
+    }
+    let Some(members) = roster.get(&**lobby) else {
+        return;
+    };
+    let total = members.len().saturating_add(1).min(clicker::LOBBY_CAP);
+    for peer in members.values() {
+        let id = net_id::NetworkId::from_peer(peer);
+        if id == *own || known.contains(&id) {
+            continue;
+        }
+        if known.len() >= clicker::LOBBY_CAP {
+            tracing::warn!("lobby {} full, ignoring {}", **lobby, *id);
+            continue;
+        }
+        known.push(id);
+        let index = known.len().saturating_sub(1);
+        tracing::info!("spawned remote target owner={} peer={peer}", *id);
+        clicker::spawn_target(&mut commands, id, index, total, false);
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use bevy::prelude::*;
+
+    use super::spawn_on_join;
+    use crate::clicker;
+    use freenet_libp2p_bevy_plugin::{net_id, roster};
+
     #[test]
     fn test_usage() {
-        assert_eq!(1, 1);
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(roster::Roster::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut().resource_mut::<roster::Roster>().add_entry(
+            "alpha".to_string(),
+            *blake3::hash(b"peer").as_bytes(),
+            "peer".to_string(),
+        );
+        app.add_systems(Update, spawn_on_join);
+        app.update();
+        app.update();
+        let count = app
+            .world_mut()
+            .query::<&clicker::Owner>()
+            .iter(app.world())
+            .count();
+        assert_eq!(count, 1);
     }
 }

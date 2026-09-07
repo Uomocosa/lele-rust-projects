@@ -1,17 +1,12 @@
-use std::sync::Mutex;
-
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use derive_more::Deref;
 
 use super::config_new;
-use super::config_take_event_rx;
 use crate::net_id;
 use crate::p2p;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-pub struct Config<T: p2p::Message> {
-    pub own_id: net_id::NetworkId,
-    pub cmd_tx: UnboundedSender<p2p::Command<T>>,
-    pub event_rx: Mutex<Option<UnboundedReceiver<p2p::Event<T>>>>,
-}
+#[derive(Deref)]
+pub struct Config<T: p2p::Message>(pub p2p::Config<T>);
 
 #[rustfmt::skip]
 impl<T: p2p::Message> Config<T> {
@@ -22,9 +17,6 @@ impl<T: p2p::Message> Config<T> {
         event_rx: UnboundedReceiver<p2p::Event<T>>,
     ) -> Self {
         config_new::new(own_id, cmd_tx, event_rx)
-    }
-    pub fn take_event_rx(&self) -> Option<UnboundedReceiver<p2p::Event<T>>> {
-        config_take_event_rx::take_event_rx(self)
     }
 }
 // no test_usage necessary

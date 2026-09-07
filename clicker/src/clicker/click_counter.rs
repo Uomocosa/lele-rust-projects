@@ -1,6 +1,7 @@
 use bevy::prelude::Component;
 use derive_more::{Deref, DerefMut};
 
+use super::click_counter_add;
 use super::click_counter_decrement;
 use super::click_counter_increment;
 
@@ -11,6 +12,7 @@ pub struct ClickCounter(pub i32);
 impl ClickCounter {
     pub fn increment(&mut self) { click_counter_increment::increment(self) }
     pub fn decrement(&mut self) { click_counter_decrement::decrement(self) }
+    pub fn add(&mut self, delta: i32) { click_counter_add::add(self, delta) }
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ use derive_more::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use super::roster_add_entry;
+use super::roster_remove_entry;
 
 #[derive(Debug, Clone, Default, Resource, Deref, DerefMut, Serialize, Deserialize)]
 pub struct Roster(pub BTreeMap<String, BTreeMap<[u8; 32], String>>);
@@ -12,6 +13,7 @@ pub struct Roster(pub BTreeMap<String, BTreeMap<[u8; 32], String>>);
 #[rustfmt::skip]
 impl Roster {
     pub fn add_entry(&mut self, lobby: String, id: [u8; 32], addr: String) { roster_add_entry::add_entry(self, lobby, id, addr) }
+    pub fn remove_entry(&mut self, lobby: &str, id: [u8; 32]) -> bool { roster_remove_entry::remove_entry(self, lobby, id) }
 }
 
 #[cfg(test)]

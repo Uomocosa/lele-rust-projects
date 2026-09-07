@@ -52,6 +52,9 @@ pub fn build_swarm<T: p2p::Message>(
             },
         )
         .map_err(|e| e.to_string())?
+        .with_swarm_config(|cfg| {
+            cfg.with_idle_connection_timeout(std::time::Duration::from_secs(u64::MAX))
+        })
         .build();
     Ok(swarm)
 }

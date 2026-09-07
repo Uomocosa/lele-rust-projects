@@ -19,6 +19,11 @@
     alsa-lib
     udev
     libxkbcommon
+    xorg.libX11
+    xorg.libXext
+    xorg.libXrandr
+    xorg.libXcursor
+    xorg.libXi
     (if pkgs ? ffmpeg-full then pkgs.ffmpeg-full else ffmpeg)
     xorg.xdpyinfo
     xterm
