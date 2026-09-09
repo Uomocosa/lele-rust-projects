@@ -109,16 +109,14 @@ mod tests {
     ) {
         clock.frames = clock.frames.saturating_add(1);
         let start = *clock.start.get_or_insert_with(std::time::Instant::now);
-        if !clock.saved
-            && clock.frames >= 30
-            && start.elapsed() >= std::time::Duration::from_secs(2)
+        if !clock.saved && clock.frames >= 5 && start.elapsed() >= std::time::Duration::from_secs(1)
         {
             clock.saved = true;
             commands
                 .spawn(Screenshot::primary_window())
                 .observe(save_to_disk(shot_path()));
         }
-        if clock.frames >= 60 && start.elapsed() >= std::time::Duration::from_secs(5) {
+        if clock.frames >= 10 && start.elapsed() >= std::time::Duration::from_secs(2) {
             exit.write(AppExit::Success);
         }
     }
