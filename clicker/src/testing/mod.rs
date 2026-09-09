@@ -16,6 +16,12 @@ pub use poke::poke;
 pub mod require_xterm;
 pub use require_xterm::require_xterm;
 
+pub mod send_photo;
+pub use send_photo::send_photo;
+
+pub mod send_photo_file;
+pub use send_photo_file::send_photo_file;
+
 pub mod send_video;
 pub use send_video::send_video;
 
@@ -56,3 +62,6 @@ pub use get_global::get_global;
 
 pub mod tick_until_merged;
 pub use tick_until_merged::tick_until_merged;
+
+pub mod ui_test_plugin;
+pub use ui_test_plugin::UiTestPlugin;

@@ -49,6 +49,7 @@
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture"; showOutput = true; };
+    "ui:previews-telegram" = { exec = "cargo nextest run ui_png --features dev --run-ignored all -- --nocapture && cargo run --features dev --example send_previews"; showOutput = true; };
   };
 
   git-hooks.hooks = {

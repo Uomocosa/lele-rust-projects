@@ -18,6 +18,10 @@ name = "mainnet_local"
 path = "tests/e2e_local/mainnet.rs"
 required-features = ["dev"]
 
+[[example]]
+name = "send_previews"
+required-features = ["dev"]
+
 [lints.rust]
 non_snake_case = "allow"
 
