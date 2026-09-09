@@ -4,6 +4,9 @@ pub use build_game::build_game;
 pub mod creds;
 pub use creds::Creds;
 
+pub mod drive_cursor;
+pub use drive_cursor::drive_cursor;
+
 pub mod finish_record;
 pub use finish_record::finish_record;
 
@@ -12,6 +15,9 @@ pub use load_creds::load_creds;
 
 pub mod poke;
 pub use poke::poke;
+
+pub mod place_window;
+pub use place_window::place_window;
 
 pub mod require_xterm;
 pub use require_xterm::require_xterm;
@@ -33,6 +39,9 @@ pub use spawn_xterm::spawn_xterm;
 
 pub mod start_record;
 pub use start_record::start_record;
+
+pub mod start_record_at;
+pub use start_record_at::start_record_at;
 
 pub mod terminal_guard;
 pub use terminal_guard::TerminalGuard;

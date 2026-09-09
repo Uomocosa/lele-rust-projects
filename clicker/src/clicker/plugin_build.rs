@@ -2,9 +2,11 @@ use crate::clicker;
 use bevy::prelude::*;
 pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
     app.add_systems(Startup, clicker::bevy_systems::setup)
+        .add_systems(Startup, clicker::bevy_systems::spawn_cursor)
         .add_systems(Startup, clicker::bevy_systems::log_connected)
         .add_systems(Startup, clicker::bevy_systems::request_snapshot)
         .add_systems(Update, clicker::bevy_systems::detect_click)
+        .add_systems(Update, clicker::bevy_systems::follow_mouse)
         .add_systems(Update, clicker::bevy_systems::spawn_on_join)
         .add_systems(Update, clicker::bevy_systems::despawn_on_leave)
         .add_systems(Update, clicker::bevy_systems::apply_delta)
@@ -31,6 +33,8 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.init_resource::<Time>();
         app.insert_resource(ButtonInput::<MouseButton>::default());
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
         app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
         app.insert_resource(roster::Roster::default());

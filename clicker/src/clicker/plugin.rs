@@ -19,6 +19,8 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.init_resource::<Time>();
         app.insert_resource(ButtonInput::<MouseButton>::default());
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
         app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
         app.insert_resource(roster::Roster::default());

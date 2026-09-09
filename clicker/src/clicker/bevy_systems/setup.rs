@@ -35,6 +35,17 @@ mod tests {
     #[cfg(feature = "dev")]
     use bevy::render::view::screenshot::{Screenshot, save_to_disk};
     use freenet_libp2p_bevy_plugin::net_id;
+    #[cfg(feature = "dev")]
+    use std::time::Duration;
+
+    #[cfg(feature = "dev")]
+    const PREVIEW_X: i32 = 40;
+    #[cfg(feature = "dev")]
+    const PREVIEW_Y: i32 = 80;
+    #[cfg(feature = "dev")]
+    const CLIP_SECS: u64 = 10;
+    #[cfg(feature = "dev")]
+    const RUN_SECS: f32 = 14.0;
 
     #[test]
     fn test_usage() {
@@ -131,5 +142,54 @@ mod tests {
     #[cfg(feature = "dev")]
     fn shot_path() -> std::path::PathBuf {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("setup.png")
+    }
+
+    #[cfg(feature = "dev")]
+    #[test]
+    #[ignore = "headed recording: run via lens (dev feature auto-enabled)"]
+    fn ui_mp4() {
+        if no_display() {
+            return;
+        }
+        let mp4 = mp4_path();
+        let _ = std::fs::remove_file(&mp4);
+        let driver = std::thread::spawn(|| {
+            std::thread::sleep(Duration::from_secs(3));
+            testing::place_window("setup", PREVIEW_X, PREVIEW_Y)?;
+            let child = testing::start_record_at(CLIP_SECS, &mp4_path(), PREVIEW_X, PREVIEW_Y)
+                .ok_or_else(|| "ffmpeg did not start".to_string())?;
+            testing::drive_cursor("setup")?;
+            testing::finish_record(child, &mp4_path())
+                .ok_or_else(|| "recording produced no file".to_string())?;
+            Ok::<(), String>(())
+        });
+        let mut app = App::new();
+        app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.add_plugins(testing::UiTestPlugin {
+            title: "setup".to_owned(),
+            visible: true,
+        });
+        app.add_systems(Startup, setup);
+        app.add_systems(Startup, clicker::bevy_systems::spawn_cursor);
+        app.add_systems(Update, clicker::bevy_systems::follow_mouse);
+        app.add_systems(Update, exit_after_run);
+        app.run();
+        assert!(driver.join().is_ok_and(|result| result.is_ok()));
+        assert!(mp4.exists());
+    }
+
+    // needed helper:
+    #[cfg(feature = "dev")]
+    fn exit_after_run(time: Res<Time>, mut exit: MessageWriter<AppExit>) {
+        if time.elapsed_secs() > RUN_SECS {
+            exit.write(AppExit::Success);
+        }
+    }
+
+    // needed helper:
+    #[cfg(feature = "dev")]
+    fn mp4_path() -> std::path::PathBuf {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("setup.mp4")
     }
 }

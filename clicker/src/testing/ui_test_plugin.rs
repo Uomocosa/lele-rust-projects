@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::window::CursorOptions;
 use bevy::winit::WinitPlugin;
 
 pub struct UiTestPlugin {
@@ -15,6 +16,10 @@ impl Plugin for UiTestPlugin {
                 title: self.title.clone(),
                 resolution: (800, 450).into(),
                 visible: self.visible,
+                ..default()
+            }),
+            primary_cursor_options: Some(CursorOptions {
+                visible: false,
                 ..default()
             }),
             ..default()

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::window::CursorOptions;
 use clap::Parser;
 use clicker_lib::clicker;
 use freenet_libp2p_bevy_plugin::net_id;
@@ -61,6 +62,10 @@ async fn main() {
             primary_window: Some(Window {
                 title: format!("clicker-{} [{}]", args.instance_tag, args.lobby),
                 resolution: (800, 450).into(),
+                ..default()
+            }),
+            primary_cursor_options: Some(CursorOptions {
+                visible: false,
                 ..default()
             }),
             ..default()

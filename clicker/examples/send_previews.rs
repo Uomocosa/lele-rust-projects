@@ -18,17 +18,30 @@ fn run() -> Result<(), String> {
     };
     let files = previews()?;
     if files.is_empty() {
-        return Err("no *.png previews at crate root; run ui_png tests first".to_string());
+        return Err("no previews at crate root; run ui_png/ui_mp4 tests first".to_string());
     }
     for path in &files {
         let caption = path
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default();
-        let id = testing::send_photo_file(&creds, path, &caption)?;
+        let id = send_any(&creds, path, &caption)?;
         println!("sent {} as message {id}", path.display());
     }
     Ok(())
+}
+
+// needed helper: routes previews to the matching Telegram sender
+fn send_any(
+    creds: &testing::Creds,
+    path: &std::path::Path,
+    caption: &str,
+) -> Result<String, String> {
+    if path.extension().is_some_and(|ext| ext == "mp4") {
+        testing::send_video_file(creds, path, caption)
+    } else {
+        testing::send_photo_file(creds, path, caption)
+    }
 }
 
 fn previews() -> Result<Vec<PathBuf>, String> {
@@ -39,7 +52,10 @@ fn previews() -> Result<Vec<PathBuf>, String> {
     for entry in entries {
         let entry = entry.map_err(|err| format!("read entry in {}: {err}", dir.display()))?;
         let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "png") {
+        if path
+            .extension()
+            .is_some_and(|ext| ext == "png" || ext == "mp4")
+        {
             files.push(path);
         }
     }

@@ -32,6 +32,12 @@ pub use click_target::ClickTarget;
 pub mod color_for;
 pub use color_for::color_for;
 
+pub mod cursor_icon;
+pub use cursor_icon::CursorIcon;
+
+pub mod cursor_mesh;
+pub use cursor_mesh::cursor_mesh;
+
 pub mod contract_code_hash;
 pub use contract_code_hash::contract_code_hash;
 
