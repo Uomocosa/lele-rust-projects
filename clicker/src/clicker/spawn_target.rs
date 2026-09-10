@@ -100,6 +100,11 @@ mod tests {
             visible: false,
         });
         app.add_systems(Startup, show_target);
+        app.add_systems(
+            Startup,
+            (clicker::bevy_systems::spawn_cursor, testing::park_cursor).chain(),
+        );
+        app.add_systems(Update, clicker::bevy_systems::follow_mouse);
         app.add_systems(Update, capture_png);
         app.insert_resource(ShotClock {
             frames: 0,
