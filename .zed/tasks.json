@@ -23,5 +23,18 @@
         "shell": "system",
         "show_summary": false,
         "show_command": true
+    },
+    {
+        "label": "rust test (exact, nextest)",
+        "command": "fn=\"$ZED_CUSTOM_RUST_TEST_NAME\"; if [ -z \"$fn\" ]; then fn=\"test_usage\"; fi; rel=\"$ZED_RELATIVE_FILE\"; mp=\"${rel#*/src/}\"; if [ \"$mp\" = \"$rel\" ]; then full=\"$fn\"; else mp=\"${mp%.rs}\"; base=\"${mp##*/}\"; if [ \"$base\" = \"mod\" ]; then mp=\"${mp%/*}\"; fi; if [ \"$mp\" = \"lib\" ] || [ \"$mp\" = \"main\" ]; then full=\"tests::$fn\"; else mp=\"$(echo \"$mp\" | sed 's|/|::|g')\"; case \"$fn\" in *::* ) full=\"$fn\";; *) full=\"$mp::tests::$fn\";; esac; fi; fi; crate_dir=\"$ZED_DIRNAME\"; while [ ! -f \"$crate_dir/Cargo.toml\" ] && [ \"$crate_dir\" != \"/\" ]; do crate_dir=\"$(dirname \"$crate_dir\")\"; done; cd \"$crate_dir\" && dev_features=\"\"; grep -qE '^dev *= *\\[' Cargo.toml && dev_features=\"--features dev\"; cargo nextest run -p '$ZED_CUSTOM_RUST_PACKAGE' $dev_features --run-ignored all -- \"$full\" --exact",
+        "env": { "NEXTEST_HIDE_PROGRESS_BAR": "1", "DISPLAY": ":0" },
+        "use_new_terminal": false,
+        "allow_concurrent_runs": false,
+        "reveal": "always",
+        "hide": "never",
+        "shell": "system",
+        "show_summary": false,
+        "show_command": true,
+        "tags": ["rust-test"]
     }
 ]

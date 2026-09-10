@@ -4,9 +4,35 @@
         "Python": {
             "enable_language_server": false,
         },
+        "Nix": {
+            "enable_language_server": false,
+        },
     },
     "terminal": {
         "detect_venv": "off",
+    },
+    "lsp": {
+        "rust-analyzer": {
+            "initialization_options": {
+                "runnables": {
+                    "test": {
+                        "overrideCommand": [
+                            "cargo",
+                            "nextest",
+                            "run",
+                            "--package",
+                            "${package}",
+                            "${target_arg}",
+                            "${target}",
+                            "--",
+                            "${test_name}",
+                            "${exact}",
+                            "${include_ignored}"
+                        ],
+                    },
+                },
+            },
+        },
     },
     "file_scan_exclusions": [
         // "**/.venv",
