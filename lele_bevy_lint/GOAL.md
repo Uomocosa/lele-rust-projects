@@ -25,10 +25,31 @@ representation, not a fork.
 **bevy_folder (E008) — Bevy systems live in bevy_systems/ only**
    - Functions registered with `app.add_systems()` must live in
      `<domain>/bevy_systems/`.
-   - A system function is identified by its signature containing a
+   - A system function is identified by BOTH: its signature containing a
      parameter whose type's last path segment is `Res`, `ResMut`, `Query`,
      `Commands`, `MessageWriter`, or `MessageReader` (any parameter, not
-     just the first).
+     just the first), AND its ident appearing in an `add_systems(...)`
+     call after the schedule argument (tuples and `.chain()` members
+     included). Unregistered helpers that merely take `Commands`/`Query`
+     (builders, click handlers) are exempt.
+   - Blind spots, accepted and documented: systems passed via variables
+     or function pointers instead of paths, and `add_systems` calls nested
+     inside other `add_systems` arguments.
+
+**bevy_ui (E029) — files that define UI must ship an ignored ui_png test**
+   - A file counts as a UI definition when its **non-test** code calls a
+     method named `spawn` with a bundle containing a visual component
+     (last path segment `Sprite`, `Text2d`, `Text`, `Mesh2d`,
+     `MeshMaterial2d`, `Camera2d`, `Camera`, `Node`, or `ImageNode`).
+     `#[cfg(test)]` modules are skipped so preview helpers never
+     self-trigger.
+   - Such a file must define `fn ui_png` carrying `#[ignore]`; otherwise
+     E029 fires at the first visual spawn.
+   - When `ui_png` exists, some string literal in the file must equal
+     `<file_stem>.png` (e.g. `spawn_target.rs` captures
+     `spawn_target.png`); otherwise E029 fires at the `ui_png` line.
+   - Deliberately strict-spawn: files that only mutate visuals
+     (`Query<&mut Text2d>`) or build meshes without spawning stay exempt.
 
 ## Usage
 

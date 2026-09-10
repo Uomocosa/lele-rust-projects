@@ -40,6 +40,7 @@ fn violation_crate_catches_all_errors() {
     let expected = [
         "E005", // bevy_export
         "E008", // bevy_folder
+        "E029", // bevy_ui
     ];
 
     for code in &expected {

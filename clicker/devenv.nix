@@ -45,6 +45,7 @@
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
     "lele:nextest" = { exec = "cargo nextest run --all-targets"; showOutput = true; };
     "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
+    "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
@@ -78,6 +79,13 @@
       enable = true;
       name = "taxonomy_check (clicker)";
       entry = "bash -c 'cd clicker && devenv tasks run lele:taxonomy_check 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-bevy-lint = {
+      enable = true;
+      name = "lele_bevy_lint (clicker)";
+      entry = "bash -c 'cd clicker && devenv tasks run lele:bevy-lint 2>&1'";
       pass_filenames = false;
       always_run = true;
     };
