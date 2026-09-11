@@ -71,24 +71,8 @@ mod tests {
 
     #[cfg(feature = "dev")]
     #[test]
-    #[ignore = "headed viewer: run via lens (dev feature auto-enabled)"]
-    fn show_ui() {
-        if no_display() {
-            return;
-        }
-        let mut app = App::new();
-        app.add_plugins(testing::UiTestPlugin {
-            title: "spawn_target".to_owned(),
-            visible: true,
-        });
-        app.add_systems(Startup, show_target);
-        app.run();
-    }
-
-    #[cfg(feature = "dev")]
-    #[test]
     #[ignore = "headed window: run via lens (dev feature auto-enabled)"]
-    fn ui_png() {
+    fn spawn_target_ui_png_preview() {
         if no_display() {
             return;
         }
@@ -117,6 +101,7 @@ mod tests {
         });
         app.run();
         assert!(shot.exists());
+        println!("PREVIEW_ARTIFACT={}", shot.display());
     }
 
     // needed helper:
@@ -170,7 +155,7 @@ mod tests {
     #[cfg(feature = "dev")]
     #[test]
     #[ignore = "headed recording: run via lens (dev feature auto-enabled)"]
-    fn ui_mp4() {
+    fn spawn_target_ui_mp4_preview() {
         if no_display() {
             return;
         }
@@ -198,6 +183,7 @@ mod tests {
         app.run();
         assert!(driver.join().is_ok_and(|result| result.is_ok()));
         assert!(mp4.exists());
+        println!("PREVIEW_ARTIFACT={}", mp4.display());
     }
 
     // needed helper:

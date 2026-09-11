@@ -36,18 +36,26 @@ representation, not a fork.
      or function pointers instead of paths, and `add_systems` calls nested
      inside other `add_systems` arguments.
 
-**bevy_ui (E029) — files that define UI must ship an ignored ui_png test**
-   - A file counts as a UI definition when its **non-test** code calls a
-     method named `spawn` with a bundle containing a visual component
-     (last path segment `Sprite`, `Text2d`, `Text`, `Mesh2d`,
-     `MeshMaterial2d`, `Camera2d`, `Camera`, `Node`, or `ImageNode`).
-     `#[cfg(test)]` modules are skipped so preview helpers never
-     self-trigger.
-   - Such a file must define `fn ui_png` carrying `#[ignore]`; otherwise
-     E029 fires at the first visual spawn.
-   - When `ui_png` exists, some string literal in the file must equal
-     `<file_stem>.png` (e.g. `spawn_target.rs` captures
-     `spawn_target.png`); otherwise E029 fires at the `ui_png` line.
+**bevy_ui (E029) — files that define UI must ship ignored preview tests**
+   - A file counts as a UI definition when a visual spawn it owns
+     (method named `spawn` with a bundle containing last path segment
+     `Sprite`, `Text2d`, `Text`, `Mesh2d`, `MeshMaterial2d`, `Camera2d`,
+     `Camera`, `Node`, or `ImageNode`) is reachable from production code.
+     Reachability is computed over non-test items from the `main`/`build`/
+     `setup` roots through direct calls and `add_systems` registrations;
+     `#[cfg(test)]` modules are skipped, so `testing/` helpers used only by
+     preview tests are excluded as a consequence (no path blocklist).
+   - Kind is method-detected, never guessed: screenshot tokens
+     (`Screenshot`, `save_to_disk`) require a `*_ui_png_preview` test;
+     recorder tokens (`start_record_at`, `drive_cursor`, `place_window`,
+     `x11grab`, `ffmpeg`) require a `*_ui_mp4_preview` test. One
+     diagnostic per missing kind.
+   - Each preview test must: end with `_ui_png_preview`/`_ui_mp4_preview`,
+     carry `#[ignore]`, return `()` (libtest only accepts `()` or
+     `Result<(), E>`), keep a preceding `assert!(<artifact>.exists())`,
+     and end with `println!("PREVIEW_ARTIFACT={}", path.display())` as its
+     last statement. The file must also reference `<file_stem>.png` /
+     `<file_stem>.mp4` matching the kinds present.
    - Deliberately strict-spawn: files that only mutate visuals
      (`Query<&mut Text2d>`) or build meshes without spawning stay exempt.
 

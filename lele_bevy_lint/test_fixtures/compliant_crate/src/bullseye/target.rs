@@ -12,9 +12,20 @@ pub fn spawn_target(spawner: &mut Spawner) {
 mod tests {
     #[test]
     #[ignore = "headed window"]
-    fn ui_png() {
+    fn target_ui_png_preview() {
         let shot =
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target.png");
         assert!(shot.exists());
+        println!("PREVIEW_ARTIFACT={}", shot.display());
+    }
+
+    #[test]
+    #[ignore = "headed recording"]
+    fn target_ui_mp4_preview() {
+        drive_cursor("target");
+        let clip =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target.mp4");
+        assert!(clip.exists());
+        println!("PREVIEW_ARTIFACT={}", clip.display());
     }
 }

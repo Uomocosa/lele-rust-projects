@@ -50,7 +50,7 @@
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture"; showOutput = true; };
-    "ui:previews-telegram" = { exec = "export VK_ICD_FILENAMES=\"${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json\" && cargo nextest run ui_png --features dev --run-ignored all -- --nocapture && cargo nextest run ui_mp4 --features dev --run-ignored all -- --nocapture && cargo run --features dev --example send_previews"; showOutput = true; };
+    "ui:previews-telegram" = { exec = "export VK_ICD_FILENAMES=\"${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json\" && cargo nextest run ui_png_preview --features dev --run-ignored all -- --nocapture && cargo nextest run ui_mp4_preview --features dev --run-ignored all -- --nocapture && cargo run --features dev --example send_previews"; showOutput = true; };
   };
 
   git-hooks.hooks = {

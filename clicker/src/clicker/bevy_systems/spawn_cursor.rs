@@ -60,7 +60,7 @@ mod tests {
     #[cfg(feature = "dev")]
     #[test]
     #[ignore = "headed window: run via lens (dev feature auto-enabled)"]
-    fn ui_png() {
+    fn spawn_cursor_ui_png_preview() {
         if no_display() {
             return;
         }
@@ -82,6 +82,7 @@ mod tests {
         });
         app.run();
         assert!(shot.exists());
+        println!("PREVIEW_ARTIFACT={}", shot.display());
     }
 
     #[cfg(feature = "dev")]

@@ -51,4 +51,12 @@ fn violation_crate_catches_all_errors() {
             codes = codes,
         );
     }
+
+    let ui_errors = diags.iter().filter(|d| d.code == "E029").count();
+    assert!(
+        ui_errors >= 3,
+        "expected at least 3 E029 diagnostics (missing preview, broken contract, missing mp4), got {ui_errors}: {diags:?}",
+        ui_errors = ui_errors,
+        diags = diags,
+    );
 }
