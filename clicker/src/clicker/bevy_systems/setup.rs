@@ -12,7 +12,7 @@ pub fn setup(
     let own = own.into_inner();
     let lobby = lobby.into_inner();
     commands.spawn(Camera2d);
-    clicker::spawn_target(&mut commands, *own, 0, 1, true);
+    commands.spawn((clicker::Owner(*own), clicker::ClickCounter::default()));
     commands.spawn((
         clicker::OwnScore,
         Text2d::new("you: 0"),
@@ -22,6 +22,11 @@ pub fn setup(
         clicker::GlobalScore,
         Text2d::new(format!("lobby {} global: 0", **lobby)),
         Transform::from_translation(Vec3::new(0.0, 150.0, 1.0)),
+    ));
+    commands.spawn((
+        clicker::TotalBoard,
+        Text2d::new(""),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
     ));
 }
 
@@ -55,7 +60,13 @@ mod tests {
         app.add_systems(Update, setup);
         app.update();
         let scores = app.world_mut().query::<&Text2d>().iter(app.world()).count();
-        assert_eq!(scores, 2);
+        assert_eq!(scores, 3);
+        let boards = app
+            .world_mut()
+            .query::<&clicker::TotalBoard>()
+            .iter(app.world())
+            .count();
+        assert_eq!(boards, 1);
     }
 
     #[cfg(feature = "dev")]

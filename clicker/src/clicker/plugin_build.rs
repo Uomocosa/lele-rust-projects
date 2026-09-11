@@ -14,6 +14,10 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(Update, clicker::bevy_systems::publish_snapshot)
         .add_systems(Update, clicker::bevy_systems::request_snapshot)
         .add_systems(Update, clicker::bevy_systems::render)
+        .add_systems(Update, clicker::bevy_systems::emit_flash)
+        .add_systems(Update, clicker::bevy_systems::animate_flash)
+        .add_systems(Update, clicker::bevy_systems::update_total_board)
+        .add_systems(Update, clicker::bevy_systems::update_cursor_label)
         .add_systems(Update, clicker::bevy_systems::update_score)
         .add_systems(Update, clicker::bevy_systems::tick_log)
         .add_systems(Update, clicker::bevy_systems::auto_tick);

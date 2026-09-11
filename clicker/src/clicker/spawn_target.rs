@@ -79,6 +79,7 @@ mod tests {
         let shot = shot_path();
         let _ = std::fs::remove_file(&shot);
         let mut app = App::new();
+        app.insert_resource(net_id::NetworkId(7));
         app.add_plugins(testing::UiTestPlugin {
             title: "spawn_target".to_owned(),
             visible: false,
@@ -172,6 +173,7 @@ mod tests {
             Ok::<(), String>(())
         });
         let mut app = App::new();
+        app.insert_resource(net_id::NetworkId(7));
         app.add_plugins(testing::UiTestPlugin {
             title: "spawn_target".to_owned(),
             visible: true,

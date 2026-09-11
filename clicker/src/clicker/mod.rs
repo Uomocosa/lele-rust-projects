@@ -1,6 +1,9 @@
 pub mod click_counter;
 pub use click_counter::ClickCounter;
 
+pub mod click_flash;
+pub use click_flash::ClickFlash;
+
 mod click_counter_add;
 mod click_counter_decrement;
 mod click_counter_increment;
@@ -35,6 +38,9 @@ pub use color_for::color_for;
 pub mod cursor_icon;
 pub use cursor_icon::CursorIcon;
 
+pub mod cursor_label;
+pub use cursor_label::CursorLabel;
+
 pub mod cursor_mesh;
 pub use cursor_mesh::cursor_mesh;
 
@@ -61,6 +67,12 @@ pub use lobby_count::lobby_count;
 pub mod lobby_not_full;
 pub use lobby_not_full::lobby_not_full;
 
+pub mod math_formatter;
+pub use math_formatter::math_formatter;
+
+pub mod odometer_formatter;
+pub use odometer_formatter::odometer_formatter;
+
 pub mod own_score;
 pub use own_score::OwnScore;
 
@@ -83,5 +95,8 @@ pub use encode_snapshot::encode_snapshot;
 
 pub mod spawn_target;
 pub use spawn_target::spawn_target;
+
+pub mod total_board;
+pub use total_board::TotalBoard;
 
 pub mod bevy_systems;

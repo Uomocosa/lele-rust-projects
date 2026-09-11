@@ -9,8 +9,9 @@ pub struct UiTestPlugin {
 
 impl Plugin for UiTestPlugin {
     fn build(&self, app: &mut App) {
-        let mut winit = WinitPlugin::default();
-        winit.run_on_any_thread = true;
+        let winit = WinitPlugin {
+            run_on_any_thread: true,
+        };
         app.add_plugins(DefaultPlugins.build().set(winit).set(WindowPlugin {
             primary_window: Some(Window {
                 title: self.title.clone(),
