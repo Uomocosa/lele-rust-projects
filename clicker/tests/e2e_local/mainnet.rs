@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
 use clicker_lib::testing::{
-    TerminalGuard, build_game, finish_record, load_creds, poke, require_xterm, send_video_file,
-    spawn_xterm, start_record, tile_three, wakeup_screen,
+    TerminalGuard, build_game, drive_random, finish_record, load_creds, poke, require_xterm,
+    send_video_file, spawn_xterm, start_record, tile_three, wakeup_screen,
 };
 
 const TIMEOUT_SECS: u64 = 300;
@@ -10,6 +10,7 @@ const CLIP_SECS: u64 = 25;
 const LOBBY: &str = "alpha";
 const GAME_TITLES: [&str; 3] = ["clicker-1", "clicker-2", "clicker-3"];
 const OWN_IDS: [u64; 3] = [1, 2, 3];
+const CLICKS_EACH: u32 = 15;
 
 fn log_contains(path: &std::path::Path, needle: &str) -> bool {
     std::fs::read_to_string(path).is_ok_and(|s| s.contains(needle))
@@ -187,7 +188,7 @@ fn mesh_report(terms: &[TerminalGuard]) -> (bool, Vec<String>) {
             let last = parse_last_count(&guard.log, *owner).unwrap_or_default();
             min_remote = min_remote.min(last);
         }
-        let good = owners.len() == OWN_IDS.len() && local >= 1 && min_remote >= 1 && global >= 3;
+        let good = owners.len() == OWN_IDS.len() && local >= 15 && min_remote >= 15 && global >= 45;
         ok &= good;
         lines.push(format!(
             "inst{} owners={} local={local} min_remote={min_remote} global={global} {}",
@@ -281,15 +282,26 @@ async fn local_mesh() {
             && terms.iter().all(|g| log_contains(&g.log, "lobby=alpha"))
             && terms
                 .iter()
-                .all(|g| log_contains(&g.log, "spawned remote target"))
+                .all(|g| log_contains(&g.log, "accounting for remote owner="))
     })
     .await;
 
-    let auto_ok = wait_until(120, || {
+    for title in GAME_TITLES {
+        eprintln!("drive_random {title} x{CLICKS_EACH}");
+        let drive_result =
+            tokio::task::spawn_blocking(move || drive_random(title, CLICKS_EACH)).await;
+        match drive_result {
+            Ok(Ok(())) => eprintln!("drive_random {title} done"),
+            Ok(Err(err)) => eprintln!("drive_random {title} failed: {err}"),
+            Err(err) => eprintln!("drive_random {title} join failed: {err}"),
+        }
+    }
+
+    let auto_ok = wait_until(180, || {
         OWN_IDS.iter().enumerate().all(|(i, tag)| {
             terms
                 .get(i)
-                .is_some_and(|g| local_count(&g.log, *tag).is_some_and(|c| c >= 3))
+                .is_some_and(|g| local_count(&g.log, *tag).is_some_and(|c| c >= 15))
         })
     })
     .await;

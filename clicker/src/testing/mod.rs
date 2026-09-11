@@ -7,6 +7,9 @@ pub use creds::Creds;
 pub mod drive_cursor;
 pub use drive_cursor::drive_cursor;
 
+pub mod drive_random;
+pub use drive_random::drive_random;
+
 pub mod finish_record;
 pub use finish_record::finish_record;
 
