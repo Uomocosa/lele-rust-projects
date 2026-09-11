@@ -52,9 +52,19 @@ mod tests {
     #[cfg(feature = "dev")]
     const RUN_SECS: f32 = 14.0;
 
+    // needed helper: enables debug logs for this test only
+    fn test_logging(app: &mut App) {
+        app.add_plugins(bevy::log::LogPlugin {
+            level: bevy::log::Level::DEBUG,
+            filter: "info,clicker_lib=debug".to_string(),
+            ..default()
+        });
+    }
+
     #[test]
     fn test_usage() {
         let mut app = App::new();
+        test_logging(&mut app);
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.add_systems(Update, setup);
@@ -123,14 +133,16 @@ mod tests {
     ) {
         clock.frames = clock.frames.saturating_add(1);
         let start = *clock.start.get_or_insert_with(std::time::Instant::now);
-        if !clock.saved && clock.frames >= 5 && start.elapsed() >= std::time::Duration::from_secs(1)
+        if !clock.saved
+            && clock.frames >= 15
+            && start.elapsed() >= std::time::Duration::from_secs(2)
         {
             clock.saved = true;
             commands
                 .spawn(Screenshot::primary_window())
                 .observe(save_to_disk(shot_path()));
         }
-        if clock.frames >= 10 && start.elapsed() >= std::time::Duration::from_secs(2) {
+        if clock.frames >= 25 && start.elapsed() >= std::time::Duration::from_secs(3) {
             exit.write(AppExit::Success);
         }
     }

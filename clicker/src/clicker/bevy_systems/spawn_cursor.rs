@@ -16,6 +16,7 @@ pub fn spawn_cursor(
         return;
     };
     let id = *own.into_inner();
+    tracing::info!("spawn cursor owner={}", *id);
     commands.entity(entity).insert(CursorOptions {
         visible: false,
         ..default()
@@ -59,10 +60,20 @@ mod tests {
     use derive_more::Deref;
     use freenet_libp2p_bevy_plugin::net_id;
 
+    // needed helper: enables debug logs for this test only
+    fn test_logging(app: &mut App) {
+        app.add_plugins(bevy::log::LogPlugin {
+            level: bevy::log::Level::DEBUG,
+            filter: "info,clicker_lib=debug".to_string(),
+            ..default()
+        });
+    }
+
     #[test]
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        test_logging(&mut app);
         app.init_resource::<Assets<Mesh>>();
         app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(net_id::NetworkId(7));
@@ -182,8 +193,10 @@ mod tests {
     fn show_preview(mut commands: Commands, count: Res<PreviewCount>) {
         let count = **count.into_inner();
         commands.spawn(Camera2d);
-        let target = clicker::spawn_target(&mut commands, net_id::NetworkId(7), 0, 1, true);
-        commands.entity(target).insert(clicker::ClickCounter(count));
+        commands.spawn((
+            clicker::Owner(net_id::NetworkId(7)),
+            clicker::ClickCounter(count),
+        ));
     }
 
     // needed helper:
@@ -197,14 +210,16 @@ mod tests {
         clock.frames = clock.frames.saturating_add(1);
         let start = *clock.start.get_or_insert_with(std::time::Instant::now);
         let path: &std::path::PathBuf = shot.into_inner();
-        if !clock.saved && clock.frames >= 5 && start.elapsed() >= std::time::Duration::from_secs(1)
+        if !clock.saved
+            && clock.frames >= 15
+            && start.elapsed() >= std::time::Duration::from_secs(2)
         {
             clock.saved = true;
             commands
                 .spawn(Screenshot::primary_window())
                 .observe(save_to_disk(path.clone()));
         }
-        if clock.frames >= 10 && start.elapsed() >= std::time::Duration::from_secs(2) {
+        if clock.frames >= 25 && start.elapsed() >= std::time::Duration::from_secs(3) {
             exit.write(AppExit::Success);
         }
     }

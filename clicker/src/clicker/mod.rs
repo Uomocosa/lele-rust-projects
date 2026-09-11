@@ -29,9 +29,6 @@ pub use click_ctx::ClickCtx;
 pub mod click_delta;
 pub use click_delta::ClickDelta;
 
-pub mod click_target;
-pub use click_target::ClickTarget;
-
 pub mod color_for;
 pub use color_for::color_for;
 
@@ -59,8 +56,6 @@ pub use instance_info::InstanceInfo;
 pub mod constants;
 pub use constants::*;
 
-pub mod pos_for;
-pub use pos_for::pos_for;
 pub mod lobby_count;
 pub use lobby_count::lobby_count;
 
@@ -92,9 +87,6 @@ pub use decode_snapshot::decode_snapshot;
 
 pub mod encode_snapshot;
 pub use encode_snapshot::encode_snapshot;
-
-pub mod spawn_target;
-pub use spawn_target::spawn_target;
 
 pub mod total_board;
 pub use total_board::TotalBoard;

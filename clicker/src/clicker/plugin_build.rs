@@ -13,7 +13,6 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(Update, clicker::bevy_systems::absorb_snapshot)
         .add_systems(Update, clicker::bevy_systems::publish_snapshot)
         .add_systems(Update, clicker::bevy_systems::request_snapshot)
-        .add_systems(Update, clicker::bevy_systems::render)
         .add_systems(Update, clicker::bevy_systems::emit_flash)
         .add_systems(Update, clicker::bevy_systems::animate_flash)
         .add_systems(Update, clicker::bevy_systems::update_total_board)

@@ -18,8 +18,6 @@ pub mod log_connected;
 pub use log_connected::log_connected;
 pub mod publish_snapshot;
 pub use publish_snapshot::publish_snapshot;
-pub mod render;
-pub use render::render;
 pub mod request_snapshot;
 pub use request_snapshot::request_snapshot;
 pub mod setup;

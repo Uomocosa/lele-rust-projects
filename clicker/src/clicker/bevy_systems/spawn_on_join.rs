@@ -22,7 +22,6 @@ pub fn spawn_on_join(
     let Some(members) = roster.get(&**lobby) else {
         return;
     };
-    let total = members.len().saturating_add(1).min(clicker::LOBBY_CAP);
     for peer in members.values() {
         let id = net_id::NetworkId::from_peer(peer);
         if id == *own || known.contains(&id) {
@@ -33,9 +32,8 @@ pub fn spawn_on_join(
             continue;
         }
         known.push(id);
-        let index = known.len().saturating_sub(1);
-        tracing::info!("spawned remote target owner={} peer={peer}", *id);
-        clicker::spawn_target(&mut commands, id, index, total, false);
+        tracing::info!("accounting for remote owner={} peer={peer}", *id);
+        commands.spawn((clicker::Owner(id), clicker::ClickCounter::default()));
     }
 }
 

@@ -14,7 +14,8 @@ pub fn update_total_board(
     }
     *last = Some(value);
     let (leading, significant, suffix) = clicker::odometer_formatter(value);
-    let body = format!("total: {significant}{suffix}");
+    let body = format!("{significant}{suffix}");
+    tracing::info!("total board rebuild value={value}");
     for (entity, children) in &boards {
         if let Some(children) = children {
             for child in children.iter() {
@@ -49,10 +50,20 @@ mod tests {
     use super::update_total_board;
     use crate::clicker;
 
+    // needed helper: enables debug logs for this test only
+    fn test_logging(app: &mut App) {
+        app.add_plugins(bevy::log::LogPlugin {
+            level: bevy::log::Level::DEBUG,
+            filter: "info,clicker_lib=debug".to_string(),
+            ..default()
+        });
+    }
+
     #[test]
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        test_logging(&mut app);
         app.insert_resource(clicker::GlobalCounter(1_234));
         let board = app
             .world_mut()
@@ -67,7 +78,7 @@ mod tests {
             let span = app.world().get::<TextSpan>(child).unwrap();
             texts.push((**span).clone());
         }
-        assert_eq!(texts, vec!["00000".to_owned(), "total: 1234".to_owned()]);
+        assert_eq!(texts, vec!["00000".to_owned(), "1234".to_owned()]);
         app.update();
         let children = app.world().get::<Children>(board).unwrap();
         assert_eq!(children.len(), 2);

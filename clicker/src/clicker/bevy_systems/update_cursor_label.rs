@@ -19,7 +19,10 @@ pub fn update_cursor_label(
     }
     let text = clicker::math_formatter(mine);
     for mut label in &mut labels {
-        (**label).clone_from(&text);
+        if label.0 != text {
+            tracing::debug!("cursor label change {} -> {text}", label.0);
+            (**label).clone_from(&text);
+        }
     }
 }
 
@@ -31,10 +34,20 @@ mod tests {
     use crate::clicker;
     use freenet_libp2p_bevy_plugin::net_id;
 
+    // needed helper: enables debug logs for this test only
+    fn test_logging(app: &mut App) {
+        app.add_plugins(bevy::log::LogPlugin {
+            level: bevy::log::Level::DEBUG,
+            filter: "info,clicker_lib=debug".to_string(),
+            ..default()
+        });
+    }
+
     #[test]
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        test_logging(&mut app);
         app.insert_resource(net_id::NetworkId(1));
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),
