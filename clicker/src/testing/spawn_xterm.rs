@@ -25,7 +25,7 @@ pub fn spawn_xterm(
     }
     let create_arg = if create { " --create-lobby" } else { "" };
     let inner = format!(
-        "stdbuf -oL -eL {} --namespace {} --lobby {}{} --instance-tag {} --own-id {} --auto-click{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        "stdbuf -oL -eL {} --namespace {} --lobby {}{} --instance-tag {} --own-id {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
         shell_escape(&bin_str),
         shell_escape(namespace),
         shell_escape(lobby),

@@ -7,6 +7,7 @@ pub use click_flash::ClickFlash;
 mod click_counter_add;
 mod click_counter_decrement;
 mod click_counter_increment;
+mod click_counter_max;
 
 pub mod global_counter;
 pub use global_counter::GlobalCounter;
@@ -14,17 +15,11 @@ pub use global_counter::GlobalCounter;
 mod global_counter_add;
 mod global_counter_increment;
 
-pub mod auto_click;
-pub use auto_click::AutoClick;
-
 pub mod active_lobby;
 pub use active_lobby::ActiveLobby;
 
 pub mod click;
 pub use click::click;
-
-pub mod click_ctx;
-pub use click_ctx::ClickCtx;
 
 pub mod cursor_msg;
 pub use cursor_msg::CursorMsg;
@@ -96,6 +91,12 @@ pub mod plugin;
 pub use plugin::Plugin;
 
 mod plugin_build;
+
+pub mod pending_click;
+pub use pending_click::PendingClick;
+
+pub mod pending_clicks;
+pub use pending_clicks::PendingClicks;
 
 pub mod snapshot;
 pub use snapshot::Snapshot;

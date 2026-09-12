@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use freenet_libp2p_bevy_plugin::net_id;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CursorMsg {
     Click {
         owner: net_id::NetworkId,
@@ -11,6 +11,13 @@ pub enum CursorMsg {
     Move {
         owner: net_id::NetworkId,
         pos: [f32; 2],
+    },
+    SyncReq {
+        requester: net_id::NetworkId,
+    },
+    SyncAck {
+        target: net_id::NetworkId,
+        entries: Vec<(net_id::NetworkId, i32)>,
     },
 }
 
@@ -35,5 +42,18 @@ mod tests {
         let encoded = bincode::serialize(&mv);
         let decoded = encoded.ok().and_then(|e| bincode::deserialize(&e).ok());
         assert_eq!(decoded, Some(mv));
+        let req = CursorMsg::SyncReq {
+            requester: net_id::NetworkId(7),
+        };
+        let encoded = bincode::serialize(&req).unwrap_or_default();
+        let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
+        assert_eq!(decoded, Some(req));
+        let ack = CursorMsg::SyncAck {
+            target: net_id::NetworkId(7),
+            entries: vec![(net_id::NetworkId(1), 3)],
+        };
+        let encoded = bincode::serialize(&ack).unwrap_or_default();
+        let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
+        assert_eq!(decoded, Some(ack));
     }
 }

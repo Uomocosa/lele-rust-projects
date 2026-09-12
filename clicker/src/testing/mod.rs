@@ -47,6 +47,9 @@ pub use assert_count_eq::assert_count_eq;
 pub mod click_times;
 pub use click_times::click_times;
 
+pub mod click_times_with_gap;
+pub use click_times_with_gap::click_times_with_gap;
+
 pub mod fixture;
 pub use fixture::fixture;
 
@@ -55,6 +58,26 @@ pub use get_count::get_count;
 
 pub mod get_global;
 pub use get_global::get_global;
+
+pub mod mesh;
+pub use mesh::Mesh;
+
+mod mesh_click;
+
+mod mesh_count;
+pub use mesh_count::MeshCount;
+
+mod mesh_count_is_consistent;
+
+mod mesh_count_wanted;
+
+mod mesh_counts;
+
+mod mesh_route;
+
+mod mesh_step;
+
+mod mesh_three;
 
 pub mod tick_until_merged;
 pub use tick_until_merged::tick_until_merged;

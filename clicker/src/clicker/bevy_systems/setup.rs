@@ -1,18 +1,10 @@
 use bevy::prelude::*;
 
-use freenet_libp2p_bevy_plugin::net_id;
-
 use crate::clicker;
 
-pub fn setup(
-    mut commands: Commands,
-    own: Res<net_id::NetworkId>,
-    lobby: Res<clicker::ActiveLobby>,
-) {
-    let own = own.into_inner();
+pub fn setup(mut commands: Commands, lobby: Res<clicker::ActiveLobby>) {
     let lobby = lobby.into_inner();
     commands.spawn(Camera2d);
-    commands.spawn((clicker::Owner(*own), clicker::ClickCounter::default()));
     commands.spawn((
         clicker::OwnScore,
         Text2d::new("you: 0"),

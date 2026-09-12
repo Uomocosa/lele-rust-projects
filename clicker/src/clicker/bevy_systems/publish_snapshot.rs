@@ -8,7 +8,7 @@ pub fn publish_snapshot(
     time: Res<Time>,
     mut published: Local<bool>,
     mut last: Local<f64>,
-    targets: Query<(&clicker::Owner, &clicker::ClickCounter)>,
+    targets: Query<(&clicker::PlayerNo, &clicker::ClickCounter)>,
     global: Res<clicker::GlobalCounter>,
     lobby: Res<clicker::ActiveLobby>,
     commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
@@ -26,7 +26,12 @@ pub fn publish_snapshot(
     let snapshot = clicker::Snapshot {
         entries: targets
             .iter()
-            .map(|(owner, counter)| (**owner, **counter))
+            .map(|(player, counter)| {
+                (
+                    freenet_libp2p_bevy_plugin::net_id::NetworkId(**player),
+                    **counter,
+                )
+            })
             .collect(),
         global: **global,
     };
@@ -53,10 +58,8 @@ mod tests {
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
-        app.world_mut().spawn((
-            clicker::Owner(net_id::NetworkId(1)),
-            clicker::ClickCounter(4),
-        ));
+        app.world_mut()
+            .spawn((clicker::PlayerNo(1), clicker::ClickCounter(4)));
         app.add_systems(Update, publish_snapshot);
         app.update();
         let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();

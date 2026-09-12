@@ -25,8 +25,8 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
         app.insert_resource(net_id::NetworkId(1));
-        app.insert_resource(clicker::AutoClick(false));
         app.insert_resource(clicker::GlobalCounter::default());
+        app.insert_resource(clicker::PendingClicks::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(clicker::InstanceInfo {
             namespace: "test".to_string(),

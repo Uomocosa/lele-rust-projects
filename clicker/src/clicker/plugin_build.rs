@@ -12,11 +12,15 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(
             Update,
             (
+                clicker::bevy_systems::send_sync_req,
                 clicker::bevy_systems::spawn_on_join,
+                clicker::bevy_systems::drain_pending,
                 clicker::bevy_systems::resolve_player,
                 clicker::bevy_systems::absorb_gossip,
+                clicker::bevy_systems::absorb_sync,
                 clicker::bevy_systems::apply_delta,
                 clicker::bevy_systems::absorb_snapshot,
+                clicker::bevy_systems::sync_global,
             )
                 .chain(),
         )
@@ -30,8 +34,7 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(Update, clicker::bevy_systems::update_cursor_label)
         .add_systems(Update, clicker::bevy_systems::update_score)
         .add_systems(Update, clicker::bevy_systems::tick_log)
-        .add_systems(Update, clicker::bevy_systems::pos_log)
-        .add_systems(Update, clicker::bevy_systems::auto_tick);
+        .add_systems(Update, clicker::bevy_systems::pos_log);
 }
 
 #[cfg(test)]
@@ -54,8 +57,8 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
         app.insert_resource(net_id::NetworkId(1));
-        app.insert_resource(clicker::AutoClick(false));
         app.insert_resource(clicker::GlobalCounter::default());
+        app.insert_resource(clicker::PendingClicks::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(clicker::InstanceInfo {
             namespace: "test".to_string(),

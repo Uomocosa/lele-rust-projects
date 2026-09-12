@@ -21,7 +21,7 @@ pub fn click(
         for peer in members.values() {
             out.push(p2p::Command::Send {
                 peer_id: peer.clone(),
-                payload: delta,
+                payload: delta.clone(),
             });
         }
     }

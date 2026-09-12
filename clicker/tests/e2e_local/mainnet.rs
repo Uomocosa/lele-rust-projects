@@ -478,6 +478,98 @@ fn parse_last_global(path: &std::path::Path) -> Option<u64> {
     last
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SyncState {
+    p1: u64,
+    p2: u64,
+    p3: u64,
+    global: u64,
+}
+
+fn parse_last_sync(path: &std::path::Path) -> Option<SyncState> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let mut last = None;
+    for line in content.lines() {
+        let stripped = strip_ansi(line);
+        if !stripped.contains("sync lobby=") {
+            continue;
+        }
+        let (Some(p1), Some(p2), Some(p3), Some(global)) = (
+            parse_number_after(&stripped, " p1=").map(|v| v as u64),
+            parse_number_after(&stripped, " p2=").map(|v| v as u64),
+            parse_number_after(&stripped, " p3=").map(|v| v as u64),
+            parse_number_after(&stripped, " global=").map(|v| v as u64),
+        ) else {
+            continue;
+        };
+        last = Some(SyncState { p1, p2, p3, global });
+    }
+    last
+}
+
+const LAG_SPREAD_BUDGET_MS: u128 = 2000;
+const LAG_AGREE_TIMEOUT_SECS: u64 = 60;
+
+async fn probe_lag(terms: &[TerminalGuard], drive_end: Instant) -> SoftCheck {
+    let start = Instant::now();
+    let mut history: Vec<(u128, Vec<Option<SyncState>>)> = Vec::new();
+    let mut agreed: Option<(SyncState, u128)> = None;
+    while start.elapsed().as_secs() < LAG_AGREE_TIMEOUT_SECS {
+        let elapsed_ms = drive_end.elapsed().as_millis();
+        let states: Vec<Option<SyncState>> =
+            terms.iter().map(|g| parse_last_sync(&g.log)).collect();
+        history.push((elapsed_ms, states.clone()));
+        if states.len() == 3
+            && let [Some(a), Some(b), Some(c)] = states.as_slice()
+            && a == b
+            && b == c
+            && a.global == a.p1.saturating_add(a.p2).saturating_add(a.p3)
+            && a.p1 >= CLICKS_EACH as u64
+            && a.p2 >= CLICKS_EACH as u64
+            && a.p3 >= CLICKS_EACH as u64
+        {
+            agreed = Some((*a, elapsed_ms));
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    let Some((final_state, agree_ms)) = agreed else {
+        return SoftCheck {
+            name: "lag-agree".to_string(),
+            ok: false,
+            detail: "no agreement within 60s".to_string(),
+        };
+    };
+    let mut first_seen = [None; 3];
+    for (ms, states) in &history {
+        for (i, state) in states.iter().enumerate() {
+            if first_seen[i].is_none() && *state == Some(final_state) {
+                first_seen[i] = Some(*ms);
+            }
+        }
+    }
+    let mut spread_ms = 0_u128;
+    if first_seen.iter().all(|v| v.is_some()) {
+        let min = first_seen.iter().filter_map(|v| *v).min().unwrap_or(0);
+        let max = first_seen.iter().filter_map(|v| *v).max().unwrap_or(0);
+        spread_ms = max.saturating_sub(min);
+    }
+    let ok = spread_ms <= LAG_SPREAD_BUDGET_MS;
+    SoftCheck {
+        name: "lag-spread-2s".to_string(),
+        ok,
+        detail: format!(
+            "agree={agree_ms}ms spread={spread_ms}ms budget={}ms p1={} p2={} p3={} global={} {}",
+            LAG_SPREAD_BUDGET_MS,
+            final_state.p1,
+            final_state.p2,
+            final_state.p3,
+            final_state.global,
+            check_emoji(ok)
+        ),
+    }
+}
+
 fn parse_ready_addr(path: &std::path::Path) -> Option<String> {
     let content = std::fs::read_to_string(path).ok()?;
     for line in content.lines() {
@@ -682,6 +774,33 @@ async fn local_mesh() {
             Err(err) => eprintln!("drive_random {title} join failed: {err}"),
         }
     }
+    for _ in 0..3 {
+        let mut short: Vec<(&str, u64)> = Vec::new();
+        for (tag, title) in OWN_IDS.iter().zip(GAME_TITLES.iter()) {
+            let log = persist_dir.join(format!("instance-{tag}.log"));
+            let local = local_count(&log, *tag).unwrap_or_default();
+            if local < CLICKS_EACH as u64 {
+                short.push((title, (CLICKS_EACH as u64).saturating_sub(local)));
+            }
+        }
+        if short.is_empty() {
+            break;
+        }
+        for (title, missing) in short {
+            eprintln!("top-up {title} x{missing}");
+            let count = u32::try_from(missing).unwrap_or(1);
+            let drive_result =
+                tokio::task::spawn_blocking(move || drive_random(title, count)).await;
+            match drive_result {
+                Ok(Ok(())) => eprintln!("top-up {title} done"),
+                Ok(Err(err)) => eprintln!("top-up {title} failed: {err}"),
+                Err(err) => eprintln!("top-up {title} join failed: {err}"),
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+    let drive_end = Instant::now();
+    eprintln!("drive done, waiting for settle");
 
     let auto_ok = wait_until(180, || {
         OWN_IDS.iter().enumerate().all(|(i, tag)| {
@@ -692,11 +811,16 @@ async fn local_mesh() {
     })
     .await;
     tokio::time::sleep(Duration::from_secs(15)).await;
+    eprintln!("probe_lag from settle end");
+    let lag_check = probe_lag(&terms, drive_end).await;
+    eprintln!("probe_lag done: {} {}", lag_check.name, lag_check.detail);
+
     let (mesh_ok, mesh_lines) = mesh_report(&terms);
     let mesh_ok = auto_ok && mesh_ok;
 
     let mut checks = Vec::new();
     soft(&mut checks, "mesh-counts", mesh_ok, mesh_lines.join("; "));
+    checks.push(lag_check);
     checks.push(color_report(&terms));
     checks.push(flash_report(&terms));
     checks.push(player_report(&terms));
@@ -704,10 +828,15 @@ async fn local_mesh() {
 
     let recording_start = Instant::now();
     let clip_path = persist_dir.join("clip.mp4");
-    let video = start_record(CLIP_SECS, &clip_path).and_then(|child| {
-        std::thread::sleep(Duration::from_secs(CLIP_SECS));
-        finish_record(child, &clip_path)
-    });
+    let record_path = clip_path.clone();
+    let video = tokio::task::spawn_blocking(move || {
+        start_record(CLIP_SECS, &record_path).and_then(|child| {
+            std::thread::sleep(Duration::from_secs(CLIP_SECS));
+            finish_record(child, &record_path)
+        })
+    })
+    .await
+    .unwrap_or(None);
     let recording_elapsed = recording_start.elapsed();
     kill_terms(&mut terms);
     let total_elapsed = total_start.elapsed();
@@ -738,15 +867,26 @@ async fn local_mesh() {
         fmt_secs(recording_elapsed),
         fmt_secs(total_elapsed)
     );
-    match send_video_file(&creds, &clip, &caption) {
-        Ok(message) => {
+    match tokio::task::spawn_blocking(move || send_video_file(&creds, &clip, &caption)).await {
+        Ok(Ok(message)) => {
             println!(
                 "telegram video sent: message_id={message} clip={}",
-                clip.display()
+                clip_path.display()
+            );
+        }
+        Ok(Err(err)) => {
+            assert!(
+                false,
+                "telegram send failed: {err} clip={}",
+                clip_path.display()
             );
         }
         Err(err) => {
-            assert!(false, "telegram send failed: {err} clip={}", clip.display());
+            assert!(
+                false,
+                "telegram send join failed: {err} clip={}",
+                clip_path.display()
+            );
         }
     }
     assert!(converged, "no converge: {}", persist_dir.display());

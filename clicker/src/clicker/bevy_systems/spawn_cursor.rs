@@ -39,6 +39,7 @@ pub fn spawn_cursor(
             clicker::CursorIcon,
             clicker::Owner(id),
             clicker::PlayerNo(*id),
+            clicker::ClickCounter::default(),
             clicker::CursorColor(fill_color),
             Mesh2d(meshes.add(clicker::cursor_mesh(1.0))),
             MeshMaterial2d(materials.add(fill_color)),

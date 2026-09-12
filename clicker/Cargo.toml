@@ -18,6 +18,11 @@ name = "mainnet_local"
 path = "tests/e2e_local/mainnet.rs"
 required-features = ["dev"]
 
+[[test]]
+name = "mesh"
+path = "tests/mesh/main.rs"
+required-features = ["dev"]
+
 [[example]]
 name = "send_previews"
 required-features = ["dev"]

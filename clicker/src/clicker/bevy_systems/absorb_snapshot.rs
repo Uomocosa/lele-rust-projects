@@ -7,8 +7,11 @@ use crate::clicker;
 
 pub fn absorb_snapshot(
     mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
-    mut targets: Query<(&clicker::Owner, &mut clicker::ClickCounter)>,
-    mut global: ResMut<clicker::GlobalCounter>,
+    mut targets: Query<(
+        &clicker::Owner,
+        Option<&clicker::PlayerNo>,
+        &mut clicker::ClickCounter,
+    )>,
     lobby: Res<clicker::ActiveLobby>,
     own: Res<net_id::NetworkId>,
 ) {
@@ -27,27 +30,45 @@ pub fn absorb_snapshot(
                 };
                 for (id, count) in snapshot.entries {
                     if id == *own {
+                        for (slot_owner, _, mut counter) in &mut targets {
+                            if ***slot_owner == *id {
+                                let current = **counter;
+                                if count > current {
+                                    counter.add(count.saturating_sub(current));
+                                }
+                                break;
+                            }
+                        }
                         continue;
                     }
-                    for (owner, mut counter) in &mut targets {
-                        if **owner == id {
-                            let current = **counter;
-                            if count > current {
-                                counter.add(count.saturating_sub(current));
-                            }
-                            break;
-                        }
-                    }
-                }
-                let current = **global;
-                if snapshot.global > current {
-                    global.add(snapshot.global.saturating_sub(current));
+                    absorb_entry(&mut targets, id, count);
                 }
             }
             other => rest.push(other),
         }
     }
     events.extend(rest);
+}
+
+// needed helper: max-merges one logical snapshot entry
+fn absorb_entry(
+    targets: &mut Query<(
+        &clicker::Owner,
+        Option<&clicker::PlayerNo>,
+        &mut clicker::ClickCounter,
+    )>,
+    id: net_id::NetworkId,
+    count: i32,
+) {
+    for (slot_owner, player, mut counter) in targets {
+        if ***slot_owner == *id || player.is_some_and(|p| **p == *id) {
+            let current = **counter;
+            if count > current {
+                counter.add(count.saturating_sub(current));
+            }
+            break;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -63,16 +84,19 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
-        app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
         let remote = net_id::NetworkId::from_peer("remote-peer");
         let target = app
             .world_mut()
-            .spawn((clicker::Owner(remote), clicker::ClickCounter(2)))
+            .spawn((
+                clicker::Owner(remote),
+                clicker::PlayerNo(2),
+                clicker::ClickCounter(2),
+            ))
             .id();
         let snapshot = clicker::Snapshot {
-            entries: vec![(remote, 5)],
+            entries: vec![(net_id::NetworkId(2), 5)],
             global: 9,
         };
         app.world_mut()
@@ -95,7 +119,6 @@ mod tests {
             **app.world().get::<clicker::ClickCounter>(target).unwrap(),
             5
         );
-        assert_eq!(**app.world().resource::<clicker::GlobalCounter>(), 9);
         assert_eq!(
             app.world()
                 .resource::<p2p::Events<clicker::CursorMsg>>()

@@ -1,24 +1,29 @@
 use bevy::prelude::*;
 
+use freenet_libp2p_bevy_plugin::{net_id, p2p, roster};
+
 use crate::clicker;
 
-pub fn detect_click(mouse: Res<ButtonInput<MouseButton>>, mut ctx: clicker::ClickCtx) {
+pub fn detect_click(
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut targets: Query<(&clicker::Owner, &mut clicker::ClickCounter)>,
+    mut global: ResMut<clicker::GlobalCounter>,
+    mut commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
+    roster: Res<roster::Roster>,
+    lobby: Res<clicker::ActiveLobby>,
+    own: Res<net_id::NetworkId>,
+) {
     let mouse = mouse.into_inner();
     if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
     tracing::debug!("click anywhere");
-    let own = *ctx.own;
-    for (owner, mut counter) in &mut ctx.targets {
+    let own = *own.into_inner();
+    let roster = roster.into_inner();
+    let lobby = lobby.into_inner();
+    for (owner, mut counter) in &mut targets {
         if **owner == own {
-            clicker::click(
-                &mut counter,
-                &mut ctx.global,
-                &mut ctx.commands,
-                &ctx.roster,
-                &ctx.lobby,
-                own,
-            );
+            clicker::click(&mut counter, &mut global, &mut commands, roster, lobby, own);
             break;
         }
     }

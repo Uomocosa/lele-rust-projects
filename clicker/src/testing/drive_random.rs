@@ -19,7 +19,7 @@ pub fn drive_random(title: &str, clicks: u32) -> Result<(), String> {
         let y = next_bounded(state, MIN_Y, MAX_Y);
         mouse_move(&wid, x, y)?;
         std::thread::sleep(Duration::from_millis(250));
-        mouse_click(&wid)?;
+        mouse_click()?;
         std::thread::sleep(Duration::from_millis(250));
     }
     Ok(())
@@ -38,7 +38,7 @@ fn seed_now() -> u64 {
 }
 
 // needed helper: deterministic LCG step with explicit wrapping
-fn next_state(state: u64) -> u64 {
+const fn next_state(state: u64) -> u64 {
     state
         .wrapping_mul(6_364_136_223_846_793_005)
         .wrapping_add(1_442_695_040_888_963_407)
@@ -94,12 +94,12 @@ fn mouse_move(wid: &str, x: i32, y: i32) -> Result<(), String> {
     }
 }
 
-// needed helper: sends a left click to the window
-fn mouse_click(wid: &str) -> Result<(), String> {
+// needed helper: sends a real left click at the current pointer position
+fn mouse_click() -> Result<(), String> {
     let status = Command::new("xdotool")
-        .args(["click", "--window", wid, "1"])
+        .args(["click", "1"])
         .status()
-        .map_err(|err| format!("xdotool click: {err}"))?;
+        .map_err(|err| format!("xdotool click failed: {err}"))?;
     if status.success() {
         Ok(())
     } else {

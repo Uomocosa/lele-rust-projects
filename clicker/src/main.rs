@@ -23,8 +23,6 @@ struct Args {
     instance_tag: u32,
     #[arg(long)]
     dial: Vec<String>,
-    #[arg(long, default_value_t = false)]
-    auto_click: bool,
 }
 
 #[tokio::main]
@@ -57,7 +55,7 @@ async fn main() {
         })
         .insert_resource(clicker::ActiveLobby(args.lobby.clone()))
         .insert_resource(clicker::GlobalCounter::default())
-        .insert_resource(clicker::AutoClick(args.auto_click))
+        .insert_resource(clicker::PendingClicks::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: format!("clicker-{} [{}]", args.instance_tag, args.lobby),

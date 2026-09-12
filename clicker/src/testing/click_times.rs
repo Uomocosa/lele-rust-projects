@@ -1,14 +1,11 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
+use crate::testing;
+
 pub fn click_times(app: &mut App, times: u32) {
-    for _ in 0..times {
-        let mut input = ButtonInput::<MouseButton>::default();
-        input.press(MouseButton::Left);
-        app.world_mut().insert_resource(input);
-        app.update();
-    }
-    app.world_mut()
-        .insert_resource(ButtonInput::<MouseButton>::default());
+    testing::click_times_with_gap(app, times, Duration::ZERO);
 }
 
 #[cfg(test)]

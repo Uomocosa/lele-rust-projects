@@ -4,6 +4,7 @@ use crate::clicker;
 
 pub fn tick_log(
     query: Query<(&clicker::Owner, &clicker::ClickCounter)>,
+    logical: Query<(&clicker::PlayerNo, &clicker::ClickCounter)>,
     global: Res<clicker::GlobalCounter>,
     lobby: Res<clicker::ActiveLobby>,
     time: Res<Time>,
@@ -26,6 +27,23 @@ pub fn tick_log(
             **global
         );
     }
+    let mut p1 = 0;
+    let mut p2 = 0;
+    let mut p3 = 0;
+    for (player, counter) in &logical {
+        if **player == 1 {
+            p1 = **counter;
+        } else if **player == 2 {
+            p2 = **counter;
+        } else if **player == 3 {
+            p3 = **counter;
+        }
+    }
+    tracing::info!(
+        "sync lobby={} p1={p1} p2={p2} p3={p3} global={}",
+        **lobby,
+        **global
+    );
 }
 
 #[cfg(test)]

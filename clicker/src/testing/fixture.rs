@@ -14,14 +14,19 @@ pub fn fixture(own: u64, lobby: &str) -> App {
     app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
     app.insert_resource(roster::Roster::default());
     app.insert_resource(net_id::NetworkId(own));
-    app.insert_resource(clicker::AutoClick(false));
     app.insert_resource(clicker::GlobalCounter::default());
+    app.insert_resource(clicker::PendingClicks::default());
     app.insert_resource(clicker::ActiveLobby(lobby.to_string()));
     app.insert_resource(clicker::InstanceInfo {
         namespace: "test".to_string(),
         instance_tag: 0,
         own_id: net_id::NetworkId(own),
     });
+    app.world_mut().spawn((
+        clicker::Owner(net_id::NetworkId(own)),
+        clicker::PlayerNo(own),
+        clicker::ClickCounter::default(),
+    ));
     app.add_plugins(clicker::Plugin);
     app
 }
