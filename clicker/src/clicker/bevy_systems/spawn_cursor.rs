@@ -17,6 +17,12 @@ pub fn spawn_cursor(
     };
     let id = *own.into_inner();
     tracing::info!("spawn cursor owner={}", *id);
+    tracing::info!(
+        "cursor color player={} hue={:.1}",
+        *id,
+        clicker::hue_for(id)
+    );
+    let spot = clicker::spawn_spot(id);
     commands.entity(entity).insert(CursorOptions {
         visible: false,
         ..default()
@@ -25,15 +31,16 @@ pub fn spawn_cursor(
         clicker::CursorIcon,
         Mesh2d(meshes.add(clicker::cursor_mesh(1.18))),
         MeshMaterial2d(materials.add(Color::BLACK)),
-        Transform::from_translation(Vec3::new(0.0, 0.0, 9.9)),
+        Transform::from_translation(Vec3::new(spot.x, spot.y, 9.9)),
     ));
     let fill = commands
         .spawn((
             clicker::CursorIcon,
             clicker::Owner(id),
+            clicker::PlayerNo(*id),
             Mesh2d(meshes.add(clicker::cursor_mesh(1.0))),
             MeshMaterial2d(materials.add(clicker::color_for(id))),
-            Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+            Transform::from_translation(Vec3::new(spot.x, spot.y, 10.0)),
         ))
         .id();
     commands.entity(fill).with_children(|parent| {

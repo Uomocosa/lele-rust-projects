@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use futures::StreamExt;
+use libp2p::gossipsub;
 use libp2p::identity::Keypair;
 use libp2p::kad;
 use libp2p::request_response;
@@ -43,32 +44,11 @@ pub async fn run<T: p2p::Message>(
                 event_tx.send(p2p::Event::Ready { peer_id: own_peer_id.clone(), addrs }).ok();
                 ready_deadline = None;
             }
-            cmd = cmd_rx.recv() => match cmd {
-                Some(p2p::Command::Dial { peer_id, addrs }) => {
-                    for addr in addrs {
-                        if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
-                            let _ = swarm.dial(ma);
-                        }
-                    }
-                    let _ = peer_id;
+            cmd = cmd_rx.recv() => {
+                if !dispatch_command(&mut swarm, cmd) {
+                    break;
                 }
-                Some(p2p::Command::Send { peer_id, payload }) => {
-                    if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
-                        swarm.behaviour_mut().request_response.send_request(&pid, payload);
-                    }
-                }
-                Some(p2p::Command::PutHistory { lobby, chunk, data }) => {
-                    let key = p2p::history_key(&lobby, chunk);
-                    let record = kad::Record { key: key.clone(), value: data, publisher: None, expires: None };
-                    let _ = swarm.behaviour_mut().kademlia.put_record(record, kad::Quorum::One);
-                    let _ = swarm.behaviour_mut().kademlia.start_providing(key);
-                }
-                Some(p2p::Command::FetchHistory { lobby, chunk }) => {
-                    let key = p2p::history_key(&lobby, chunk);
-                    swarm.behaviour_mut().kademlia.get_record(key);
-                }
-                None => break,
-            },
+            }
             event = swarm.select_next_some() => match event {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     listen_addrs.push(address.to_string());
@@ -100,6 +80,15 @@ pub async fn run<T: p2p::Message>(
                         event_tx.send(p2p::Event::HistoryChunk { lobby, chunk, data: record.value }).ok();
                     }
                 }
+                SwarmEvent::Behaviour(
+                    p2p::behaviour::BehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                        propagation_source,
+                        message,
+                        ..
+                    }),
+                ) => {
+                    forward_gossip(&event_tx, propagation_source, message);
+                }
                 SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                     event_tx.send(p2p::Event::PeerConnected(peer_id.to_string())).ok();
                 }
@@ -110,6 +99,76 @@ pub async fn run<T: p2p::Message>(
             },
         }
     }
+}
+
+// needed helper: forwards one Bevy command into the swarm behaviours
+fn dispatch_command<T: p2p::Message>(
+    swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
+    cmd: Option<p2p::Command<T>>,
+) -> bool {
+    match cmd {
+        Some(p2p::Command::Dial { peer_id, addrs }) => {
+            for addr in addrs {
+                if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
+                    let _ = swarm.dial(ma);
+                }
+            }
+            let _ = peer_id;
+        }
+        Some(p2p::Command::Send { peer_id, payload }) => {
+            if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
+                swarm
+                    .behaviour_mut()
+                    .request_response
+                    .send_request(&pid, payload);
+            }
+        }
+        Some(p2p::Command::PutHistory { lobby, chunk, data }) => {
+            let key = p2p::history_key(&lobby, chunk);
+            let record = kad::Record {
+                key: key.clone(),
+                value: data,
+                publisher: None,
+                expires: None,
+            };
+            let _ = swarm
+                .behaviour_mut()
+                .kademlia
+                .put_record(record, kad::Quorum::One);
+            let _ = swarm.behaviour_mut().kademlia.start_providing(key);
+        }
+        Some(p2p::Command::FetchHistory { lobby, chunk }) => {
+            let key = p2p::history_key(&lobby, chunk);
+            swarm.behaviour_mut().kademlia.get_record(key);
+        }
+        Some(p2p::Command::Subscribe { topic }) => {
+            let topic = gossipsub::IdentTopic::new(topic);
+            let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);
+        }
+        Some(p2p::Command::Publish { topic, data }) => {
+            let topic = gossipsub::IdentTopic::new(topic);
+            let _ = swarm.behaviour_mut().gossipsub.publish(topic, data);
+        }
+        None => return false,
+    }
+    true
+}
+
+// needed helper: converts a gossipsub wire message into a Bevy event
+fn forward_gossip<T: p2p::Message>(
+    event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
+    propagation_source: libp2p::PeerId,
+    message: gossipsub::Message,
+) {
+    event_tx
+        .send(p2p::Event::Gossip {
+            topic: message.topic.to_string(),
+            from: message
+                .source
+                .map_or_else(|| propagation_source.to_string(), |s| s.to_string()),
+            data: message.data,
+        })
+        .ok();
 }
 
 #[cfg(test)]

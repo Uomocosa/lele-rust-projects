@@ -26,11 +26,26 @@ pub use click::click;
 pub mod click_ctx;
 pub use click_ctx::ClickCtx;
 
-pub mod click_delta;
-pub use click_delta::ClickDelta;
+pub mod cursor_msg;
+pub use cursor_msg::CursorMsg;
+
+pub mod pos_topic;
+pub use pos_topic::pos_topic;
+
+pub mod spawn_spot;
+pub use spawn_spot::spawn_spot;
+
+pub mod target_pos;
+pub use target_pos::TargetPos;
 
 pub mod color_for;
 pub use color_for::color_for;
+
+pub mod hue_for;
+pub use hue_for::hue_for;
+
+pub mod player_no;
+pub use player_no::PlayerNo;
 
 pub mod cursor_icon;
 pub use cursor_icon::CursorIcon;

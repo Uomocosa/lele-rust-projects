@@ -19,6 +19,13 @@ pub enum Command<T> {
         lobby: String,
         chunk: u64,
     },
+    Subscribe {
+        topic: String,
+    },
+    Publish {
+        topic: String,
+        data: Vec<u8>,
+    },
 }
 
 #[cfg(test)]

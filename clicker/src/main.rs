@@ -34,9 +34,9 @@ async fn main() {
         .own_id
         .unwrap_or_else(|| u64::from(args.instance_tag).wrapping_add(1));
     let (cmd_tx, cmd_rx) =
-        tokio::sync::mpsc::unbounded_channel::<p2p::Command<clicker::ClickDelta>>();
+        tokio::sync::mpsc::unbounded_channel::<p2p::Command<clicker::CursorMsg>>();
     let (event_tx, event_rx) =
-        tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::ClickDelta>>();
+        tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::CursorMsg>>();
     let _runner = p2p::spawn_runner(cmd_rx, event_tx);
     for addr in &args.dial {
         cmd_tx
@@ -70,7 +70,7 @@ async fn main() {
             }),
             ..default()
         }))
-        .add_plugins(P2PPlugin(Config::<clicker::ClickDelta>::new(
+        .add_plugins(P2PPlugin(Config::<clicker::CursorMsg>::new(
             net_id::NetworkId(own_id),
             cmd_tx,
             event_rx,

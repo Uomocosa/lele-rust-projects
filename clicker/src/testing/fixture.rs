@@ -7,9 +7,11 @@ pub fn fixture(own: u64, lobby: &str) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.init_resource::<Time>();
+    app.init_resource::<Assets<Mesh>>();
+    app.init_resource::<Assets<ColorMaterial>>();
     app.insert_resource(ButtonInput::<MouseButton>::default());
-    app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
-    app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
+    app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
+    app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
     app.insert_resource(roster::Roster::default());
     app.insert_resource(net_id::NetworkId(own));
     app.insert_resource(clicker::AutoClick(false));

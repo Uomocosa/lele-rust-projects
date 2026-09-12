@@ -11,7 +11,7 @@ pub fn publish_snapshot(
     targets: Query<(&clicker::Owner, &clicker::ClickCounter)>,
     global: Res<clicker::GlobalCounter>,
     lobby: Res<clicker::ActiveLobby>,
-    commands: ResMut<p2p::Commands<clicker::ClickDelta>>,
+    commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
 ) {
     let time = time.into_inner();
     let now = time.elapsed().as_secs_f64();
@@ -52,14 +52,14 @@ mod tests {
         app.init_resource::<Time>();
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
-        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),
             clicker::ClickCounter(4),
         ));
         app.add_systems(Update, publish_snapshot);
         app.update();
-        let commands = app.world().resource::<p2p::Commands<clicker::ClickDelta>>();
+        let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
         assert_eq!(commands.len(), 1);
         let Some(p2p::Command::PutHistory { lobby, data, .. }) = commands.first() else {
             panic!("expected PutHistory");
@@ -68,7 +68,7 @@ mod tests {
         let snapshot = clicker::decode_snapshot(data).unwrap();
         assert!(snapshot.entries.contains(&(net_id::NetworkId(1), 4)));
         app.update();
-        let commands = app.world().resource::<p2p::Commands<clicker::ClickDelta>>();
+        let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
         assert_eq!(commands.len(), 1);
     }
 }

@@ -8,7 +8,7 @@ use crate::clicker;
 pub struct ClickCtx<'w, 's> {
     pub targets: Query<'w, 's, (&'static clicker::Owner, &'static mut clicker::ClickCounter)>,
     pub global: ResMut<'w, clicker::GlobalCounter>,
-    pub commands: ResMut<'w, p2p::Commands<clicker::ClickDelta>>,
+    pub commands: ResMut<'w, p2p::Commands<clicker::CursorMsg>>,
     pub roster: Res<'w, roster::Roster>,
     pub lobby: Res<'w, clicker::ActiveLobby>,
     pub own: Res<'w, net_id::NetworkId>,
@@ -28,7 +28,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(clicker::GlobalCounter::default());

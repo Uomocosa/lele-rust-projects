@@ -6,14 +6,14 @@ use crate::clicker;
 pub fn click(
     counter: &mut clicker::ClickCounter,
     global: &mut clicker::GlobalCounter,
-    out: &mut p2p::Commands<clicker::ClickDelta>,
+    out: &mut p2p::Commands<clicker::CursorMsg>,
     roster: &roster::Roster,
     lobby: &clicker::ActiveLobby,
     own: net_id::NetworkId,
 ) {
     counter.increment();
     global.increment();
-    let delta = clicker::ClickDelta {
+    let delta = clicker::CursorMsg::Click {
         owner: own,
         delta: 1,
     };
@@ -37,7 +37,7 @@ mod tests {
     fn test_usage() {
         let mut counter = clicker::ClickCounter::default();
         let mut global = clicker::GlobalCounter::default();
-        let mut out = p2p::Commands::<clicker::ClickDelta>::default();
+        let mut out = p2p::Commands::<clicker::CursorMsg>::default();
         let roster = roster::Roster::default();
         let lobby = clicker::ActiveLobby("alpha".to_string());
         click(

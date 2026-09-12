@@ -51,7 +51,7 @@ mod tests {
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby::default());
-        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),

@@ -17,6 +17,11 @@ pub enum Event<T> {
         chunk: u64,
         data: Vec<u8>,
     },
+    Gossip {
+        topic: String,
+        from: String,
+        data: Vec<u8>,
+    },
     Error(String),
 }
 

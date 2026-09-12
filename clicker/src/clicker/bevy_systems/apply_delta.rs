@@ -6,7 +6,7 @@ use freenet_libp2p_bevy_plugin::p2p;
 use crate::clicker;
 
 pub fn apply_delta(
-    mut events: ResMut<p2p::Events<clicker::ClickDelta>>,
+    mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
     mut targets: Query<(&clicker::Owner, &mut clicker::ClickCounter)>,
     mut global: ResMut<clicker::GlobalCounter>,
     own: Res<net_id::NetworkId>,
@@ -15,23 +15,31 @@ pub fn apply_delta(
     let mut rest = Vec::new();
     for event in events.take_all() {
         match event {
-            p2p::Event::Message { from, payload } => {
-                if payload.owner == *own {
-                    continue;
-                }
-                // Credit goes to the transport sender: `payload.owner` lives in the
-                // sender's local id space (CLI `--own-id`) and is advisory only.
-                // Treating it as authoritative breaks delivery because it never
-                // equals `from_peer(from)`. Real sender auth needs signed deltas.
-                let sender = net_id::NetworkId::from_peer(&from);
-                for (owner, mut counter) in &mut targets {
-                    if **owner == sender {
-                        counter.add(payload.delta);
-                        global.add(payload.delta);
-                        break;
+            p2p::Event::Message { from, payload } => match payload {
+                clicker::CursorMsg::Click { owner, delta } => {
+                    if owner == *own {
+                        continue;
+                    }
+                    // Credit goes to the transport sender: `owner` lives in the
+                    // sender's local id space (CLI `--own-id`) and is advisory only.
+                    // Treating it as authoritative breaks delivery because it never
+                    // equals `from_peer(from)`. Real sender auth needs signed deltas.
+                    let sender = net_id::NetworkId::from_peer(&from);
+                    for (owner, mut counter) in &mut targets {
+                        if **owner == sender {
+                            counter.add(delta);
+                            global.add(delta);
+                            break;
+                        }
                     }
                 }
-            }
+                moved @ clicker::CursorMsg::Move { .. } => {
+                    rest.push(p2p::Event::Message {
+                        from,
+                        payload: moved,
+                    });
+                }
+            },
             other => rest.push(other),
         }
     }
@@ -50,7 +58,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(net_id::NetworkId(99));
         let sender = net_id::NetworkId::from_peer("peer");
@@ -59,19 +67,19 @@ mod tests {
             .spawn((clicker::Owner(sender), clicker::ClickCounter::default()))
             .id();
         app.world_mut()
-            .resource_mut::<p2p::Events<clicker::ClickDelta>>()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::Message {
                 from: "peer".to_string(),
-                payload: clicker::ClickDelta {
+                payload: clicker::CursorMsg::Click {
                     owner: sender,
                     delta: 3,
                 },
             });
         app.world_mut()
-            .resource_mut::<p2p::Events<clicker::ClickDelta>>()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::Message {
                 from: "peer".to_string(),
-                payload: clicker::ClickDelta {
+                payload: clicker::CursorMsg::Click {
                     owner: net_id::NetworkId(99),
                     delta: 5,
                 },
@@ -85,7 +93,7 @@ mod tests {
         assert_eq!(**app.world().resource::<clicker::GlobalCounter>(), 3);
         assert!(
             app.world()
-                .resource::<p2p::Events<clicker::ClickDelta>>()
+                .resource::<p2p::Events<clicker::CursorMsg>>()
                 .is_empty()
         );
     }
@@ -94,7 +102,7 @@ mod tests {
     fn test_sender_credited_owner_advisory() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(net_id::NetworkId(99));
         let sender = net_id::NetworkId::from_peer("peer");
@@ -103,10 +111,10 @@ mod tests {
             .spawn((clicker::Owner(sender), clicker::ClickCounter::default()))
             .id();
         app.world_mut()
-            .resource_mut::<p2p::Events<clicker::ClickDelta>>()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::Message {
                 from: "peer".to_string(),
-                payload: clicker::ClickDelta {
+                payload: clicker::CursorMsg::Click {
                     owner: net_id::NetworkId(7),
                     delta: 10,
                 },

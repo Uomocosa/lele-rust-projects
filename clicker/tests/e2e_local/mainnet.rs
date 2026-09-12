@@ -11,6 +11,199 @@ const LOBBY: &str = "alpha";
 const GAME_TITLES: [&str; 3] = ["clicker-1", "clicker-2", "clicker-3"];
 const OWN_IDS: [u64; 3] = [1, 2, 3];
 const CLICKS_EACH: u32 = 15;
+const FRESH_MS: i64 = 5000;
+const TRAVEL_PX: f64 = 100.0;
+
+struct SoftCheck {
+    name: String,
+    ok: bool,
+    detail: String,
+}
+
+fn soft(checks: &mut Vec<SoftCheck>, name: &str, ok: bool, detail: String) {
+    checks.push(SoftCheck {
+        name: name.to_string(),
+        ok,
+        detail,
+    });
+}
+
+fn parse_number_after(stripped: &str, needle: &str) -> Option<f64> {
+    let idx = stripped.find(needle)?;
+    let start = idx.checked_add(needle.len())?;
+    let rest = stripped.get(start..)?;
+    let end = rest
+        .find(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-'))
+        .unwrap_or(rest.len());
+    rest.get(..end)?.parse::<f64>().ok()
+}
+
+fn parse_hues(path: &std::path::Path) -> Vec<(u64, f64)> {
+    let mut hues = Vec::new();
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return hues;
+    };
+    for line in content.lines() {
+        let stripped = strip_ansi(line);
+        if stripped.contains("cursor resolved") {
+            let (Some(player), Some(hue)) = (
+                parse_number_after(&stripped, " player=").map(|v| v as u64),
+                parse_number_after(&stripped, " hue="),
+            ) else {
+                continue;
+            };
+            hues.push((player, hue));
+        } else if stripped.contains("cursor color player=") && !stripped.contains("player=?") {
+            let (Some(player), Some(hue)) = (
+                parse_number_after(&stripped, " player=").map(|v| v as u64),
+                parse_number_after(&stripped, " hue="),
+            ) else {
+                continue;
+            };
+            hues.push((player, hue));
+        }
+    }
+    hues
+}
+
+fn color_report(terms: &[TerminalGuard]) -> SoftCheck {
+    let mut ok = true;
+    let mut parts = Vec::new();
+    for player in OWN_IDS {
+        let mut seen = Vec::new();
+        for guard in terms {
+            for (p, hue) in parse_hues(&guard.log) {
+                if p == player {
+                    seen.push(hue);
+                    break;
+                }
+            }
+        }
+        let agree = seen.len() == terms.len()
+            && seen
+                .iter()
+                .all(|h| (*h - seen.first().copied().unwrap_or_default()).abs() <= 0.5);
+        ok &= agree;
+        let shown = seen
+            .first()
+            .map(|h| format!("{h:.1}"))
+            .unwrap_or_else(|| "?".to_string());
+        parts.push(format!("p{player}={shown}{}", check_emoji(agree)));
+    }
+    SoftCheck {
+        name: "color-agree".to_string(),
+        ok,
+        detail: parts.join(" "),
+    }
+}
+
+struct PosSample {
+    player: u64,
+    x: f64,
+    y: f64,
+    ts_ms: i64,
+}
+
+fn parse_pos(path: &std::path::Path) -> Vec<PosSample> {
+    let mut samples = Vec::new();
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return samples;
+    };
+    for line in content.lines() {
+        let stripped = strip_ansi(line);
+        if !stripped.contains("pos lobby=") {
+            continue;
+        }
+        let (Some(player), Some(x), Some(y)) = (
+            parse_number_after(&stripped, " player=").map(|v| v as u64),
+            parse_number_after(&stripped, " x="),
+            parse_number_after(&stripped, " y="),
+        ) else {
+            continue;
+        };
+        let ts_ms = stripped
+            .split_whitespace()
+            .next()
+            .and_then(|token| chrono::DateTime::parse_from_rfc3339(token).ok())
+            .map(|dt| dt.timestamp_millis())
+            .unwrap_or(-1);
+        if ts_ms < 0 {
+            continue;
+        }
+        samples.push(PosSample {
+            player,
+            x,
+            y,
+            ts_ms,
+        });
+    }
+    samples
+}
+
+fn move_report(terms: &[TerminalGuard]) -> Vec<SoftCheck> {
+    let mut fresh_ok = true;
+    let mut travel_ok = true;
+    let mut fresh_detail = "all fresh".to_string();
+    let mut travel_detail = "all moved".to_string();
+    for (i, guard) in terms.iter().enumerate() {
+        let samples = parse_pos(&guard.log);
+        for player in OWN_IDS {
+            let mut series: Vec<&PosSample> =
+                samples.iter().filter(|s| s.player == player).collect();
+            series.sort_by_key(|s| s.ts_ms);
+            let Some(last) = series.last() else {
+                fresh_ok = false;
+                travel_ok = false;
+                fresh_detail = format!("inst{} p{player} no samples", i.saturating_add(1));
+                travel_detail = fresh_detail.clone();
+                continue;
+            };
+            if series.len() < 2 {
+                fresh_ok = false;
+                travel_ok = false;
+                fresh_detail = format!("inst{} p{player} 1 sample", i.saturating_add(1));
+                travel_detail = fresh_detail.clone();
+                continue;
+            }
+            let mut worst_gap = 0_i64;
+            let mut min_x = last.x;
+            let mut max_x = last.x;
+            let mut min_y = last.y;
+            let mut max_y = last.y;
+            let mut prev = series.first().map(|s| s.ts_ms).unwrap_or(0);
+            for sample in &series {
+                let gap = sample.ts_ms.checked_sub(prev).unwrap_or(i64::MAX);
+                worst_gap = worst_gap.max(gap);
+                min_x = min_x.min(sample.x);
+                max_x = max_x.max(sample.x);
+                min_y = min_y.min(sample.y);
+                max_y = max_y.max(sample.y);
+                prev = sample.ts_ms;
+            }
+            if worst_gap > FRESH_MS {
+                fresh_ok = false;
+                fresh_detail = format!("inst{} p{player} gap={worst_gap}ms", i.saturating_add(1));
+            }
+            let travel = (max_x - min_x).hypot(max_y - min_y);
+            if travel < TRAVEL_PX {
+                travel_ok = false;
+                travel_detail = format!("inst{} p{player} disp={travel:.0}px", i.saturating_add(1));
+            }
+        }
+    }
+    vec![
+        SoftCheck {
+            name: "move-fresh-5s".to_string(),
+            ok: fresh_ok,
+            detail: fresh_detail,
+        },
+        SoftCheck {
+            name: "cursor-travel-100px".to_string(),
+            ok: travel_ok,
+            detail: travel_detail,
+        },
+    ]
+}
 
 fn log_contains(path: &std::path::Path, needle: &str) -> bool {
     std::fs::read_to_string(path).is_ok_and(|s| s.contains(needle))
@@ -309,6 +502,11 @@ async fn local_mesh() {
     let (mesh_ok, mesh_lines) = mesh_report(&terms);
     let mesh_ok = auto_ok && mesh_ok;
 
+    let mut checks = Vec::new();
+    soft(&mut checks, "mesh-counts", mesh_ok, mesh_lines.join("; "));
+    checks.push(color_report(&terms));
+    checks.extend(move_report(&terms));
+
     let recording_start = Instant::now();
     let clip_path = persist_dir.join("clip.mp4");
     let video = start_record(CLIP_SECS, &clip_path).and_then(|child| {
@@ -329,11 +527,17 @@ async fn local_mesh() {
         assert!(false, "telegram creds missing");
         return;
     };
+    let check_lines: Vec<String> = checks
+        .iter()
+        .map(|c| format!("{} {} {}", check_emoji(c.ok), c.name, c.detail))
+        .collect();
+    let all_ok = checks.iter().all(|c| c.ok);
     let caption = format!(
-        "clicker local-mesh lobby={LOBBY} · {} converged={converged} {} mesh_ok={mesh_ok}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
+        "clicker local-mesh lobby={LOBBY} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
         check_emoji(converged),
-        check_emoji(mesh_ok),
+        check_emoji(all_ok),
         mesh_lines.join("\n"),
+        check_lines.join("\n"),
         persist_dir.display(),
         fmt_secs(build_elapsed),
         fmt_secs(recording_elapsed),
@@ -351,5 +555,7 @@ async fn local_mesh() {
         }
     }
     assert!(converged, "no converge: {}", persist_dir.display());
-    assert!(mesh_ok, "no mesh: {}", persist_dir.display());
+    for c in &checks {
+        assert!(c.ok, "soft check {} failed: {}", c.name, c.detail);
+    }
 }

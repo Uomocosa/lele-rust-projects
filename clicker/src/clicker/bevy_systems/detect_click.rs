@@ -39,7 +39,7 @@ mod tests {
         let mut mouse = ButtonInput::<MouseButton>::default();
         mouse.press(MouseButton::Left);
         app.insert_resource(mouse);
-        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
@@ -65,7 +65,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(ButtonInput::<MouseButton>::default());
-        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));

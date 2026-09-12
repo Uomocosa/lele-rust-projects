@@ -9,7 +9,7 @@ pub fn request_snapshot(
     mut requested: Local<bool>,
     mut last: Local<f64>,
     lobby: Res<clicker::ActiveLobby>,
-    commands: ResMut<p2p::Commands<clicker::ClickDelta>>,
+    commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
 ) {
     let time = time.into_inner();
     let now = time.elapsed().as_secs_f64();
@@ -40,13 +40,13 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.init_resource::<Time>();
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
-        app.insert_resource(p2p::Commands::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.add_systems(Update, request_snapshot);
         app.update();
-        let commands = app.world().resource::<p2p::Commands<clicker::ClickDelta>>();
+        let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
         assert_eq!(commands.len(), 1);
         app.update();
-        let commands = app.world().resource::<p2p::Commands<clicker::ClickDelta>>();
+        let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
         assert_eq!(commands.len(), 1);
     }
 }

@@ -33,10 +33,10 @@ mod tests {
         app.world_mut()
             .spawn((clicker::Owner(remote), clicker::ClickCounter::default()));
         app.world_mut()
-            .resource_mut::<p2p::Events<clicker::ClickDelta>>()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::Message {
                 from: "remote-peer".to_string(),
-                payload: clicker::ClickDelta {
+                payload: clicker::CursorMsg::Click {
                     owner: remote,
                     delta: 4,
                 },

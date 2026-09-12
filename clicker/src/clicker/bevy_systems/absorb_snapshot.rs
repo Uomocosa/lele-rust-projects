@@ -6,7 +6,7 @@ use freenet_libp2p_bevy_plugin::p2p;
 use crate::clicker;
 
 pub fn absorb_snapshot(
-    mut events: ResMut<p2p::Events<clicker::ClickDelta>>,
+    mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
     mut targets: Query<(&clicker::Owner, &mut clicker::ClickCounter)>,
     mut global: ResMut<clicker::GlobalCounter>,
     lobby: Res<clicker::ActiveLobby>,
@@ -62,7 +62,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(p2p::Events::<clicker::ClickDelta>::default());
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
@@ -76,14 +76,14 @@ mod tests {
             global: 9,
         };
         app.world_mut()
-            .resource_mut::<p2p::Events<clicker::ClickDelta>>()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::HistoryChunk {
                 lobby: "alpha".to_string(),
                 chunk: clicker::SNAPSHOT_CHUNK,
                 data: clicker::encode_snapshot(&snapshot),
             });
         app.world_mut()
-            .resource_mut::<p2p::Events<clicker::ClickDelta>>()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::HistoryChunk {
                 lobby: "other".to_string(),
                 chunk: clicker::SNAPSHOT_CHUNK,
@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(**app.world().resource::<clicker::GlobalCounter>(), 9);
         assert_eq!(
             app.world()
-                .resource::<p2p::Events<clicker::ClickDelta>>()
+                .resource::<p2p::Events<clicker::CursorMsg>>()
                 .len(),
             1
         );

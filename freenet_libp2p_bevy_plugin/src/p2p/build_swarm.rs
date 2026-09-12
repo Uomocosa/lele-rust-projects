@@ -1,6 +1,6 @@
 use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
-use libp2p::{StreamProtocol, identify, kad, noise, ping, request_response, tcp, yamux};
+use libp2p::{StreamProtocol, gossipsub, identify, kad, noise, ping, request_response, tcp, yamux};
 
 use crate::p2p;
 
@@ -40,6 +40,11 @@ pub fn build_swarm<T: p2p::Message>(
                     )],
                     request_response::Config::default(),
                 );
+                let gossipsub = gossipsub::Behaviour::new(
+                    gossipsub::MessageAuthenticity::Signed(kp.clone()),
+                    gossipsub::Config::default(),
+                )
+                .map_err(|e| format!("gossipsub: {e}"))?;
                 Ok(p2p::Behaviour {
                     request_response: rr,
                     kademlia,
@@ -48,6 +53,7 @@ pub fn build_swarm<T: p2p::Message>(
                         kp.public(),
                     )),
                     ping: ping::Behaviour::default(),
+                    gossipsub,
                 })
             },
         )

@@ -1,12 +1,16 @@
 use bevy::prelude::*;
 
+use freenet_libp2p_bevy_plugin::net_id;
+
 use crate::clicker;
 
 pub fn follow_mouse(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
-    mut cursors: Query<&mut Transform, With<clicker::CursorIcon>>,
+    own: Res<net_id::NetworkId>,
+    mut cursors: Query<(&mut Transform, Option<&clicker::Owner>), With<clicker::CursorIcon>>,
 ) {
+    let own = own.into_inner();
     let Ok(window) = windows.single() else {
         return;
     };
@@ -19,7 +23,11 @@ pub fn follow_mouse(
     let Ok(world) = camera.viewport_to_world_2d(transform, position) else {
         return;
     };
-    for mut cursor in &mut cursors {
+    for (mut cursor, owner) in &mut cursors {
+        let mine = owner.is_none_or(|o| ***o == **own);
+        if !mine {
+            continue;
+        }
         cursor.translation.x = world.x;
         cursor.translation.y = world.y;
     }
@@ -28,6 +36,7 @@ pub fn follow_mouse(
 #[cfg(test)]
 mod tests {
     use bevy::prelude::*;
+    use freenet_libp2p_bevy_plugin::net_id;
 
     use super::follow_mouse;
     use crate::clicker;
@@ -36,6 +45,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        app.insert_resource(net_id::NetworkId(1));
         let cursor = app
             .world_mut()
             .spawn((

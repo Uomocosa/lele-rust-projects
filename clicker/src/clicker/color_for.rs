@@ -2,13 +2,11 @@ use bevy::prelude::Color;
 
 use freenet_libp2p_bevy_plugin::net_id;
 
+use crate::clicker;
+
 #[must_use]
 pub fn color_for(owner: net_id::NetworkId) -> Color {
-    let digest = blake3::hash(&(*owner).to_le_bytes());
-    let bytes = digest.as_bytes();
-    let raw = u16::from_le_bytes([bytes[0], bytes[1]]);
-    let hue = f32::from(raw) % 360.0;
-    Color::hsl(hue, 0.7, 0.5)
+    Color::hsl(clicker::hue_for(owner), 0.7, 0.5)
 }
 
 #[cfg(test)]
