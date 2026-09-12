@@ -5,9 +5,9 @@ use std::process::Command;
 use std::time::Duration;
 
 use freenet_libp2p_example::testing::{
-    finish_record, is_contiguous, load_creds, send_video_file, start_record, tile_three,
-    turmoil_lobby, wakeup_screen,
+    finish_record, is_contiguous, start_record, tile_three, turmoil_lobby, wakeup_screen,
 };
+use telegram_bot::{load_creds, send_video_file};
 
 fn shell_escape(s: &str) -> String {
     let mut out = String::from("'");
@@ -167,5 +167,7 @@ contract: letter_contract fixed-lobby session-shard · gossip any-to-any · next
         total_elapsed.as_secs_f64(),
         persist_dir.display(),
     );
-    send_video_file(&creds, &path, &caption);
+    if let Err(err) = send_video_file(&creds, &path, &caption) {
+        eprintln!("telegram send failed: {err} clip={}", path.display());
+    }
 }

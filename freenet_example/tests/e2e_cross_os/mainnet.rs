@@ -1,11 +1,10 @@
 use std::time::{Duration, Instant};
 
 use freenet_example::testing::finish_record;
-use freenet_example::testing::load_creds;
-use freenet_example::testing::send_video_file;
 use freenet_example::testing::start_record;
 use freenet_example::testing::wakeup_screen;
 use freenet_example::testing::{ReconcileEnv, connect_with_retry, spawn_node, tick_until_merged};
+use telegram_bot::{load_creds, send_video_file};
 
 fn fmt_secs(duration: Duration) -> String {
     format!("{:.2}", duration.as_secs_f64())
@@ -79,7 +78,9 @@ timings:\n\
             fmt_secs(recording_elapsed),
             fmt_secs(total_elapsed),
         );
-        send_video_file::send_video_file(&creds, &path, &caption);
+        if let Err(err) = send_video_file(&creds, &path, &caption) {
+            eprintln!("telegram send failed: {err} clip={}", path.display());
+        }
     }
     assert!(
         !foreign_tags.is_empty(),

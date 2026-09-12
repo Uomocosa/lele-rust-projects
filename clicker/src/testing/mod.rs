@@ -1,9 +1,6 @@
 pub mod build_game;
 pub use build_game::build_game;
 
-pub mod creds;
-pub use creds::Creds;
-
 pub mod drive_cursor;
 pub use drive_cursor::drive_cursor;
 
@@ -12,9 +9,6 @@ pub use drive_random::drive_random;
 
 pub mod finish_record;
 pub use finish_record::finish_record;
-
-pub mod load_creds;
-pub use load_creds::load_creds;
 
 pub mod bevy_systems;
 
@@ -26,18 +20,6 @@ pub use place_window::place_window;
 
 pub mod require_xterm;
 pub use require_xterm::require_xterm;
-
-pub mod send_photo;
-pub use send_photo::send_photo;
-
-pub mod send_photo_file;
-pub use send_photo_file::send_photo_file;
-
-pub mod send_video;
-pub use send_video::send_video;
-
-pub mod send_video_file;
-pub use send_video_file::send_video_file;
 
 pub mod spawn_xterm;
 pub use spawn_xterm::spawn_xterm;

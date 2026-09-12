@@ -25,21 +25,6 @@ pub use start_record::start_record;
 pub mod finish_record;
 pub use finish_record::finish_record;
 
-pub mod creds;
-pub use creds::Creds;
-
-pub mod load_creds;
-pub use load_creds::load_creds;
-
-pub mod send_video;
-pub use send_video::send_video;
-
-pub mod send_video_file;
-pub use send_video_file::send_video_file;
-
-pub mod send_text;
-pub use send_text::send_text;
-
 pub mod terminal_guard;
 pub use terminal_guard::TerminalGuard;
 

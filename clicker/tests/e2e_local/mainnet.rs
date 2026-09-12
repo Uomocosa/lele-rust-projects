@@ -1,9 +1,10 @@
 use std::time::{Duration, Instant};
 
 use clicker_lib::testing::{
-    TerminalGuard, build_game, drive_random, finish_record, load_creds, poke, require_xterm,
-    send_video_file, spawn_xterm, start_record, tile_three, wakeup_screen,
+    TerminalGuard, build_game, drive_random, finish_record, poke, require_xterm, spawn_xterm,
+    start_record, tile_three, wakeup_screen,
 };
+use telegram_bot::{load_creds, send_video_file};
 
 const TIMEOUT_SECS: u64 = 300;
 const CLIP_SECS: u64 = 25;

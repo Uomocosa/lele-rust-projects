@@ -1,13 +1,12 @@
 use std::time::{Duration, Instant};
 
 use freenet_example::testing::finish_record;
-use freenet_example::testing::load_creds;
-use freenet_example::testing::send_video_file;
 use freenet_example::testing::start_record;
 use freenet_example::testing::wakeup_screen;
 use freenet_example::testing::{
     build_game, new_contract_params, poke, require_xterm, spawn_xterm, tile_three,
 };
+use telegram_bot::{load_creds, send_video_file};
 
 const INSTANCES: usize = 3;
 const TIMEOUT_SECS: u64 = 300;
@@ -246,7 +245,9 @@ logs: {}",
             println!(" log: {}", e.path().display());
         }
     }
-    send_video_file::send_video_file(&creds, &path, &caption);
+    if let Err(err) = send_video_file(&creds, &path, &caption) {
+        eprintln!("telegram send failed: {err} clip={}", path.display());
+    }
 
     assert!(
         converged,

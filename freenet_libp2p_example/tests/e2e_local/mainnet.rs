@@ -2,9 +2,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use freenet_libp2p_example::testing::{
-    TerminalGuard, build_game, finish_record, load_creds, new_contract_params, poke, require_xterm,
-    send_video_file, spawn_xterm, start_record, tile_three, wakeup_screen,
+    TerminalGuard, build_game, finish_record, new_contract_params, poke, require_xterm,
+    spawn_xterm, start_record, tile_three, wakeup_screen,
 };
+use telegram_bot::{load_creds, send_video_file};
 
 const INSTANCES: usize = 3;
 const TIMEOUT_SECS: u64 = 180;
@@ -253,7 +254,9 @@ note: start seq 5→25 etc = 5 ticks during convergence (genesis+~5s poke) + 20 
     for e in read_dir.flatten() {
         println!(" log: {}", e.path().display());
     }
-    send_video_file(&creds, &path, &caption);
+    if let Err(err) = send_video_file(&creds, &path, &caption) {
+        eprintln!("telegram send failed: {err} clip={}", path.display());
+    }
     if !converged {
         return Err(format!("did not converge in {TIMEOUT_SECS}s lobby={lobby}").into());
     }

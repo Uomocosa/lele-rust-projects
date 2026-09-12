@@ -32,7 +32,7 @@ name = "freenet-libp2p-example"
 path = "src/main.rs"
 
 [features]
-dev = ["dep:serde_json", "dep:reqwest", "dep:dotenvy", "dep:chrono"]
+dev = ["dep:serde_json", "dep:chrono"]
 turmoil = ["dep:turmoil"]
 turmoil-deterministic = ["turmoil"]
 default = []
@@ -78,6 +78,7 @@ rand = "=0.8.5"
 getrandom = "=0.2.15"
 serde_json = { version = "=1.0.150", optional = true }
 chrono = { version = "=0.4.45", default-features = false, features = ["clock"], optional = true }
-reqwest = { version = "=0.12.28", default-features = false, features = ["blocking", "multipart", "rustls-tls", "json"], optional = true }
-dotenvy = { version = "=0.15.7", optional = true }
 turmoil = { version = "=0.7", optional = true }
+
+[dev-dependencies]
+telegram_bot = { path = "../telegram_bot" }

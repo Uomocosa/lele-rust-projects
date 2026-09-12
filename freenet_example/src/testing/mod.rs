@@ -74,23 +74,8 @@ pub use build_game::build_game;
 pub mod new_contract_params;
 pub use new_contract_params::new_contract_params;
 
-pub mod creds;
-pub use creds::Creds;
-
-pub mod load_creds;
-pub use load_creds::load_creds;
-
 pub mod finish_record;
 pub use finish_record::finish_record;
-
-pub mod send_text;
-pub use send_text::send_text;
-
-pub mod send_video;
-pub use send_video::send_video;
-
-pub mod send_video_file;
-pub use send_video_file::send_video_file;
 
 pub mod start_record;
 pub use start_record::start_record;

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clicker_lib::testing;
+use telegram_bot;
 
 fn main() -> std::process::ExitCode {
     match run() {
@@ -17,7 +17,7 @@ fn run() -> Result<(), String> {
         .nth(1)
         .ok_or_else(|| "usage: send_one <path.png|path.mp4>".to_string())?;
     let path = PathBuf::from(path);
-    let Some(creds) = testing::load_creds() else {
+    let Some(creds) = telegram_bot::load_creds() else {
         return Err("missing TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID in clicker/.env".to_string());
     };
     let caption = path
@@ -31,13 +31,13 @@ fn run() -> Result<(), String> {
 
 // needed helper: routes a single preview to the matching Telegram sender
 fn send_any(
-    creds: &testing::Creds,
+    creds: &telegram_bot::Creds,
     path: &std::path::Path,
     caption: &str,
 ) -> Result<String, String> {
     if path.extension().is_some_and(|ext| ext == "mp4") {
-        testing::send_video_file(creds, path, caption)
+        telegram_bot::send_video_file(creds, path, caption).map_err(|err| err.to_string())
     } else {
-        testing::send_photo_file(creds, path, caption)
+        telegram_bot::send_photo_file(creds, path, caption).map_err(|err| err.to_string())
     }
 }
