@@ -15,6 +15,17 @@
     gnumake
     glibc.dev
     linuxHeaders
+    wayland
+    alsa-lib
+    udev
+    libxkbcommon
+    xorg.libX11
+    xorg.libXext
+    xorg.libXrandr
+    xorg.libXcursor
+    xorg.libXi
+    mesa
+    vulkan-loader
     (if pkgs ? ffmpeg-full then pkgs.ffmpeg-full else ffmpeg)
     xorg.xdpyinfo
     xterm
@@ -23,6 +34,7 @@
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
+  env.VK_ICD_FILENAMES = "${pkgs.mesa}/share/vulkan/icd.d/lvp_icd.x86_64.json";
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";

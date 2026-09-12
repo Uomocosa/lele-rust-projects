@@ -6,6 +6,8 @@ use crate::LeleConfig;
 use crate::WorkspaceSkipped;
 use crate::check;
 use crate::check_freenet_tasks;
+use crate::check_hook_pointer;
+use crate::check_hook_yamls;
 use crate::discover;
 use crate::is_workspace;
 use crate::uses_freenet;
@@ -26,6 +28,8 @@ pub fn run(root: &Path) -> Result<(Vec<Diagnostic>, Vec<WorkspaceSkipped>), Erro
         }
         diags.extend(d);
     }
+    diags.extend(check_hook_pointer(root));
+    diags.extend(check_hook_yamls(root, &crates));
     Ok((diags, workspaces_skipped))
 }
 

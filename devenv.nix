@@ -16,10 +16,15 @@
     showOutput = true;
   };
 
+  tasks."hooks:resync" = {
+    exec = "cargo run --manifest-path lele_hook_resync/Cargo.toml 2>&1";
+    showOutput = true;
+  };
+
   git-hooks.hooks.lele-enforce-config = {
     enable = true;
     name = "lele_enforce_config";
-    entry = "devenv tasks run lele:enforce-config 2>&1";
+    entry = "bash -c 'devenv tasks run lele:enforce-config 2>&1'";
     pass_filenames = false;
     always_run = true;
   };
