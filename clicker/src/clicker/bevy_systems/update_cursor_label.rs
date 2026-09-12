@@ -1,27 +1,20 @@
 use bevy::prelude::*;
 
-use freenet_libp2p_bevy_plugin::net_id;
-
 use crate::clicker;
 
 pub fn update_cursor_label(
-    own: Res<net_id::NetworkId>,
-    targets: Query<(&clicker::Owner, &clicker::ClickCounter)>,
+    targets: Query<(&clicker::ClickCounter, &Children)>,
     mut labels: Query<&mut Text2d, With<clicker::CursorLabel>>,
 ) {
-    let own = own.into_inner();
-    let mut mine = 0;
-    for (owner, counter) in &targets {
-        if **owner == *own {
-            mine = **counter;
-            break;
-        }
-    }
-    let text = clicker::math_formatter(mine);
-    for mut label in &mut labels {
-        if label.0 != text {
-            tracing::debug!("cursor label change {} -> {text}", label.0);
-            (**label).clone_from(&text);
+    for (counter, children) in &targets {
+        let text = clicker::math_formatter(**counter);
+        for child in children {
+            if let Ok(mut label) = labels.get_mut(*child)
+                && label.0 != text
+            {
+                tracing::debug!("cursor label change {} -> {text}", label.0);
+                (**label).clone_from(&text);
+            }
         }
     }
 }
@@ -49,17 +42,56 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         test_logging(&mut app);
         app.insert_resource(net_id::NetworkId(1));
-        app.world_mut().spawn((
-            clicker::Owner(net_id::NetworkId(1)),
-            clicker::ClickCounter(1_234),
-        ));
-        let label = app
-            .world_mut()
-            .spawn((clicker::CursorLabel, Text2d::new("0")))
-            .id();
+        app.world_mut()
+            .spawn((
+                clicker::Owner(net_id::NetworkId(1)),
+                clicker::ClickCounter(1_234),
+            ))
+            .with_children(|parent| {
+                parent.spawn((clicker::CursorLabel, Text2d::new("0")));
+            });
         app.add_systems(Update, update_cursor_label);
         app.update();
-        let text = app.world().get::<Text2d>(label).unwrap();
-        assert_eq!(text.0, "1.2e+3");
+        let mut found = false;
+        let mut query = app.world_mut().query::<&Text2d>();
+        for text in query.iter(app.world()) {
+            if text.0 == "1.2e+3" {
+                found = true;
+            }
+        }
+        assert!(found);
+    }
+
+    #[test]
+    fn each_label_shows_its_own_cursor_count() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        test_logging(&mut app);
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut()
+            .spawn((
+                clicker::Owner(net_id::NetworkId(1)),
+                clicker::ClickCounter(3),
+            ))
+            .with_children(|parent| {
+                parent.spawn((clicker::CursorLabel, Text2d::new("0")));
+            });
+        app.world_mut()
+            .spawn((
+                clicker::Owner(net_id::NetworkId(2)),
+                clicker::ClickCounter(17),
+            ))
+            .with_children(|parent| {
+                parent.spawn((clicker::CursorLabel, Text2d::new("0")));
+            });
+        app.add_systems(Update, update_cursor_label);
+        app.update();
+        let mut texts = Vec::new();
+        let mut query = app.world_mut().query::<&Text2d>();
+        for text in query.iter(app.world()) {
+            texts.push(text.0.clone());
+        }
+        texts.sort();
+        assert_eq!(texts, vec!["17".to_string(), "3".to_string()]);
     }
 }

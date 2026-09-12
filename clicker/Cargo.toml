@@ -64,10 +64,11 @@ bincode = "=1.3.3"
 thiserror = "=2.0.18"
 tracing = "=0.1.44"
 clap = { version = "=4.5.39", features = ["derive"] }
-tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
+tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "io-util"] }
 blake3 = "=1.8.3"
 serde_json = { version = "=1.0.150", optional = true }
 chrono = { version = "=0.4.45", default-features = false, features = ["clock"], optional = true }
 
 [dev-dependencies]
 telegram_bot = { path = "../telegram_bot" }
+turmoil = "0.7"
