@@ -33,13 +33,15 @@ pub fn spawn_cursor(
         MeshMaterial2d(materials.add(Color::BLACK)),
         Transform::from_translation(Vec3::new(spot.x, spot.y, 9.9)),
     ));
+    let fill_color = clicker::color_for(id);
     let fill = commands
         .spawn((
             clicker::CursorIcon,
             clicker::Owner(id),
             clicker::PlayerNo(*id),
+            clicker::CursorColor(fill_color),
             Mesh2d(meshes.add(clicker::cursor_mesh(1.0))),
-            MeshMaterial2d(materials.add(clicker::color_for(id))),
+            MeshMaterial2d(materials.add(fill_color)),
             Transform::from_translation(Vec3::new(spot.x, spot.y, 10.0)),
         ))
         .id();

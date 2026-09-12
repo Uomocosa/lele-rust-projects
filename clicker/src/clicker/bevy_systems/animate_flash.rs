@@ -9,21 +9,26 @@ pub fn animate_flash(
     materials: ResMut<Assets<ColorMaterial>>,
     mut flashing: Query<(
         Entity,
-        &clicker::Owner,
+        &clicker::CursorColor,
         &MeshMaterial2d<ColorMaterial>,
         &mut clicker::ClickFlash,
     )>,
+    numbers: Query<&clicker::PlayerNo>,
 ) {
     let materials = materials.into_inner();
     let tick = time.into_inner().delta_secs();
-    for (entity, owner, handle, mut flash) in &mut flashing {
-        let base = clicker::color_for(**owner);
+    for (entity, base_color, handle, mut flash) in &mut flashing {
+        let base = **base_color;
         let next = (**flash - tick).max(0.0);
+        let player = numbers
+            .get(entity)
+            .ok()
+            .map_or_else(|| "?".to_string(), |n| format!("{}", **n));
         if next <= 0.0 {
             if let Some(mut material) = materials.get_mut(handle) {
                 material.color = base;
             }
-            tracing::debug!("cursor flash done owner={}", ***owner);
+            tracing::info!("cursor flash done player={player} color={base:?}");
             commands.entity(entity).remove::<clicker::ClickFlash>();
         } else {
             **flash = next;
@@ -69,6 +74,7 @@ mod tests {
             .spawn((
                 clicker::CursorIcon,
                 clicker::Owner(owner),
+                clicker::CursorColor(base),
                 MeshMaterial2d(handle.clone()),
                 clicker::ClickFlash(clicker::FLASH_SECS),
             ))
@@ -89,5 +95,36 @@ mod tests {
         tracing::info!("cursor flash active, color whitened");
         let flash = app.world().get::<clicker::ClickFlash>(cursor).unwrap();
         assert!(**flash < clicker::FLASH_SECS);
+    }
+
+    #[test]
+    fn flash_restores_resolved_base_not_owner() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Time>();
+        app.init_resource::<Assets<ColorMaterial>>();
+        let sender = net_id::NetworkId::from_peer("peer");
+        let base = clicker::color_for(net_id::NetworkId(5));
+        assert_ne!(base, clicker::color_for(sender));
+        let handle = app
+            .world_mut()
+            .resource_mut::<Assets<ColorMaterial>>()
+            .add(ColorMaterial::from_color(Color::WHITE));
+        app.world_mut().spawn((
+            clicker::CursorIcon,
+            clicker::Owner(sender),
+            clicker::PlayerNo(5),
+            clicker::CursorColor(base),
+            MeshMaterial2d(handle.clone()),
+            clicker::ClickFlash(0.0),
+        ));
+        app.add_systems(Update, animate_flash);
+        app.update();
+        let material = app
+            .world()
+            .resource::<Assets<ColorMaterial>>()
+            .get(&handle)
+            .unwrap();
+        assert_eq!(material.color, base);
     }
 }

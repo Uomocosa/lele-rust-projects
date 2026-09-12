@@ -45,10 +45,12 @@ pub fn resolve_player(
                 continue;
             }
             let spot = clicker::spawn_spot(player);
+            let base = clicker::color_for(player);
             commands.entity(entity).insert(clicker::PlayerNo(*claimed));
+            commands.entity(entity).insert(clicker::CursorColor(base));
             commands
                 .entity(entity)
-                .insert(MeshMaterial2d(materials.add(clicker::color_for(player))));
+                .insert(MeshMaterial2d(materials.add(base)));
             for (spot_owner, mut transform, mut target) in &mut spots {
                 if ***spot_owner != *sender {
                     continue;
@@ -127,6 +129,92 @@ mod tests {
                 .resource::<p2p::Events<clicker::CursorMsg>>()
                 .len(),
             2
+        );
+    }
+
+    #[test]
+    fn resolve_survives_absorb_first() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(99));
+        let sender = net_id::NetworkId::from_peer("peer");
+        let visual = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(sender),
+                clicker::TargetPos(Vec2::ZERO),
+                Transform::default(),
+            ))
+            .id();
+        let msg = clicker::CursorMsg::Move {
+            owner: net_id::NetworkId(5),
+            pos: [30.0, 40.0],
+        };
+        let data = bincode::serialize(&msg).unwrap_or_default();
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Gossip {
+                topic: "clicker/alpha/pos".to_string(),
+                from: "peer".to_string(),
+                data,
+            });
+        app.add_systems(
+            Update,
+            (clicker::bevy_systems::absorb_gossip, resolve_player).chain(),
+        );
+        app.update();
+        let numbered = app.world().get::<clicker::PlayerNo>(visual).unwrap();
+        assert_eq!(**numbered, 5);
+    }
+
+    #[test]
+    fn resolve_then_absorb_applies_live_pos() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(99));
+        let sender = net_id::NetworkId::from_peer("peer");
+        let visual = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(sender),
+                clicker::TargetPos(Vec2::ZERO),
+                Transform::default(),
+            ))
+            .id();
+        let msg = clicker::CursorMsg::Move {
+            owner: net_id::NetworkId(5),
+            pos: [30.0, 40.0],
+        };
+        let data = bincode::serialize(&msg).unwrap_or_default();
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Gossip {
+                topic: "clicker/alpha/pos".to_string(),
+                from: "peer".to_string(),
+                data,
+            });
+        app.add_systems(
+            Update,
+            (resolve_player, clicker::bevy_systems::absorb_gossip).chain(),
+        );
+        app.update();
+        let numbered = app.world().get::<clicker::PlayerNo>(visual).unwrap();
+        assert_eq!(**numbered, 5);
+        let target = app.world().get::<clicker::TargetPos>(visual).unwrap();
+        assert!((target.x - 30.0).abs() < 0.001);
+        assert!((target.y - 40.0).abs() < 0.001);
+        assert!(
+            !app.world()
+                .resource::<p2p::Events<clicker::CursorMsg>>()
+                .is_empty()
         );
     }
 }

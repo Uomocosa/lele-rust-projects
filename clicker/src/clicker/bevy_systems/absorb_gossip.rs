@@ -27,9 +27,19 @@ pub fn absorb_gossip(
                     continue;
                 }
                 let Ok(msg) = bincode::deserialize::<clicker::CursorMsg>(&data) else {
+                    rest.push(p2p::Event::Gossip {
+                        topic: incoming,
+                        from,
+                        data,
+                    });
                     continue;
                 };
                 let clicker::CursorMsg::Move { pos, .. } = msg else {
+                    rest.push(p2p::Event::Gossip {
+                        topic: incoming,
+                        from,
+                        data,
+                    });
                     continue;
                 };
                 let [x, y] = pos;
@@ -43,6 +53,11 @@ pub fn absorb_gossip(
                         break;
                     }
                 }
+                rest.push(p2p::Event::Gossip {
+                    topic: incoming,
+                    from,
+                    data,
+                });
             }
             other => rest.push(other),
         }
@@ -98,7 +113,39 @@ mod tests {
             app.world()
                 .resource::<p2p::Events<clicker::CursorMsg>>()
                 .len(),
-            1
+            2
         );
+    }
+
+    #[test]
+    fn gossip_preserved_for_resolve() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(99));
+        let sender = net_id::NetworkId::from_peer("peer");
+        app.world_mut()
+            .spawn((clicker::Owner(sender), clicker::TargetPos(Vec2::ZERO)));
+        let msg = clicker::CursorMsg::Move {
+            owner: sender,
+            pos: [1.0, 2.0],
+        };
+        let data = bincode::serialize(&msg).unwrap_or_default();
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Gossip {
+                topic: "clicker/alpha/pos".to_string(),
+                from: "peer".to_string(),
+                data,
+            });
+        app.add_systems(Update, absorb_gossip);
+        app.update();
+        let kept = app
+            .world()
+            .resource::<p2p::Events<clicker::CursorMsg>>()
+            .iter()
+            .any(|e| matches!(e, p2p::Event::Gossip { .. }));
+        assert!(kept);
     }
 }

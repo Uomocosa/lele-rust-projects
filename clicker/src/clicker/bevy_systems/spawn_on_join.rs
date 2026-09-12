@@ -35,20 +35,18 @@ pub fn spawn_on_join(
         }
         known.push(id);
         tracing::info!("accounting for remote owner={} peer={peer}", *id);
-        tracing::info!(
-            "cursor color player=? owner={} hue={:.1}",
-            *id,
-            clicker::hue_for(id)
-        );
+        tracing::info!("cursor pending owner={} peer={peer}", *id);
         let spot = clicker::spawn_spot(id);
+        let pending = Color::srgb(0.5, 0.5, 0.5);
         let fill = commands
             .spawn((
                 clicker::CursorIcon,
                 clicker::Owner(id),
+                clicker::CursorColor(pending),
                 clicker::ClickCounter::default(),
                 clicker::TargetPos(spot),
                 Mesh2d(meshes.add(clicker::cursor_mesh(1.0))),
-                MeshMaterial2d(materials.add(clicker::color_for(id))),
+                MeshMaterial2d(materials.add(pending)),
                 Transform::from_translation(Vec3::new(spot.x, spot.y, 10.0)),
             ))
             .id();
@@ -93,5 +91,37 @@ mod tests {
             .iter(app.world())
             .count();
         assert_eq!(count, 1);
+        let mut materials = app.world_mut().query::<&MeshMaterial2d<ColorMaterial>>();
+        let handle = materials.iter(app.world()).next().unwrap().clone();
+        let material = app
+            .world()
+            .resource::<Assets<ColorMaterial>>()
+            .get(&handle)
+            .unwrap();
+        assert_eq!(material.color, Color::srgb(0.5, 0.5, 0.5));
+    }
+
+    #[test]
+    fn placeholder_has_no_player_no() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(roster::Roster::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut().resource_mut::<roster::Roster>().add_entry(
+            "alpha".to_string(),
+            *blake3::hash(b"peer").as_bytes(),
+            "peer".to_string(),
+        );
+        app.add_systems(Update, spawn_on_join);
+        app.update();
+        let numbered = app
+            .world_mut()
+            .query::<&clicker::PlayerNo>()
+            .iter(app.world())
+            .count();
+        assert_eq!(numbered, 0);
     }
 }

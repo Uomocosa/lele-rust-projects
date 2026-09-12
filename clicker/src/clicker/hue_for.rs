@@ -21,4 +21,20 @@ mod tests {
         assert!(first >= 0.0);
         assert!(first < 360.0);
     }
+
+    #[test]
+    fn lobby_ids_map_to_distinct_hues() {
+        let hues = [
+            hue_for(net_id::NetworkId(1)),
+            hue_for(net_id::NetworkId(2)),
+            hue_for(net_id::NetworkId(3)),
+        ];
+        for hue in hues {
+            assert!(hue >= 0.0);
+            assert!(hue < 360.0);
+        }
+        assert_ne!(hues[0].to_bits(), hues[1].to_bits());
+        assert_ne!(hues[0].to_bits(), hues[2].to_bits());
+        assert_ne!(hues[1].to_bits(), hues[2].to_bits());
+    }
 }

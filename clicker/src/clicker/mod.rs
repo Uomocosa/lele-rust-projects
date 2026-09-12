@@ -50,6 +50,9 @@ pub use player_no::PlayerNo;
 pub mod cursor_icon;
 pub use cursor_icon::CursorIcon;
 
+pub mod cursor_color;
+pub use cursor_color::CursorColor;
+
 pub mod cursor_label;
 pub use cursor_label::CursorLabel;
 

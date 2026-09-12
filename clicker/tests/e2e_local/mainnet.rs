@@ -66,32 +66,184 @@ fn parse_hues(path: &std::path::Path) -> Vec<(u64, f64)> {
     hues
 }
 
+fn expected_hue(player: u64) -> f64 {
+    let hue = clicker_lib::clicker::hue_for(freenet_libp2p_bevy_plugin::net_id::NetworkId(player));
+    format!("{hue:.1}").parse::<f64>().unwrap_or(f64::NAN)
+}
+
 fn color_report(terms: &[TerminalGuard]) -> SoftCheck {
     let mut ok = true;
     let mut parts = Vec::new();
+    let mut agreed: Vec<(u64, f64)> = Vec::new();
     for player in OWN_IDS {
-        let mut seen = Vec::new();
-        for guard in terms {
-            for (p, hue) in parse_hues(&guard.log) {
-                if p == player {
-                    seen.push(hue);
+        let expected = expected_hue(player);
+        let mut first: Option<f64> = None;
+        let mut player_ok = true;
+        let mut detail = String::new();
+        for (i, guard) in terms.iter().enumerate() {
+            let hues: Vec<f64> = parse_hues(&guard.log)
+                .into_iter()
+                .filter(|(p, _)| *p == player)
+                .map(|(_, h)| h)
+                .collect();
+            if hues.is_empty() {
+                player_ok = false;
+                detail = format!("inst{} missing", i.saturating_add(1));
+                break;
+            }
+            if hues.iter().any(|h| h.to_bits() != hues[0].to_bits()) {
+                player_ok = false;
+                detail = format!("inst{} drift", i.saturating_add(1));
+                break;
+            }
+            if hues[0].to_bits() != expected.to_bits() {
+                player_ok = false;
+                detail = format!("inst{} wrong hue", i.saturating_add(1));
+                break;
+            }
+            match first {
+                None => first = Some(hues[0]),
+                Some(f) if f.to_bits() != hues[0].to_bits() => {
+                    player_ok = false;
+                    detail = format!("inst{} disagree", i.saturating_add(1));
                     break;
+                }
+                _ => {}
+            }
+        }
+        if player_ok {
+            if let Some(f) = first {
+                agreed.push((player, f));
+                parts.push(format!("p{player}={f:.1}{}", check_emoji(true)));
+            }
+        } else {
+            ok = false;
+            parts.push(format!("p{player}=?{} {detail}", check_emoji(false)));
+        }
+    }
+    if ok {
+        for i in 0..agreed.len() {
+            for j in (i.saturating_add(1))..agreed.len() {
+                if agreed[i].1.to_bits() == agreed[j].1.to_bits() {
+                    ok = false;
+                    parts.push(format!(
+                        "collision p{}=p{}{}",
+                        agreed[i].0,
+                        agreed[j].0,
+                        check_emoji(false)
+                    ));
                 }
             }
         }
-        let agree = seen.len() == terms.len()
-            && seen
-                .iter()
-                .all(|h| (*h - seen.first().copied().unwrap_or_default()).abs() <= 0.5);
-        ok &= agree;
-        let shown = seen
-            .first()
-            .map(|h| format!("{h:.1}"))
-            .unwrap_or_else(|| "?".to_string());
-        parts.push(format!("p{player}={shown}{}", check_emoji(agree)));
     }
     SoftCheck {
         name: "color-agree".to_string(),
+        ok,
+        detail: parts.join(" "),
+    }
+}
+
+fn expected_color(player: u64) -> String {
+    let base =
+        clicker_lib::clicker::color_for(freenet_libp2p_bevy_plugin::net_id::NetworkId(player));
+    format!("{base:?}")
+}
+
+fn parse_flash(path: &std::path::Path) -> Vec<(Option<u64>, String)> {
+    let mut out = Vec::new();
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return out;
+    };
+    for line in content.lines() {
+        let stripped = strip_ansi(line);
+        if !stripped.contains("cursor flash done") {
+            continue;
+        }
+        let player = parse_number_after(&stripped, " player=").map(|v| v as u64);
+        let Some(color_idx) = stripped.find(" color=") else {
+            continue;
+        };
+        let Some(start) = color_idx.checked_add(7) else {
+            continue;
+        };
+        let Some(color) = stripped.get(start..).map(str::trim_end).map(str::to_string) else {
+            continue;
+        };
+        if player.is_none() && !stripped.contains("player=?") {
+            continue;
+        }
+        out.push((player, color));
+    }
+    out
+}
+
+fn flash_report(terms: &[TerminalGuard]) -> SoftCheck {
+    let mut ok = true;
+    let mut parts = Vec::new();
+    let mut agreed: Vec<(u64, String)> = Vec::new();
+    for player in OWN_IDS {
+        let expected = expected_color(player);
+        let mut first: Option<String> = None;
+        let mut player_ok = true;
+        let mut detail = String::new();
+        for (i, guard) in terms.iter().enumerate() {
+            let colors: Vec<String> = parse_flash(&guard.log)
+                .into_iter()
+                .filter(|(p, _)| *p == Some(player))
+                .map(|(_, c)| c)
+                .collect();
+            if colors.is_empty() {
+                player_ok = false;
+                detail = format!("inst{} missing", i.saturating_add(1));
+                break;
+            }
+            if colors.iter().any(|c| *c != colors[0]) {
+                player_ok = false;
+                detail = format!("inst{} drift", i.saturating_add(1));
+                break;
+            }
+            if colors[0] != expected {
+                player_ok = false;
+                detail = format!("inst{} wrong color", i.saturating_add(1));
+                break;
+            }
+            if let Some(f) = first.as_ref() {
+                if *f != colors[0] {
+                    player_ok = false;
+                    detail = format!("inst{} disagree", i.saturating_add(1));
+                    break;
+                }
+            } else {
+                first = Some(colors[0].clone());
+            }
+        }
+        if player_ok {
+            if let Some(f) = first {
+                parts.push(format!("p{player}{}", check_emoji(true)));
+                agreed.push((player, f));
+            }
+        } else {
+            ok = false;
+            parts.push(format!("p{player}=?{} {detail}", check_emoji(false)));
+        }
+    }
+    if ok {
+        for i in 0..agreed.len() {
+            for j in (i.saturating_add(1))..agreed.len() {
+                if agreed[i].1 == agreed[j].1 {
+                    ok = false;
+                    parts.push(format!(
+                        "collision p{}=p{}{}",
+                        agreed[i].0,
+                        agreed[j].0,
+                        check_emoji(false)
+                    ));
+                }
+            }
+        }
+    }
+    SoftCheck {
+        name: "flash-hue-agree".to_string(),
         ok,
         detail: parts.join(" "),
     }
@@ -203,6 +355,46 @@ fn move_report(terms: &[TerminalGuard]) -> Vec<SoftCheck> {
             detail: travel_detail,
         },
     ]
+}
+
+fn player_report(terms: &[TerminalGuard]) -> SoftCheck {
+    let mut ok = true;
+    let mut parts = Vec::new();
+    for (i, guard) in terms.iter().enumerate() {
+        let samples = parse_pos(&guard.log);
+        let mut seen = Vec::new();
+        for sample in &samples {
+            if OWN_IDS.contains(&sample.player) && !seen.contains(&sample.player) {
+                seen.push(sample.player);
+            }
+        }
+        let mut missing = Vec::new();
+        for player in OWN_IDS {
+            if !seen.contains(&player) {
+                missing.push(player);
+            }
+        }
+        let good = missing.is_empty();
+        ok &= good;
+        if good {
+            parts.push(format!(
+                "inst{} 3/3{}",
+                i.saturating_add(1),
+                check_emoji(true)
+            ));
+        } else {
+            parts.push(format!(
+                "inst{} missing={missing:?}{}",
+                i.saturating_add(1),
+                check_emoji(false)
+            ));
+        }
+    }
+    SoftCheck {
+        name: "logical-players".to_string(),
+        ok,
+        detail: parts.join("; "),
+    }
 }
 
 fn log_contains(path: &std::path::Path, needle: &str) -> bool {
@@ -505,6 +697,8 @@ async fn local_mesh() {
     let mut checks = Vec::new();
     soft(&mut checks, "mesh-counts", mesh_ok, mesh_lines.join("; "));
     checks.push(color_report(&terms));
+    checks.push(flash_report(&terms));
+    checks.push(player_report(&terms));
     checks.extend(move_report(&terms));
 
     let recording_start = Instant::now();

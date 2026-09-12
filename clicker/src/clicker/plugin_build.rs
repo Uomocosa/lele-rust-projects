@@ -9,13 +9,19 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(Update, clicker::bevy_systems::detect_click)
         .add_systems(Update, clicker::bevy_systems::follow_mouse)
         .add_systems(Update, clicker::bevy_systems::publish_cursor)
-        .add_systems(Update, clicker::bevy_systems::absorb_gossip)
+        .add_systems(
+            Update,
+            (
+                clicker::bevy_systems::spawn_on_join,
+                clicker::bevy_systems::resolve_player,
+                clicker::bevy_systems::absorb_gossip,
+                clicker::bevy_systems::apply_delta,
+                clicker::bevy_systems::absorb_snapshot,
+            )
+                .chain(),
+        )
         .add_systems(Update, clicker::bevy_systems::ease_remote)
-        .add_systems(Update, clicker::bevy_systems::spawn_on_join)
         .add_systems(Update, clicker::bevy_systems::despawn_on_leave)
-        .add_systems(Update, clicker::bevy_systems::resolve_player)
-        .add_systems(Update, clicker::bevy_systems::apply_delta)
-        .add_systems(Update, clicker::bevy_systems::absorb_snapshot)
         .add_systems(Update, clicker::bevy_systems::publish_snapshot)
         .add_systems(Update, clicker::bevy_systems::request_snapshot)
         .add_systems(Update, clicker::bevy_systems::emit_flash)
