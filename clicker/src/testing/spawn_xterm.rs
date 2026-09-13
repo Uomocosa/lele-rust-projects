@@ -11,28 +11,23 @@ pub fn spawn_xterm(
     lobby: &str,
     create: bool,
     tag: u64,
-    dial: &[String],
+    contract_params: &str,
     log: &Path,
 ) -> Result<testing::TerminalGuard, String> {
     std::fs::File::create(log).map_err(|e| format!("create log {}: {e}", log.display()))?;
     let title = format!("clicker-xterm-{tag}");
     let bin_str = bin.to_string_lossy().to_string();
     let log_str = log.to_string_lossy().to_string();
-    let mut dial_args = String::new();
-    for addr in dial {
-        dial_args.push_str(" --dial ");
-        dial_args.push_str(&shell_escape(addr));
-    }
     let create_arg = if create { " --create-lobby" } else { "" };
     let inner = format!(
-        "stdbuf -oL -eL {} --namespace {} --lobby {}{} --instance-tag {} --own-id {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        "stdbuf -oL -eL {} --namespace {} --lobby {}{} --instance-tag {} --own-id {} --contract-params {} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
         shell_escape(&bin_str),
         shell_escape(namespace),
         shell_escape(lobby),
         create_arg,
         tag,
         tag,
-        dial_args,
+        shell_escape(contract_params),
         shell_escape(&log_str),
         tag
     );

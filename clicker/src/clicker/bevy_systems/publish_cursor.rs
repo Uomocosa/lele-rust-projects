@@ -5,6 +5,7 @@ use freenet_libp2p_bevy_plugin::{net_id, p2p};
 use crate::clicker;
 
 const INTERVAL_SECS: f64 = 1.0 / 15.0;
+const HEARTBEAT_SECS: f64 = 5.0;
 const EPSILON_SQ: f32 = 4.0;
 
 pub fn publish_cursor(
@@ -35,9 +36,9 @@ pub fn publish_cursor(
     let Some(pos) = here else {
         return;
     };
-    if let Some(prev) = *last_pos
-        && prev.distance_squared(pos) < EPSILON_SQ
-    {
+    let moved = last_pos.is_some_and(|prev| prev.distance_squared(pos) >= EPSILON_SQ);
+    let heartbeat_due = now - *last >= HEARTBEAT_SECS;
+    if primed && !moved && !heartbeat_due {
         return;
     }
     *last = now;

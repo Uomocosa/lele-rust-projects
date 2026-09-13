@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
 use clicker_lib::testing::{
-    TerminalGuard, build_game, drive_random, finish_record, poke, require_xterm, spawn_xterm,
-    start_record, tile_three, wakeup_screen,
+    TerminalGuard, build_game, drive_random, finish_record, fresh_params, poke, require_xterm,
+    spawn_xterm, start_record, tile_three, wakeup_screen,
 };
 use telegram_bot::{load_creds, send_video_file};
 
@@ -570,20 +570,10 @@ async fn probe_lag(terms: &[TerminalGuard], drive_end: Instant) -> SoftCheck {
     }
 }
 
-fn parse_ready_addr(path: &std::path::Path) -> Option<String> {
-    let content = std::fs::read_to_string(path).ok()?;
-    for line in content.lines() {
-        if !line.contains("ready peer_id=") || !line.contains("addrs=") {
-            continue;
-        }
-        let stripped = strip_ansi(line);
-        for part in stripped.split('"') {
-            if part.contains("/tcp/") {
-                return Some(part.to_string());
-            }
-        }
-    }
-    None
+fn resolved_count(path: &std::path::Path) -> usize {
+    std::fs::read_to_string(path)
+        .map(|content| content.matches("cursor resolved peer=").count())
+        .unwrap_or_default()
 }
 
 fn parse_owners(path: &std::path::Path) -> Vec<u64> {
@@ -683,10 +673,18 @@ fn spawn_tag(
     bin: &std::path::Path,
     dir: &std::path::Path,
     tag: u64,
-    dial: &[String],
+    contract_params: &str,
 ) -> bool {
     let log = dir.join(format!("instance-{tag}.log"));
-    match spawn_xterm(bin, "blackboard-v1", LOBBY, tag == 1, tag, dial, &log) {
+    match spawn_xterm(
+        bin,
+        "blackboard-v1",
+        LOBBY,
+        tag == 1,
+        tag,
+        contract_params,
+        &log,
+    ) {
         Ok(guard) => {
             terms.push(guard);
             true
@@ -699,7 +697,7 @@ fn spawn_tag(
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "local mesh: needs X + 3 clicker windows; run with --ignored --nocapture"]
+#[ignore = "local-mainnet: needs X + 3 clicker windows + public Freenet mainnet; run with --ignored --nocapture"]
 async fn local_mesh() {
     let total_start = Instant::now();
     wakeup_screen();
@@ -724,30 +722,30 @@ async fn local_mesh() {
     );
 
     let mut terms = Vec::new();
-    assert!(spawn_tag(&mut terms, &bin, &persist_dir, 1, &[]), "spawn 1");
-    let log0 = persist_dir.join("instance-1.log");
-    let ready_ok = wait_until(180, || parse_ready_addr(&log0).is_some()).await;
-    let dial_addr1 = parse_ready_addr(&log0).unwrap_or_default();
-    assert!(ready_ok && !dial_addr1.is_empty(), "instance 1 never ready");
+    let contract_params = std::env::var("CLICKER_CONTRACT_PARAMS")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| fresh_params("blackboard-v1", LOBBY));
     assert!(
-        spawn_tag(
-            &mut terms,
-            &bin,
-            &persist_dir,
-            2,
-            std::slice::from_ref(&dial_addr1)
-        ),
+        spawn_tag(&mut terms, &bin, &persist_dir, 1, &contract_params),
+        "spawn 1"
+    );
+    let log0 = persist_dir.join("instance-1.log");
+    assert!(
+        wait_until(180, || log_contains(&log0, "discovery: roster connected")).await,
+        "instance 1 never joined roster"
+    );
+    assert!(
+        spawn_tag(&mut terms, &bin, &persist_dir, 2, &contract_params),
         "spawn 2"
     );
     let log1 = persist_dir.join("instance-2.log");
-    let second_ready = wait_until(180, || parse_ready_addr(&log1).is_some()).await;
-    let dial_addr2 = parse_ready_addr(&log1).unwrap_or_default();
     assert!(
-        second_ready && !dial_addr2.is_empty(),
-        "instance 2 never ready"
+        wait_until(180, || log_contains(&log1, "discovery: roster connected")).await,
+        "instance 2 never joined roster"
     );
     assert!(
-        spawn_tag(&mut terms, &bin, &persist_dir, 3, &[dial_addr1, dial_addr2]),
+        spawn_tag(&mut terms, &bin, &persist_dir, 3, &contract_params),
         "spawn 3"
     );
     assert!(tile_three(GAME_TITLES).is_ok(), "tile game windows");
@@ -761,6 +759,7 @@ async fn local_mesh() {
             && terms
                 .iter()
                 .all(|g| log_contains(&g.log, "accounting for remote owner="))
+            && terms.iter().all(|g| resolved_count(&g.log) >= 2)
     })
     .await;
 

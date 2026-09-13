@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::window::CursorOptions;
 use clap::Parser;
 use clicker_lib::clicker;
+use clicker_lib::discovery;
 use freenet_libp2p_bevy_plugin::net_id;
 use freenet_libp2p_bevy_plugin::p2p;
 use freenet_libp2p_bevy_plugin::plugin::{Config, P2PPlugin};
@@ -22,7 +23,7 @@ struct Args {
     #[arg(long, default_value_t = 0)]
     instance_tag: u32,
     #[arg(long)]
-    dial: Vec<String>,
+    contract_params: Option<String>,
 }
 
 #[tokio::main]
@@ -31,19 +32,25 @@ async fn main() {
     let own_id = args
         .own_id
         .unwrap_or_else(|| u64::from(args.instance_tag).wrapping_add(1));
+    let params = discovery::resolve_params(
+        &args.namespace,
+        &args.lobby,
+        args.contract_params.as_deref(),
+    );
     let (cmd_tx, cmd_rx) =
         tokio::sync::mpsc::unbounded_channel::<p2p::Command<clicker::CursorMsg>>();
-    let (event_tx, event_rx) =
+    let (raw_tx, raw_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::CursorMsg>>();
+    let (bevy_tx, bevy_rx) =
         tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::CursorMsg>>();
-    let _runner = p2p::spawn_runner(cmd_rx, event_tx);
-    for addr in &args.dial {
-        cmd_tx
-            .send(p2p::Command::Dial {
-                peer_id: String::new(),
-                addrs: vec![addr.clone()],
-            })
-            .ok();
-    }
+    let (ready_tx, ready_rx) = tokio::sync::watch::channel::<Option<(String, Vec<String>)>>(None);
+    let _runner = p2p::spawn_runner(cmd_rx, raw_tx);
+    tokio::spawn(forward_events(raw_rx, bevy_tx, ready_tx));
+    tokio::spawn(discovery::run(
+        cmd_tx.clone(),
+        ready_rx,
+        params,
+        discovery::PlayerId(own_id),
+    ));
     if args.create_lobby {
         tracing::info!("lobby {} created (cap {})", args.lobby, clicker::LOBBY_CAP);
     }
@@ -71,9 +78,24 @@ async fn main() {
         .add_plugins(P2PPlugin(Config::<clicker::CursorMsg>::new(
             net_id::NetworkId(own_id),
             cmd_tx,
-            event_rx,
+            bevy_rx,
         )))
         .insert_resource(roster::Lobby(args.lobby))
         .add_plugins(clicker::Plugin)
         .run();
+}
+
+async fn forward_events(
+    mut raw_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::Event<clicker::CursorMsg>>,
+    bevy_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event<clicker::CursorMsg>>,
+    ready_tx: tokio::sync::watch::Sender<Option<(String, Vec<String>)>>,
+) {
+    while let Some(event) = raw_rx.recv().await {
+        if let p2p::Event::Ready { peer_id, addrs } = &event {
+            ready_tx.send_replace(Some((peer_id.clone(), addrs.clone())));
+        }
+        if bevy_tx.send(event).is_err() {
+            break;
+        }
+    }
 }

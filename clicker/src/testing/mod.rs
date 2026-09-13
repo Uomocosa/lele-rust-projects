@@ -1,3 +1,6 @@
+pub mod fresh_params;
+pub use fresh_params::fresh_params;
+
 pub mod build_game;
 pub use build_game::build_game;
 
