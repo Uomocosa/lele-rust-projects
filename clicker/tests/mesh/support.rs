@@ -1,4 +1,5 @@
 use clicker_lib::clicker;
+use clicker_lib::constants;
 use clicker_lib::discovery;
 use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
@@ -42,7 +43,7 @@ pub fn snapshot_chunk(entries: Vec<(u64, i32)>, global: i32) -> p2p::Event<click
     };
     p2p::Event::HistoryChunk {
         lobby: "alpha".to_string(),
-        chunk: clicker::SNAPSHOT_CHUNK,
+        chunk: constants::SNAPSHOT_CHUNK,
         data: clicker::encode_snapshot(&snapshot),
     }
 }

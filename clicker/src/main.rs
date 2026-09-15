@@ -3,6 +3,7 @@ use bevy::window::CursorOptions;
 use clap::Parser;
 use clicker_lib::clicker;
 use clicker_lib::discovery;
+use clicker_lib::lobby;
 use freenet_libp2p_bevy_plugin::net_id;
 use freenet_libp2p_bevy_plugin::p2p;
 use freenet_libp2p_bevy_plugin::plugin::{Config, P2PPlugin};
@@ -54,12 +55,18 @@ async fn main() {
     let (lobby_tx, lobby_rx) =
         tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::CursorMsg>>();
     let (room_tx, room_rx) = tokio::sync::watch::channel::<Option<String>>(None);
+    let (directory_tx, directory_rx) =
+        tokio::sync::mpsc::unbounded_channel::<discovery::DirectoryState>();
+    let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    let lobby_arg = args.lobby.clone();
+    if let Some(room) = lobby_arg.as_deref() {
+        request_tx.send(room.to_string()).ok();
+    }
     let mode = transport_mode(&args.transport);
     let _runner = p2p::spawn_runner(cmd_rx, raw_tx, mode);
     tokio::spawn(forward_events(
         raw_rx, bevy_tx, ready_tx, obs_tx, link_tx, lobby_tx,
     ));
-    let lobby_arg = args.lobby.clone();
     let namespace_arg = args.namespace.clone();
     let params_arg = args.contract_params.clone();
     let since_secs = args.since_epoch.unwrap_or(0);
@@ -70,47 +77,65 @@ async fn main() {
         links: link_rx,
         lobby_events: lobby_rx,
         namespace: namespace_arg,
-        lobby: lobby_arg.clone(),
+        lobby: None,
         params_override: params_arg,
         since_secs,
         own: discovery::PlayerId(own_id),
         transport: mode,
         room_tx,
+        room_requests: request_rx,
+        directory_tx,
     };
     tokio::spawn(discovery::run(run_config));
-    let room = wait_room(room_rx, lobby_arg.clone()).await;
+    let room = lobby_arg.unwrap_or_default();
     if args.create_lobby {
         tracing::info!("lobby {} created (cap {})", room, clicker::LOBBY_CAP);
     }
-    App::new()
-        .insert_resource(clicker::InstanceInfo {
-            namespace: args.namespace,
-            instance_tag: args.instance_tag,
-            own_id: net_id::NetworkId(own_id),
-        })
-        .insert_resource(clicker::ActiveLobby(room.clone()))
-        .insert_resource(clicker::GlobalCounter::default())
-        .insert_resource(clicker::PendingClicks::default())
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: format!("clicker-{} [{}]", args.instance_tag, room),
-                resolution: (800, 450).into(),
-                ..default()
-            }),
-            primary_cursor_options: Some(CursorOptions {
-                visible: false,
-                ..default()
-            }),
+    let mut app = App::new();
+    app.insert_resource(clicker::InstanceInfo {
+        namespace: args.namespace,
+        instance_tag: args.instance_tag,
+        own_id: net_id::NetworkId(own_id),
+    });
+    app.insert_resource(clicker::ActiveLobby(room.clone()));
+    app.insert_resource(clicker::GlobalCounter::default());
+    app.insert_resource(clicker::PendingClicks::default());
+    app.insert_resource(lobby::DirectoryFeed(std::sync::Mutex::new(Some(
+        directory_rx,
+    ))));
+    app.insert_resource(lobby::RoomRequestTx(request_tx));
+    app.insert_resource(lobby::RoomRx(std::sync::Mutex::new(Some(room_rx))));
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: format!("clicker-{} [{}]", args.instance_tag, room),
+            resolution: (800, 450).into(),
             ..default()
-        }))
-        .add_plugins(P2PPlugin(Config::<clicker::CursorMsg>::new(
-            net_id::NetworkId(own_id),
-            cmd_tx,
-            bevy_rx,
-        )))
-        .insert_resource(roster::Lobby(room))
-        .add_plugins(clicker::Plugin)
-        .run();
+        }),
+        primary_cursor_options: Some(CursorOptions {
+            visible: false,
+            ..default()
+        }),
+        ..default()
+    }));
+    app.add_plugins(P2PPlugin(Config::<clicker::CursorMsg>::new(
+        net_id::NetworkId(own_id),
+        cmd_tx,
+        bevy_rx,
+    )));
+    app.insert_resource(roster::Lobby(room.clone()));
+    app.insert_resource(lobby::SelectedRoom(if room.is_empty() {
+        None
+    } else {
+        Some(room.clone())
+    }));
+    app.add_plugins(clicker::Plugin);
+    app.add_plugins(lobby::Plugin);
+    if !room.is_empty() {
+        app.world_mut()
+            .resource_mut::<NextState<lobby::AppState>>()
+            .set(lobby::AppState::InRoom);
+    }
+    app.run();
 }
 
 // needed helper: maps the CLI transport flag onto the swarm transport mode
@@ -120,24 +145,6 @@ const fn transport_mode(arg: &TransportArg) -> p2p::TransportMode {
         TransportArg::Quic => p2p::TransportMode::Quic,
         TransportArg::Both => p2p::TransportMode::Both,
     }
-}
-
-// needed helper: waits for discovery to resolve the room (creator lobby is immediate)
-async fn wait_room(
-    mut room_rx: tokio::sync::watch::Receiver<Option<String>>,
-    lobby_arg: Option<String>,
-) -> String {
-    if let Some(room) = lobby_arg {
-        return room;
-    }
-    let deadline = std::time::Duration::from_secs(320);
-    if tokio::time::timeout(deadline, room_rx.wait_for(Option::is_some))
-        .await
-        .is_ok()
-    {
-        return room_rx.borrow().clone().unwrap_or_default();
-    }
-    String::new()
 }
 
 async fn forward_events(

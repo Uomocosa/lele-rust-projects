@@ -4,6 +4,7 @@ use freenet_libp2p_bevy_plugin::net_id;
 use freenet_libp2p_bevy_plugin::p2p;
 
 use crate::clicker;
+use crate::constants;
 
 pub fn absorb_snapshot(
     mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
@@ -25,7 +26,7 @@ pub fn absorb_snapshot(
                 lobby: chunk_lobby,
                 chunk,
                 data,
-            } if chunk_lobby == **lobby && chunk == clicker::SNAPSHOT_CHUNK => {
+            } if chunk_lobby == **lobby && chunk == constants::SNAPSHOT_CHUNK => {
                 let Some(snapshot) = clicker::decode_snapshot(&data) else {
                     continue;
                 };
@@ -93,6 +94,7 @@ mod tests {
 
     use super::absorb_snapshot;
     use crate::clicker;
+    use crate::constants;
     use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
     #[test]
@@ -120,14 +122,14 @@ mod tests {
             .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::HistoryChunk {
                 lobby: "alpha".to_string(),
-                chunk: clicker::SNAPSHOT_CHUNK,
+                chunk: constants::SNAPSHOT_CHUNK,
                 data: clicker::encode_snapshot(&snapshot),
             });
         app.world_mut()
             .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::HistoryChunk {
                 lobby: "other".to_string(),
-                chunk: clicker::SNAPSHOT_CHUNK,
+                chunk: constants::SNAPSHOT_CHUNK,
                 data: clicker::encode_snapshot(&snapshot),
             });
         app.add_systems(Update, absorb_snapshot);
@@ -160,7 +162,7 @@ mod tests {
             .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::HistoryChunk {
                 lobby: "alpha".to_string(),
-                chunk: clicker::SNAPSHOT_CHUNK,
+                chunk: constants::SNAPSHOT_CHUNK,
                 data: clicker::encode_snapshot(&snapshot),
             });
         app.add_systems(Update, absorb_snapshot);

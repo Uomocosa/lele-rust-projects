@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use clicker_lib::{clicker, testing};
+use clicker_lib::{clicker, constants, testing};
 use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
 use crate::support;
@@ -29,7 +29,7 @@ fn late_joiner_reads_shared_scores() {
         .resource_mut::<p2p::Events<clicker::CursorMsg>>()
         .push(p2p::Event::HistoryChunk {
             lobby: "alpha".to_string(),
-            chunk: clicker::SNAPSHOT_CHUNK,
+            chunk: constants::SNAPSHOT_CHUNK,
             data: bytes,
         });
     for _ in 0..3 {

@@ -45,6 +45,7 @@ struct RunContext {
     attempted: std::collections::HashMap<String, std::time::Instant>,
     staggers: StaggerMap,
     transport: p2p::TransportMode,
+    directory_tx: tokio::sync::mpsc::UnboundedSender<discovery::DirectoryState>,
 }
 
 pub async fn run(mut config: discovery::RunConfig) {
@@ -77,7 +78,8 @@ pub async fn run(mut config: discovery::RunConfig) {
         }
     };
     info!(target: "clicker", key = %directory.contract_key, "discovery: directory connected");
-    let Some((room, room_params)) = resolve_room(&config, &mut directory, &peer_id, &addrs).await
+    let Some((room, room_params)) =
+        resolve_room(&mut config, &mut directory, &peer_id, &addrs).await
     else {
         warn!(target: "clicker", "discovery: no room resolved, discovery disabled");
         return;
@@ -139,6 +141,7 @@ pub async fn run(mut config: discovery::RunConfig) {
         attempted: std::collections::HashMap::new(),
         staggers,
         transport: config.transport,
+        directory_tx: config.directory_tx,
     };
     drive_roster(&mut ctx).await;
 }
@@ -240,6 +243,7 @@ async fn drive_roster(ctx: &mut RunContext) {
 async fn refresh_directory(ctx: &mut RunContext) {
     match ctx.directory.poll().await {
         Ok(slots) => {
+            ctx.directory_tx.send(slots.clone()).ok();
             for hint in directory_hints(&slots) {
                 dial_hint(
                     &ctx.cmd_tx,
@@ -305,9 +309,9 @@ fn refresh_observed(ctx: &mut RunContext) {
     }
 }
 
-// needed helper: resolves the room via directory publish (creator) or auto-join
+// needed helper: resolves the room via request publish, directory list, or auto-join
 async fn resolve_room(
-    config: &discovery::RunConfig,
+    config: &mut discovery::RunConfig,
     directory: &mut discovery::Directory,
     peer_id: &str,
     addrs: &[String],
@@ -339,6 +343,20 @@ async fn resolve_room(
     let connected: ConnectedMap = std::collections::HashMap::new();
     let mut staggers: StaggerMap = std::collections::HashMap::new();
     loop {
+        if let Ok(room) = config.room_requests.try_recv() {
+            let params = discovery::resolve_params(
+                &config.namespace,
+                &room,
+                config.params_override.as_deref(),
+            );
+            if directory
+                .publish_room(&room, &params, peer_id, addrs)
+                .is_err()
+            {
+                warn!(target: "clicker", "discovery: room publish failed");
+            }
+            return Some((room, params));
+        }
         parallel_probe(
             &config.cmd_tx,
             directory,
@@ -352,6 +370,7 @@ async fn resolve_room(
         fire_due_staggers(&config.cmd_tx, &connected, &mut staggers);
         match directory.poll().await {
             Ok(slots) => {
+                config.directory_tx.send(slots.clone()).ok();
                 if let Some((room, entry)) = discovery::pick_room(&slots, config.since_secs) {
                     let params = room_params(
                         &config.namespace,

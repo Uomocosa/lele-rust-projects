@@ -1,7 +1,6 @@
 pub const CLICK_RADIUS: f32 = 40.0;
 pub const ROW_Y: f32 = 0.0;
 pub const LOBBY_CAP: usize = 64;
-pub const SNAPSHOT_CHUNK: u64 = 0;
 pub const SNAPSHOT_INTERVAL_SECS: f64 = 5.0;
 pub const SNAPSHOT_REFETCH_SECS: f64 = 15.0;
 pub const SYNC_INTERVAL_SECS: f64 = 5.0;

@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::p2p;
 
 use crate::clicker;
+use crate::constants;
 
 pub fn request_snapshot(
     time: Res<Time>,
@@ -22,7 +23,7 @@ pub fn request_snapshot(
     let commands = commands.into_inner();
     commands.push(p2p::Command::FetchHistory {
         lobby: (**lobby).clone(),
-        chunk: clicker::SNAPSHOT_CHUNK,
+        chunk: constants::SNAPSHOT_CHUNK,
     });
 }
 

@@ -44,6 +44,8 @@ pub mod send_sync_req;
 pub use send_sync_req::send_sync_req;
 pub mod setup;
 pub use setup::setup;
+pub mod publish_due;
+pub use publish_due::publish_due;
 pub mod sync_global;
 pub use sync_global::sync_global;
 pub mod subscribe_pos;

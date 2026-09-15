@@ -16,6 +16,8 @@ pub struct RunConfig {
     pub own: discovery::PlayerId,
     pub transport: p2p::TransportMode,
     pub room_tx: tokio::sync::watch::Sender<Option<String>>,
+    pub room_requests: tokio::sync::mpsc::UnboundedReceiver<String>,
+    pub directory_tx: tokio::sync::mpsc::UnboundedSender<discovery::DirectoryState>,
 }
 #[cfg(test)]
 mod tests {
@@ -31,6 +33,9 @@ mod tests {
         let (_link_tx, links) = tokio::sync::mpsc::unbounded_channel();
         let (_lobby_tx, lobby_events) = tokio::sync::mpsc::unbounded_channel();
         let (room_tx, _room_rx) = tokio::sync::watch::channel(None);
+        let (_req_tx, room_requests) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let (directory_tx, _directory_rx) =
+            tokio::sync::mpsc::unbounded_channel::<discovery::DirectoryState>();
         let config = RunConfig {
             cmd_tx,
             ready,
@@ -44,6 +49,8 @@ mod tests {
             own: discovery::PlayerId(1),
             transport: p2p::TransportMode::Both,
             room_tx,
+            room_requests,
+            directory_tx,
         };
         assert_eq!(config.namespace, "blackboard-v1");
         assert_eq!(config.since_secs, 0);
