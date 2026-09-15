@@ -30,6 +30,9 @@ pub use require_xterm::require_xterm;
 pub mod spawn_xterm;
 pub use spawn_xterm::spawn_xterm;
 
+pub mod speed_clip;
+pub use speed_clip::speed_clip;
+
 pub mod start_record;
 pub use start_record::start_record;
 

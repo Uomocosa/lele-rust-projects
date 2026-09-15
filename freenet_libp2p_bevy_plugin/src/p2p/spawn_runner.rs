@@ -7,9 +7,10 @@ use crate::p2p;
 pub fn spawn_runner<T: p2p::Message>(
     cmd_rx: UnboundedReceiver<p2p::Command<T>>,
     event_tx: UnboundedSender<p2p::Event<T>>,
+    mode: p2p::TransportMode,
 ) -> JoinHandle<()> {
     let keypair = libp2p::identity::Keypair::generate_ed25519();
-    tokio::spawn(p2p::run(cmd_rx, event_tx, keypair))
+    tokio::spawn(p2p::run(cmd_rx, event_tx, keypair, mode))
 }
 
 #[cfg(test)]
@@ -21,7 +22,7 @@ mod tests {
     async fn test_usage() {
         let (_cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel();
         let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
-        let handle = spawn_runner::<()>(cmd_rx, event_tx);
+        let handle = spawn_runner::<()>(cmd_rx, event_tx, p2p::TransportMode::Both);
         let found = tokio::time::timeout(std::time::Duration::from_secs(10), async {
             while let Some(event) = event_rx.recv().await {
                 if matches!(event, p2p::Event::Ready { .. }) {

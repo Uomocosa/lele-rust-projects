@@ -44,6 +44,7 @@ struct RunContext {
     connected: ConnectedMap,
     attempted: std::collections::HashMap<String, std::time::Instant>,
     staggers: StaggerMap,
+    transport: p2p::TransportMode,
 }
 
 pub async fn run(mut config: discovery::RunConfig) {
@@ -111,6 +112,7 @@ pub async fn run(mut config: discovery::RunConfig) {
         &mut staggers,
         &roster.slots,
         config.own,
+        config.transport,
     );
     if roster.announce().is_err() {
         warn!(target: "clicker", "discovery: initial announce failed");
@@ -136,6 +138,7 @@ pub async fn run(mut config: discovery::RunConfig) {
         connected,
         attempted: std::collections::HashMap::new(),
         staggers,
+        transport: config.transport,
     };
     drive_roster(&mut ctx).await;
 }
@@ -179,6 +182,7 @@ async fn drive_roster(ctx: &mut RunContext) {
             &ctx.peer_id,
             &ctx.connected,
             &mut ctx.staggers,
+            ctx.transport,
         );
         match ctx.roster.poll().await {
             Ok(fresh) => {
@@ -189,6 +193,7 @@ async fn drive_roster(ctx: &mut RunContext) {
                         &ctx.connected,
                         &mut ctx.staggers,
                         &ctx.peer_id,
+                        ctx.transport,
                         &entry,
                     );
                 }
@@ -242,6 +247,7 @@ async fn refresh_directory(ctx: &mut RunContext) {
                     &ctx.connected,
                     &mut ctx.staggers,
                     &ctx.peer_id,
+                    ctx.transport,
                     &hint,
                 );
             }
@@ -278,6 +284,7 @@ fn redial_missing(ctx: &mut RunContext) {
             &ctx.connected,
             &mut ctx.staggers,
             &ctx.peer_id,
+            ctx.transport,
             entry,
         );
     }
@@ -314,6 +321,7 @@ async fn resolve_room(
             &mut std::collections::HashMap::new(),
             &std::collections::HashMap::new(),
             &mut std::collections::HashMap::new(),
+            config.transport,
             peer_id,
         )
         .await;
@@ -337,6 +345,7 @@ async fn resolve_room(
             &mut attempted,
             &connected,
             &mut staggers,
+            config.transport,
             peer_id,
         )
         .await;
@@ -385,12 +394,13 @@ async fn parallel_probe(
     attempted: &mut std::collections::HashMap<String, std::time::Instant>,
     connected: &ConnectedMap,
     staggers: &mut StaggerMap,
+    mode: p2p::TransportMode,
     peer_id: &str,
 ) {
     match directory.poll().await {
         Ok(slots) => {
             for hint in directory_hints(&slots) {
-                dial_hint(cmd_tx, attempted, connected, staggers, peer_id, &hint);
+                dial_hint(cmd_tx, attempted, connected, staggers, peer_id, mode, &hint);
             }
         }
         Err(e) => {
@@ -430,6 +440,7 @@ fn drain_lobby_events(
     peer_id: &str,
     connected: &ConnectedMap,
     staggers: &mut StaggerMap,
+    mode: p2p::TransportMode,
 ) {
     while let Ok(event) = lobby_events.try_recv() {
         match event {
@@ -441,6 +452,7 @@ fn drain_lobby_events(
                         connected,
                         staggers,
                         peer_id,
+                        mode,
                         &discovery::PeerHint {
                             peer_id: peer,
                             addrs: Vec::new(),
@@ -464,6 +476,7 @@ fn drain_lobby_events(
                         connected,
                         staggers,
                         peer_id,
+                        mode,
                         &discovery::PeerHint {
                             peer_id: entry.peer_id.clone(),
                             addrs: entry.addrs.clone(),
@@ -581,12 +594,13 @@ fn dial_known(
     staggers: &mut StaggerMap,
     slots: &discovery::RosterState,
     own: discovery::PlayerId,
+    mode: p2p::TransportMode,
 ) {
     for (id, entry) in slots {
         if *id == own {
             continue;
         }
-        dial_preferred(cmd_tx, connected, staggers, entry);
+        dial_preferred(cmd_tx, connected, staggers, mode, entry);
     }
 }
 
@@ -600,6 +614,7 @@ fn dial_tiebreak(
     connected: &ConnectedMap,
     staggers: &mut StaggerMap,
     own_peer_id: &str,
+    mode: p2p::TransportMode,
     entry: &discovery::PeerEntry,
 ) {
     if entry.addrs.is_empty() {
@@ -617,7 +632,9 @@ fn dial_tiebreak(
         return;
     }
     let decision = discovery::decide_dial(own_peer_id, &entry.peer_id, age);
-    apply_decision(cmd_tx, attempted, connected, staggers, entry, decision);
+    apply_decision(
+        cmd_tx, attempted, connected, staggers, mode, entry, decision,
+    );
 }
 
 // needed helper: applies a dial decision for one peer entry
@@ -626,6 +643,7 @@ fn apply_decision(
     attempted: &mut std::collections::HashMap<String, std::time::Instant>,
     connected: &ConnectedMap,
     staggers: &mut StaggerMap,
+    mode: p2p::TransportMode,
     entry: &discovery::PeerEntry,
     decision: discovery::DialDecision,
 ) {
@@ -637,7 +655,7 @@ fn apply_decision(
         }
         discovery::DialDecision::Dial => {
             attempted.insert(entry.peer_id.clone(), std::time::Instant::now());
-            dial_preferred(cmd_tx, connected, staggers, entry);
+            dial_preferred(cmd_tx, connected, staggers, mode, entry);
         }
         discovery::DialDecision::ForceDial => {
             attempted.insert(entry.peer_id.clone(), std::time::Instant::now());
@@ -653,6 +671,7 @@ fn dial_hint(
     connected: &ConnectedMap,
     staggers: &mut StaggerMap,
     own_peer_id: &str,
+    mode: p2p::TransportMode,
     hint: &discovery::PeerHint,
 ) {
     if hint.peer_id.is_empty() || hint.peer_id == own_peer_id {
@@ -669,7 +688,15 @@ fn dial_hint(
         addrs: hint.addrs.clone(),
         updated_at: hint.updated_at,
     };
-    dial_tiebreak(cmd_tx, attempted, connected, staggers, own_peer_id, &entry);
+    dial_tiebreak(
+        cmd_tx,
+        attempted,
+        connected,
+        staggers,
+        own_peer_id,
+        mode,
+        &entry,
+    );
 }
 
 // needed helper: dials the best-ranked addr now and staggers the rest
@@ -677,13 +704,14 @@ fn dial_preferred(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
     connected: &ConnectedMap,
     staggers: &mut StaggerMap,
+    mode: p2p::TransportMode,
     entry: &discovery::PeerEntry,
 ) {
     if connected.contains_key(&entry.peer_id) {
         staggers.remove(&entry.peer_id);
         return;
     }
-    let ranked = discovery::rank_addrs(&with_loopback(&entry.addrs));
+    let ranked = discovery::rank_addrs(&with_loopback(&entry.addrs), mode);
     let mut queue: std::collections::VecDeque<String> = ranked.into();
     let Some(first) = queue.pop_front() else {
         return;

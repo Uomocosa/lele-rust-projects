@@ -26,6 +26,15 @@ struct Args {
     instance_tag: u32,
     #[arg(long)]
     contract_params: Option<String>,
+    #[arg(long, value_enum, default_value = "both")]
+    transport: TransportArg,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum TransportArg {
+    Tcp,
+    Quic,
+    Both,
 }
 
 #[tokio::main]
@@ -45,7 +54,8 @@ async fn main() {
     let (lobby_tx, lobby_rx) =
         tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::CursorMsg>>();
     let (room_tx, room_rx) = tokio::sync::watch::channel::<Option<String>>(None);
-    let _runner = p2p::spawn_runner(cmd_rx, raw_tx);
+    let mode = transport_mode(&args.transport);
+    let _runner = p2p::spawn_runner(cmd_rx, raw_tx, mode);
     tokio::spawn(forward_events(
         raw_rx, bevy_tx, ready_tx, obs_tx, link_tx, lobby_tx,
     ));
@@ -64,6 +74,7 @@ async fn main() {
         params_override: params_arg,
         since_secs,
         own: discovery::PlayerId(own_id),
+        transport: mode,
         room_tx,
     };
     tokio::spawn(discovery::run(run_config));
@@ -100,6 +111,15 @@ async fn main() {
         .insert_resource(roster::Lobby(room))
         .add_plugins(clicker::Plugin)
         .run();
+}
+
+// needed helper: maps the CLI transport flag onto the swarm transport mode
+const fn transport_mode(arg: &TransportArg) -> p2p::TransportMode {
+    match arg {
+        TransportArg::Tcp => p2p::TransportMode::Tcp,
+        TransportArg::Quic => p2p::TransportMode::Quic,
+        TransportArg::Both => p2p::TransportMode::Both,
+    }
 }
 
 // needed helper: waits for discovery to resolve the room (creator lobby is immediate)

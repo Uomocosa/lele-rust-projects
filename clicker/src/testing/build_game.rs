@@ -16,11 +16,6 @@ pub fn build_game() -> Result<PathBuf, String> {
         .arg("--bin")
         .arg("clicker")
         .arg("--release");
-    if let Ok(extra) = std::env::var("CLICKER_EXTRA_FEATURES")
-        && !extra.is_empty()
-    {
-        cmd.arg("--features").arg(extra);
-    }
     let output = cmd
         .output()
         .map_err(|e| format!("spawning cargo build: {e}"))?;

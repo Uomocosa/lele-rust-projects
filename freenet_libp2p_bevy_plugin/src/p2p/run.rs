@@ -16,6 +16,7 @@ pub async fn run<T: p2p::Message>(
     mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::Command<T>>,
     event_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
     keypair: Keypair,
+    mode: p2p::TransportMode,
 ) {
     let mut swarm = match p2p::build_swarm::build_swarm::<T>(keypair) {
         Ok(s) => s,
@@ -25,11 +26,14 @@ pub async fn run<T: p2p::Message>(
         }
     };
 
-    #[cfg(feature = "quic")]
-    if let Ok(quic_addr) = "/ip4/0.0.0.0/udp/0/quic-v1".parse() {
+    if mode != p2p::TransportMode::Tcp
+        && let Ok(quic_addr) = "/ip4/0.0.0.0/udp/0/quic-v1".parse()
+    {
         let _ = swarm.listen_on(quic_addr);
     }
-    if let Ok(tcp_addr) = "/ip4/0.0.0.0/tcp/0".parse() {
+    if mode != p2p::TransportMode::Quic
+        && let Ok(tcp_addr) = "/ip4/0.0.0.0/tcp/0".parse()
+    {
         let _ = swarm.listen_on(tcp_addr);
     }
 

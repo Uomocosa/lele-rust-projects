@@ -14,13 +14,14 @@ pub struct RunConfig {
     pub params_override: Option<String>,
     pub since_secs: u64,
     pub own: discovery::PlayerId,
+    pub transport: p2p::TransportMode,
     pub room_tx: tokio::sync::watch::Sender<Option<String>>,
 }
-
 #[cfg(test)]
 mod tests {
     use super::RunConfig;
     use crate::discovery;
+    use freenet_libp2p_bevy_plugin::p2p;
 
     #[test]
     fn test_usage() {
@@ -41,6 +42,7 @@ mod tests {
             params_override: None,
             since_secs: 0,
             own: discovery::PlayerId(1),
+            transport: p2p::TransportMode::Both,
             room_tx,
         };
         assert_eq!(config.namespace, "blackboard-v1");

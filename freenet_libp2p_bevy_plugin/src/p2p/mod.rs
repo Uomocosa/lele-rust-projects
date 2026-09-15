@@ -37,6 +37,9 @@ pub use bridge::Bridge;
 pub mod spawn_runner;
 pub use spawn_runner::spawn_runner;
 
+pub mod transport_mode;
+pub use transport_mode::TransportMode;
+
 pub mod event;
 pub use event::Event;
 

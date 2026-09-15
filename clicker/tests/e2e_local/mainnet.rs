@@ -2,12 +2,12 @@ use std::time::{Duration, Instant};
 
 use clicker_lib::testing::{
     TerminalGuard, build_game, cleanup_stale, drive_random, finish_record, poke, require_xterm,
-    spawn_xterm, start_record, tile_three, wakeup_screen,
+    spawn_xterm, speed_clip, start_record, tile_three, wakeup_screen,
 };
 use telegram_bot::{load_creds, send_video_file};
 
 const TIMEOUT_SECS: u64 = 300;
-const CLIP_SECS: u64 = 25;
+const RECORD_SECS: u64 = 60;
 const GAME_TITLES: [&str; 3] = ["clicker-1", "clicker-2", "clicker-3"];
 const OWN_IDS: [u64; 3] = [1, 2, 3];
 const CLICKS_EACH: u32 = 15;
@@ -686,6 +686,7 @@ fn spawn_tag(
     contract_params: &str,
     lobby: Option<&str>,
     since_epoch: Option<u64>,
+    transport: &str,
 ) -> bool {
     let log = dir.join(format!("instance-{tag}.log"));
     match spawn_xterm(
@@ -696,6 +697,7 @@ fn spawn_tag(
         tag,
         contract_params,
         since_epoch,
+        transport,
         &log,
     ) {
         Ok(guard) => {
@@ -741,10 +743,16 @@ async fn local_mesh() {
         .map(|d| d.as_secs())
         .unwrap_or_default();
     let room = format!("room-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
+    let transport = std::env::var("CLICKER_TRANSPORT")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| "both".to_string());
     let contract_params = std::env::var("CLICKER_CONTRACT_PARAMS")
         .ok()
         .filter(|v| !v.is_empty())
         .unwrap_or_default();
+    let raw_path = persist_dir.join("raw.mp4");
+    let recording = start_record(RECORD_SECS, &raw_path);
     assert!(
         spawn_tag(
             &mut terms,
@@ -753,7 +761,8 @@ async fn local_mesh() {
             1,
             &contract_params,
             Some(&room),
-            None
+            None,
+            &transport
         ),
         "spawn 1"
     );
@@ -774,7 +783,8 @@ async fn local_mesh() {
             2,
             &contract_params,
             None,
-            Some(test_start_epoch)
+            Some(test_start_epoch),
+            &transport
         ),
         "spawn 2"
     );
@@ -795,7 +805,8 @@ async fn local_mesh() {
             3,
             &contract_params,
             None,
-            Some(test_start_epoch)
+            Some(test_start_epoch),
+            &transport
         ),
         "spawn 3"
     );
@@ -884,20 +895,14 @@ async fn local_mesh() {
 
     let recording_start = Instant::now();
     let clip_path = persist_dir.join("clip.mp4");
-    let record_path = clip_path.clone();
-    let video = tokio::task::spawn_blocking(move || {
-        start_record(CLIP_SECS, &record_path).and_then(|child| {
-            std::thread::sleep(Duration::from_secs(CLIP_SECS));
-            finish_record(child, &record_path)
-        })
-    })
-    .await
-    .unwrap_or(None);
+    let clip = recording
+        .and_then(|child| finish_record(child, &raw_path))
+        .and_then(|raw| speed_clip(&raw, &clip_path));
     let recording_elapsed = recording_start.elapsed();
     kill_terms(&mut terms);
     let total_elapsed = total_start.elapsed();
 
-    let Some(clip) = video else {
+    let Some(clip) = clip else {
         assert!(false, "clip missing at {}", clip_path.display());
         return;
     };
@@ -913,7 +918,7 @@ async fn local_mesh() {
         .collect();
     let all_ok = checks.iter().all(|c| c.ok);
     let caption = format!(
-        "clicker local-mesh room={room} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
+        "clicker local-mesh room={room} transport={transport} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
         check_emoji(converged),
         check_emoji(all_ok),
         mesh_lines.join("\n"),
