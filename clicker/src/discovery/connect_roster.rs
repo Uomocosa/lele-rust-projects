@@ -61,6 +61,7 @@ pub async fn connect_roster(
     let roster = discovery::Roster {
         client,
         contract_key: key,
+        contract: container,
         slots,
         own,
         peer_id: peer_id.to_string(),

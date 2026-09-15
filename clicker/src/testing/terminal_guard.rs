@@ -24,6 +24,15 @@ impl TerminalGuard {
     #[must_use] pub fn title(&self) -> &str { terminal_guard_title::title(self) }
 }
 
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        if let Some(child) = self.child.as_mut() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::TerminalGuard;

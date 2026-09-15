@@ -16,6 +16,9 @@ pub use encode_chunk::encode_chunk;
 pub mod history_key;
 pub use history_key::history_key;
 
+pub mod provider_key;
+pub use provider_key::provider_key;
+
 pub mod constants;
 pub use constants::*;
 

@@ -8,10 +8,11 @@ use crate::testing;
 pub fn spawn_xterm(
     bin: &Path,
     namespace: &str,
-    lobby: &str,
+    lobby: Option<&str>,
     create: bool,
     tag: u64,
     contract_params: &str,
+    since_epoch: Option<u64>,
     log: &Path,
 ) -> Result<testing::TerminalGuard, String> {
     std::fs::File::create(log).map_err(|e| format!("create log {}: {e}", log.display()))?;
@@ -19,15 +20,20 @@ pub fn spawn_xterm(
     let bin_str = bin.to_string_lossy().to_string();
     let log_str = log.to_string_lossy().to_string();
     let create_arg = if create { " --create-lobby" } else { "" };
+    let lobby_arg = lobby.map_or(String::new(), |room| {
+        format!(" --lobby {}", shell_escape(room))
+    });
+    let since_arg = since_epoch.map_or(String::new(), |epoch| format!(" --since-epoch {epoch}"));
     let inner = format!(
-        "stdbuf -oL -eL {} --namespace {} --lobby {}{} --instance-tag {} --own-id {} --contract-params {} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        "stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
         shell_escape(&bin_str),
         shell_escape(namespace),
-        shell_escape(lobby),
+        lobby_arg,
         create_arg,
         tag,
         tag,
         shell_escape(contract_params),
+        since_arg,
         shell_escape(&log_str),
         tag
     );

@@ -2,7 +2,7 @@
 
 use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::NetworkBehaviour;
-use libp2p::{gossipsub, identify, kad, ping, request_response};
+use libp2p::{dcutr, gossipsub, identify, kad, ping, relay, request_response};
 
 use crate::p2p;
 
@@ -13,6 +13,9 @@ pub struct Behaviour<T: p2p::Message> {
     pub identify: identify::Behaviour,
     pub ping: ping::Behaviour,
     pub gossipsub: gossipsub::Behaviour,
+    pub relay: relay::Behaviour,
+    pub relay_client: relay::client::Behaviour,
+    pub dcutr: dcutr::Behaviour,
 }
 
 #[cfg(test)]

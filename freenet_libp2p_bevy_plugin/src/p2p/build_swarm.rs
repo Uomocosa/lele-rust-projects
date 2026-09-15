@@ -1,6 +1,9 @@
 use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
-use libp2p::{StreamProtocol, gossipsub, identify, kad, noise, ping, request_response, tcp, yamux};
+use libp2p::{
+    StreamProtocol, dcutr, gossipsub, identify, kad, noise, ping, relay, request_response, tcp,
+    yamux,
+};
 
 use crate::p2p;
 
@@ -19,11 +22,14 @@ pub fn build_swarm<T: p2p::Message>(
             yamux::Config::default,
         )
         .map_err(|e| e.to_string())?
-        .with_quic()
         .with_dns()
         .map_err(|e| e.to_string())?
+        .with_relay_client(noise::Config::new, yamux::Config::default)
+        .map_err(|e| e.to_string())?
         .with_behaviour(
-            |kp| -> Result<p2p::Behaviour<T>, Box<dyn std::error::Error + Send + Sync>> {
+            |kp,
+             relay_client|
+             -> Result<p2p::Behaviour<T>, Box<dyn std::error::Error + Send + Sync>> {
                 let mut kad_cfg = kad::Config::default();
                 let Some(replication) = std::num::NonZeroUsize::new(8) else {
                     return Err("invalid replication factor".into());
@@ -54,6 +60,9 @@ pub fn build_swarm<T: p2p::Message>(
                     )),
                     ping: ping::Behaviour::default(),
                     gossipsub,
+                    relay: relay::Behaviour::new(peer_id, relay::Config::default()),
+                    relay_client,
+                    dcutr: dcutr::Behaviour::new(peer_id),
                 })
             },
         )

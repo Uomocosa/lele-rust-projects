@@ -21,28 +21,8 @@ pub fn apply_delta(
         match event {
             p2p::Event::Message { from, payload } => match payload {
                 clicker::CursorMsg::Click { owner, delta } => {
-                    if owner == *own {
-                        continue;
-                    }
-                    if credit_logical(&mut targets, owner, delta) {
-                        continue;
-                    }
                     let sender = net_id::NetworkId::from_peer(&from);
-                    if credit_sender(&mut targets, sender, delta) {
-                        pending.items.push(clicker::PendingClick {
-                            sender,
-                            owner,
-                            delta: 0,
-                            absolute: false,
-                        });
-                        continue;
-                    }
-                    pending.items.push(clicker::PendingClick {
-                        sender,
-                        owner,
-                        delta,
-                        absolute: false,
-                    });
+                    clicker::credit_click(&mut targets, &mut pending, *own, sender, owner, delta);
                 }
                 sync
                 @ (clicker::CursorMsg::SyncReq { .. } | clicker::CursorMsg::SyncAck { .. }) => {
@@ -62,44 +42,6 @@ pub fn apply_delta(
         }
     }
     events.extend(rest);
-}
-
-// needed helper: credits slots keyed by logical player id
-fn credit_logical(
-    targets: &mut Query<(
-        &clicker::Owner,
-        Option<&clicker::PlayerNo>,
-        &mut clicker::ClickCounter,
-    )>,
-    owner: net_id::NetworkId,
-    delta: i32,
-) -> bool {
-    for (slot_owner, player, mut counter) in targets {
-        if ***slot_owner == *owner || player.is_some_and(|p| **p == *owner) {
-            counter.add(delta);
-            return true;
-        }
-    }
-    false
-}
-
-// needed helper: credits the transport sender slot for unresolved remotes
-fn credit_sender(
-    targets: &mut Query<(
-        &clicker::Owner,
-        Option<&clicker::PlayerNo>,
-        &mut clicker::ClickCounter,
-    )>,
-    sender: net_id::NetworkId,
-    delta: i32,
-) -> bool {
-    for (slot_owner, _, mut counter) in targets {
-        if ***slot_owner == *sender {
-            counter.add(delta);
-            return true;
-        }
-    }
-    false
 }
 
 #[cfg(test)]

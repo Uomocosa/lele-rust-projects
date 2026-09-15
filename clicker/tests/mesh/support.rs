@@ -1,4 +1,5 @@
 use clicker_lib::clicker;
+use clicker_lib::discovery;
 use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
 pub fn push_to(
@@ -44,4 +45,41 @@ pub fn snapshot_chunk(entries: Vec<(u64, i32)>, global: i32) -> p2p::Event<click
         chunk: clicker::SNAPSHOT_CHUNK,
         data: clicker::encode_snapshot(&snapshot),
     }
+}
+
+pub fn roster_gossip(
+    from: &str,
+    owner: u64,
+    peer_id: &str,
+    addrs: Vec<String>,
+    updated_at: u64,
+) -> p2p::Event<clicker::CursorMsg> {
+    let mut state = discovery::RosterState::new();
+    state.insert(
+        discovery::PlayerId(owner),
+        discovery::PeerEntry {
+            peer_id: peer_id.to_string(),
+            addrs,
+            updated_at,
+        },
+    );
+    p2p::Event::Gossip {
+        topic: "clicker/alpha/roster".to_string(),
+        from: from.to_string(),
+        data: bincode::serialize(&state).unwrap_or_default(),
+    }
+}
+
+pub fn live_snapshot(mesh: &mut clicker_lib::testing::Mesh) -> Vec<u8> {
+    let counts = mesh.counts();
+    let first = counts.first().copied().unwrap_or_default();
+    let snapshot = clicker::Snapshot {
+        entries: vec![
+            (net_id::NetworkId(1), first.p1),
+            (net_id::NetworkId(2), first.p2),
+            (net_id::NetworkId(3), first.p3),
+        ],
+        global: first.global,
+    };
+    clicker::encode_snapshot(&snapshot)
 }

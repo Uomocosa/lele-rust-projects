@@ -6,6 +6,23 @@ pub enum Command<T> {
         peer_id: String,
         addrs: Vec<String>,
     },
+    DialForce {
+        peer_id: String,
+        addrs: Vec<String>,
+    },
+    ReserveRelay {
+        relay_addr: String,
+    },
+    AddKadPeer {
+        peer_id: String,
+        addrs: Vec<String>,
+    },
+    ProvideLobby {
+        lobby: String,
+    },
+    FindLobby {
+        lobby: String,
+    },
     Send {
         peer_id: String,
         payload: T,

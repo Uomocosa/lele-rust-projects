@@ -2,29 +2,30 @@ use bevy::prelude::*;
 
 use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
+use super::resolve_ctx;
 use crate::clicker;
 
-pub fn resolve_player(
-    mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
-    peers: Query<(Entity, &clicker::Owner, Option<&clicker::PlayerNo>), With<clicker::CursorIcon>>,
-    mut spots: Query<
-        (&clicker::Owner, &mut Transform, &mut clicker::TargetPos),
-        With<clicker::CursorIcon>,
-    >,
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    own: Res<net_id::NetworkId>,
-) {
-    let own = own.into_inner();
+pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
+    let topic = ctx.topic();
+    let own = ctx.own.into_inner();
     let mut rest = Vec::new();
-    for event in events.take_all() {
+    for event in ctx.events.take_all() {
         // Identity comes only from gossip: request_response echoes our own
         // advisory back with the recipient as sender, which would mislabel
         // remotes, while gossip delivers exactly what the publisher sent.
-        let p2p::Event::Gossip { from, data, .. } = &event else {
+        let p2p::Event::Gossip {
+            topic: incoming,
+            from,
+            data,
+        } = &event
+        else {
             rest.push(event);
             continue;
         };
+        if *incoming != topic {
+            rest.push(event);
+            continue;
+        }
         let Ok(msg) = bincode::deserialize::<clicker::CursorMsg>(data) else {
             rest.push(event);
             continue;
@@ -40,18 +41,24 @@ pub fn resolve_player(
             continue;
         }
         let player = net_id::NetworkId(*claimed);
-        for (entity, owner, numbered) in &peers {
+        for (entity, owner, numbered) in &ctx.peers {
             if ***owner != *sender || numbered.is_some() {
                 continue;
             }
             let spot = clicker::spawn_spot(player);
-            let base = clicker::color_for(player);
-            commands.entity(entity).insert(clicker::PlayerNo(*claimed));
-            commands.entity(entity).insert(clicker::CursorColor(base));
-            commands
-                .entity(entity)
-                .insert(MeshMaterial2d(materials.add(base)));
-            for (spot_owner, mut transform, mut target) in &mut spots {
+            clicker::label_slot(
+                &mut ctx.commands,
+                &mut ctx.materials,
+                entity,
+                from,
+                *claimed,
+            );
+            if let Some(saved) = ctx.tombstones.restore(*claimed)
+                && let Ok(mut counter) = ctx.counters.get_mut(entity)
+            {
+                counter.max(saved);
+            }
+            for (spot_owner, mut transform, mut target) in &mut ctx.spots {
                 if ***spot_owner != *sender {
                     continue;
                 }
@@ -60,16 +67,11 @@ pub fn resolve_player(
                 **target = spot;
                 break;
             }
-            tracing::info!(
-                "cursor resolved peer={from} player={} hue={:.1}",
-                *claimed,
-                clicker::hue_for(player)
-            );
             break;
         }
         rest.push(event);
     }
-    events.extend(rest);
+    ctx.events.extend(rest);
 }
 
 #[cfg(test)]
@@ -87,6 +89,8 @@ mod tests {
         app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(net_id::NetworkId(99));
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(clicker::ScoreTombstones::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()
@@ -140,6 +144,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(99));
+        app.insert_resource(clicker::ScoreTombstones::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()
@@ -179,6 +184,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(99));
+        app.insert_resource(clicker::ScoreTombstones::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()
@@ -216,5 +222,37 @@ mod tests {
                 .resource::<p2p::Events<clicker::CursorMsg>>()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn test_foreign_topic_never_resolves() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(99));
+        app.insert_resource(clicker::ScoreTombstones::default());
+        let sender = net_id::NetworkId::from_peer("peer");
+        let visual = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(sender),
+                clicker::TargetPos(Vec2::ZERO),
+                Transform::default(),
+            ))
+            .id();
+        let roster = clicker::gossip_roster_topic(&clicker::ActiveLobby("alpha".to_string()));
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Gossip {
+                topic: roster,
+                from: "peer".to_string(),
+                data: vec![3u8, 0, 0, 0, 0, 0, 0, 0],
+            });
+        app.add_systems(Update, resolve_player);
+        app.update();
+        assert!(app.world().get::<clicker::PlayerNo>(visual).is_none());
     }
 }

@@ -8,6 +8,18 @@ pub enum Event<T> {
     },
     PeerConnected(String),
     PeerDisconnected(String),
+    DialFailed {
+        peer_id: String,
+        reason: String,
+    },
+    RelayReserved {
+        relay_peer_id: String,
+    },
+    ObservedAddr(String),
+    LobbyProviders {
+        lobby: String,
+        peers: Vec<String>,
+    },
     Message {
         from: String,
         payload: T,

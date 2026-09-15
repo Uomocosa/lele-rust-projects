@@ -8,9 +8,15 @@ use crate::clicker;
 pub fn despawn_on_leave(
     mut commands: Commands,
     roster: Res<roster::Roster>,
-    query: Query<(Entity, &clicker::Owner)>,
+    query: Query<(
+        Entity,
+        &clicker::Owner,
+        Option<&clicker::PlayerNo>,
+        &clicker::ClickCounter,
+    )>,
     lobby: Res<clicker::ActiveLobby>,
     own: Res<net_id::NetworkId>,
+    mut tombstones: ResMut<clicker::ScoreTombstones>,
 ) {
     let roster = roster.into_inner();
     let lobby = lobby.into_inner();
@@ -21,8 +27,11 @@ pub fn despawn_on_leave(
             live.push(net_id::NetworkId::from_peer(peer));
         }
     }
-    for (entity, owner) in &query {
+    for (entity, owner, player, counter) in &query {
         if **owner != *own && !live.contains(&**owner) {
+            if let Some(numbered) = player {
+                tombstones.keep(**numbered, **counter);
+            }
             commands.entity(entity).despawn();
         }
     }
@@ -43,6 +52,7 @@ mod tests {
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(clicker::ScoreTombstones::default());
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),
             clicker::ClickCounter::default(),

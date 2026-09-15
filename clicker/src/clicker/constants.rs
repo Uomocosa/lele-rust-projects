@@ -4,6 +4,7 @@ pub const LOBBY_CAP: usize = 64;
 pub const SNAPSHOT_CHUNK: u64 = 0;
 pub const SNAPSHOT_INTERVAL_SECS: f64 = 5.0;
 pub const SNAPSHOT_REFETCH_SECS: f64 = 15.0;
+pub const SYNC_INTERVAL_SECS: f64 = 5.0;
 pub const FLASH_SECS: f32 = 0.2;
 pub const TOTAL_SIGNIFICANT_FONT: f32 = 64.0;
 pub const TOTAL_LEADING_FONT: f32 = 28.0;

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use freenet_libp2p_bevy_plugin::{net_id, p2p, roster};
+use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
 use crate::clicker;
 
@@ -9,7 +9,6 @@ pub fn detect_click(
     mut targets: Query<(&clicker::Owner, &mut clicker::ClickCounter)>,
     mut global: ResMut<clicker::GlobalCounter>,
     mut commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
-    roster: Res<roster::Roster>,
     lobby: Res<clicker::ActiveLobby>,
     own: Res<net_id::NetworkId>,
 ) {
@@ -19,11 +18,10 @@ pub fn detect_click(
     }
     tracing::debug!("click anywhere");
     let own = *own.into_inner();
-    let roster = roster.into_inner();
     let lobby = lobby.into_inner();
     for (owner, mut counter) in &mut targets {
         if **owner == own {
-            clicker::click(&mut counter, &mut global, &mut commands, roster, lobby, own);
+            clicker::click(&mut counter, &mut global, &mut commands, lobby, own);
             break;
         }
     }
@@ -35,7 +33,7 @@ mod tests {
 
     use super::detect_click;
     use crate::clicker;
-    use freenet_libp2p_bevy_plugin::{net_id, p2p, roster};
+    use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
     #[test]
     fn test_usage() {
@@ -45,7 +43,6 @@ mod tests {
         mouse.press(MouseButton::Left);
         app.insert_resource(mouse);
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
-        app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
@@ -71,7 +68,6 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.insert_resource(ButtonInput::<MouseButton>::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
-        app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));

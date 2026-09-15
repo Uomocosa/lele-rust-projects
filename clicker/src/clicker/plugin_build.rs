@@ -1,11 +1,13 @@
 use crate::clicker;
 use bevy::prelude::*;
 pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
+    app.init_resource::<clicker::ScoreTombstones>();
     app.add_systems(Startup, clicker::bevy_systems::setup)
         .add_systems(Startup, clicker::bevy_systems::spawn_cursor)
         .add_systems(Startup, clicker::bevy_systems::log_connected)
         .add_systems(Startup, clicker::bevy_systems::request_snapshot)
         .add_systems(Startup, clicker::bevy_systems::subscribe_pos)
+        .add_systems(Startup, clicker::bevy_systems::subscribe_roster)
         .add_systems(Update, clicker::bevy_systems::detect_click)
         .add_systems(Update, clicker::bevy_systems::follow_mouse)
         .add_systems(Update, clicker::bevy_systems::publish_cursor)
@@ -13,10 +15,13 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
             Update,
             (
                 clicker::bevy_systems::send_sync_req,
+                clicker::bevy_systems::send_sync_heartbeat,
                 clicker::bevy_systems::spawn_on_join,
                 clicker::bevy_systems::drain_pending,
                 clicker::bevy_systems::resolve_player,
                 clicker::bevy_systems::absorb_gossip,
+                clicker::bevy_systems::absorb_click_gossip,
+                clicker::bevy_systems::absorb_roster,
                 clicker::bevy_systems::absorb_sync,
                 clicker::bevy_systems::apply_delta,
                 clicker::bevy_systems::absorb_snapshot,

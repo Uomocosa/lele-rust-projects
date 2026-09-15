@@ -1,12 +1,14 @@
 use super::bridge_tick;
 use super::roster_announce;
 use super::roster_poll;
+use super::roster_refresh_addrs;
 use crate::discovery;
 use freenet_stdlib::prelude::*;
 
 pub struct Roster {
     pub(crate) client: discovery::Client,
     pub contract_key: ContractKey,
+    pub(crate) contract: ContractContainer,
     pub(crate) slots: discovery::RosterState,
     pub own: discovery::PlayerId,
     pub(crate) peer_id: String,
@@ -26,6 +28,7 @@ impl Roster {
     pub async fn poll(&mut self) -> Result<Vec<discovery::PeerEntry>, discovery::Error> { roster_poll::poll(self).await }
     /// # Errors
     /// Returns `Error` if the bridge subscribe fails.
-    pub async fn bridge_tick(&mut self, now: std::time::Instant) -> Result<(), discovery::Error> { bridge_tick::bridge_tick(self, now).await }
+    pub fn bridge_tick(&mut self, now: std::time::Instant) -> Result<(), discovery::Error> { bridge_tick::bridge_tick(self, now) }
+    pub fn refresh_addrs(&mut self, addrs: Vec<String>) { roster_refresh_addrs::refresh_addrs(self, addrs) }
 }
 // no test_usage necessary

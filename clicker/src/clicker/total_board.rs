@@ -209,14 +209,6 @@ mod tests {
         }
     }
 
-    // needed helper:
-    #[cfg(feature = "dev")]
-    fn exit_after_run(time: Res<Time>, mut exit: MessageWriter<AppExit>) {
-        if time.elapsed_secs() > RUN_SECS {
-            exit.write(AppExit::Success);
-        }
-    }
-
     // needed helper: snapshots the final totals out of the app before it exits
     #[cfg(feature = "dev")]
     fn record_final(

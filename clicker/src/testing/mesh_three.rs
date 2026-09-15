@@ -17,6 +17,8 @@ pub fn three() -> Mesh {
             "peer-2".to_string(),
             "peer-3".to_string(),
         ],
+        blocks: Vec::new(),
+        history: testing::FakeDht::default(),
     };
     link_rosters(&mut mesh);
     push_joins(&mut mesh);

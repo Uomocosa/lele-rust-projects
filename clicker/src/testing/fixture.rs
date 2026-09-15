@@ -16,6 +16,7 @@ pub fn fixture(own: u64, lobby: &str) -> App {
     app.insert_resource(net_id::NetworkId(own));
     app.insert_resource(clicker::GlobalCounter::default());
     app.insert_resource(clicker::PendingClicks::default());
+    app.insert_resource(clicker::ScoreTombstones::default());
     app.insert_resource(clicker::ActiveLobby(lobby.to_string()));
     app.insert_resource(clicker::InstanceInfo {
         namespace: "test".to_string(),

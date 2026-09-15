@@ -4,6 +4,9 @@ pub use fresh_params::fresh_params;
 pub mod build_game;
 pub use build_game::build_game;
 
+pub mod cleanup_stale;
+pub use cleanup_stale::cleanup_stale;
+
 pub mod drive_cursor;
 pub use drive_cursor::drive_cursor;
 
@@ -75,6 +78,17 @@ mod mesh_count_is_consistent;
 mod mesh_count_wanted;
 
 mod mesh_counts;
+
+mod fake_dht;
+pub use fake_dht::FakeDht;
+
+mod fake_dht_fetch;
+mod fake_dht_put;
+
+mod mesh_component;
+mod mesh_heal;
+mod mesh_partition;
+mod mesh_severed;
 
 mod mesh_route;
 

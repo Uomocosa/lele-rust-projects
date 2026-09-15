@@ -11,10 +11,11 @@ pub fn drain_pending(
         &mut clicker::ClickCounter,
     )>,
     mut pending: ResMut<clicker::PendingClicks>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let mut kept = Vec::new();
     for item in &pending.items {
-        if !drain_item(&mut commands, &mut targets, item) {
+        if !drain_item(&mut commands, &mut targets, &mut materials, item) {
             kept.push(*item);
         }
     }
@@ -30,6 +31,7 @@ fn drain_item(
         Option<&clicker::PlayerNo>,
         &mut clicker::ClickCounter,
     )>,
+    materials: &mut Assets<ColorMaterial>,
     item: &clicker::PendingClick,
 ) -> bool {
     let found = find_slot(targets, item);
@@ -45,9 +47,13 @@ fn drain_item(
     {
         counter.add(credit);
     }
-    commands
-        .entity(entity)
-        .insert(clicker::PlayerNo(*item.owner));
+    clicker::label_slot(
+        commands,
+        materials,
+        entity,
+        &item.sender.to_string(),
+        *item.owner,
+    );
     true
 }
 
@@ -66,7 +72,7 @@ fn find_slot(
         if ***owner == *item.owner || player.is_some_and(|p| **p == *item.owner) {
             return Some((entity, item.delta));
         }
-        if ***owner == *item.sender {
+        if ***owner == *item.sender && player.is_none() {
             sender = Some(entity);
         }
     }
@@ -85,6 +91,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(clicker::PendingClicks {
             items: vec![clicker::PendingClick {
                 sender: net_id::NetworkId::from_peer("peer"),

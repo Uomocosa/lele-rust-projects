@@ -1,14 +1,13 @@
 use std::time::{Duration, Instant};
 
 use clicker_lib::testing::{
-    TerminalGuard, build_game, drive_random, finish_record, fresh_params, poke, require_xterm,
+    TerminalGuard, build_game, cleanup_stale, drive_random, finish_record, poke, require_xterm,
     spawn_xterm, start_record, tile_three, wakeup_screen,
 };
 use telegram_bot::{load_creds, send_video_file};
 
 const TIMEOUT_SECS: u64 = 300;
 const CLIP_SECS: u64 = 25;
-const LOBBY: &str = "alpha";
 const GAME_TITLES: [&str; 3] = ["clicker-1", "clicker-2", "clicker-3"];
 const OWN_IDS: [u64; 3] = [1, 2, 3];
 const CLICKS_EACH: u32 = 15;
@@ -402,6 +401,17 @@ fn log_contains(path: &std::path::Path, needle: &str) -> bool {
     std::fs::read_to_string(path).is_ok_and(|s| s.contains(needle))
 }
 
+fn room_resolved(path: &std::path::Path, room: &str) -> bool {
+    log_contains(path, "room resolved") && log_contains(path, room)
+}
+
+// Auto-joiners resolve before Bevy installs its log subscriber, so the
+// discovery-side marker never reaches their log; gate them on the post-App
+// lobby instead, which carries the same unique room name.
+fn room_joined(path: &std::path::Path, room: &str) -> bool {
+    log_contains(path, &format!("lobby={room}"))
+}
+
 fn strip_ansi(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars().peekable();
@@ -674,15 +684,18 @@ fn spawn_tag(
     dir: &std::path::Path,
     tag: u64,
     contract_params: &str,
+    lobby: Option<&str>,
+    since_epoch: Option<u64>,
 ) -> bool {
     let log = dir.join(format!("instance-{tag}.log"));
     match spawn_xterm(
         bin,
         "blackboard-v1",
-        LOBBY,
+        lobby,
         tag == 1,
         tag,
         contract_params,
+        since_epoch,
         &log,
     ) {
         Ok(guard) => {
@@ -702,6 +715,7 @@ async fn local_mesh() {
     let total_start = Instant::now();
     wakeup_screen();
     assert!(require_xterm().is_ok(), "xterm/xdotool/wmctrl missing");
+    cleanup_stale();
     let build_start = Instant::now();
     let mut bin = std::path::PathBuf::new();
     match build_game() {
@@ -722,12 +736,25 @@ async fn local_mesh() {
     );
 
     let mut terms = Vec::new();
+    let test_start_epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or_default();
+    let room = format!("room-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
     let contract_params = std::env::var("CLICKER_CONTRACT_PARAMS")
         .ok()
         .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| fresh_params("blackboard-v1", LOBBY));
+        .unwrap_or_default();
     assert!(
-        spawn_tag(&mut terms, &bin, &persist_dir, 1, &contract_params),
+        spawn_tag(
+            &mut terms,
+            &bin,
+            &persist_dir,
+            1,
+            &contract_params,
+            Some(&room),
+            None
+        ),
         "spawn 1"
     );
     let log0 = persist_dir.join("instance-1.log");
@@ -736,7 +763,19 @@ async fn local_mesh() {
         "instance 1 never joined roster"
     );
     assert!(
-        spawn_tag(&mut terms, &bin, &persist_dir, 2, &contract_params),
+        wait_until(60, || room_resolved(&log0, &room)).await,
+        "instance 1 never resolved room"
+    );
+    assert!(
+        spawn_tag(
+            &mut terms,
+            &bin,
+            &persist_dir,
+            2,
+            &contract_params,
+            None,
+            Some(test_start_epoch)
+        ),
         "spawn 2"
     );
     let log1 = persist_dir.join("instance-2.log");
@@ -745,17 +784,35 @@ async fn local_mesh() {
         "instance 2 never joined roster"
     );
     assert!(
-        spawn_tag(&mut terms, &bin, &persist_dir, 3, &contract_params),
+        wait_until(180, || room_joined(&log1, &room)).await,
+        "instance 2 never auto-joined room"
+    );
+    assert!(
+        spawn_tag(
+            &mut terms,
+            &bin,
+            &persist_dir,
+            3,
+            &contract_params,
+            None,
+            Some(test_start_epoch)
+        ),
         "spawn 3"
+    );
+    let log2 = persist_dir.join("instance-3.log");
+    assert!(
+        wait_until(180, || room_joined(&log2, &room)).await,
+        "instance 3 never auto-joined room"
     );
     assert!(tile_three(GAME_TITLES).is_ok(), "tile game windows");
 
+    let room_marker = format!("lobby={room}");
     let converged = wait_until(TIMEOUT_SECS, || {
         terms
             .iter()
             .all(|g| log_contains(&g.log, "connected, running indefinitely"))
             && terms.iter().all(|g| log_contains(&g.log, "tick lobby="))
-            && terms.iter().all(|g| log_contains(&g.log, "lobby=alpha"))
+            && terms.iter().all(|g| log_contains(&g.log, &room_marker))
             && terms
                 .iter()
                 .all(|g| log_contains(&g.log, "accounting for remote owner="))
@@ -856,7 +913,7 @@ async fn local_mesh() {
         .collect();
     let all_ok = checks.iter().all(|c| c.ok);
     let caption = format!(
-        "clicker local-mesh lobby={LOBBY} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
+        "clicker local-mesh room={room} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
         check_emoji(converged),
         check_emoji(all_ok),
         mesh_lines.join("\n"),

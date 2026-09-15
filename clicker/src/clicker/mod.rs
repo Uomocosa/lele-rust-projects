@@ -21,6 +21,15 @@ pub use active_lobby::ActiveLobby;
 pub mod click;
 pub use click::click;
 
+pub mod click_topic;
+pub use click_topic::click_topic;
+
+pub mod gossip_roster_topic;
+pub use gossip_roster_topic::gossip_roster_topic;
+
+pub mod credit_click;
+pub use credit_click::credit_click;
+
 pub mod cursor_msg;
 pub use cursor_msg::CursorMsg;
 
@@ -69,6 +78,9 @@ pub use instance_info::InstanceInfo;
 pub mod constants;
 pub use constants::*;
 
+pub mod label_slot;
+pub use label_slot::label_slot;
+
 pub mod lobby_count;
 pub use lobby_count::lobby_count;
 
@@ -100,6 +112,12 @@ pub use pending_clicks::PendingClicks;
 
 pub mod snapshot;
 pub use snapshot::Snapshot;
+
+pub mod score_tombstones;
+pub use score_tombstones::ScoreTombstones;
+
+mod score_tombstones_keep;
+mod score_tombstones_restore;
 
 pub mod decode_snapshot;
 pub use decode_snapshot::decode_snapshot;

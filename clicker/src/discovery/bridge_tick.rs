@@ -8,8 +8,8 @@ const SPLIT_AFTER_SECS: u64 = 30;
 const BRIDGE_INTERVAL_SECS: u64 = 30;
 
 /// # Errors
-/// Returns `Error` if the bridge subscribe fails.
-pub async fn bridge_tick(
+/// Returns `Error` if the bridge subscribe or re-put fails.
+pub fn bridge_tick(
     roster: &mut discovery::Roster,
     now: std::time::Instant,
 ) -> Result<(), discovery::Error> {
@@ -18,6 +18,13 @@ pub async fn bridge_tick(
     }
     roster.last_bridge = Some(now);
     info!(target: "clicker", own = *roster.own, "roster bridge: split suspected");
+    attempt_subscribe(roster)?;
+    attempt_reput(roster)?;
+    Ok(())
+}
+
+// needed helper: sends one routed subscribe to plug into the other replica group
+fn attempt_subscribe(roster: &discovery::Roster) -> Result<(), discovery::Error> {
     let instance_id = *roster.contract_key.id();
     let summary = StateSummary::from(bincode::serialize(&roster.slots)?);
     let sub_req = ContractRequest::Subscribe {
@@ -25,6 +32,19 @@ pub async fn bridge_tick(
         summary: Some(summary),
     };
     roster.client.send(&ClientRequest::ContractOp(sub_req))?;
+    Ok(())
+}
+
+// needed helper: re-puts merged slots so a lone replica rejoins the hosting set
+fn attempt_reput(roster: &discovery::Roster) -> Result<(), discovery::Error> {
+    let put_req = ContractRequest::Put {
+        contract: roster.contract.clone(),
+        state: WrappedState::new(bincode::serialize(&roster.slots)?),
+        related_contracts: RelatedContracts::default(),
+        subscribe: true,
+        blocking_subscribe: false,
+    };
+    roster.client.send(&ClientRequest::ContractOp(put_req))?;
     Ok(())
 }
 
