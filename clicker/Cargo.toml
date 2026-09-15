@@ -53,6 +53,7 @@ as_conversions = "deny"
 
 [features]
 dev = ["dep:serde_json", "dep:chrono"]
+quic = ["freenet-libp2p-bevy-plugin/quic"]
 default = []
 
 [dependencies]

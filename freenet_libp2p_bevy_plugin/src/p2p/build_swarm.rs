@@ -14,14 +14,17 @@ pub fn build_swarm<T: p2p::Message>(
     keypair: Keypair,
 ) -> Result<libp2p::Swarm<p2p::Behaviour<T>>, String> {
     let peer_id = keypair.public().to_peer_id();
-    let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+    let tcp = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
         .with_tcp(
             tcp::Config::default(),
             noise::Config::new,
             yamux::Config::default,
         )
-        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    #[cfg(feature = "quic")]
+    let tcp = tcp.with_quic();
+    let swarm = tcp
         .with_dns()
         .map_err(|e| e.to_string())?
         .with_relay_client(noise::Config::new, yamux::Config::default)

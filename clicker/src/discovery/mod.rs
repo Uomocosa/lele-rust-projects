@@ -75,6 +75,12 @@ pub use pick_room::pick_room;
 pub mod player_id;
 pub use player_id::PlayerId;
 
+pub mod rank_addrs;
+pub use rank_addrs::rank_addrs;
+
+pub mod stagger_due;
+pub use stagger_due::stagger_due;
+
 pub mod recv_after_get;
 pub use recv_after_get::recv_after_get;
 

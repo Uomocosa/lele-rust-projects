@@ -43,4 +43,8 @@ hex = "=0.4.3"
 blake3 = "=1.8.3"
 clap = { version = "=4.5.39", features = ["derive"] }
 
+[features]
+default = ["quic"]
+quic = []
+
 [dev-dependencies]

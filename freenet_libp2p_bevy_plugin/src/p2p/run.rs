@@ -25,6 +25,10 @@ pub async fn run<T: p2p::Message>(
         }
     };
 
+    #[cfg(feature = "quic")]
+    if let Ok(quic_addr) = "/ip4/0.0.0.0/udp/0/quic-v1".parse() {
+        let _ = swarm.listen_on(quic_addr);
+    }
     if let Ok(tcp_addr) = "/ip4/0.0.0.0/tcp/0".parse() {
         let _ = swarm.listen_on(tcp_addr);
     }
@@ -149,9 +153,18 @@ fn handle_swarm<T: p2p::Message>(
             peer_id,
             connection_id,
             endpoint,
+            num_established,
+            cause,
             ..
         } => {
-            log_closed(swarm, &peer_id, connection_id, &endpoint);
+            log_closed(
+                swarm,
+                &peer_id,
+                connection_id,
+                &endpoint,
+                num_established,
+                cause.as_ref(),
+            );
             event_tx
                 .send(p2p::Event::PeerDisconnected(peer_id.to_string()))
                 .ok();
@@ -185,16 +198,33 @@ fn log_closed<T: p2p::Message>(
     peer_id: &libp2p::PeerId,
     connection_id: libp2p::swarm::ConnectionId,
     endpoint: &libp2p::core::ConnectedPoint,
+    remaining: u32,
+    cause: Option<&libp2p::swarm::ConnectionError>,
 ) {
-    tracing::info!(
-        target: "p2p",
-        peer = %peer_id,
-        connection = %connection_id,
-        address = %endpoint.get_remote_address(),
-        dialer = endpoint.is_dialer(),
-        still_connected = swarm.is_connected(peer_id),
-        "p2p connection closed"
-    );
+    if let Some(reason) = cause {
+        tracing::info!(
+            target: "p2p",
+            peer = %peer_id,
+            connection = %connection_id,
+            address = %endpoint.get_remote_address(),
+            dialer = endpoint.is_dialer(),
+            still_connected = swarm.is_connected(peer_id),
+            remaining,
+            reason = %reason,
+            "p2p connection closed",
+        );
+    } else {
+        tracing::info!(
+            target: "p2p",
+            peer = %peer_id,
+            connection = %connection_id,
+            address = %endpoint.get_remote_address(),
+            dialer = endpoint.is_dialer(),
+            still_connected = swarm.is_connected(peer_id),
+            remaining,
+            "p2p connection closed",
+        );
+    }
 }
 
 // needed helper: samples gossip mesh depth for one inbound message

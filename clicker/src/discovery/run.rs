@@ -20,6 +20,10 @@ const WARMUP_ANNOUNCE_SECS: u64 = 5;
 const DISCOVERY_SECS: u64 = 300;
 const DIRECTORY_TICK_SECS: u64 = 5;
 
+type ConnectedMap = std::collections::HashMap<String, u32>;
+type StaggerMap =
+    std::collections::HashMap<String, (std::collections::VecDeque<String>, std::time::Instant)>;
+
 struct RunContext {
     cmd_tx: tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
     roster: discovery::Roster,
@@ -37,8 +41,9 @@ struct RunContext {
     last_directory: std::time::Instant,
     last_directory_bridge: Option<std::time::Instant>,
     started: std::time::Instant,
-    connected: std::collections::HashMap<String, u32>,
+    connected: ConnectedMap,
     attempted: std::collections::HashMap<String, std::time::Instant>,
+    staggers: StaggerMap,
 }
 
 pub async fn run(mut config: discovery::RunConfig) {
@@ -98,7 +103,15 @@ pub async fn run(mut config: discovery::RunConfig) {
         }
     };
     info!(target: "clicker", key = %roster.contract_key, own = *config.own, "discovery: roster connected");
-    dial_known(&config.cmd_tx, &roster.slots, config.own);
+    let connected: ConnectedMap = std::collections::HashMap::new();
+    let mut staggers: StaggerMap = std::collections::HashMap::new();
+    dial_known(
+        &config.cmd_tx,
+        &connected,
+        &mut staggers,
+        &roster.slots,
+        config.own,
+    );
     if roster.announce().is_err() {
         warn!(target: "clicker", "discovery: initial announce failed");
     }
@@ -120,8 +133,9 @@ pub async fn run(mut config: discovery::RunConfig) {
         last_directory: now,
         last_directory_bridge: None,
         started: now,
-        connected: std::collections::HashMap::new(),
+        connected,
         attempted: std::collections::HashMap::new(),
+        staggers,
     };
     drive_roster(&mut ctx).await;
 }
@@ -163,11 +177,20 @@ async fn drive_roster(ctx: &mut RunContext) {
             &mut ctx.lobby_events,
             &mut ctx.attempted,
             &ctx.peer_id,
+            &ctx.connected,
+            &mut ctx.staggers,
         );
         match ctx.roster.poll().await {
             Ok(fresh) => {
                 for entry in fresh {
-                    dial_tiebreak(&ctx.cmd_tx, &mut ctx.attempted, &ctx.peer_id, &entry);
+                    dial_tiebreak(
+                        &ctx.cmd_tx,
+                        &mut ctx.attempted,
+                        &ctx.connected,
+                        &mut ctx.staggers,
+                        &ctx.peer_id,
+                        &entry,
+                    );
                 }
             }
             Err(e) => {
@@ -186,6 +209,7 @@ async fn drive_roster(ctx: &mut RunContext) {
             ctx.last_redial = std::time::Instant::now();
             redial_missing(ctx);
         }
+        fire_due_staggers(&ctx.cmd_tx, &ctx.connected, &mut ctx.staggers);
         if ctx.observed.has_changed().unwrap_or(false) {
             refresh_observed(ctx);
         }
@@ -212,7 +236,14 @@ async fn refresh_directory(ctx: &mut RunContext) {
     match ctx.directory.poll().await {
         Ok(slots) => {
             for hint in directory_hints(&slots) {
-                dial_hint(&ctx.cmd_tx, &mut ctx.attempted, &ctx.peer_id, &hint);
+                dial_hint(
+                    &ctx.cmd_tx,
+                    &mut ctx.attempted,
+                    &ctx.connected,
+                    &mut ctx.staggers,
+                    &ctx.peer_id,
+                    &hint,
+                );
             }
         }
         Err(e) => {
@@ -241,7 +272,14 @@ fn redial_missing(ctx: &mut RunContext) {
         if *id == ctx.roster.own || ctx.connected.contains_key(&entry.peer_id) {
             continue;
         }
-        dial_tiebreak(&ctx.cmd_tx, &mut ctx.attempted, &ctx.peer_id, entry);
+        dial_tiebreak(
+            &ctx.cmd_tx,
+            &mut ctx.attempted,
+            &ctx.connected,
+            &mut ctx.staggers,
+            &ctx.peer_id,
+            entry,
+        );
     }
 }
 
@@ -270,7 +308,15 @@ async fn resolve_room(
     if let Some(room) = config.lobby.as_deref() {
         let params =
             discovery::resolve_params(&config.namespace, room, config.params_override.as_deref());
-        parallel_probe(&config.cmd_tx, directory, peer_id).await;
+        parallel_probe(
+            &config.cmd_tx,
+            directory,
+            &mut std::collections::HashMap::new(),
+            &std::collections::HashMap::new(),
+            &mut std::collections::HashMap::new(),
+            peer_id,
+        )
+        .await;
         if directory
             .publish_room(room, &params, peer_id, addrs)
             .is_err()
@@ -280,8 +326,21 @@ async fn resolve_room(
         return Some((room.to_string(), params));
     }
     let deadline = std::time::Instant::now().checked_add(Duration::from_secs(DISCOVERY_SECS))?;
+    let mut attempted: std::collections::HashMap<String, std::time::Instant> =
+        std::collections::HashMap::new();
+    let connected: ConnectedMap = std::collections::HashMap::new();
+    let mut staggers: StaggerMap = std::collections::HashMap::new();
     loop {
-        parallel_probe(&config.cmd_tx, directory, peer_id).await;
+        parallel_probe(
+            &config.cmd_tx,
+            directory,
+            &mut attempted,
+            &connected,
+            &mut staggers,
+            peer_id,
+        )
+        .await;
+        fire_due_staggers(&config.cmd_tx, &connected, &mut staggers);
         match directory.poll().await {
             Ok(slots) => {
                 if let Some((room, entry)) = discovery::pick_room(&slots, config.since_secs) {
@@ -323,14 +382,15 @@ fn room_params(
 async fn parallel_probe(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
     directory: &mut discovery::Directory,
+    attempted: &mut std::collections::HashMap<String, std::time::Instant>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
     peer_id: &str,
 ) {
-    let mut attempted: std::collections::HashMap<String, std::time::Instant> =
-        std::collections::HashMap::new();
     match directory.poll().await {
         Ok(slots) => {
             for hint in directory_hints(&slots) {
-                dial_hint(cmd_tx, &mut attempted, peer_id, &hint);
+                dial_hint(cmd_tx, attempted, connected, staggers, peer_id, &hint);
             }
         }
         Err(e) => {
@@ -368,6 +428,8 @@ fn drain_lobby_events(
     lobby_events: &mut tokio::sync::mpsc::UnboundedReceiver<p2p::Event<clicker::CursorMsg>>,
     attempted: &mut std::collections::HashMap<String, std::time::Instant>,
     peer_id: &str,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
 ) {
     while let Ok(event) = lobby_events.try_recv() {
         match event {
@@ -376,6 +438,8 @@ fn drain_lobby_events(
                     dial_hint(
                         cmd_tx,
                         attempted,
+                        connected,
+                        staggers,
                         peer_id,
                         &discovery::PeerHint {
                             peer_id: peer,
@@ -397,6 +461,8 @@ fn drain_lobby_events(
                     dial_hint(
                         cmd_tx,
                         attempted,
+                        connected,
+                        staggers,
                         peer_id,
                         &discovery::PeerHint {
                             peer_id: entry.peer_id.clone(),
@@ -511,6 +577,8 @@ fn free_udp_port() -> Result<u16, discovery::Error> {
 // needed helper: dials foreign roster entries already present at connect time
 fn dial_known(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
     slots: &discovery::RosterState,
     own: discovery::PlayerId,
 ) {
@@ -518,7 +586,7 @@ fn dial_known(
         if *id == own {
             continue;
         }
-        dial_entry(cmd_tx, entry);
+        dial_preferred(cmd_tx, connected, staggers, entry);
     }
 }
 
@@ -529,6 +597,8 @@ fn dial_known(
 fn dial_tiebreak(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
     attempted: &mut std::collections::HashMap<String, std::time::Instant>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
     own_peer_id: &str,
     entry: &discovery::PeerEntry,
 ) {
@@ -547,13 +617,15 @@ fn dial_tiebreak(
         return;
     }
     let decision = discovery::decide_dial(own_peer_id, &entry.peer_id, age);
-    apply_decision(cmd_tx, attempted, entry, decision);
+    apply_decision(cmd_tx, attempted, connected, staggers, entry, decision);
 }
 
 // needed helper: applies a dial decision for one peer entry
 fn apply_decision(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
     attempted: &mut std::collections::HashMap<String, std::time::Instant>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
     entry: &discovery::PeerEntry,
     decision: discovery::DialDecision,
 ) {
@@ -565,7 +637,7 @@ fn apply_decision(
         }
         discovery::DialDecision::Dial => {
             attempted.insert(entry.peer_id.clone(), std::time::Instant::now());
-            dial_entry(cmd_tx, entry);
+            dial_preferred(cmd_tx, connected, staggers, entry);
         }
         discovery::DialDecision::ForceDial => {
             attempted.insert(entry.peer_id.clone(), std::time::Instant::now());
@@ -578,6 +650,8 @@ fn apply_decision(
 fn dial_hint(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
     attempted: &mut std::collections::HashMap<String, std::time::Instant>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
     own_peer_id: &str,
     hint: &discovery::PeerHint,
 ) {
@@ -595,31 +669,74 @@ fn dial_hint(
         addrs: hint.addrs.clone(),
         updated_at: hint.updated_at,
     };
-    dial_tiebreak(cmd_tx, attempted, own_peer_id, &entry);
+    dial_tiebreak(cmd_tx, attempted, connected, staggers, own_peer_id, &entry);
 }
 
-// needed helper: issues one libp2p dial plus kad seeding for a discovered peer entry
-fn dial_entry(
+// needed helper: dials the best-ranked addr now and staggers the rest
+fn dial_preferred(
     cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
     entry: &discovery::PeerEntry,
 ) {
-    if entry.addrs.is_empty() {
+    if connected.contains_key(&entry.peer_id) {
+        staggers.remove(&entry.peer_id);
         return;
     }
-    if epoch_secs().saturating_sub(entry.updated_at) > constants::STALE_ENTRY_SECS {
+    let ranked = discovery::rank_addrs(&with_loopback(&entry.addrs));
+    let mut queue: std::collections::VecDeque<String> = ranked.into();
+    let Some(first) = queue.pop_front() else {
+        return;
+    };
+    dial_addrs(cmd_tx, &entry.peer_id, &[first], &entry.addrs);
+    if queue.is_empty() {
+        staggers.remove(&entry.peer_id);
         return;
     }
-    info!(target: "clicker", peer = %entry.peer_id, addrs = ?entry.addrs, "discovery: dialing peer");
+    let due = std::time::Instant::now()
+        .checked_add(Duration::from_secs(discovery::STAGGER_SECS))
+        .unwrap_or_else(std::time::Instant::now);
+    staggers.insert(entry.peer_id.clone(), (queue, due));
+}
+
+// needed helper: fires due staggered dials for peers still unreached
+fn fire_due_staggers(
+    cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
+) {
+    for (peer, addr) in discovery::stagger_due(std::time::Instant::now(), connected, staggers) {
+        info!(target: "clicker", peer = %peer, addr = %addr, "discovery: staggered dialing peer");
+        cmd_tx
+            .send(p2p::Command::DialForce {
+                peer_id: peer,
+                addrs: vec![addr],
+            })
+            .ok();
+    }
+}
+
+// needed helper: sends one dial plus kad seeding for an addr set
+fn dial_addrs(
+    cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    peer_id: &str,
+    addrs: &[String],
+    kad_addrs: &[String],
+) {
+    if addrs.is_empty() {
+        return;
+    }
+    info!(target: "clicker", peer = %peer_id, addrs = ?addrs, "discovery: dialing peer");
     cmd_tx
         .send(p2p::Command::Dial {
-            peer_id: entry.peer_id.clone(),
-            addrs: with_loopback(&entry.addrs),
+            peer_id: peer_id.to_string(),
+            addrs: addrs.to_vec(),
         })
         .ok();
     cmd_tx
         .send(p2p::Command::AddKadPeer {
-            peer_id: entry.peer_id.clone(),
-            addrs: entry.addrs.clone(),
+            peer_id: peer_id.to_string(),
+            addrs: kad_addrs.to_vec(),
         })
         .ok();
 }

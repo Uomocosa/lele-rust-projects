@@ -1,0 +1,56 @@
+#[must_use]
+pub fn rank_addrs(addrs: &[String]) -> Vec<String> {
+    let mut scored: Vec<(u8, u8, &String)> = Vec::new();
+    for addr in addrs {
+        scored.push((transport_rank(addr), net_rank(addr), addr));
+    }
+    scored.sort_by_key(|a| (a.0, a.1));
+    scored
+        .into_iter()
+        .map(|(_, _, addr)| addr.clone())
+        .collect()
+}
+
+// needed helper: prefers QUIC transports so real-world hole punching wins
+fn transport_rank(addr: &str) -> u8 {
+    if addr.contains("/udp/") {
+        return 0;
+    }
+    1
+}
+
+// needed helper: ranks loopback above direct LAN above CGNAT relay-style paths
+fn net_rank(addr: &str) -> u8 {
+    if addr.contains("127.") || addr.contains("::1") {
+        return 0;
+    }
+    if addr.contains("/ip4/100.") {
+        return 2;
+    }
+    1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::rank_addrs;
+
+    #[test]
+    fn test_usage() {
+        let ranked = rank_addrs(&[
+            "/ip4/192.168.1.9/tcp/4001".to_string(),
+            "/ip4/100.113.107.37/udp/4001/quic-v1".to_string(),
+            "/ip4/192.168.1.9/udp/4001/quic-v1".to_string(),
+            "/ip4/127.0.0.1/tcp/4001".to_string(),
+        ]);
+        assert_eq!(
+            ranked,
+            vec![
+                "/ip4/192.168.1.9/udp/4001/quic-v1".to_string(),
+                "/ip4/100.113.107.37/udp/4001/quic-v1".to_string(),
+                "/ip4/127.0.0.1/tcp/4001".to_string(),
+                "/ip4/192.168.1.9/tcp/4001".to_string(),
+            ]
+        );
+        assert_eq!(rank_addrs(&[]).len(), 0);
+    }
+}
