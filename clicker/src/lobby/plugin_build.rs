@@ -6,6 +6,9 @@ pub fn build(_plugin: &lobby::Plugin, app: &mut App) {
     app.init_state::<lobby::AppState>()
         .init_resource::<lobby::RoomList>()
         .init_resource::<lobby::SelectedRoom>()
+        .init_resource::<lobby::JoinPending>()
+        .init_resource::<lobby::JoinGate>()
+        .init_resource::<lobby::DirectoryLive>()
         .add_systems(
             Update,
             (
@@ -14,8 +17,17 @@ pub fn build(_plugin: &lobby::Plugin, app: &mut App) {
                 lobby::bevy_systems::show_menu,
                 lobby::bevy_systems::create_button,
                 lobby::bevy_systems::join_button,
+                lobby::bevy_systems::join_feedback,
             )
                 .run_if(in_state(lobby::AppState::Menu)),
+        )
+        .add_systems(
+            Update,
+            (
+                lobby::bevy_systems::poll_expected,
+                lobby::bevy_systems::clear_pending,
+            )
+                .run_if(in_state(lobby::AppState::InRoom)),
         )
         .add_systems(
             Update,

@@ -6,9 +6,10 @@ use crate::lobby;
 pub fn despawn_leave(
     mut commands: Commands,
     overlays: Query<Entity, With<lobby::bevy_systems::LeaveRoot>>,
+    loading: Query<Entity, With<lobby::bevy_systems::LoadingRoot>>,
     players: Query<Entity, With<clicker::PlayerNo>>,
 ) {
-    for entity in overlays.iter().chain(players.iter()) {
+    for entity in overlays.iter().chain(loading.iter()).chain(players.iter()) {
         commands.entity(entity).despawn();
     }
 }
@@ -27,6 +28,10 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.world_mut()
             .spawn((lobby::bevy_systems::LeaveRoot, Text::new("leave")));
+        let loading = app
+            .world_mut()
+            .spawn((lobby::bevy_systems::LoadingRoot, Text::new("joining")))
+            .id();
         let player = app
             .world_mut()
             .spawn((
@@ -44,5 +49,9 @@ mod tests {
             .count();
         assert_eq!(nodes, 0);
         assert!(app.world().get_entity(player).is_err());
+        assert!(
+            app.world().get_entity(loading).is_err(),
+            "loading overlay leaves with the room"
+        );
     }
 }

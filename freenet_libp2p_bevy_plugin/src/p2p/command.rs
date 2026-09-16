@@ -39,6 +39,9 @@ pub enum Command<T> {
         lobby: String,
         chunk: u64,
     },
+    FetchRoster {
+        lobby: String,
+    },
     Subscribe {
         topic: String,
     },

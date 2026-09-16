@@ -8,6 +8,8 @@ use telegram_bot::{load_creds, send_video_file};
 
 const TIMEOUT_SECS: u64 = 300;
 const RECORD_SECS: u64 = 240;
+const READY_SECS: u64 = 5;
+const CREATE_READY_SECS: u64 = 60;
 
 struct SoftCheck {
     name: String,
@@ -139,7 +141,7 @@ async fn sweep_click(
     y_center: i32,
     timeout_secs: u64,
     cond: impl Fn() -> bool,
-) -> bool {
+) -> Option<Instant> {
     let start = Instant::now();
     let mut offsets = vec![0];
     for step in 1..=3 {
@@ -153,22 +155,156 @@ async fn sweep_click(
         if click_at_y(title, 0.5, y_center + dy).is_ok() {
             tokio::time::sleep(Duration::from_secs(2)).await;
             if cond() {
-                return true;
+                return Some(Instant::now());
             }
         } else {
             tokio::time::sleep(Duration::from_secs(2)).await;
         }
     }
-    cond()
+    cond().then(Instant::now)
 }
 
-async fn ui_create_room(title: &str, log: &std::path::Path) -> Option<String> {
-    sweep_click(title, 84, 120, || created_room(log).is_some()).await;
-    created_room(log)
+async fn ui_create_room(title: &str, log: &std::path::Path) -> Option<(String, Instant)> {
+    let at = sweep_click(title, 84, 120, || created_room(log).is_some()).await?;
+    created_room(log).map(|room| (room, at))
 }
 
-async fn ui_join_room(title: &str, room: &str, log: &std::path::Path) -> bool {
+async fn ui_join_room(title: &str, room: &str, log: &std::path::Path) -> Option<Instant> {
     sweep_click(title, 84, 120, || room_joined(log, room)).await
+}
+
+fn file_len(path: &std::path::Path) -> u64 {
+    std::fs::metadata(path)
+        .map(|meta| meta.len())
+        .unwrap_or_default()
+}
+
+fn ready_since(path: &std::path::Path, room: &str, pos: u64) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    if file.seek(SeekFrom::Start(pos)).is_err() {
+        return false;
+    }
+    let mut tail = String::new();
+    if file.read_to_string(&mut tail).is_err() {
+        return false;
+    }
+    tail.lines()
+        .any(|line| line.contains("join ready") && line.contains(room))
+}
+
+fn own_slot_series(path: &std::path::Path, pos: u64, room: &str, slot: &str) -> Vec<u64> {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return Vec::new();
+    };
+    if file.seek(SeekFrom::Start(pos)).is_err() {
+        return Vec::new();
+    }
+    let mut tail = String::new();
+    if file.read_to_string(&mut tail).is_err() {
+        return Vec::new();
+    }
+    let marker = format!("sync lobby={room}");
+    tail.lines()
+        .filter(|line| line.contains(&marker))
+        .filter_map(|line| parse_number_after(&strip_ansi(line), &format!(" {slot}=")))
+        .map(|value| value as u64)
+        .collect()
+}
+
+async fn wait_ready(log: &std::path::Path, room: &str, pos: u64, secs: u64) -> bool {
+    let start = Instant::now();
+    while start.elapsed().as_secs() < secs {
+        if ready_since(log, room, pos) {
+            return true;
+        }
+        poke();
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    ready_since(log, room, pos)
+}
+
+async fn assert_ready(
+    checks: &mut Vec<SoftCheck>,
+    name: &str,
+    log: &std::path::Path,
+    room: &str,
+    pos: u64,
+    clicked_at: Instant,
+    budget_secs: u64,
+) {
+    let elapsed = clicked_at.elapsed().as_secs();
+    let budget = budget_secs.saturating_sub(elapsed).max(1);
+    let seen = wait_ready(log, room, pos, budget).await;
+    let waited = clicked_at.elapsed().as_secs_f64();
+    let ok = seen && waited <= budget_secs as f64 + 1.0;
+    soft(
+        checks,
+        name,
+        ok,
+        format!("ready {waited:.1}s after click (budget {budget_secs}s)"),
+    );
+    assert!(ok, "join {name} not ready within {budget_secs}s of click");
+}
+
+fn assert_slot_frozen(
+    checks: &mut Vec<SoftCheck>,
+    name: &str,
+    log: &std::path::Path,
+    pos: u64,
+    room: &str,
+    slot: &str,
+) {
+    let series = own_slot_series(log, pos, room, slot);
+    let ok = !series.is_empty() && series[0] <= 1 && series.iter().all(|value| *value == series[0]);
+    soft(
+        checks,
+        name,
+        ok,
+        format!("{slot} samples after click: {series:?}"),
+    );
+    assert!(
+        ok,
+        "fresh joiner {name} registered clicks while loading: {series:?}"
+    );
+}
+
+fn menu_since(path: &std::path::Path, pos: u64) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    if file.seek(SeekFrom::Start(pos)).is_err() {
+        return false;
+    }
+    let mut tail = String::new();
+    if file.read_to_string(&mut tail).is_err() {
+        return false;
+    }
+    tail.lines()
+        .any(|line| line.contains("directory listed rooms"))
+}
+
+async fn ui_leave_room(title: &str, log: &std::path::Path, pos: u64) -> bool {
+    let start = Instant::now();
+    let spots = [(0.9, 30), (0.95, 30), (0.9, 50), (0.85, 30)];
+    let mut attempt = 0usize;
+    while start.elapsed().as_secs() < 15 {
+        let (fx, y) = spots[attempt % spots.len()];
+        attempt = attempt.saturating_add(1);
+        if click_at_y(title, fx, y).is_ok() {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            if menu_since(log, pos) {
+                return true;
+            }
+        } else {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    }
+    menu_since(log, pos)
 }
 
 fn tile_one(title: &str, w: u32, h: u32, x: i32, y: i32) -> bool {
@@ -370,6 +506,16 @@ async fn rooms_rejoin() {
         .is_some_and(|v| v == "on");
     // SAFETY: nextest runs this test binary single-test at a time and no
     // other thread reads process env here; children inherit it on spawn.
+    // A unique key per run isolates this run's contracts from earlier runs.
+    let stamp = chrono::Utc::now().timestamp_micros();
+    let key_hex = format!(
+        "{:016x}{:08x}",
+        u64::try_from(stamp).unwrap_or_default(),
+        std::process::id()
+    );
+    unsafe {
+        std::env::set_var("CLICKER_CONTRACT_PARAMS", key_hex);
+    }
     unsafe {
         std::env::set_var("CLICKER_NO_AUTOJOIN", "1");
     }
@@ -406,7 +552,22 @@ async fn rooms_rejoin() {
         "instance 1 freenet node started".to_string(),
     );
     assert!(tile_one(GAME_TITLES[0], 960, 540, 0, 0), "tile window 1");
-    let room = ui_create_room(GAME_TITLES[0], &log1)
+    assert!(
+        wait_until(180, || log_contains(
+            &log1,
+            "menu live: directory connected"
+        ))
+        .await,
+        "instance 1 menu never went live (node never joined mainnet)"
+    );
+    soft(
+        &mut checks,
+        "menu-live-1",
+        true,
+        "instance 1 menu answered clicks only after directory live".to_string(),
+    );
+    let create_pos = file_len(&log1);
+    let (room, clicked_at) = ui_create_room(GAME_TITLES[0], &log1)
         .await
         .expect("instance 1 never created a room via menu");
     eprintln!("created room via menu: {room}");
@@ -415,6 +576,24 @@ async fn rooms_rejoin() {
         "ui-create-room",
         true,
         format!("instance 1 created {room} via menu button"),
+    );
+    assert_ready(
+        &mut checks,
+        "create-ready-1",
+        &log1,
+        &room,
+        create_pos,
+        clicked_at,
+        CREATE_READY_SECS,
+    )
+    .await;
+    assert_slot_frozen(
+        &mut checks,
+        "create-frozen-1",
+        &log1,
+        create_pos,
+        &room,
+        "p1",
     );
     let (mut guard2, log2) = spawn_puller(
         &bin,
@@ -441,10 +620,21 @@ async fn rooms_rejoin() {
         true,
         format!("instance 2 pulled {room} via late Get"),
     );
-    assert!(
-        ui_join_room(GAME_TITLES[1], &room, &log2).await,
-        "instance 2 never joined room via menu"
-    );
+    let join2_pos = file_len(&log2);
+    let clicked_at = ui_join_room(GAME_TITLES[1], &room, &log2)
+        .await
+        .expect("instance 2 never joined room via menu");
+    assert_ready(
+        &mut checks,
+        "join-ready-2",
+        &log2,
+        &room,
+        join2_pos,
+        clicked_at,
+        READY_SECS,
+    )
+    .await;
+    assert_slot_frozen(&mut checks, "join-frozen-2", &log2, join2_pos, &room, "p2");
     soft(
         &mut checks,
         "ui-join-2",
@@ -476,10 +666,21 @@ async fn rooms_rejoin() {
         true,
         format!("instance 3 pulled {room} via late Get"),
     );
-    assert!(
-        ui_join_room(GAME_TITLES[2], &room, &log3).await,
-        "instance 3 never joined room via menu"
-    );
+    let join3_pos = file_len(&log3);
+    let clicked_at = ui_join_room(GAME_TITLES[2], &room, &log3)
+        .await
+        .expect("instance 3 never joined room via menu");
+    assert_ready(
+        &mut checks,
+        "join-ready-3",
+        &log3,
+        &room,
+        join3_pos,
+        clicked_at,
+        READY_SECS,
+    )
+    .await;
+    assert_slot_frozen(&mut checks, "join-frozen-3", &log3, join3_pos, &room, "p3");
     soft(
         &mut checks,
         "ui-join-3",
@@ -567,10 +768,20 @@ async fn rooms_rejoin() {
         (960, 1080, 960, 0),
     )
     .await;
-    assert!(
-        ui_join_room(GAME_TITLES[2], &room, &log3b).await,
-        "instance 3 never rejoined room via menu"
-    );
+    let rejoin3_pos = file_len(&log3b);
+    let clicked_at = ui_join_room(GAME_TITLES[2], &room, &log3b)
+        .await
+        .expect("instance 3 never rejoined room via menu");
+    assert_ready(
+        &mut checks,
+        "rejoin-ready-3",
+        &log3b,
+        &room,
+        rejoin3_pos,
+        clicked_at,
+        READY_SECS,
+    )
+    .await;
     assert!(
         wait_until(180, || log_contains(&log3b, "discovery: roster connected")).await,
         "instance 3 never rejoined roster"
@@ -643,10 +854,20 @@ async fn rooms_rejoin() {
         (960, 540, 0, 0),
     )
     .await;
-    assert!(
-        ui_join_room(GAME_TITLES[0], &room, &log1b).await,
-        "creator never rejoined room via menu"
-    );
+    let rejoin1_pos = file_len(&log1b);
+    let clicked_at = ui_join_room(GAME_TITLES[0], &room, &log1b)
+        .await
+        .expect("creator never rejoined room via menu");
+    assert_ready(
+        &mut checks,
+        "rejoin-ready-1",
+        &log1b,
+        &room,
+        rejoin1_pos,
+        clicked_at,
+        READY_SECS,
+    )
+    .await;
     assert!(
         wait_until(180, || log_contains(&log1b, "discovery: roster connected")).await,
         "creator never rejoined roster"
@@ -683,6 +904,58 @@ async fn rooms_rejoin() {
         format!("creator back as ordinary peer: restored={restored:?} final={final_state:?}"),
     );
 
+    let (mut guard4, log4) = spawn_puller(
+        &bin,
+        &persist_dir,
+        &namespace,
+        4,
+        &contract_params,
+        &transport,
+        mdns,
+        &room,
+        "instance-4.log",
+        (960, 540, 960, 540),
+    )
+    .await;
+    soft(
+        &mut checks,
+        "spawn-4-node",
+        true,
+        "instance 4 freenet node started".to_string(),
+    );
+    let join4_pos = file_len(&log4);
+    ui_join_room("clicker-4", &room, &log4)
+        .await
+        .expect("instance 4 never joined room via menu");
+    soft(
+        &mut checks,
+        "ui-join-4",
+        true,
+        format!("instance 4 joined {room} via menu button"),
+    );
+    let left4 = ui_leave_room("clicker-4", &log4, join4_pos).await;
+    soft(
+        &mut checks,
+        "leave-during-loading-4",
+        left4,
+        "instance 4 left via the leave button right after joining".to_string(),
+    );
+    assert!(left4, "instance 4 never left via the leave button");
+    let probe_ticks = tick_lines(&log2);
+    tokio::time::sleep(Duration::from_secs(10)).await;
+    let survived = tick_lines(&log2) > probe_ticks;
+    soft(
+        &mut checks,
+        "leave-survives-4",
+        survived,
+        format!(
+            "room kept ticking after instance 4 left, ticks {} -> {}",
+            probe_ticks,
+            tick_lines(&log2)
+        ),
+    );
+    assert!(survived, "room stalled after instance 4 left");
+
     let clip_path = persist_dir.join("clip.mp4");
     let clip = recording
         .and_then(|child| finish_record(child, &raw_path))
@@ -690,6 +963,7 @@ async fn rooms_rejoin() {
     kill_guard(&mut guard1);
     kill_guard(&mut guard2);
     kill_guard(&mut guard3);
+    kill_guard(&mut guard4);
 
     let Some(clip) = clip else {
         assert!(false, "clip missing at {}", clip_path.display());

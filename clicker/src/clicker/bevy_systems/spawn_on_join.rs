@@ -1,22 +1,22 @@
 use bevy::prelude::*;
 
 use freenet_libp2p_bevy_plugin::net_id;
-use freenet_libp2p_bevy_plugin::roster;
 
 use crate::clicker;
 
 pub fn spawn_on_join(
     mut commands: Commands,
-    roster: Res<roster::Roster>,
     owners: Query<&clicker::Owner>,
-    lobby: Res<clicker::ActiveLobby>,
-    own: Res<net_id::NetworkId>,
+    ctx: clicker::bevy_systems::SpawnCtx,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let roster = roster.into_inner();
-    let lobby = lobby.into_inner();
-    let own = own.into_inner();
+    if !ctx.gate_open() {
+        return;
+    }
+    let roster = ctx.roster.into_inner();
+    let lobby = ctx.lobby.into_inner();
+    let own = ctx.own.into_inner();
     let mut known = Vec::new();
     for owner in &owners {
         known.push(**owner);
@@ -66,6 +66,7 @@ mod tests {
 
     use super::spawn_on_join;
     use crate::clicker;
+    use crate::lobby;
     use freenet_libp2p_bevy_plugin::{net_id, roster};
 
     #[test]
@@ -77,6 +78,7 @@ mod tests {
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending::default());
         app.world_mut().resource_mut::<roster::Roster>().add_entry(
             "alpha".to_string(),
             *blake3::hash(b"peer").as_bytes(),
@@ -110,6 +112,7 @@ mod tests {
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending::default());
         app.world_mut().resource_mut::<roster::Roster>().add_entry(
             "alpha".to_string(),
             *blake3::hash(b"peer").as_bytes(),
@@ -123,5 +126,31 @@ mod tests {
             .iter(app.world())
             .count();
         assert_eq!(numbered, 0);
+    }
+
+    #[test]
+    fn no_spawn_while_join_pending() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(roster::Roster::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending(Some("alpha".to_string())));
+        app.world_mut().resource_mut::<roster::Roster>().add_entry(
+            "alpha".to_string(),
+            *blake3::hash(b"peer").as_bytes(),
+            "peer".to_string(),
+        );
+        app.add_systems(Update, spawn_on_join);
+        app.update();
+        app.update();
+        let count = app
+            .world_mut()
+            .query::<&clicker::Owner>()
+            .iter(app.world())
+            .count();
+        assert_eq!(count, 0, "loading joiner spawns nobody");
     }
 }

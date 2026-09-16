@@ -476,6 +476,17 @@ fn dispatch_command<T: p2p::Message>(
             let key = p2p::history_key(&lobby, chunk);
             swarm.behaviour_mut().kademlia.get_record(key);
         }
+        Some(p2p::Command::FetchRoster { lobby }) => {
+            let _ = swarm
+                .behaviour_mut()
+                .kademlia
+                .start_providing(p2p::provider_key(&lobby));
+            let id = swarm
+                .behaviour_mut()
+                .kademlia
+                .get_providers(p2p::provider_key(&lobby));
+            lobby_queries.insert(id, lobby);
+        }
         Some(p2p::Command::Subscribe { topic }) => {
             let topic = gossipsub::IdentTopic::new(topic);
             let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);

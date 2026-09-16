@@ -4,6 +4,7 @@ use freenet_libp2p_bevy_plugin::net_id;
 use freenet_libp2p_bevy_plugin::p2p;
 
 use crate::clicker;
+use crate::lobby;
 
 pub fn absorb_sync(
     mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
@@ -15,9 +16,11 @@ pub fn absorb_sync(
     mut pending: ResMut<clicker::PendingClicks>,
     commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
     own: Res<net_id::NetworkId>,
+    gate: ResMut<lobby::JoinGate>,
 ) {
     let own = *own.into_inner();
     let commands = commands.into_inner();
+    let gate = gate.into_inner();
     let mut rest = Vec::new();
     for event in events.take_all() {
         match event {
@@ -38,6 +41,13 @@ pub fn absorb_sync(
                 clicker::CursorMsg::SyncAck { target, entries } => {
                     if target != own {
                         continue;
+                    }
+                    if !gate
+                        .synced
+                        .iter()
+                        .any(|entry| entry.as_str() == from.as_str())
+                    {
+                        gate.synced.push(lobby::SyncedPeer(from.clone()));
                     }
                     let sender = net_id::NetworkId::from_peer(&from);
                     merge_entries(&mut targets, &mut pending, sender, entries);
@@ -111,6 +121,7 @@ mod tests {
 
     use super::absorb_sync;
     use crate::clicker;
+    use crate::lobby;
     use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
     #[test]
@@ -120,6 +131,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::PendingClicks::default());
+        app.insert_resource(lobby::JoinGate::default());
         app.insert_resource(net_id::NetworkId(1));
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),
@@ -151,6 +163,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::PendingClicks::default());
+        app.insert_resource(lobby::JoinGate::default());
         app.insert_resource(net_id::NetworkId(1));
         let target = app
             .world_mut()
@@ -174,6 +187,36 @@ mod tests {
         assert_eq!(
             **app.world().get::<clicker::ClickCounter>(target).unwrap(),
             7
+        );
+    }
+
+    #[test]
+    fn ack_sender_recorded_as_synced() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::PendingClicks::default());
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Message {
+                from: "peer-2".to_string(),
+                payload: clicker::CursorMsg::SyncAck {
+                    target: net_id::NetworkId(1),
+                    entries: vec![(net_id::NetworkId(2), 7)],
+                },
+            });
+        app.add_systems(Update, absorb_sync);
+        app.update();
+        assert!(
+            app.world()
+                .resource::<lobby::JoinGate>()
+                .synced
+                .iter()
+                .any(|entry| entry.as_str() == "peer-2"),
+            "merged ack marks its sender synced"
         );
     }
 }

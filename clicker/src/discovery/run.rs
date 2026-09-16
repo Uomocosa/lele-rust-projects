@@ -46,11 +46,19 @@ struct RunContext {
     staggers: StaggerMap,
     transport: p2p::TransportMode,
     directory_tx: tokio::sync::mpsc::UnboundedSender<discovery::DirectoryState>,
+    expected_tx: tokio::sync::mpsc::UnboundedSender<Vec<String>>,
     pex: discovery::HintStore,
     pex_asked: std::collections::HashMap<String, std::time::Instant>,
     known_rooms: std::collections::BTreeMap<String, discovery::DirectoryEntry>,
     pex_inbox: Vec<(String, clicker::CursorMsg)>,
     last_pex: std::time::Instant,
+    room_requests: tokio::sync::mpsc::UnboundedReceiver<String>,
+    room_tx: tokio::sync::watch::Sender<Option<String>>,
+    ws_port: u16,
+    own: discovery::PlayerId,
+    namespace: String,
+    params_override: Option<String>,
+    pending_switch: Option<(String, u32)>,
 }
 
 pub async fn run(mut config: discovery::RunConfig) {
@@ -77,6 +85,7 @@ pub async fn run(mut config: discovery::RunConfig) {
     info!(target: "clicker", room = %room, "discovery: room resolved");
     config.room_tx.send_replace(Some(room.clone()));
     let roster = loop {
+        let attempt = std::time::Instant::now();
         match discovery::connect_roster(
             "127.0.0.1",
             ws_port,
@@ -88,7 +97,10 @@ pub async fn run(mut config: discovery::RunConfig) {
         )
         .await
         {
-            Ok(roster) => break roster,
+            Ok(roster) => {
+                info!(target: "clicker", room = %room, slots = roster.slots.len(), elapsed_ms = attempt.elapsed().as_millis(), "discovery: roster fetched");
+                break roster;
+            }
             Err(e) => {
                 warn!(target: "clicker", error = %e, "discovery: roster connect failed, retrying");
                 tokio::time::sleep(Duration::from_secs(5)).await;
@@ -96,6 +108,7 @@ pub async fn run(mut config: discovery::RunConfig) {
         }
     };
     info!(target: "clicker", key = %roster.contract_key, own = *config.own, "discovery: roster connected");
+    send_expected(&config.expected_tx, &roster.slots, config.own);
     let connected: ConnectedMap = std::collections::HashMap::new();
     let mut staggers: StaggerMap = std::collections::HashMap::new();
     dial_known(
@@ -120,6 +133,12 @@ pub async fn run(mut config: discovery::RunConfig) {
         links: config.links,
         lobby_events: config.lobby_events,
         observed: config.observed,
+        room_requests: config.room_requests,
+        room_tx: config.room_tx,
+        ws_port,
+        own: config.own,
+        namespace: config.namespace,
+        params_override: config.params_override,
         last_addrs: addrs,
         last_announce: now,
         last_gossip: now,
@@ -132,6 +151,8 @@ pub async fn run(mut config: discovery::RunConfig) {
         staggers,
         transport: config.transport,
         directory_tx: config.directory_tx,
+        expected_tx: config.expected_tx,
+        pending_switch: None,
         pex: discovery::HintStore::default(),
         pex_asked: std::collections::HashMap::new(),
         known_rooms: std::collections::BTreeMap::new(),
@@ -326,10 +347,84 @@ fn decrement_link(ctx: &mut RunContext, peer: &str) {
     }
 }
 
+// needed helper: reconnects roster and directory to a newly requested room
+async fn switch_room(ctx: &mut RunContext, room: &str) -> bool {
+    let params = discovery::resolve_params(&ctx.namespace, room, ctx.params_override.as_deref());
+    let attempt = std::time::Instant::now();
+    match discovery::connect_roster(
+        "127.0.0.1",
+        ctx.ws_port,
+        clicker::contract_wasm(),
+        &params,
+        ctx.own,
+        &ctx.peer_id,
+        &ctx.last_addrs,
+    )
+    .await
+    {
+        Ok(roster) => {
+            info!(target: "clicker", room = %room, slots = roster.slots.len(), elapsed_ms = attempt.elapsed().as_millis(), "discovery: roster fetched");
+            ctx.roster = roster;
+            send_expected(&ctx.expected_tx, &ctx.roster.slots, ctx.own);
+            ctx.room = room.to_string();
+            ctx.room_params = params;
+            ctx.room_tx.send_replace(Some(room.to_string()));
+            ctx.attempted.clear();
+            ctx.staggers.clear();
+            let now = std::time::Instant::now();
+            ctx.last_announce = now;
+            ctx.last_gossip = now;
+            ctx.last_redial = now;
+            if ctx
+                .directory
+                .publish_room(room, &ctx.room_params, &ctx.peer_id, &ctx.last_addrs)
+                .is_err()
+            {
+                warn!(target: "clicker", "discovery: room publish failed on switch");
+            }
+            if ctx.roster.announce().is_err() {
+                warn!(target: "clicker", "discovery: announce failed on switch");
+            }
+            ctx.cmd_tx
+                .send(p2p::Command::FetchRoster {
+                    lobby: room.to_string(),
+                })
+                .ok();
+            ctx.cmd_tx
+                .send(p2p::Command::FetchHistory {
+                    lobby: room.to_string(),
+                    chunk: constants::SNAPSHOT_CHUNK,
+                })
+                .ok();
+            info!(target: "clicker", room = %room, "discovery: switched room");
+            true
+        }
+        Err(e) => {
+            warn!(target: "clicker", error = %e, "discovery: roster switch failed");
+            false
+        }
+    }
+}
+
 // needed helper: drives the connected roster steady-state loop
 async fn drive_roster(ctx: &mut RunContext) {
-    let roster_topic = format!("clicker/{}/roster", ctx.room);
+    let mut roster_topic = format!("clicker/{}/roster", ctx.room);
     loop {
+        while let Ok(room) = ctx.room_requests.try_recv() {
+            if discovery::should_switch(&ctx.room, &room) {
+                ctx.pending_switch = Some((room, 0));
+            }
+        }
+        if let Some((room, attempts)) = ctx.pending_switch.take() {
+            if attempts == 0 || attempts % 10 == 0 {
+                info!(target: "clicker", room = %room, attempts, "discovery: switching room");
+            }
+            if switch_room(ctx, &room).await {
+                roster_topic = format!("clicker/{}/roster", ctx.room);
+            } else {
+                ctx.pending_switch = Some((room, attempts.saturating_add(1)));
+            }
+        }
         while let Ok((peer, up)) = ctx.links.try_recv() {
             if up {
                 let fresh = !ctx.connected.contains_key(&peer);
@@ -488,7 +583,11 @@ fn redial_missing(ctx: &mut RunContext) {
 // needed helper: refreshes roster addrs when the observed address changes
 fn refresh_observed(ctx: &mut RunContext) {
     let seen = ctx.observed.borrow_and_update().clone().unwrap_or_default();
-    let dialable_seen = dialable(seen);
+    let filtered = discovery::observed_addrs(seen.clone(), &ctx.last_addrs);
+    if filtered != seen {
+        info!(target: "clicker", seen = ?seen, kept = ?filtered, "discovery: ignored non-listen observed addr");
+    }
+    let dialable_seen = dialable(filtered);
     if dialable_seen.is_empty() || dialable_seen == ctx.last_addrs {
         return;
     }
@@ -535,18 +634,14 @@ async fn resolve_room(
     let mut staggers: StaggerMap = std::collections::HashMap::new();
     loop {
         if let Ok(room) = config.room_requests.try_recv() {
-            let params = discovery::resolve_params(
+            return Some(resolve_requested(
+                directory,
                 &config.namespace,
-                &room,
                 config.params_override.as_deref(),
-            );
-            if directory
-                .publish_room(&room, &params, peer_id, addrs)
-                .is_err()
-            {
-                warn!(target: "clicker", "discovery: room publish failed");
-            }
-            return Some((room, params));
+                room,
+                peer_id,
+                addrs,
+            ));
         }
         parallel_probe(
             &config.cmd_tx,
@@ -581,8 +676,41 @@ async fn resolve_room(
         if std::time::Instant::now() >= deadline {
             return None;
         }
-        tokio::time::sleep(Duration::from_secs(DIRECTORY_TICK_SECS)).await;
+        let request = tokio::select! {
+            biased;
+            request = config.room_requests.recv() => request,
+            () = tokio::time::sleep(Duration::from_secs(DIRECTORY_TICK_SECS)) => None,
+        };
+        if let Some(room) = request {
+            return Some(resolve_requested(
+                directory,
+                &config.namespace,
+                config.params_override.as_deref(),
+                room,
+                peer_id,
+                addrs,
+            ));
+        }
     }
+}
+
+// needed helper: publishes a user-requested room and resolves its join params
+fn resolve_requested(
+    directory: &discovery::Directory,
+    namespace: &str,
+    params_override: Option<&str>,
+    room: String,
+    peer_id: &str,
+    addrs: &[String],
+) -> (String, Vec<u8>) {
+    let params = discovery::resolve_params(namespace, &room, params_override);
+    if directory
+        .publish_room(&room, &params, peer_id, addrs)
+        .is_err()
+    {
+        warn!(target: "clicker", "discovery: room publish failed");
+    }
+    (room, params)
 }
 
 // needed helper: picks join params from the directory entry or recomputes them
@@ -817,6 +945,28 @@ fn free_udp_port() -> Result<u16, discovery::Error> {
     let socket = UdpSocket::bind((IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
     let port = socket.local_addr().map_err(discovery::Error::from)?.port();
     Ok(port)
+}
+
+// needed helper: publishes the fresh foreign peer ids so the join gate knows the full set
+fn send_expected(
+    expected_tx: &tokio::sync::mpsc::UnboundedSender<Vec<String>>,
+    slots: &discovery::RosterState,
+    own: discovery::PlayerId,
+) {
+    let now = epoch_secs();
+    let mut peers: Vec<String> = slots
+        .iter()
+        .filter(|(id, entry)| {
+            **id != own
+                && !entry.peer_id.is_empty()
+                && now.saturating_sub(entry.updated_at) <= constants::STALE_ENTRY_SECS
+        })
+        .map(|(_, entry)| entry.peer_id.clone())
+        .collect();
+    peers.sort();
+    peers.dedup();
+    info!(target: "clicker", peers = peers.len(), "discovery: expected set published");
+    expected_tx.send(peers).ok();
 }
 
 // needed helper: dials foreign roster entries already present at connect time

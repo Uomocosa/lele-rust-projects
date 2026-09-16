@@ -12,6 +12,8 @@ pub use selected_room::SelectedRoom;
 
 pub mod directory_feed;
 pub use directory_feed::DirectoryFeed;
+pub mod directory_live;
+pub use directory_live::DirectoryLive;
 
 pub mod room_request_tx;
 pub use room_request_tx::RoomRequestTx;
@@ -21,6 +23,19 @@ pub use room_rx::RoomRx;
 
 pub mod create_room;
 pub use create_room::create_room;
+
+pub mod constants;
+pub mod expected_rx;
+pub use expected_rx::ExpectedRx;
+pub mod join_gate;
+pub use join_gate::JoinGate;
+pub mod join_pending;
+pub use join_pending::JoinPending;
+pub mod synced_peer;
+pub use synced_peer::SyncedPeer;
+
+pub mod join_rooms;
+pub use join_rooms::JoinRooms;
 
 pub mod join_room;
 pub use join_room::join_room;

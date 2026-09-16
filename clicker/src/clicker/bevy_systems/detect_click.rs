@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
 use crate::clicker;
+use crate::lobby;
 
 pub fn detect_click(
     mouse: Res<ButtonInput<MouseButton>>,
@@ -11,9 +12,14 @@ pub fn detect_click(
     mut commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
     lobby: Res<clicker::ActiveLobby>,
     own: Res<net_id::NetworkId>,
+    pending: Res<lobby::JoinPending>,
 ) {
     let mouse = mouse.into_inner();
     if !mouse.just_pressed(MouseButton::Left) {
+        return;
+    }
+    let pending = pending.into_inner();
+    if pending.is_some() {
         return;
     }
     tracing::debug!("click anywhere");
@@ -33,6 +39,7 @@ mod tests {
 
     use super::detect_click;
     use crate::clicker;
+    use crate::lobby;
     use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
     #[test]
@@ -46,6 +53,7 @@ mod tests {
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending::default());
         let target = app
             .world_mut()
             .spawn((
@@ -71,6 +79,7 @@ mod tests {
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending::default());
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),
             clicker::ClickCounter::default(),
@@ -78,5 +87,40 @@ mod tests {
         app.add_systems(Update, detect_click);
         app.update();
         assert_eq!(**app.world().resource::<clicker::GlobalCounter>(), 0);
+    }
+
+    #[test]
+    fn click_dropped_while_join_pending() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let mut mouse = ButtonInput::<MouseButton>::default();
+        mouse.press(MouseButton::Left);
+        app.insert_resource(mouse);
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::GlobalCounter::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending(Some("alpha".to_string())));
+        let target = app
+            .world_mut()
+            .spawn((
+                clicker::Owner(net_id::NetworkId(1)),
+                clicker::ClickCounter::default(),
+            ))
+            .id();
+        app.add_systems(Update, detect_click);
+        app.update();
+        assert_eq!(
+            **app.world().get::<clicker::ClickCounter>(target).unwrap(),
+            0,
+            "loading joiner registers no clicks"
+        );
+        assert_eq!(**app.world().resource::<clicker::GlobalCounter>(), 0);
+        assert_eq!(
+            app.world()
+                .resource::<p2p::Commands<clicker::CursorMsg>>()
+                .len(),
+            0
+        );
     }
 }

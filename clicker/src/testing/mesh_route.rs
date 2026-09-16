@@ -114,6 +114,15 @@ fn route_command(
                 ));
             }
         }
+        p2p::Command::FetchRoster { .. } => {
+            for target in mesh.component(from) {
+                if target == from || mesh.severed(from, target) {
+                    continue;
+                }
+                pending.push((target, p2p::Event::PeerConnected(from_name.to_string())));
+                pending.push((from, p2p::Event::PeerConnected(names[target].clone())));
+            }
+        }
         p2p::Command::Dial { .. }
         | p2p::Command::DialForce { .. }
         | p2p::Command::ReserveRelay { .. }

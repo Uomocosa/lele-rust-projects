@@ -84,6 +84,9 @@ pub use pick_room::pick_room;
 pub mod player_id;
 pub use player_id::PlayerId;
 
+pub mod observed_addrs;
+pub use observed_addrs::observed_addrs;
+
 pub mod rank_addrs;
 pub use rank_addrs::rank_addrs;
 
@@ -109,6 +112,9 @@ mod roster_poll;
 
 pub mod roster_state;
 pub use roster_state::RosterState;
+
+pub mod should_switch;
+pub use should_switch::should_switch;
 
 pub mod run;
 pub use run::run;

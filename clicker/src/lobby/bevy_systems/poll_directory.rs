@@ -3,7 +3,11 @@ use bevy::prelude::*;
 use crate::discovery;
 use crate::lobby;
 
-pub fn poll_directory(feed: Res<lobby::DirectoryFeed>, rooms: ResMut<lobby::RoomList>) {
+pub fn poll_directory(
+    feed: Res<lobby::DirectoryFeed>,
+    rooms: ResMut<lobby::RoomList>,
+    live: ResMut<lobby::DirectoryLive>,
+) {
     let feed = feed.into_inner();
     let Ok(mut guard) = feed.lock() else {
         return;
@@ -18,6 +22,11 @@ pub fn poll_directory(feed: Res<lobby::DirectoryFeed>, rooms: ResMut<lobby::Room
     let Some(state) = latest else {
         return;
     };
+    let live = live.into_inner();
+    if !**live {
+        **live = true;
+        tracing::info!(target: "clicker", "menu live: directory connected");
+    }
     let mut entries: Vec<lobby::RoomEntry> = state
         .iter()
         .map(|(name, entry)| lobby::RoomEntry {
@@ -79,6 +88,7 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.insert_resource(lobby::DirectoryFeed(Mutex::new(Some(rx))));
         app.insert_resource(lobby::RoomList::default());
+        app.insert_resource(lobby::DirectoryLive::default());
         app.add_systems(Update, poll_directory);
         app.update();
         let rooms = app.world().resource::<lobby::RoomList>();
@@ -86,5 +96,39 @@ mod tests {
         assert_eq!(rooms.entries[0].name, "room-new");
         assert_eq!(rooms.entries[1].name, "room-old");
         assert_eq!(rooms.revision, 1);
+    }
+
+    #[test]
+    fn first_feed_marks_menu_live() {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<discovery::DirectoryState>();
+        tx.send(discovery::DirectoryState::new()).expect("send");
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(lobby::DirectoryFeed(Mutex::new(Some(rx))));
+        app.insert_resource(lobby::RoomList::default());
+        app.insert_resource(lobby::DirectoryLive::default());
+        app.add_systems(Update, poll_directory);
+        assert!(!**app.world().resource::<lobby::DirectoryLive>());
+        app.update();
+        assert!(
+            **app.world().resource::<lobby::DirectoryLive>(),
+            "first directory feed enables the menu"
+        );
+    }
+
+    #[test]
+    fn silent_feed_keeps_menu_dark() {
+        let (_tx, rx) = tokio::sync::mpsc::unbounded_channel::<discovery::DirectoryState>();
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(lobby::DirectoryFeed(Mutex::new(Some(rx))));
+        app.insert_resource(lobby::RoomList::default());
+        app.insert_resource(lobby::DirectoryLive::default());
+        app.add_systems(Update, poll_directory);
+        app.update();
+        assert!(
+            !**app.world().resource::<lobby::DirectoryLive>(),
+            "no feed means no live menu"
+        );
     }
 }

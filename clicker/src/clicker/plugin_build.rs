@@ -1,7 +1,10 @@
 use crate::clicker;
+use crate::lobby;
 use bevy::prelude::*;
 pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
     app.init_resource::<clicker::ScoreTombstones>();
+    app.init_resource::<lobby::JoinPending>();
+    app.init_resource::<lobby::JoinGate>();
     app.add_systems(Startup, clicker::bevy_systems::setup)
         .add_systems(Startup, clicker::bevy_systems::spawn_cursor)
         .add_systems(Startup, clicker::bevy_systems::log_connected)

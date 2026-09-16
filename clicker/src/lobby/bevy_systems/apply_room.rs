@@ -1,15 +1,12 @@
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::p2p;
-use freenet_libp2p_bevy_plugin::roster;
 
 use crate::clicker;
 use crate::lobby;
 
 pub fn apply_room(
     feed: Res<lobby::RoomRx>,
-    active: ResMut<clicker::ActiveLobby>,
-    selected: ResMut<lobby::SelectedRoom>,
-    roster_lobby: ResMut<roster::Lobby>,
+    mut rooms: lobby::bevy_systems::JoinCtx,
     outbox: ResMut<p2p::Commands<clicker::CursorMsg>>,
     next: ResMut<NextState<lobby::AppState>>,
 ) {
@@ -21,15 +18,12 @@ pub fn apply_room(
     let Some(room) = room else {
         return;
     };
-    if **active == room {
+    if **rooms.active == room {
         return;
     }
-    let active = active.into_inner();
-    let selected = selected.into_inner();
-    let roster_lobby = roster_lobby.into_inner();
     let outbox = outbox.into_inner();
     let next = next.into_inner();
-    lobby::join_room(&room, active, selected, roster_lobby, outbox);
+    lobby::join_room(&room, &mut rooms.rooms(), outbox);
     next.set(lobby::AppState::InRoom);
 }
 
@@ -53,6 +47,9 @@ mod tests {
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
         app.insert_resource(freenet_libp2p_bevy_plugin::roster::Lobby::default());
+        app.insert_resource(lobby::JoinPending::default());
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::DirectoryLive(true));
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.world_mut()
             .spawn((lobby::bevy_systems::MenuRoot, Text::new("menu")));

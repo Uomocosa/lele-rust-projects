@@ -18,6 +18,7 @@ pub struct RunConfig {
     pub room_tx: tokio::sync::watch::Sender<Option<String>>,
     pub room_requests: tokio::sync::mpsc::UnboundedReceiver<String>,
     pub directory_tx: tokio::sync::mpsc::UnboundedSender<discovery::DirectoryState>,
+    pub expected_tx: tokio::sync::mpsc::UnboundedSender<Vec<String>>,
 }
 #[cfg(test)]
 mod tests {
@@ -36,6 +37,7 @@ mod tests {
         let (_req_tx, room_requests) = tokio::sync::mpsc::unbounded_channel::<String>();
         let (directory_tx, _directory_rx) =
             tokio::sync::mpsc::unbounded_channel::<discovery::DirectoryState>();
+        let (expected_tx, _expected_rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
         let config = RunConfig {
             cmd_tx,
             ready,
@@ -51,6 +53,7 @@ mod tests {
             room_tx,
             room_requests,
             directory_tx,
+            expected_tx,
         };
         assert_eq!(config.namespace, "blackboard-v1");
         assert_eq!(config.since_secs, 0);
