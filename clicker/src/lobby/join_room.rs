@@ -16,6 +16,8 @@ pub fn join_room(
     **rooms.pending = Some(room.to_string());
     rooms.gate.expected = None;
     rooms.gate.synced.clear();
+    rooms.clock.clicked_at = Some(std::time::Instant::now());
+    rooms.clock.last_new_peer = None;
     let active = clicker::ActiveLobby(room.to_string());
     commands.push(p2p::Command::FetchHistory {
         lobby: room.to_string(),
@@ -56,6 +58,7 @@ mod tests {
             expected: Some(BTreeSet::from(["old-room-peer".to_string()])),
             synced: vec![lobby::SyncedPeer("old-room-peer".to_string())],
         };
+        let mut clock = lobby::JoinClock::default();
         let mut commands = p2p::Commands::<clicker::CursorMsg>::default();
         join_room(
             "room-a",
@@ -65,6 +68,7 @@ mod tests {
                 roster_lobby: &mut roster_lobby,
                 pending: &mut pending,
                 gate: &mut gate,
+                clock: &mut clock,
             },
             &mut commands,
         );
@@ -74,6 +78,11 @@ mod tests {
         assert_eq!(*pending, Some("room-a".to_string()));
         assert!(gate.expected.is_none(), "stale expected set resets on join");
         assert!(gate.synced.is_empty(), "stale sync record resets on join");
+        assert!(clock.clicked_at.is_some(), "click starts the alone-cap");
+        assert!(
+            clock.last_new_peer.is_none(),
+            "no peers discovered yet at click"
+        );
         assert_eq!(commands.len(), 5);
         let topics: Vec<String> = commands
             .iter()

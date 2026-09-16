@@ -242,7 +242,11 @@ async fn forward_events(
             p2p::Event::LobbyProviders { .. }
             | p2p::Event::Gossip { .. }
             | p2p::Event::Message {
-                payload: clicker::CursorMsg::PexAsk { .. } | clicker::CursorMsg::PexResp { .. },
+                payload:
+                    clicker::CursorMsg::PexAsk { .. }
+                    | clicker::CursorMsg::PexResp { .. }
+                    | clicker::CursorMsg::WantJoin { .. }
+                    | clicker::CursorMsg::Welcome { .. },
                 ..
             } => {
                 lobby_tx.send(event.clone()).ok();

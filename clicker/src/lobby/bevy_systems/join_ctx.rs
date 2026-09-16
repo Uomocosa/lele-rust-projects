@@ -12,6 +12,7 @@ pub struct JoinCtx<'w> {
     pub(crate) roster_lobby: ResMut<'w, roster::Lobby>,
     pub(crate) pending: ResMut<'w, lobby::JoinPending>,
     pub(crate) gate: ResMut<'w, lobby::JoinGate>,
+    pub(crate) clock: ResMut<'w, lobby::JoinClock>,
     pub(crate) live: Res<'w, lobby::DirectoryLive>,
 }
 

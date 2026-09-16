@@ -9,4 +9,5 @@ pub struct JoinRooms<'a> {
     pub roster_lobby: &'a mut roster::Lobby,
     pub pending: &'a mut lobby::JoinPending,
     pub gate: &'a mut lobby::JoinGate,
+    pub clock: &'a mut lobby::JoinClock,
 }

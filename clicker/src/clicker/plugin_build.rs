@@ -5,6 +5,7 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
     app.init_resource::<clicker::ScoreTombstones>();
     app.init_resource::<lobby::JoinPending>();
     app.init_resource::<lobby::JoinGate>();
+    app.init_resource::<lobby::JoinClock>();
     app.add_systems(Startup, clicker::bevy_systems::setup)
         .add_systems(Startup, clicker::bevy_systems::spawn_cursor)
         .add_systems(Startup, clicker::bevy_systems::log_connected)
@@ -19,12 +20,15 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
             (
                 clicker::bevy_systems::send_sync_req,
                 clicker::bevy_systems::send_sync_heartbeat,
+                clicker::bevy_systems::send_want_join,
                 clicker::bevy_systems::spawn_on_join,
                 clicker::bevy_systems::drain_pending,
                 clicker::bevy_systems::resolve_player,
                 clicker::bevy_systems::absorb_gossip,
                 clicker::bevy_systems::absorb_click_gossip,
                 clicker::bevy_systems::absorb_roster,
+                clicker::bevy_systems::answer_join,
+                clicker::bevy_systems::absorb_welcome,
                 clicker::bevy_systems::absorb_sync,
                 clicker::bevy_systems::apply_delta,
                 clicker::bevy_systems::absorb_snapshot,

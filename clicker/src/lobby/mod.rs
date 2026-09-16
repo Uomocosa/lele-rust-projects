@@ -25,10 +25,13 @@ pub mod create_room;
 pub use create_room::create_room;
 
 pub mod constants;
+pub use constants::*;
 pub mod expected_rx;
 pub use expected_rx::ExpectedRx;
 pub mod join_gate;
 pub use join_gate::JoinGate;
+pub mod join_clock;
+pub use join_clock::JoinClock;
 pub mod join_pending;
 pub use join_pending::JoinPending;
 pub mod synced_peer;

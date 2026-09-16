@@ -39,6 +39,7 @@ fn join_emits_fetch_roster_single_round_trip() {
     let mut roster_lobby = roster::Lobby::default();
     let mut pending = lobby::JoinPending::default();
     let mut gate = lobby::JoinGate::default();
+    let mut clock = lobby::JoinClock::default();
     let mut commands = p2p::Commands::<clicker::CursorMsg>::default();
     lobby::join_room(
         "alpha",
@@ -48,6 +49,7 @@ fn join_emits_fetch_roster_single_round_trip() {
             roster_lobby: &mut roster_lobby,
             pending: &mut pending,
             gate: &mut gate,
+            clock: &mut clock,
         },
         &mut commands,
     );

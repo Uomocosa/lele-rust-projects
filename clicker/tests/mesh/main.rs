@@ -3,6 +3,7 @@ mod asymmetric_turmoil;
 mod converge;
 mod delivery;
 mod discovery;
+mod join;
 mod join_latency;
 mod late_join;
 mod pending;

@@ -7,6 +7,7 @@ pub fn rooms<'a>(ctx: &'a mut lobby::bevy_systems::JoinCtx<'_>) -> lobby::JoinRo
         roster_lobby: &mut ctx.roster_lobby,
         pending: &mut ctx.pending,
         gate: &mut ctx.gate,
+        clock: &mut ctx.clock,
     }
 }
 
@@ -29,6 +30,7 @@ mod tests {
         app.insert_resource(roster::Lobby("alpha".to_string()));
         app.insert_resource(lobby::JoinPending(Some("alpha".to_string())));
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(lobby::DirectoryLive(true));
         let mut params = SystemState::<lobby::bevy_systems::JoinCtx>::new(app.world_mut());
         let mut ctx = params.get_mut(app.world_mut()).unwrap();

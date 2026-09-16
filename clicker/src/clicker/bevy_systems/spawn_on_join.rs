@@ -1,22 +1,22 @@
 use bevy::prelude::*;
 
 use freenet_libp2p_bevy_plugin::net_id;
+use freenet_libp2p_bevy_plugin::roster;
 
 use crate::clicker;
 
 pub fn spawn_on_join(
     mut commands: Commands,
     owners: Query<&clicker::Owner>,
-    ctx: clicker::bevy_systems::SpawnCtx,
+    roster: Res<roster::Roster>,
+    lobby: Res<clicker::ActiveLobby>,
+    own: Res<net_id::NetworkId>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    if !ctx.gate_open() {
-        return;
-    }
-    let roster = ctx.roster.into_inner();
-    let lobby = ctx.lobby.into_inner();
-    let own = ctx.own.into_inner();
+    let roster = roster.into_inner();
+    let lobby = lobby.into_inner();
+    let own = own.into_inner();
     let mut known = Vec::new();
     for owner in &owners {
         known.push(**owner);
@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn no_spawn_while_join_pending() {
+    fn spectate_spawns_while_join_pending() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.init_resource::<Assets<Mesh>>();
@@ -151,6 +151,6 @@ mod tests {
             .query::<&clicker::Owner>()
             .iter(app.world())
             .count();
-        assert_eq!(count, 0, "loading joiner spawns nobody");
+        assert_eq!(count, 1, "spectating joiner renders the room while loading");
     }
 }

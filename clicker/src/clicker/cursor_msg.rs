@@ -28,6 +28,15 @@ pub enum CursorMsg {
         peers: Vec<discovery::PeerHint>,
         rooms: Vec<(String, discovery::DirectoryEntry)>,
     },
+    WantJoin {
+        room: String,
+    },
+    Welcome {
+        room: String,
+        peers: Vec<String>,
+        own_score: (net_id::NetworkId, i32),
+        joining: Vec<String>,
+    },
 }
 
 #[cfg(test)]
@@ -68,5 +77,20 @@ mod tests {
         let encoded = bincode::serialize(&ask).unwrap_or_default();
         let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
         assert_eq!(decoded, Some(ask));
+        let want = CursorMsg::WantJoin {
+            room: "alpha".to_string(),
+        };
+        let encoded = bincode::serialize(&want).unwrap_or_default();
+        let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
+        assert_eq!(decoded, Some(want));
+        let welcome = CursorMsg::Welcome {
+            room: "alpha".to_string(),
+            peers: vec!["peer-2".to_string()],
+            own_score: (net_id::NetworkId(1), 3),
+            joining: Vec::new(),
+        };
+        let encoded = bincode::serialize(&welcome).unwrap_or_default();
+        let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
+        assert_eq!(decoded, Some(welcome));
     }
 }

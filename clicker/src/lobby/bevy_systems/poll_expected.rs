@@ -8,6 +8,7 @@ use crate::lobby;
 pub fn poll_expected(
     feed: Res<lobby::ExpectedRx>,
     gate: ResMut<lobby::JoinGate>,
+    clock: ResMut<lobby::JoinClock>,
     events: ResMut<p2p::Events<clicker::CursorMsg>>,
 ) {
     let feed = feed.into_inner();
@@ -18,9 +19,18 @@ pub fn poll_expected(
         return;
     };
     let gate = gate.into_inner();
+    let clock = clock.into_inner();
     let events = events.into_inner();
     while let Ok(peers) = rx.try_recv() {
-        gate.expected = Some(peers.iter().cloned().collect());
+        let incoming: std::collections::BTreeSet<String> = peers.iter().cloned().collect();
+        let grown = gate
+            .expected
+            .as_ref()
+            .is_none_or(|old| incoming.iter().any(|peer| !old.contains(peer)));
+        gate.expected = Some(incoming);
+        if grown {
+            clock.last_new_peer = Some(std::time::Instant::now());
+        }
         for peer in &peers {
             events.push(p2p::Event::PeerConnected(peer.clone()));
         }
@@ -43,6 +53,7 @@ mod tests {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
         app.insert_resource(lobby::ExpectedRx(Mutex::new(Some(rx))));
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         tx.send(vec!["peer-2".to_string(), "peer-3".to_string()])
             .ok();
@@ -63,6 +74,7 @@ mod tests {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
         app.insert_resource(lobby::ExpectedRx(Mutex::new(Some(rx))));
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         tx.send(vec!["peer-2".to_string()]).ok();
         tx.send(vec!["peer-4".to_string()]).ok();
@@ -83,6 +95,7 @@ mod tests {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
         app.insert_resource(lobby::ExpectedRx(Mutex::new(Some(rx))));
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         tx.send(vec!["peer-2".to_string(), "peer-3".to_string()])
             .ok();

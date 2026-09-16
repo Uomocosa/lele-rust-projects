@@ -24,7 +24,10 @@ pub fn apply_delta(
                     let sender = net_id::NetworkId::from_peer(&from);
                     clicker::credit_click(&mut targets, &mut pending, *own, sender, owner, delta);
                 }
-                clicker::CursorMsg::PexAsk { .. } | clicker::CursorMsg::PexResp { .. } => {}
+                clicker::CursorMsg::PexAsk { .. }
+                | clicker::CursorMsg::PexResp { .. }
+                | clicker::CursorMsg::WantJoin { .. }
+                | clicker::CursorMsg::Welcome { .. } => {}
                 sync
                 @ (clicker::CursorMsg::SyncReq { .. } | clicker::CursorMsg::SyncAck { .. }) => {
                     rest.push(p2p::Event::Message {

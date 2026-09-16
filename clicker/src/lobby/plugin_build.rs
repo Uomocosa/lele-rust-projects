@@ -8,6 +8,7 @@ pub fn build(_plugin: &lobby::Plugin, app: &mut App) {
         .init_resource::<lobby::SelectedRoom>()
         .init_resource::<lobby::JoinPending>()
         .init_resource::<lobby::JoinGate>()
+        .init_resource::<lobby::JoinClock>()
         .init_resource::<lobby::DirectoryLive>()
         .add_systems(
             Update,
