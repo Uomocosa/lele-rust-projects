@@ -88,3 +88,4 @@ chrono = { version = "=0.4.45", default-features = false, features = ["clock"], 
 [dev-dependencies]
 telegram_bot = { path = "../telegram_bot" }
 turmoil = "0.7"
+rstest = "=0.27.0"
