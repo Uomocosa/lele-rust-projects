@@ -42,6 +42,7 @@ pub fn absorb_sync(
                     let sender = net_id::NetworkId::from_peer(&from);
                     merge_entries(&mut targets, &mut pending, sender, entries);
                 }
+                clicker::CursorMsg::PexAsk { .. } | clicker::CursorMsg::PexResp { .. } => {}
                 other => rest.push(p2p::Event::Message {
                     from,
                     payload: other,

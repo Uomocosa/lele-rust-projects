@@ -1,6 +1,7 @@
 use crate::Creds;
 use crate::Error;
 use crate::message_id;
+use crate::truncate_caption;
 
 /// # Errors
 /// Returns an error if the photo bytes are empty, the request fails,
@@ -15,7 +16,7 @@ pub fn send_photo(creds: &Creds, bytes: &[u8], caption: &str) -> Result<String, 
     let url = format!("https://api.telegram.org/bot{token}/sendPhoto");
     let form = reqwest::blocking::multipart::Form::new()
         .text("chat_id", chat_id.to_owned())
-        .text("caption", caption.to_owned())
+        .text("caption", truncate_caption(caption))
         .part(
             "photo",
             reqwest::blocking::multipart::Part::bytes(bytes.to_vec())

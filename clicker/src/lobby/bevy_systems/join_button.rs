@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::p2p;
+use freenet_libp2p_bevy_plugin::roster;
 
 use crate::clicker;
 use crate::lobby;
@@ -9,6 +10,7 @@ pub fn join_button(
     requests: Option<Res<lobby::RoomRequestTx>>,
     active: ResMut<clicker::ActiveLobby>,
     selected: ResMut<lobby::SelectedRoom>,
+    roster_lobby: ResMut<roster::Lobby>,
     outbox: ResMut<p2p::Commands<clicker::CursorMsg>>,
     next: ResMut<NextState<lobby::AppState>>,
 ) {
@@ -26,13 +28,14 @@ pub fn join_button(
     }
     let active = active.into_inner();
     let selected = selected.into_inner();
+    let roster_lobby = roster_lobby.into_inner();
     let outbox = outbox.into_inner();
     let next = next.into_inner();
     if let Some(requests) = requests {
         let requests = requests.into_inner();
         requests.send(room.clone()).ok();
     }
-    lobby::join_room(&room, active, selected, outbox);
+    lobby::join_room(&room, active, selected, roster_lobby, outbox);
     next.set(lobby::AppState::InRoom);
 }
 
@@ -42,7 +45,7 @@ mod tests {
     use crate::clicker;
     use crate::lobby;
     use bevy::prelude::*;
-    use freenet_libp2p_bevy_plugin::p2p;
+    use freenet_libp2p_bevy_plugin::{p2p, roster};
 
     #[test]
     fn test_usage() {
@@ -52,6 +55,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(roster::Lobby::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         let (req_tx, mut req_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
         app.insert_resource(lobby::RoomRequestTx(req_tx));
@@ -71,5 +75,7 @@ mod tests {
         assert_eq!(**state, lobby::AppState::InRoom);
         let outbox = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
         assert_eq!(outbox.len(), 4);
+        let lobby = app.world().resource::<roster::Lobby>();
+        assert_eq!(lobby.as_str(), "room-a");
     }
 }

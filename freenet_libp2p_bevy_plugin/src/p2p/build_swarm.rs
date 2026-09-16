@@ -1,8 +1,9 @@
 use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
+use libp2p::swarm::behaviour::toggle::Toggle;
 use libp2p::{
-    StreamProtocol, dcutr, gossipsub, identify, kad, noise, ping, relay, request_response, tcp,
-    yamux,
+    StreamProtocol, dcutr, gossipsub, identify, kad, mdns, noise, ping, relay, request_response,
+    tcp, yamux,
 };
 
 use crate::p2p;
@@ -12,6 +13,7 @@ use crate::p2p;
 /// replication factor is invalid.
 pub fn build_swarm<T: p2p::Message>(
     keypair: Keypair,
+    mdns_enabled: bool,
 ) -> Result<libp2p::Swarm<p2p::Behaviour<T>>, String> {
     let peer_id = keypair.public().to_peer_id();
     let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
@@ -64,6 +66,13 @@ pub fn build_swarm<T: p2p::Message>(
                     relay: relay::Behaviour::new(peer_id, relay::Config::default()),
                     relay_client,
                     dcutr: dcutr::Behaviour::new(peer_id),
+                    mdns: Toggle::from(
+                        mdns_enabled
+                            .then(|| {
+                                mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id).ok()
+                            })
+                            .flatten(),
+                    ),
                 })
             },
         )
@@ -89,7 +98,7 @@ mod tests {
     #[test]
     fn test_usage() {
         let kp = Keypair::generate_ed25519();
-        let swarm = build_swarm::<Dummy>(kp);
+        let swarm = build_swarm::<Dummy>(kp, false);
         assert!(swarm.is_ok());
     }
 }

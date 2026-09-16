@@ -5,9 +5,11 @@ use libp2p::gossipsub;
 use libp2p::identify;
 use libp2p::identity::Keypair;
 use libp2p::kad;
+use libp2p::mdns;
 use libp2p::relay;
 use libp2p::request_response;
 use libp2p::swarm::SwarmEvent;
+use libp2p::swarm::behaviour::toggle::Toggle;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 
 use crate::p2p;
@@ -17,8 +19,9 @@ pub async fn run<T: p2p::Message>(
     event_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
     keypair: Keypair,
     mode: p2p::TransportMode,
+    mdns_enabled: bool,
 ) {
-    let mut swarm = match p2p::build_swarm::build_swarm::<T>(keypair) {
+    let mut swarm = match p2p::build_swarm::build_swarm::<T>(keypair, mdns_enabled) {
         Ok(s) => s,
         Err(e) => {
             event_tx.send(p2p::Event::Error(e)).ok();
@@ -73,6 +76,7 @@ pub async fn run<T: p2p::Message>(
                     &lobby_queries,
                     &mut listen_addrs,
                     &mut ready_deadline,
+                    mode,
                     event,
                 );
             }
@@ -87,6 +91,7 @@ fn handle_swarm<T: p2p::Message>(
     lobby_queries: &std::collections::HashMap<libp2p::kad::QueryId, String>,
     listen_addrs: &mut Vec<String>,
     ready_deadline: &mut Option<tokio::time::Instant>,
+    mode: p2p::TransportMode,
     event: SwarmEvent<p2p::behaviour::BehaviourEvent<T>>,
 ) {
     match event {
@@ -142,6 +147,12 @@ fn handle_swarm<T: p2p::Message>(
                 .send(p2p::Event::ObservedAddr(info.observed_addr.to_string()))
                 .ok();
         }
+        SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Mdns(mdns::Event::Discovered(
+            peers,
+        ))) => {
+            dial_mdns_peers(swarm, mode, peers);
+        }
+        SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Mdns(mdns::Event::Expired(_))) => {}
         SwarmEvent::ConnectionEstablished {
             peer_id,
             connection_id,
@@ -413,6 +424,16 @@ fn dispatch_command<T: p2p::Message>(
                 let _ = swarm.listen_on(addr);
             }
         }
+        Some(p2p::Command::SetMdns { enabled }) => {
+            swarm.behaviour_mut().mdns = Toggle::from(
+                enabled
+                    .then(|| {
+                        mdns::tokio::Behaviour::new(mdns::Config::default(), *swarm.local_peer_id())
+                            .ok()
+                    })
+                    .flatten(),
+            );
+        }
         Some(p2p::Command::AddKadPeer { peer_id, addrs }) => {
             seed_kad_peer(swarm, &peer_id, &addrs);
         }
@@ -523,6 +544,35 @@ fn seed_kad_peer<T: p2p::Message>(
     }
     if added {
         let _ = swarm.behaviour_mut().kademlia.bootstrap();
+    }
+}
+
+// needed helper: dials mDNS-discovered LAN peers filtered by transport mode
+fn dial_mdns_peers<T: p2p::Message>(
+    swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
+    mode: p2p::TransportMode,
+    peers: Vec<(libp2p::PeerId, libp2p::Multiaddr)>,
+) {
+    for (peer, addr) in peers {
+        let addr = addr.to_string();
+        let wanted = match mode {
+            p2p::TransportMode::Tcp => !addr.contains("/udp/"),
+            p2p::TransportMode::Quic => addr.contains("/udp/"),
+            p2p::TransportMode::Both => true,
+        };
+        let Ok(multi) = addr.parse::<libp2p::Multiaddr>() else {
+            continue;
+        };
+        if !wanted {
+            continue;
+        }
+        let opts = DialOpts::peer_id(peer)
+            .condition(PeerCondition::DisconnectedAndNotDialing)
+            .addresses(vec![multi])
+            .build();
+        if let Err(e) = swarm.dial(opts) {
+            tracing::debug!(target: "p2p", error = %e, "mdns dial skipped");
+        }
     }
 }
 

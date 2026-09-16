@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use freenet_libp2p_bevy_plugin::net_id;
 
+use crate::discovery;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CursorMsg {
     Click {
@@ -18,6 +20,13 @@ pub enum CursorMsg {
     SyncAck {
         target: net_id::NetworkId,
         entries: Vec<(net_id::NetworkId, i32)>,
+    },
+    PexAsk {
+        want_rooms: bool,
+    },
+    PexResp {
+        peers: Vec<discovery::PeerHint>,
+        rooms: Vec<(String, discovery::DirectoryEntry)>,
     },
 }
 
@@ -55,5 +64,9 @@ mod tests {
         let encoded = bincode::serialize(&ack).unwrap_or_default();
         let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
         assert_eq!(decoded, Some(ack));
+        let ask = CursorMsg::PexAsk { want_rooms: true };
+        let encoded = bincode::serialize(&ask).unwrap_or_default();
+        let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
+        assert_eq!(decoded, Some(ask));
     }
 }

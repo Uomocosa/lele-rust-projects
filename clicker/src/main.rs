@@ -29,6 +29,8 @@ struct Args {
     contract_params: Option<String>,
     #[arg(long, value_enum, default_value = "both")]
     transport: TransportArg,
+    #[arg(long)]
+    disable_mdns: bool,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -63,7 +65,8 @@ async fn main() {
         request_tx.send(room.to_string()).ok();
     }
     let mode = transport_mode(&args.transport);
-    let _runner = p2p::spawn_runner(cmd_rx, raw_tx, mode);
+    let mdns_enabled = !args.disable_mdns;
+    let _runner = p2p::spawn_runner(cmd_rx, raw_tx, mode, mdns_enabled);
     tokio::spawn(forward_events(
         raw_rx, bevy_tx, ready_tx, obs_tx, link_tx, lobby_tx,
     ));
@@ -172,7 +175,12 @@ async fn forward_events(
                 tracing::info!("p2p disconnected peer={peer}");
                 link_tx.send((peer.clone(), false)).ok();
             }
-            p2p::Event::LobbyProviders { .. } | p2p::Event::Gossip { .. } => {
+            p2p::Event::LobbyProviders { .. }
+            | p2p::Event::Gossip { .. }
+            | p2p::Event::Message {
+                payload: clicker::CursorMsg::PexAsk { .. } | clicker::CursorMsg::PexResp { .. },
+                ..
+            } => {
                 lobby_tx.send(event.clone()).ok();
             }
             p2p::Event::DialFailed { peer_id, reason } => {

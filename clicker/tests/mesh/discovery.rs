@@ -55,10 +55,10 @@ fn simultaneous_learn_triggers_single_dialer() {
 }
 
 #[test]
-fn higher_dialer_force_dials_after_two_silent_periods() {
-    let patient = discovery::decide_dial("peer-2", "peer-1", Some(2 * discovery::REDIAL_SECS - 1));
+fn higher_dialer_force_dials_after_one_silent_period() {
+    let patient = discovery::decide_dial("peer-2", "peer-1", Some(discovery::REDIAL_SECS - 1));
     assert_eq!(patient, discovery::DialDecision::Wait);
-    let desperate = discovery::decide_dial("peer-2", "peer-1", Some(2 * discovery::REDIAL_SECS));
+    let desperate = discovery::decide_dial("peer-2", "peer-1", Some(discovery::REDIAL_SECS));
     assert_eq!(desperate, discovery::DialDecision::ForceDial);
 }
 
@@ -67,11 +67,13 @@ fn bootstrapped_hints_dedup_across_freenet_and_libp2p() {
     let freenet_hint = discovery::PeerHint {
         peer_id: "peer-2".to_string(),
         addrs: vec!["/ip4/10.0.0.2/tcp/4001".to_string()],
+        rooms: vec!["room-1".to_string()],
         updated_at: 100,
     };
     let libp2p_hint = discovery::PeerHint {
         peer_id: "peer-2".to_string(),
         addrs: vec!["/ip4/127.0.0.1/tcp/4001".to_string()],
+        rooms: vec!["room-1".to_string()],
         updated_at: 110,
     };
     let merged = discovery::merge_peer_hints(vec![freenet_hint, libp2p_hint]);

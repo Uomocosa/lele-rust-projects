@@ -67,7 +67,7 @@ fn next_bounded(state: u64, min: i32, max: i32) -> i32 {
 // needed helper: resolves the X window id by substring title match
 fn window_id(title: &str) -> Result<String, String> {
     let output = Command::new("xdotool")
-        .args(["search", "--onlyvisible", "--name", title])
+        .args(["search", "--onlyvisible", "--name", &format!("{title} \\[")])
         .output()
         .map_err(|err| format!("xdotool search {title}: {err}"))?;
     if !output.status.success() {

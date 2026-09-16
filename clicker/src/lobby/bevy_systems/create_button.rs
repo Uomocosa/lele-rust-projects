@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::p2p;
+use freenet_libp2p_bevy_plugin::roster;
 
 use crate::clicker;
 use crate::lobby;
@@ -15,6 +16,7 @@ pub fn create_button(
     requests: Option<Res<lobby::RoomRequestTx>>,
     active: ResMut<clicker::ActiveLobby>,
     selected: ResMut<lobby::SelectedRoom>,
+    roster_lobby: ResMut<roster::Lobby>,
     outbox: ResMut<p2p::Commands<clicker::CursorMsg>>,
     next: ResMut<NextState<lobby::AppState>>,
 ) {
@@ -26,6 +28,7 @@ pub fn create_button(
     }
     let active = active.into_inner();
     let selected = selected.into_inner();
+    let roster_lobby = roster_lobby.into_inner();
     let outbox = outbox.into_inner();
     let next = next.into_inner();
     let Some(room) = lobby::create_room(&format!("room-{}", epoch_secs())) else {
@@ -35,7 +38,7 @@ pub fn create_button(
         let requests = requests.into_inner();
         requests.send(room.clone()).ok();
     }
-    lobby::join_room(&room, active, selected, outbox);
+    lobby::join_room(&room, active, selected, roster_lobby, outbox);
     next.set(lobby::AppState::InRoom);
 }
 
@@ -63,6 +66,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(freenet_libp2p_bevy_plugin::roster::Lobby::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         let (req_tx, mut req_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
         app.insert_resource(lobby::RoomRequestTx(req_tx));

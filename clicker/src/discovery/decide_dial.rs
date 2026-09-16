@@ -10,7 +10,7 @@ pub fn decide_dial(
     if own_peer_id >= peer_id {
         match first_seen_secs_ago {
             None => return discovery::DialDecision::Wait,
-            Some(age) if age < 2 * discovery::REDIAL_SECS => {
+            Some(age) if age < discovery::REDIAL_SECS => {
                 return discovery::DialDecision::Wait;
             }
             _ => {}
@@ -33,11 +33,11 @@ mod tests {
         assert_eq!(decide_dial("a", "b", None), discovery::DialDecision::Dial);
         assert_eq!(decide_dial("b", "a", None), discovery::DialDecision::Wait);
         assert_eq!(
-            decide_dial("b", "a", Some(discovery::REDIAL_SECS)),
+            decide_dial("b", "a", Some(discovery::REDIAL_SECS - 1)),
             discovery::DialDecision::Wait
         );
         assert_eq!(
-            decide_dial("b", "a", Some(2 * discovery::REDIAL_SECS)),
+            decide_dial("b", "a", Some(discovery::REDIAL_SECS)),
             discovery::DialDecision::ForceDial
         );
         assert_eq!(

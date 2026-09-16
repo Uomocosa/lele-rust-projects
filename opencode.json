@@ -14,7 +14,8 @@
     "~/.config/opencode/skills/rayon-rs/SKILL.md",
     "~/.config/opencode/skills/devenv-rs/SKILL.md",
     "~/.config/opencode/skills/cargo-nextest-rs/SKILL.md",
-    "~/.config/opencode/skills/definition-function-taxonomy/SKILL.md"
+    "~/.config/opencode/skills/definition-function-taxonomy/SKILL.md",
+    "~/.config/opencode/skills/definition-tdd/SKILL.md"
   ],
   "permission": {
     "external_directory": {

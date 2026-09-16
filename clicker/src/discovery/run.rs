@@ -46,6 +46,11 @@ struct RunContext {
     staggers: StaggerMap,
     transport: p2p::TransportMode,
     directory_tx: tokio::sync::mpsc::UnboundedSender<discovery::DirectoryState>,
+    pex: discovery::HintStore,
+    pex_asked: std::collections::HashMap<String, std::time::Instant>,
+    known_rooms: std::collections::BTreeMap<String, discovery::DirectoryEntry>,
+    pex_inbox: Vec<(String, clicker::CursorMsg)>,
+    last_pex: std::time::Instant,
 }
 
 pub async fn run(mut config: discovery::RunConfig) {
@@ -61,22 +66,7 @@ pub async fn run(mut config: discovery::RunConfig) {
             return;
         }
     };
-    let mut directory = loop {
-        match discovery::connect_directory(
-            "127.0.0.1",
-            ws_port,
-            clicker::contract_wasm(),
-            &discovery::dir_params(&config.namespace),
-        )
-        .await
-        {
-            Ok(directory) => break directory,
-            Err(e) => {
-                warn!(target: "clicker", error = %e, "discovery: directory connect failed, retrying");
-                tokio::time::sleep(Duration::from_secs(5)).await;
-            }
-        }
-    };
+    let mut directory = connect_directory_retry(ws_port, &config.namespace).await;
     info!(target: "clicker", key = %directory.contract_key, "discovery: directory connected");
     let Some((room, room_params)) =
         resolve_room(&mut config, &mut directory, &peer_id, &addrs).await
@@ -142,8 +132,177 @@ pub async fn run(mut config: discovery::RunConfig) {
         staggers,
         transport: config.transport,
         directory_tx: config.directory_tx,
+        pex: discovery::HintStore::default(),
+        pex_asked: std::collections::HashMap::new(),
+        known_rooms: std::collections::BTreeMap::new(),
+        pex_inbox: Vec::new(),
+        last_pex: now,
     };
     drive_roster(&mut ctx).await;
+}
+
+// needed helper: connects the directory contract, retrying until the node answers
+async fn connect_directory_retry(ws_port: u16, namespace: &str) -> discovery::Directory {
+    loop {
+        match discovery::connect_directory(
+            "127.0.0.1",
+            ws_port,
+            clicker::contract_wasm(),
+            &discovery::dir_params(namespace),
+        )
+        .await
+        {
+            Ok(directory) => return directory,
+            Err(e) => {
+                warn!(target: "clicker", error = %e, "discovery: directory connect failed, retrying");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    }
+}
+
+// needed helper: asks one fresh peer for its known peers and rooms
+fn send_pex_ask(
+    cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    peer: &str,
+) {
+    cmd_tx
+        .send(p2p::Command::Send {
+            peer_id: peer.to_string(),
+            payload: clicker::CursorMsg::PexAsk { want_rooms: true },
+        })
+        .ok();
+}
+
+// needed helper: re-asks connected peers whose world-view may have grown
+fn reask_pex(ctx: &mut RunContext) {
+    let now = std::time::Instant::now();
+    let peers: Vec<String> = ctx.connected.keys().cloned().collect();
+    for peer in peers {
+        let due = ctx.pex_asked.get(&peer).is_none_or(|at| {
+            now.checked_duration_since(*at)
+                .is_none_or(|d| d.as_secs() >= discovery::PEX_INTERVAL_SECS)
+        });
+        if due {
+            send_pex_ask(&ctx.cmd_tx, &peer);
+            ctx.pex_asked.insert(peer, now);
+        }
+    }
+    ctx.pex.prune(epoch_secs());
+}
+
+// needed helper: answers PEX asks and absorbs PEX responses into dials
+fn drain_pex(ctx: &mut RunContext) {
+    let inbox = std::mem::take(&mut ctx.pex_inbox);
+    for (from, msg) in inbox {
+        match msg {
+            clicker::CursorMsg::PexAsk { .. } => {
+                reply_pex(ctx, &from);
+            }
+            clicker::CursorMsg::PexResp { peers, rooms } => {
+                absorb_pex_resp(ctx, &peers, &rooms);
+            }
+            _ => {}
+        }
+    }
+}
+
+// needed helper: replies with our roster slots plus known rooms
+fn reply_pex(ctx: &RunContext, peer: &str) {
+    let mut peers: Vec<discovery::PeerHint> = ctx
+        .roster
+        .slots
+        .values()
+        .map(|entry| discovery::PeerHint {
+            peer_id: entry.peer_id.clone(),
+            addrs: entry.addrs.clone(),
+            rooms: Vec::new(),
+            updated_at: entry.updated_at,
+        })
+        .collect();
+    for hint in ctx.pex.values() {
+        peers.push(hint.clone());
+    }
+    let peers = discovery::merge_peer_hints(peers)
+        .into_iter()
+        .take(discovery::PEX_MAX_HINTS)
+        .collect();
+    let rooms: Vec<(String, discovery::DirectoryEntry)> = ctx
+        .known_rooms
+        .iter()
+        .map(|(name, entry)| (name.clone(), entry.clone()))
+        .chain([(
+            ctx.room.clone(),
+            discovery::DirectoryEntry {
+                params: ctx.room_params.clone(),
+                peer_id: ctx.peer_id.clone(),
+                addrs: ctx.last_addrs.clone(),
+                updated_at: epoch_secs(),
+            },
+        )])
+        .take(discovery::PEX_MAX_ROOMS)
+        .collect();
+    ctx.cmd_tx
+        .send(p2p::Command::Send {
+            peer_id: peer.to_string(),
+            payload: clicker::CursorMsg::PexResp { peers, rooms },
+        })
+        .ok();
+}
+
+// needed helper: merges PEX answers into the hint store, dials the unknown
+fn absorb_pex_resp(
+    ctx: &mut RunContext,
+    peers: &[discovery::PeerHint],
+    rooms: &[(String, discovery::DirectoryEntry)],
+) {
+    for hint in peers.iter().take(discovery::PEX_MAX_HINTS) {
+        if hint.peer_id == ctx.peer_id {
+            continue;
+        }
+        ctx.pex.insert(hint.clone());
+        dial_hint(
+            &ctx.cmd_tx,
+            &mut ctx.attempted,
+            &ctx.connected,
+            &mut ctx.staggers,
+            &ctx.peer_id,
+            ctx.transport,
+            hint,
+        );
+    }
+    for (name, entry) in rooms.iter().take(discovery::PEX_MAX_ROOMS) {
+        if name.is_empty() || entry.params.is_empty() {
+            continue;
+        }
+        let keep = ctx
+            .known_rooms
+            .get(name)
+            .is_none_or(|known| entry.updated_at >= known.updated_at);
+        if keep {
+            if !ctx.known_rooms.contains_key(name)
+                && ctx.known_rooms.len() >= discovery::PEX_MAX_ROOMS
+            {
+                continue;
+            }
+            ctx.known_rooms.insert(name.clone(), entry.clone());
+        }
+    }
+    send_merged_directory(ctx);
+}
+
+// needed helper: publishes the contract directory merged with PEX rooms
+fn send_merged_directory(ctx: &RunContext) {
+    let mut view = ctx.directory.slots.clone();
+    for (name, entry) in &ctx.known_rooms {
+        let keep = view
+            .get(name)
+            .is_none_or(|known| entry.updated_at >= known.updated_at);
+        if keep {
+            view.insert(name.clone(), entry.clone());
+        }
+    }
+    ctx.directory_tx.send(view).ok();
 }
 
 // needed helper: counts one open connection per peer so sub-connection
@@ -173,20 +332,31 @@ async fn drive_roster(ctx: &mut RunContext) {
     loop {
         while let Ok((peer, up)) = ctx.links.try_recv() {
             if up {
-                count_link(ctx, peer);
+                let fresh = !ctx.connected.contains_key(&peer);
+                count_link(ctx, peer.clone());
+                if fresh {
+                    send_pex_ask(&ctx.cmd_tx, &peer);
+                    ctx.pex_asked.insert(peer, std::time::Instant::now());
+                }
             } else {
                 decrement_link(ctx, &peer);
             }
         }
+        let mut hub = DialHub {
+            cmd_tx: &ctx.cmd_tx,
+            attempted: &mut ctx.attempted,
+            connected: &ctx.connected,
+            staggers: &mut ctx.staggers,
+            own_peer_id: &ctx.peer_id,
+            mode: ctx.transport,
+        };
         drain_lobby_events(
-            &ctx.cmd_tx,
+            &mut hub,
             &mut ctx.lobby_events,
-            &mut ctx.attempted,
-            &ctx.peer_id,
-            &ctx.connected,
-            &mut ctx.staggers,
-            ctx.transport,
+            &mut ctx.pex,
+            &mut ctx.pex_inbox,
         );
+        drain_pex(ctx);
         match ctx.roster.poll().await {
             Ok(fresh) => {
                 for entry in fresh {
@@ -217,6 +387,10 @@ async fn drive_roster(ctx: &mut RunContext) {
             ctx.last_redial = std::time::Instant::now();
             redial_missing(ctx);
         }
+        if ctx.last_pex.elapsed().as_secs() >= discovery::PEX_INTERVAL_SECS {
+            ctx.last_pex = std::time::Instant::now();
+            reask_pex(ctx);
+        }
         fire_due_staggers(&ctx.cmd_tx, &ctx.connected, &mut ctx.staggers);
         if ctx.observed.has_changed().unwrap_or(false) {
             refresh_observed(ctx);
@@ -243,8 +417,10 @@ async fn drive_roster(ctx: &mut RunContext) {
 async fn refresh_directory(ctx: &mut RunContext) {
     match ctx.directory.poll().await {
         Ok(slots) => {
-            ctx.directory_tx.send(slots.clone()).ok();
-            for hint in directory_hints(&slots) {
+            ctx.directory.slots = slots;
+            send_merged_directory(ctx);
+            for hint in directory_hints(&ctx.directory.slots) {
+                ctx.pex.insert(hint.clone());
                 dial_hint(
                     &ctx.cmd_tx,
                     &mut ctx.attempted,
@@ -276,7 +452,7 @@ async fn refresh_directory(ctx: &mut RunContext) {
     }
 }
 
-// needed helper: redials known-but-disconnected roster peers
+// needed helper: redials known-but-disconnected roster peers and hint peers
 fn redial_missing(ctx: &mut RunContext) {
     for (id, entry) in &ctx.roster.slots {
         if *id == ctx.roster.own || ctx.connected.contains_key(&entry.peer_id) {
@@ -290,6 +466,21 @@ fn redial_missing(ctx: &mut RunContext) {
             &ctx.peer_id,
             ctx.transport,
             entry,
+        );
+    }
+    let hints: Vec<discovery::PeerHint> = ctx.pex.values().cloned().collect();
+    for hint in &hints {
+        if ctx.connected.contains_key(&hint.peer_id) {
+            continue;
+        }
+        dial_hint(
+            &ctx.cmd_tx,
+            &mut ctx.attempted,
+            &ctx.connected,
+            &mut ctx.staggers,
+            &ctx.peer_id,
+            ctx.transport,
+            hint,
         );
     }
 }
@@ -371,7 +562,9 @@ async fn resolve_room(
         match directory.poll().await {
             Ok(slots) => {
                 config.directory_tx.send(slots.clone()).ok();
-                if let Some((room, entry)) = discovery::pick_room(&slots, config.since_secs) {
+                if discovery::auto_join(std::env::var("CLICKER_NO_AUTOJOIN").ok().map(|_| true))
+                    && let Some((room, entry)) = discovery::pick_room(&slots, config.since_secs)
+                {
                     let params = room_params(
                         &config.namespace,
                         &room,
@@ -441,40 +634,57 @@ fn directory_lobby() -> String {
 // needed helper: converts directory entries into dialable peer hints
 fn directory_hints(slots: &discovery::DirectoryState) -> Vec<discovery::PeerHint> {
     let hints: Vec<discovery::PeerHint> = slots
-        .values()
-        .map(|entry| discovery::PeerHint {
+        .iter()
+        .map(|(room, entry)| discovery::PeerHint {
             peer_id: entry.peer_id.clone(),
             addrs: entry.addrs.clone(),
+            rooms: vec![room.clone()],
             updated_at: entry.updated_at,
         })
         .collect();
     discovery::merge_peer_hints(hints)
 }
 
+// needed helper: shared dial arguments for lobby event drains
+struct DialHub<'a> {
+    cmd_tx: &'a tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    attempted: &'a mut std::collections::HashMap<String, std::time::Instant>,
+    connected: &'a ConnectedMap,
+    staggers: &'a mut StaggerMap,
+    own_peer_id: &'a str,
+    mode: p2p::TransportMode,
+}
+
 // needed helper: drains libp2p lobby/provider/gossip events into dials
 fn drain_lobby_events(
-    cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    hub: &mut DialHub,
     lobby_events: &mut tokio::sync::mpsc::UnboundedReceiver<p2p::Event<clicker::CursorMsg>>,
-    attempted: &mut std::collections::HashMap<String, std::time::Instant>,
-    peer_id: &str,
-    connected: &ConnectedMap,
-    staggers: &mut StaggerMap,
-    mode: p2p::TransportMode,
+    pex: &mut discovery::HintStore,
+    pex_inbox: &mut Vec<(String, clicker::CursorMsg)>,
 ) {
     while let Ok(event) = lobby_events.try_recv() {
         match event {
+            p2p::Event::Message { from, payload }
+                if matches!(
+                    payload,
+                    clicker::CursorMsg::PexAsk { .. } | clicker::CursorMsg::PexResp { .. }
+                ) =>
+            {
+                pex_inbox.push((from, payload));
+            }
             p2p::Event::LobbyProviders { peers, .. } => {
                 for peer in peers {
                     dial_hint(
-                        cmd_tx,
-                        attempted,
-                        connected,
-                        staggers,
-                        peer_id,
-                        mode,
+                        hub.cmd_tx,
+                        &mut *hub.attempted,
+                        hub.connected,
+                        &mut *hub.staggers,
+                        hub.own_peer_id,
+                        hub.mode,
                         &discovery::PeerHint {
                             peer_id: peer,
                             addrs: Vec::new(),
+                            rooms: Vec::new(),
                             updated_at: epoch_secs(),
                         },
                     );
@@ -489,23 +699,26 @@ fn drain_lobby_events(
                     if entry.peer_id == from || entry.peer_id.is_empty() {
                         continue;
                     }
+                    let hint = discovery::PeerHint {
+                        peer_id: entry.peer_id.clone(),
+                        addrs: entry.addrs.clone(),
+                        rooms: Vec::new(),
+                        updated_at: entry.updated_at,
+                    };
+                    pex.insert(hint.clone());
                     dial_hint(
-                        cmd_tx,
-                        attempted,
-                        connected,
-                        staggers,
-                        peer_id,
-                        mode,
-                        &discovery::PeerHint {
-                            peer_id: entry.peer_id.clone(),
-                            addrs: entry.addrs.clone(),
-                            updated_at: entry.updated_at,
-                        },
+                        hub.cmd_tx,
+                        &mut *hub.attempted,
+                        hub.connected,
+                        &mut *hub.staggers,
+                        hub.own_peer_id,
+                        hub.mode,
+                        &hint,
                     );
                 }
             }
             p2p::Event::PeerConnected(peer) => {
-                attempted.insert(peer, std::time::Instant::now());
+                hub.attempted.insert(peer, std::time::Instant::now());
             }
             _ => {}
         }

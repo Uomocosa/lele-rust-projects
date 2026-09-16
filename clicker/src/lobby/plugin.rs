@@ -24,6 +24,7 @@ mod tests {
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(roster::Roster::default());
+        app.insert_resource(roster::Lobby::default());
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(clicker::GlobalCounter::default());
         app.insert_resource(clicker::PendingClicks::default());

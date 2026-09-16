@@ -117,6 +117,7 @@ fn route_command(
         p2p::Command::Dial { .. }
         | p2p::Command::DialForce { .. }
         | p2p::Command::ReserveRelay { .. }
+        | p2p::Command::SetMdns { .. }
         | p2p::Command::AddKadPeer { .. }
         | p2p::Command::ProvideLobby { .. }
         | p2p::Command::FindLobby { .. }

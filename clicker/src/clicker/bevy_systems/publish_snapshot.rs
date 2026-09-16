@@ -27,7 +27,7 @@ pub fn publish_snapshot(
     });
 }
 
-// needed helper: merges live slots with parked tombstone scores so absent peers stay in the shared snapshot
+// needed helper: merges live slots with parked tombstone scores, keeping the max per id
 fn snapshot_entries(
     targets: &Query<(&clicker::PlayerNo, &clicker::ClickCounter)>,
     tombstones: &clicker::ScoreTombstones,
@@ -43,7 +43,17 @@ fn snapshot_entries(
         .collect();
     for (logical, count) in tombstones.iter() {
         let id = freenet_libp2p_bevy_plugin::net_id::NetworkId(*logical);
-        if entries.iter().all(|(known, _)| *known != id) {
+        let mut merged = false;
+        for (known, known_count) in &mut entries {
+            if *known == id {
+                if *count > *known_count {
+                    *known_count = *count;
+                }
+                merged = true;
+                break;
+            }
+        }
+        if !merged {
             entries.push((id, *count));
         }
     }
@@ -81,6 +91,29 @@ mod tests {
         assert_eq!(lobby, "alpha");
         let snapshot = clicker::decode_snapshot(data).unwrap();
         assert!(snapshot.entries.contains(&(net_id::NetworkId(1), 4)));
+        assert!(snapshot.entries.contains(&(net_id::NetworkId(2), 7)));
+    }
+
+    #[test]
+    fn tombstone_wins_over_stale_live_slot() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(clicker::GlobalCounter::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
+        app.world_mut()
+            .spawn((clicker::PlayerNo(2), clicker::ClickCounter(1)));
+        app.world_mut()
+            .resource_mut::<clicker::ScoreTombstones>()
+            .keep(2, 7);
+        app.add_systems(Update, publish_snapshot);
+        app.update();
+        let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
+        let Some(p2p::Command::PutHistory { data, .. }) = commands.first() else {
+            panic!("expected PutHistory");
+        };
+        let snapshot = clicker::decode_snapshot(data).unwrap();
         assert!(snapshot.entries.contains(&(net_id::NetworkId(2), 7)));
     }
 }

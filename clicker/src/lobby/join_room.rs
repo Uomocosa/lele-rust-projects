@@ -1,4 +1,5 @@
 use freenet_libp2p_bevy_plugin::p2p;
+use freenet_libp2p_bevy_plugin::roster;
 
 use crate::clicker;
 use crate::constants;
@@ -8,10 +9,12 @@ pub fn join_room(
     room: &str,
     lobby: &mut clicker::ActiveLobby,
     selected: &mut lobby::SelectedRoom,
+    roster_lobby: &mut roster::Lobby,
     commands: &mut p2p::Commands<clicker::CursorMsg>,
 ) {
     *lobby = clicker::ActiveLobby(room.to_string());
     **selected = Some(room.to_string());
+    *roster_lobby = roster::Lobby(room.to_string());
     let active = clicker::ActiveLobby(room.to_string());
     commands.push(p2p::Command::FetchHistory {
         lobby: room.to_string(),
@@ -37,12 +40,22 @@ mod tests {
 
     #[test]
     fn test_usage() {
+        use freenet_libp2p_bevy_plugin::roster;
+
         let mut active = clicker::ActiveLobby::default();
         let mut selected = lobby::SelectedRoom::default();
+        let mut roster_lobby = roster::Lobby::default();
         let mut commands = p2p::Commands::<clicker::CursorMsg>::default();
-        join_room("room-a", &mut active, &mut selected, &mut commands);
+        join_room(
+            "room-a",
+            &mut active,
+            &mut selected,
+            &mut roster_lobby,
+            &mut commands,
+        );
         assert_eq!(active, clicker::ActiveLobby("room-a".to_string()));
         assert_eq!(*selected, Some("room-a".to_string()));
+        assert_eq!(roster_lobby.as_str(), "room-a");
         assert_eq!(commands.len(), 4);
         let topics: Vec<String> = commands
             .iter()

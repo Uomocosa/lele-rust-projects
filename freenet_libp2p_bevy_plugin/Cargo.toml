@@ -29,7 +29,7 @@ module_inception = "allow"
 [dependencies]
 bevy = "=0.19.0"
 derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
-libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "gossipsub", "macros"] }
+libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "gossipsub", "mdns", "macros"] }
 tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
 thiserror = "=2.0.18"
 tracing = "=0.1.44"

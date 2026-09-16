@@ -7,6 +7,21 @@ pub use build_game::build_game;
 pub mod cleanup_stale;
 pub use cleanup_stale::cleanup_stale;
 
+pub mod click_at_y;
+pub use click_at_y::click_at_y;
+
+pub mod click_fraction;
+pub use click_fraction::click_fraction;
+
+pub mod drive_center;
+pub use drive_center::drive_center;
+
+mod mouse_click_at;
+
+mod window_id;
+
+mod window_size;
+
 pub mod drive_cursor;
 pub use drive_cursor::drive_cursor;
 
@@ -32,6 +47,9 @@ pub use spawn_xterm::spawn_xterm;
 
 pub mod speed_clip;
 pub use speed_clip::speed_clip;
+
+pub mod speed_clip_x4;
+pub use speed_clip_x4::speed_clip_x4;
 
 pub mod start_record;
 pub use start_record::start_record;

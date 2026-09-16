@@ -41,7 +41,7 @@ pub fn tile_three(titles: [&str; 3]) -> Result<(), String> {
 
 fn find_window_id(title: &str) -> Option<String> {
     if let Ok(out) = Command::new("xdotool")
-        .args(["search", "--onlyvisible", "--name", title])
+        .args(["search", "--onlyvisible", "--name", &format!("{title} \\[")])
         .output()
     {
         let text = String::from_utf8_lossy(&out.stdout);

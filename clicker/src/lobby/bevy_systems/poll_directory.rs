@@ -1,28 +1,47 @@
 use bevy::prelude::*;
 
+use crate::discovery;
 use crate::lobby;
 
 pub fn poll_directory(feed: Res<lobby::DirectoryFeed>, rooms: ResMut<lobby::RoomList>) {
     let feed = feed.into_inner();
-    let rooms = rooms.into_inner();
     let Ok(mut guard) = feed.lock() else {
         return;
     };
     let Some(rx) = guard.as_mut() else {
         return;
     };
+    let mut latest: Option<discovery::DirectoryState> = None;
     while let Ok(state) = rx.try_recv() {
-        let mut entries: Vec<lobby::RoomEntry> = state
-            .iter()
-            .map(|(name, entry)| lobby::RoomEntry {
-                name: name.clone(),
-                updated_at: entry.updated_at,
-            })
-            .collect();
-        entries.sort_by_key(|entry| std::cmp::Reverse(entry.updated_at));
-        rooms.entries = entries;
-        rooms.revision = rooms.revision.wrapping_add(1);
+        latest = Some(state);
     }
+    let Some(state) = latest else {
+        return;
+    };
+    let mut entries: Vec<lobby::RoomEntry> = state
+        .iter()
+        .map(|(name, entry)| lobby::RoomEntry {
+            name: name.clone(),
+            updated_at: entry.updated_at,
+        })
+        .collect();
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.updated_at));
+    let same = rooms.entries.len() == entries.len()
+        && rooms
+            .entries
+            .iter()
+            .zip(entries.iter())
+            .all(|(current, next)| {
+                current.name == next.name && current.updated_at == next.updated_at
+            });
+    if same {
+        return;
+    }
+    let names: Vec<String> = entries.iter().map(|entry| entry.name.clone()).collect();
+    let rooms = rooms.into_inner();
+    rooms.entries = entries;
+    rooms.revision = rooms.revision.wrapping_add(1);
+    tracing::info!(target: "clicker", rooms = ?names, "directory listed rooms");
 }
 
 #[cfg(test)]

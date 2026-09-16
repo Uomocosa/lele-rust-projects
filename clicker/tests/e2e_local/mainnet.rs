@@ -687,6 +687,7 @@ fn spawn_tag(
     lobby: Option<&str>,
     since_epoch: Option<u64>,
     transport: &str,
+    mdns: bool,
 ) -> bool {
     let log = dir.join(format!("instance-{tag}.log"));
     match spawn_xterm(
@@ -698,6 +699,7 @@ fn spawn_tag(
         contract_params,
         since_epoch,
         transport,
+        mdns,
         &log,
     ) {
         Ok(guard) => {
@@ -747,6 +749,9 @@ async fn local_mesh() {
         .ok()
         .filter(|v| !v.is_empty())
         .unwrap_or_else(|| "both".to_string());
+    let mdns = std::env::var("CLICKER_MDNS")
+        .ok()
+        .is_some_and(|v| v == "on");
     let contract_params = std::env::var("CLICKER_CONTRACT_PARAMS")
         .ok()
         .filter(|v| !v.is_empty())
@@ -762,7 +767,8 @@ async fn local_mesh() {
             &contract_params,
             Some(&room),
             None,
-            &transport
+            &transport,
+            mdns
         ),
         "spawn 1"
     );
@@ -784,7 +790,8 @@ async fn local_mesh() {
             &contract_params,
             None,
             Some(test_start_epoch),
-            &transport
+            &transport,
+            mdns
         ),
         "spawn 2"
     );
@@ -806,7 +813,8 @@ async fn local_mesh() {
             &contract_params,
             None,
             Some(test_start_epoch),
-            &transport
+            &transport,
+            mdns
         ),
         "spawn 3"
     );
@@ -918,7 +926,7 @@ async fn local_mesh() {
         .collect();
     let all_ok = checks.iter().all(|c| c.ok);
     let caption = format!(
-        "clicker local-mesh room={room} transport={transport} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
+        "clicker local-mesh room={room} transport={transport} mdns={mdns} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
         check_emoji(converged),
         check_emoji(all_ok),
         mesh_lines.join("\n"),

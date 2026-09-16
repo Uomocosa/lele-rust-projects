@@ -13,6 +13,9 @@ pub enum Command<T> {
     ReserveRelay {
         relay_addr: String,
     },
+    SetMdns {
+        enabled: bool,
+    },
     AddKadPeer {
         peer_id: String,
         addrs: Vec<String>,

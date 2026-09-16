@@ -1,6 +1,9 @@
 pub mod client;
 pub use client::Client;
 
+pub mod auto_join;
+pub use auto_join::auto_join;
+
 mod client_connect;
 mod client_recv;
 mod client_recv_response;
@@ -68,6 +71,12 @@ pub use peer_entry::PeerEntry;
 
 pub mod peer_hint;
 pub use peer_hint::PeerHint;
+
+pub mod peer_hint_store;
+pub use peer_hint_store::HintStore;
+
+mod peer_hint_store_insert;
+mod peer_hint_store_prune;
 
 pub mod pick_room;
 pub use pick_room::pick_room;

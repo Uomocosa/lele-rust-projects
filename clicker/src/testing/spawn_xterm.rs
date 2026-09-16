@@ -14,6 +14,7 @@ pub fn spawn_xterm(
     contract_params: &str,
     since_epoch: Option<u64>,
     transport: &str,
+    mdns: bool,
     log: &Path,
 ) -> Result<testing::TerminalGuard, String> {
     std::fs::File::create(log).map_err(|e| format!("create log {}: {e}", log.display()))?;
@@ -25,8 +26,13 @@ pub fn spawn_xterm(
         format!(" --lobby {}", shell_escape(room))
     });
     let since_arg = since_epoch.map_or(String::new(), |epoch| format!(" --since-epoch {epoch}"));
+    let mdns_arg = if mdns {
+        String::new()
+    } else {
+        " --disable-mdns".to_string()
+    };
     let inner = format!(
-        "stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} --transport {} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        "stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} --transport {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
         shell_escape(&bin_str),
         shell_escape(namespace),
         lobby_arg,
@@ -36,6 +42,7 @@ pub fn spawn_xterm(
         shell_escape(contract_params),
         since_arg,
         shell_escape(transport),
+        mdns_arg,
         shell_escape(&log_str),
         tag
     );
