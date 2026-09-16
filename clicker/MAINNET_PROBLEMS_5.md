@@ -208,3 +208,56 @@ tail reds on churned rings.
   gate 1 RED (P1) → gate 2 RED (P3) → gate 3 RED (P5) → gate 4 RED (P4) →
   gate 5 RED (P4, event race) → gate 6 RED (P7, rejoin `Get` stall).
   **Count: 0/5.** Next: §9 per Q1, then 5/5.
+
+## 13. Session 2026-09-16 — libp2p join handshake + quiet-period readiness (commit `733fd77`)
+
+Method: `definition-tdd` fast-red/slow-gate, three vertical slices.
+Contract wasm **unchanged** (still needed: no contract edits for any of this).
+
+**Slice 1 — `WantJoin`/`Welcome` req/res handshake (Option 2).**
+New `CursorMsg::{WantJoin{room}, Welcome{room, peers, own_score, joining}}`
+(`src/clicker/cursor_msg.rs:32-41`) + three Bevy systems:
+`send_want_join.rs` (idempotent per-peer ask on connect, event restored
+like `send_sync_req`), `answer_join.rs` (replies with roster names + own
+authoritative score only, wrong-room dropped),
+`absorb_welcome.rs` (unions sender+peers into roster/`JoinGate.expected`,
+converts the score into a synthetic `SyncAck` so the existing
+`absorb_sync` merge path does the work — zero merge duplication).
+`main.rs:242-252` routes both to discovery (consumed in a later slice).
+TDD incident: `Welcome` re-added a mesh-harness roster entry under a
+second (`blake3`) key, resurrecting a despawned slot and REDDING
+`rejoin::leaver_rejoins_at_old_score` — fixed with value-dedupe on insert
+(same ghost family as `_4` iter-2).
+
+**Slice 2a — spectate.** `spawn_on_join.rs` no longer gates on
+`JoinPending`: remotes render while loading, own clicks stay parked
+(`detect_click` unchanged). Deleted the dead gate
+(`spawn_ctx_gate_open.rs`, `SpawnCtx::pending`); E016 then forced the
+single-caller `SpawnCtx` bundle inline into `spawn_on_join`
+(`LeaveCtx` precedent).
+
+**Slice 2b — quiet-period readiness (the e2e defect).** First slow gate
+RED: `Welcome`-union advertises peers the joiner can never dial/sync, and
+the strict full-roster gate stalled forever (no `join ready` on
+instance-2 while game traffic flowed). New `JoinClock{clicked_at,
+last_new_peer}` (`src/lobby/join_clock.rs`) + `QUIET_SECS=1` /
+`JOIN_CAP_SECS=30` (`src/lobby/constants.rs:3-4`): `clear_pending.rs`
+clears on 1s-silence-since-last-*new*-peer or 30s cap; growth-only bumps
+in `absorb_welcome`/`poll_expected` (duplicates never reset quiet).
+Ghost pollution is harmless by construction: spawn partial, upgrade in
+background.
+
+## 14. Scoreboard after `733fd77`
+
+- Fast suite: **273 nextest green** (was 261) + task-clippy/fmt/lint/
+  bevy-lint/taxonomy green. New: `tests/mesh/join.rs` (handshake,
+  roster+gate union, spectate), `clears_ghost_once_quiet`,
+  `clears_on_alone_cap`, handshake unit tests.
+- Slow gate (`freenet:run-rooms-rejoin`): **PASS (583s)** — first green
+  with the new protocol. Prior 0/5 tail reds absorbed by the quiet gate.
+- Known deviations: scores merge eagerly during spectate (not strict
+  positions-only); `Welcome.joining` wired but always empty; no reply
+  jitter; roster `Get` still on the click path (§9 slices 3+5 remain).
+- Pre-existing, untouched: `cargo clippy --features dev` fails in
+  `setup.rs`, `total_board.rs`, `testing/*` (canonical no-dev task
+  clippy is clean).
