@@ -41,6 +41,14 @@ pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
             continue;
         }
         let player = net_id::NetworkId(*claimed);
+        let taken = ctx
+            .peers
+            .iter()
+            .any(|(_, _, numbered)| numbered.is_some_and(|number| **number == *claimed));
+        if taken {
+            rest.push(event);
+            continue;
+        }
         for (entity, owner, numbered) in &ctx.peers {
             if ***owner != *sender || numbered.is_some() {
                 continue;
@@ -221,6 +229,53 @@ mod tests {
             !app.world()
                 .resource::<p2p::Events<clicker::CursorMsg>>()
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn duplicate_player_no_never_labels_twice() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(99));
+        app.insert_resource(clicker::ScoreTombstones::default());
+        let sender = net_id::NetworkId::from_peer("peer");
+        app.world_mut().spawn((
+            clicker::CursorIcon,
+            clicker::Owner(sender),
+            clicker::PlayerNo(5),
+            clicker::ClickCounter(5),
+            clicker::TargetPos(Vec2::ZERO),
+            Transform::default(),
+        ));
+        let visual = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(sender),
+                clicker::TargetPos(Vec2::ZERO),
+                Transform::default(),
+            ))
+            .id();
+        let msg = clicker::CursorMsg::Move {
+            owner: net_id::NetworkId(5),
+            pos: [30.0, 40.0],
+        };
+        let data = bincode::serialize(&msg).unwrap_or_default();
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Gossip {
+                topic: "clicker/alpha/pos".to_string(),
+                from: "peer".to_string(),
+                data,
+            });
+        app.add_systems(Update, resolve_player);
+        app.update();
+        assert!(
+            app.world().get::<clicker::PlayerNo>(visual).is_none(),
+            "second slot for a taken player number stays unlabeled"
         );
     }
 

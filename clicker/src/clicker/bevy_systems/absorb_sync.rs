@@ -16,11 +16,10 @@ pub fn absorb_sync(
     mut pending: ResMut<clicker::PendingClicks>,
     commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
     own: Res<net_id::NetworkId>,
-    gate: ResMut<lobby::JoinGate>,
+    mut ctx: clicker::bevy_systems::SyncCtx,
 ) {
     let own = *own.into_inner();
     let commands = commands.into_inner();
-    let gate = gate.into_inner();
     let mut rest = Vec::new();
     for event in events.take_all() {
         match event {
@@ -29,7 +28,7 @@ pub fn absorb_sync(
                     if requester == own {
                         continue;
                     }
-                    let entries = snapshot_entries(&targets);
+                    let entries = ctx.snapshot_entries(&targets);
                     commands.push(p2p::Command::Send {
                         peer_id: from,
                         payload: clicker::CursorMsg::SyncAck {
@@ -42,12 +41,13 @@ pub fn absorb_sync(
                     if target != own {
                         continue;
                     }
-                    if !gate
+                    if !ctx
+                        .gate
                         .synced
                         .iter()
                         .any(|entry| entry.as_str() == from.as_str())
                     {
-                        gate.synced.push(lobby::SyncedPeer(from.clone()));
+                        ctx.gate.synced.push(lobby::SyncedPeer(from.clone()));
                     }
                     let sender = net_id::NetworkId::from_peer(&from);
                     merge_entries(&mut targets, &mut pending, sender, entries);
@@ -62,23 +62,6 @@ pub fn absorb_sync(
         }
     }
     events.extend(rest);
-}
-
-// needed helper: snapshots labeled counters for a sync reply
-fn snapshot_entries(
-    targets: &Query<(
-        &clicker::Owner,
-        Option<&clicker::PlayerNo>,
-        &mut clicker::ClickCounter,
-    )>,
-) -> Vec<(net_id::NetworkId, i32)> {
-    let mut entries = Vec::new();
-    for (_, player, counter) in targets {
-        if let Some(number) = player {
-            entries.push((net_id::NetworkId(**number), **counter));
-        }
-    }
-    entries
 }
 
 // needed helper: max-merges sync entries, parking unknown slots
@@ -132,6 +115,7 @@ mod tests {
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::PendingClicks::default());
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(clicker::ScoreTombstones::default());
         app.insert_resource(net_id::NetworkId(1));
         app.world_mut().spawn((
             clicker::Owner(net_id::NetworkId(1)),
@@ -157,6 +141,98 @@ mod tests {
     }
 
     #[test]
+    fn reply_carries_tombstone() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::PendingClicks::default());
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut().spawn((
+            clicker::Owner(net_id::NetworkId(9)),
+            clicker::PlayerNo(9),
+            clicker::ClickCounter(2),
+        ));
+        app.world_mut()
+            .resource_mut::<clicker::ScoreTombstones>()
+            .keep(9, 5);
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Message {
+                from: "peer".to_string(),
+                payload: clicker::CursorMsg::SyncReq {
+                    requester: net_id::NetworkId(2),
+                },
+            });
+        app.add_systems(Update, absorb_sync);
+        app.update();
+        let entries = app
+            .world()
+            .resource::<p2p::Commands<clicker::CursorMsg>>()
+            .iter()
+            .filter_map(|command| match command {
+                p2p::Command::Send {
+                    payload: clicker::CursorMsg::SyncAck { entries, .. },
+                    ..
+                } => Some(entries.clone()),
+                _ => None,
+            })
+            .collect::<Vec<Vec<(net_id::NetworkId, i32)>>>();
+        assert!(
+            entries
+                .iter()
+                .any(|list| list.contains(&(net_id::NetworkId(9), 5))),
+            "sync reply carries retained scores, got {entries:?}"
+        );
+    }
+
+    #[test]
+    fn reply_omits_never_seen_tombstone() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::PendingClicks::default());
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut()
+            .resource_mut::<clicker::ScoreTombstones>()
+            .keep(9, 5);
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Message {
+                from: "peer".to_string(),
+                payload: clicker::CursorMsg::SyncReq {
+                    requester: net_id::NetworkId(2),
+                },
+            });
+        app.add_systems(Update, absorb_sync);
+        app.update();
+        let entries = app
+            .world()
+            .resource::<p2p::Commands<clicker::CursorMsg>>()
+            .iter()
+            .filter_map(|command| match command {
+                p2p::Command::Send {
+                    payload: clicker::CursorMsg::SyncAck { entries, .. },
+                    ..
+                } => Some(entries.clone()),
+                _ => None,
+            })
+            .collect::<Vec<Vec<(net_id::NetworkId, i32)>>>();
+        assert!(
+            entries
+                .iter()
+                .all(|list| list.iter().all(|(id, _)| *id != net_id::NetworkId(9))),
+            "retained scores without local provenance never ride the reply, got {entries:?}"
+        );
+    }
+
+    #[test]
     fn test_ack_merges() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
@@ -164,6 +240,7 @@ mod tests {
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::PendingClicks::default());
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(clicker::ScoreTombstones::default());
         app.insert_resource(net_id::NetworkId(1));
         let target = app
             .world_mut()
@@ -198,6 +275,7 @@ mod tests {
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::PendingClicks::default());
         app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(clicker::ScoreTombstones::default());
         app.insert_resource(net_id::NetworkId(1));
         app.world_mut()
             .resource_mut::<p2p::Events<clicker::CursorMsg>>()

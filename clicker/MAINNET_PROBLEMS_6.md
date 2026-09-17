@@ -108,3 +108,49 @@ keepalive timeout) so repair drives the production `PeerConnected` →
   off the click path (slice 5), rig link-down detection (§4b),
   `cargo clippy --features dev` pre-existing failures in untouched
   files, overnight seed matrix (`FLEET × [7,8,9]`).
+
+## 6. Session 2026-09-17 — GREEN the RED: retention + duplicate identity (2 slow gates)
+
+TDD, three slices back-to-back. Final state: **289 nextest green**,
+all static gates green, **`rooms_rejoin` PASS (630s)**.
+
+**Slice A — retention rule.** `sync_global.rs`: total = Σ labeled
+slots (max with tombstone on overlap) + tombstones with local
+provenance. Provenance = a locally-kept `seen` set of labeled ids
+(`Local<HashSet>`; cleared when the map empties, which `leave_room`
+already guarantees room-scoping): snapshot claims for never-labeled
+ids never inflate the total — the `unlabeled_snapshot_drops` mesh test
+stays green, and the `_4` iter-2 ghost family stays dead.
+
+**Slice B — tombstones on the wire.** `SyncAck` replies now union
+retained tombstones, max per id (the `publish_snapshot` pattern copied
+into a `SyncCtx` SystemParam bundle + private
+`sync_ctx_snapshot_entries.rs` delegate; `absorb_sync` drops 8→6
+params). Provenance-gated the same way, so phantom zero-tombstones
+(first-update snapshot chunks for never-live ids) can neither ride
+replies nor derail labeling. `merge_entries` needed no changes
+(unknown ids already park as absolute `PendingClick`s).
+
+**TDD incident (scenario, not product).** The RED initially stayed RED
+after the fix (`6 vs 23` unchanged): the turmoil leaver slept 30
+virtual seconds *without pumping*, so its 17 clicks were queued but
+never sent — it died silent and survivors rightly learned nothing. A
+real process lives until killed; the leaver now pumps while waiting
+(`total_retained.rs:34-53`). Lesson: a passing gate needs the scenario
+to actually transmit the data under test.
+
+**Slow gate 1 RED → duplicate player identity.** `agree_within` failed
+after creator rejoin with `global=66` on one instance (16+16+17+17:
+two live 16-slots — stale roster id + new peer id) and `p1=0` on
+another (Moves arrived per `pos_log`, no roster slot to label). Fix,
+two halves of one defect: `resolve_player.rs` never labels an already-
+taken `PlayerNo` (`duplicate_player_no_never_labels_twice`); global
+counts labeled slots only, unresolved merge artifacts join at labeling
+time (`unlabeled_count_never_counts`). Overlap probe confirmed
+live+tombstone never double-counts. Slow gate 2 **PASS (630s)**.
+
+**Known next tail.** Rejoined peer ids still learn slowly on the
+survivor side (roster freshness / dial-failed pruning, _5 §9) — masked
+this run, expect it back under churn. Reply jitter + `Welcome.joining`
+(slice 3), roster `Get` off the click path (slice 5), rig link-down
+detection (§4b) all still open.

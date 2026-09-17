@@ -27,7 +27,23 @@ fn run_peer(
         turmoil_rig::handshake(&mut link, name).await;
         testing::click_times(&mut link.app, clicks);
         if leave {
-            tokio::time::sleep(LEAVE_AT).await;
+            // A real process keeps syncing until it dies: pump while waiting
+            // so the room converges before the kill. Bare sleep would drop
+            // unsent clicks with the sockets and test nothing.
+            let start = tokio::time::Instant::now();
+            while start.elapsed() < LEAVE_AT {
+                turmoil_rig::pump(
+                    &mut link.app,
+                    name,
+                    &mut link.outbound,
+                    &mut link.inbox_rx,
+                    &mut link.seen,
+                    &mut link.seq,
+                    &mut link.dead,
+                )
+                .await;
+                tokio::time::sleep(turmoil_rig::STEP_SLEEP).await;
+            }
             gone.borrow_mut()[slot] = true;
             return Ok(());
         }
