@@ -1,10 +1,14 @@
 use clicker_lib::{clicker, testing};
 use freenet_libp2p_bevy_plugin::net_id;
+use telegram_bot::TestLog;
 
 use crate::support;
 
 #[test]
+#[telegram_bot::telegram_notify]
 fn resolved_cursors_match_owner_color() {
+    let test_log = TestLog::open("resolved_cursors_match_owner_color");
+    test_log.line("test started");
     let mut mesh = testing::Mesh::three();
     support::push_to(&mut mesh, 1, support::move_gossip("peer-2", 2));
     support::push_to(&mut mesh, 1, support::move_gossip("peer-3", 3));

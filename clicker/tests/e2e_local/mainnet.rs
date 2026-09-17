@@ -4,7 +4,7 @@ use clicker_lib::testing::{
     TerminalGuard, build_game, cleanup_stale, drive_random, finish_record, poke, require_xterm,
     spawn_xterm, speed_clip, start_record, tile_three, wakeup_screen,
 };
-use telegram_bot::{load_creds, send_video_file};
+use telegram_bot::{TestLog, send_video_best_effort};
 
 const TIMEOUT_SECS: u64 = 300;
 const RECORD_SECS: u64 = 60;
@@ -715,7 +715,10 @@ fn spawn_tag(
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "local-mainnet: needs X + 3 clicker windows + public Freenet mainnet; run with --ignored --nocapture"]
+#[telegram_bot::telegram_notify]
 async fn local_mesh() {
+    let test_log = TestLog::open("local_mesh");
+    test_log.line("test started");
     let total_start = Instant::now();
     wakeup_screen();
     assert!(require_xterm().is_ok(), "xterm/xdotool/wmctrl missing");
@@ -911,13 +914,8 @@ async fn local_mesh() {
     let total_elapsed = total_start.elapsed();
 
     let Some(clip) = clip else {
+        test_log.line(&format!("clip missing at {}", clip_path.display()));
         assert!(false, "clip missing at {}", clip_path.display());
-        return;
-    };
-    let creds = load_creds();
-    assert!(creds.is_some(), "telegram creds missing");
-    let Some(creds) = creds else {
-        assert!(false, "telegram creds missing");
         return;
     };
     let check_lines: Vec<String> = checks
@@ -936,27 +934,11 @@ async fn local_mesh() {
         fmt_secs(recording_elapsed),
         fmt_secs(total_elapsed)
     );
-    match tokio::task::spawn_blocking(move || send_video_file(&creds, &clip, &caption)).await {
-        Ok(Ok(message)) => {
-            println!(
-                "telegram video sent: message_id={message} clip={}",
-                clip_path.display()
-            );
-        }
-        Ok(Err(err)) => {
-            assert!(
-                false,
-                "telegram send failed: {err} clip={}",
-                clip_path.display()
-            );
-        }
-        Err(err) => {
-            assert!(
-                false,
-                "telegram send join failed: {err} clip={}",
-                clip_path.display()
-            );
-        }
+    test_log.line(&format!("sending clip {}", clip_path.display()));
+    if let Err(err) =
+        tokio::task::spawn_blocking(move || send_video_best_effort(&clip, &caption)).await
+    {
+        test_log.line(&format!("telegram send join failed: {err}"));
     }
     assert!(converged, "no converge: {}", persist_dir.display());
     for c in &checks {
