@@ -149,6 +149,14 @@ The creation vector is closed, so it cannot recur; reopen if seen.
 
 - Fast: **292 nextest green, 11 skipped** (was 290 — new attribution +
   relay cases); clippy/fmt/lint green. Mesh total ~19s.
-- Slow gate (`freenet:run-rooms-rejoin`) NOT re-run — no `src/`
-  changes, low risk, but remains the only true retention oracle.
-- Next: §2B (minutes), then §2A (+§2C enabler), then §3 reproduction.
+- Slow gate (`freenet:run-rooms-rejoin`) run 2026-09-18 on the fix
+  commit: **RED** — `join-ready-2` missed its 5s budget. Instance-2 log
+  (`.local-run/rooms-rejoin-20260918-191039`): room resolved via
+  directory OK, libp2p sync flowing (`p1=1` 3.5s after click), but zero
+  `expected`/Welcome/PEX lines, so `JoinGate.expected` stayed `None`
+  and `clear_pending` returned early. Reads as the documented
+  `_5.md:129-130,158` tail (roster `Get` stall past the 5s click-path
+  budget on a churned ring — hole-punch + dial-condition warnings
+  in-window), not a product regression: none of the touched paths feed
+  `expected`, and merge/labels/retention all work in the same log.
+- Next: §2B (minutes), then §2A (+§2C enabler).
