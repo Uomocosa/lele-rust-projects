@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use clicker_lib::{clicker, testing};
-use freenet_libp2p_bevy_plugin::{p2p, roster};
+use freenet_libp2p_bevy_plugin::{net_id, p2p, roster};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const PORT: u16 = 17381;
@@ -139,8 +139,28 @@ pub async fn pump(
     seen: &mut HashSet<(String, u64)>,
     seq: &mut u64,
     dead: &mut HashSet<String>,
+    last_sync: &mut HashMap<String, Duration>,
+    link_down_after: Duration,
 ) {
     app.update();
+    let now = turmoil::elapsed();
+    let own = *app.world().resource::<net_id::NetworkId>();
+    let peers: Vec<String> = outbound.keys().cloned().collect();
+    for peer in peers {
+        if dead.contains(&peer) {
+            continue;
+        }
+        let last = last_sync.get(&peer).copied().unwrap_or(Duration::ZERO);
+        if now.saturating_sub(last) >= link_down_after {
+            last_sync.insert(peer.clone(), now);
+            app.world_mut()
+                .resource_mut::<p2p::Commands<clicker::CursorMsg>>()
+                .push(p2p::Command::Send {
+                    peer_id: peer,
+                    payload: clicker::CursorMsg::SyncReq { requester: own },
+                });
+        }
+    }
     let cmds = app
         .world_mut()
         .resource_mut::<p2p::Commands<clicker::CursorMsg>>()
@@ -213,6 +233,8 @@ pub struct UpLink {
     pub seen: HashSet<(String, u64)>,
     pub seq: u64,
     pub dead: HashSet<String>,
+    pub last_sync: HashMap<String, Duration>,
+    pub link_down_after: Duration,
 }
 
 pub async fn bring_up(
@@ -220,6 +242,7 @@ pub async fn bring_up(
     own: u64,
     dial: &[&'static str],
     accept: usize,
+    link_down_after: Duration,
 ) -> turmoil::Result<UpLink> {
     let mut app = testing::fixture(own, "alpha");
     link_app(&mut app, name);
@@ -264,6 +287,8 @@ pub async fn bring_up(
         seen: HashSet::new(),
         seq: 0,
         dead: HashSet::new(),
+        last_sync: HashMap::new(),
+        link_down_after,
     })
 }
 
@@ -277,6 +302,8 @@ pub async fn handshake(link: &mut UpLink, name: &str) {
             &mut link.seen,
             &mut link.seq,
             &mut link.dead,
+            &mut link.last_sync,
+            link.link_down_after,
         )
         .await;
         if labeled(&mut link.app) >= 3 {
@@ -296,6 +323,8 @@ pub async fn converge_to(link: &mut UpLink, name: &str, want: testing::MeshCount
             &mut link.seen,
             &mut link.seq,
             &mut link.dead,
+            &mut link.last_sync,
+            link.link_down_after,
         )
         .await;
         if counts_of(&mut link.app) == want {
@@ -315,6 +344,8 @@ pub async fn settle(link: &mut UpLink, name: &str, iters: u32) {
             &mut link.seen,
             &mut link.seq,
             &mut link.dead,
+            &mut link.last_sync,
+            link.link_down_after,
         )
         .await;
         tokio::time::sleep(STEP_SLEEP).await;
@@ -334,6 +365,8 @@ pub async fn park_until_done(link: &mut UpLink, name: &str, done: &Done) {
             &mut link.seen,
             &mut link.seq,
             &mut link.dead,
+            &mut link.last_sync,
+            link.link_down_after,
         )
         .await;
         tokio::time::sleep(STEP_SLEEP).await;

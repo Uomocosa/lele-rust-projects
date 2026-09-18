@@ -27,6 +27,7 @@ pub struct NetworkProfile {
     pub max_latency: Duration,
     pub fail_rate: f64,
     pub tcp_capacity: usize,
+    pub link_down_after: Duration,
     pub slow_pairs: Vec<(&'static str, &'static str, Duration, f64)>,
     pub topology: Topology,
     pub chaos: Chaos,
@@ -97,6 +98,7 @@ pub fn with_seed(profile: &NetworkProfile, seed: u64) -> NetworkProfile {
         max_latency: profile.max_latency,
         fail_rate: profile.fail_rate,
         tcp_capacity: profile.tcp_capacity,
+        link_down_after: profile.link_down_after,
         slow_pairs: profile.slow_pairs.clone(),
         topology: match profile.topology {
             Topology::Star { center } => Topology::Star { center },
@@ -130,6 +132,7 @@ pub const FLEET: [NetworkProfile; 4] = [
         max_latency: Duration::from_millis(20),
         fail_rate: 0.0,
         tcp_capacity: 1024,
+        link_down_after: Duration::from_secs(5),
         slow_pairs: Vec::new(),
         topology: Topology::FullMesh,
         chaos: Chaos::Calm,
@@ -141,6 +144,7 @@ pub const FLEET: [NetworkProfile; 4] = [
         max_latency: Duration::from_millis(20),
         fail_rate: 0.0,
         tcp_capacity: 64,
+        link_down_after: Duration::from_secs(5),
         slow_pairs: Vec::new(),
         topology: Topology::Star { center: "peer-1" },
         chaos: Chaos::Calm,
@@ -152,6 +156,7 @@ pub const FLEET: [NetworkProfile; 4] = [
         max_latency: Duration::from_millis(300),
         fail_rate: 0.02,
         tcp_capacity: 64,
+        link_down_after: Duration::from_secs(15),
         slow_pairs: Vec::new(),
         topology: Topology::FullMesh,
         chaos: Chaos::Flaky {
@@ -167,6 +172,7 @@ pub const FLEET: [NetworkProfile; 4] = [
         max_latency: Duration::from_millis(50),
         fail_rate: 0.0,
         tcp_capacity: 1024,
+        link_down_after: Duration::from_secs(5),
         slow_pairs: Vec::new(),
         topology: Topology::FullMesh,
         chaos: Chaos::Leave {
@@ -188,6 +194,7 @@ pub const LEAVE_RELAY: NetworkProfile = NetworkProfile {
     max_latency: Duration::from_millis(20),
     fail_rate: 0.0,
     tcp_capacity: 64,
+    link_down_after: Duration::from_secs(5),
     slow_pairs: Vec::new(),
     topology: Topology::Star { center: "peer-1" },
     chaos: Chaos::Leave {

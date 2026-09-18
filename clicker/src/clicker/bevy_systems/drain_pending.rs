@@ -72,7 +72,7 @@ fn find_slot(
         if ***owner == *item.owner || player.is_some_and(|p| **p == *item.owner) {
             return Some((entity, item.delta));
         }
-        if ***owner == *item.sender && player.is_none() {
+        if !item.absolute && ***owner == *item.sender && player.is_none() {
             sender = Some(entity);
         }
     }

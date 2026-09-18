@@ -37,13 +37,19 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
                 .chain(),
         )
         .add_systems(Update, clicker::bevy_systems::ease_remote)
-        .add_systems(Update, clicker::bevy_systems::despawn_on_leave)
+        .add_systems(
+            Update,
+            (
+                clicker::bevy_systems::despawn_on_leave,
+                clicker::bevy_systems::emit_flash,
+            )
+                .chain(),
+        )
         .add_systems(
             Update,
             clicker::bevy_systems::publish_snapshot.run_if(clicker::bevy_systems::publish_due),
         )
         .add_systems(Update, clicker::bevy_systems::request_snapshot)
-        .add_systems(Update, clicker::bevy_systems::emit_flash)
         .add_systems(Update, clicker::bevy_systems::animate_flash)
         .add_systems(Update, clicker::bevy_systems::update_total_board)
         .add_systems(Update, clicker::bevy_systems::update_cursor_label)

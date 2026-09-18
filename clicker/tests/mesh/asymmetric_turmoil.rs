@@ -13,11 +13,12 @@ fn run_peer(
     dial: &'static [&'static str],
     accept: usize,
     slot: usize,
+    link_down_after: Duration,
     results: turmoil_rig::Results,
     done: turmoil_rig::Done,
 ) -> impl std::future::Future<Output = turmoil::Result> + 'static {
     async move {
-        let mut link = turmoil_rig::bring_up(name, own, dial, accept).await?;
+        let mut link = turmoil_rig::bring_up(name, own, dial, accept, link_down_after).await?;
         turmoil_rig::handshake(&mut link, name).await;
         testing::click_times(&mut link.app, clicks);
         let want = testing::MeshCount::wanted(1, 5, 17);
@@ -42,6 +43,7 @@ fn scenario(seed: u64) {
         let parked = done.clone();
         let (name, own, clicks, dial, accept) =
             (lane.name, lane.own, lane.clicks, lane.dial, lane.accept);
+        let link_down_after = profile.link_down_after;
         sim.host(name, move || {
             run_peer(
                 name,
@@ -50,6 +52,7 @@ fn scenario(seed: u64) {
                 dial,
                 accept,
                 slot,
+                link_down_after,
                 seen.clone(),
                 parked.clone(),
             )
