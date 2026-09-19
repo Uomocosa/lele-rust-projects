@@ -115,24 +115,26 @@ fn resolved_count(path: &std::path::Path) -> usize {
 }
 
 fn parse_owners(path: &std::path::Path) -> std::collections::BTreeSet<u64> {
-    let mut owners = std::collections::BTreeSet::new();
     let Ok(content) = std::fs::read_to_string(path) else {
-        return owners;
+        return std::collections::BTreeSet::new();
     };
+    let mut current = std::collections::BTreeSet::new();
+    let mut last = std::collections::BTreeSet::new();
     for line in content.lines() {
         let stripped = strip_ansi(line);
         if stripped.contains("sync lobby=") {
-            owners.clear();
+            last.clone_from(&current);
+            current.clear();
             continue;
         }
         if !stripped.contains("tick lobby=") {
             continue;
         }
         if let Some(owner) = parse_u64_after(&stripped, " owner=") {
-            owners.insert(owner);
+            current.insert(owner);
         }
     }
-    owners
+    if current.is_empty() { last } else { current }
 }
 
 async fn wait_owners(path: &std::path::Path, expected: usize, secs: u64) -> bool {
