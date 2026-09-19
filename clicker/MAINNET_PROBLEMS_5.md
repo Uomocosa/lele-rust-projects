@@ -1,5 +1,9 @@
 # MAINNET PROBLEMS 5 — the instant-join run (5s gates, TDD loops)
 
+> **OUTDATED wording, see `MAINNET_PROBLEMS_10.md`:** §9 "contract `Get` on
+> the click path" history is kept; gameplay converge bar is now ≤500ms
+> libp2p-only, ring-join stays separate.
+
 Follow-up to `MAINNET_PROBLEMS_4.md`. This session started from a user
 complaint — *"the test is fully green but it should not be"* — and turned
 into a full instant-join project: clicking an already-created room must show

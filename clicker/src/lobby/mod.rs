@@ -21,6 +21,9 @@ pub use room_request_tx::RoomRequestTx;
 pub mod room_rx;
 pub use room_rx::RoomRx;
 
+pub mod left_room;
+pub use left_room::LeftRoom;
+
 pub mod create_room;
 pub use create_room::create_room;
 

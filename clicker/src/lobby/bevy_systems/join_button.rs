@@ -32,6 +32,7 @@ pub fn join_button(
     }
     let outbox = outbox.into_inner();
     let next = next.into_inner();
+    **rooms.left = None;
     if let Some(requests) = requests {
         let requests = requests.into_inner();
         requests.send(room.clone()).ok();
@@ -60,6 +61,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(roster::Lobby::default());
         app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(lobby::JoinPending::default());
@@ -104,6 +106,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(roster::Lobby::default());
         app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(lobby::JoinPending(Some("room-a".to_string())));
@@ -139,6 +142,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(roster::Lobby::default());
         app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(lobby::JoinPending::default());

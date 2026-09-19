@@ -9,6 +9,7 @@ use crate::lobby;
 pub struct JoinCtx<'w> {
     pub(crate) active: ResMut<'w, clicker::ActiveLobby>,
     pub(crate) selected: ResMut<'w, lobby::SelectedRoom>,
+    pub(crate) left: ResMut<'w, lobby::LeftRoom>,
     pub(crate) roster_lobby: ResMut<'w, roster::Lobby>,
     pub(crate) pending: ResMut<'w, lobby::JoinPending>,
     pub(crate) gate: ResMut<'w, lobby::JoinGate>,

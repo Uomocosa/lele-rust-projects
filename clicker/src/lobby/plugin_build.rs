@@ -6,6 +6,7 @@ pub fn build(_plugin: &lobby::Plugin, app: &mut App) {
     app.init_state::<lobby::AppState>()
         .init_resource::<lobby::RoomList>()
         .init_resource::<lobby::SelectedRoom>()
+        .init_resource::<lobby::LeftRoom>()
         .init_resource::<lobby::JoinPending>()
         .init_resource::<lobby::JoinGate>()
         .init_resource::<lobby::JoinClock>()

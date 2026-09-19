@@ -192,4 +192,36 @@ mod tests {
             .count();
         assert_eq!(count, 0, "a peer marked absent is never respawned");
     }
+
+    #[test]
+    fn no_duplicate_owner_entities() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(roster::Roster::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(net_id::NetworkId(1));
+        app.insert_resource(lobby::JoinPending::default());
+        app.world_mut().resource_mut::<roster::Roster>().add_entry(
+            "alpha".to_string(),
+            *blake3::hash(b"peer").as_bytes(),
+            "peer".to_string(),
+        );
+        app.world_mut().spawn((
+            clicker::Owner(net_id::NetworkId::from_peer("peer")),
+            clicker::ClickCounter::default(),
+        ));
+        app.add_systems(Update, spawn_on_join);
+        app.update();
+        app.update();
+        app.update();
+        let count = app
+            .world_mut()
+            .query::<&clicker::Owner>()
+            .iter(app.world())
+            .count();
+        assert_eq!(count, 1, "one cursor per peer id, never a duplicate");
+    }
 }

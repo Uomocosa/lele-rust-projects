@@ -27,6 +27,7 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(lobby::SelectedRoom(Some("alpha".to_string())));
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(roster::Lobby("alpha".to_string()));
         app.insert_resource(lobby::JoinPending(Some("alpha".to_string())));
         app.insert_resource(lobby::JoinGate::default());

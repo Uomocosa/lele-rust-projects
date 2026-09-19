@@ -68,6 +68,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(freenet_libp2p_bevy_plugin::roster::Lobby::default());
         app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(lobby::JoinPending::default());
@@ -101,6 +102,7 @@ mod tests {
         app.init_state::<lobby::AppState>();
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(freenet_libp2p_bevy_plugin::roster::Lobby::default());
         app.insert_resource(lobby::JoinClock::default());
         app.insert_resource(lobby::JoinPending::default());

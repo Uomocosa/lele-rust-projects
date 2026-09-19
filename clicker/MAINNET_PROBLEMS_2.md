@@ -1,5 +1,8 @@
 # MAINNET PROBLEMS 2 — GOSSIP + KADEMLIA + RELAY CAMPAIGN
 
+> **OUTDATED wording, see `MAINNET_PROBLEMS_10.md`:** "Freenet dials /
+> addresses" below means libp2p dials seeded by Freenet.
+
 Follow-up to `MAINNET_PROBLEMS.md`. Six instrumented mainnet runs
 (3 same-host instances, real public mainnet) after implementing
 Freenet-bootstrapped libp2p discovery (gossip roster mirror, kad seeding,

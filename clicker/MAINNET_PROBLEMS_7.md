@@ -1,5 +1,8 @@
 # MAINNET PROBLEMS 7 — turmoil connection-problem coverage: what fast tests reproduce, what they don't, what's next
 
+> **Scope note, see `MAINNET_PROBLEMS_10.md`:** matrix rows #8/#12/#13 are
+> libp2p-transport problems seeded by Freenet, not Freenet-ring problems.
+
 Follow-up to `MAINNET_PROBLEMS_6.md` (§6 retention + duplicate identity,
 289-green gate) and `TURMOIL_TO_EXPLAIN.md` (plans (a) retention + (b)
 link-down detection). This session implemented (b) in reduced form and

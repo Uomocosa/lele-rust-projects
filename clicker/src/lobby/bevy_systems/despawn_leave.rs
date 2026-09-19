@@ -54,4 +54,27 @@ mod tests {
             "loading overlay leaves with the room"
         );
     }
+
+    #[test]
+    fn own_cursor_removed_for_menu() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let own = app
+            .world_mut()
+            .spawn((
+                clicker::Owner(net_id::NetworkId(1)),
+                clicker::PlayerNo(1),
+                clicker::ClickCounter(7),
+            ))
+            .id();
+        app.add_systems(Update, despawn_leave);
+        app.update();
+        assert!(app.world().get_entity(own).is_err());
+        let remaining = app
+            .world_mut()
+            .query::<&clicker::PlayerNo>()
+            .iter(app.world())
+            .count();
+        assert_eq!(remaining, 0, "menu shows the OS cursor only");
+    }
 }

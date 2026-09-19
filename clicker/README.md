@@ -1,16 +1,29 @@
 # Clicker — discovery
 
+> ## Layer rule (read first)
+> - FREENET (seed only): room-name → params; room → `{PlayerNo → libp2p PeerId}`.
+>   No sockets, no dials, no liveness. `addrs` fields in
+>   `src/discovery/peer_entry.rs` and `src/discovery/directory_entry.rs`
+>   are one-time dial hints published by `src/discovery/roster_announce.rs`,
+>   not connection state.
+> - LIBP2P (transport): every dial, PEX, gossip, `SyncReq`/`SyncAck`,
+>   `WantJoin`/`Welcome`, heartbeat. Room converge budget ≤500ms same-host
+>   (`drive_roster` in `src/discovery/run.rs`).
+> - FREENET RING (`freenet-gateway` skill): node bootstrap plumbing only.
+>   Never cite it for app-mesh delays. Load that skill for harness bootstrap
+>   questions only; all gameplay/dial/converge diagnosis is libp2p.
+
 How instances find rooms and each other without any address ever being
 typed, passed, or configured. Two loops run **in parallel for the whole
 lifetime of the app**, sharing one hint store.
 
 ## The two loops
 
-| | Freenet loop (genesis) | libp2p loop (bootstrap + repair) |
+| | Freenet loop (seed) | libp2p loop (transport) |
 |---|---|---|
 | Discovers from nothing? | **Yes** — deterministic contract keys route globally, no IPs needed | No — needs at least one contact |
 | Direct dial? | No — contracts only carry data | **Yes** — TCP/QUIC dials, relay circuits, hole-punching |
-| What it learns | Roster entries (`PlayerId → PeerHint`), room directory | Peer hints + rooms, asked directly |
+| What it learns | Seed hints (`PlayerId → PeerHint`), room directory | Peer hints + rooms, asked directly |
 | Cadence | 1s poll, 5→30s announce, 30s bridge | 5s gossip heartbeat, per-connect PEX, 30s re-PEX, 15s redial |
 
 Start state is a **black vec**: zero known peers, zero known rooms.

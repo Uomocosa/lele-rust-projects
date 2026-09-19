@@ -35,6 +35,7 @@ const fn check_emoji(ok: bool) -> &'static str {
 const GAME_TITLES: [&str; 3] = ["clicker-1", "clicker-2", "clicker-3"];
 const CLICKS_EACH: u32 = 15;
 const LAG_AGREE_TIMEOUT_SECS: u64 = 60;
+const CONVERGE_BUDGET_MS: u128 = 500;
 
 fn log_contains(path: &std::path::Path, needle: &str) -> bool {
     std::fs::read_to_string(path).is_ok_and(|s| s.contains(needle))
@@ -639,7 +640,7 @@ async fn agree_within(logs: &[std::path::PathBuf], minimum: u64, secs: u64) -> O
         {
             return Some(*a);
         }
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
     None
 }
@@ -982,12 +983,20 @@ async fn phase_converge_drive(run: &mut Run<'_>) -> Result<(), String> {
     for title in GAME_TITLES {
         drive_title(title, CLICKS_EACH).await;
     }
+    let agree_start = Instant::now();
     let baseline = agree_within(
         &[run.log1.clone(), run.log2.clone(), run.log3.clone()],
         u64::from(CLICKS_EACH),
         LAG_AGREE_TIMEOUT_SECS,
     )
     .await;
+    let agree_ms = agree_start.elapsed().as_millis();
+    soft(
+        &mut run.checks,
+        "baseline-converge-ms",
+        agree_ms <= CONVERGE_BUDGET_MS,
+        format!("post-drive agreement took {agree_ms}ms, budget {CONVERGE_BUDGET_MS}ms"),
+    );
     let Some(baseline) = baseline else {
         return Err("no baseline agreement".to_string());
     };

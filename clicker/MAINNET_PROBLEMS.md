@@ -1,5 +1,9 @@
 # CLICKER MAINNET PROBLEMS AND PROPOSED SOLUTIONS
 
+> **OUTDATED wording, see `MAINNET_PROBLEMS_10.md`:** "Freenet dials /
+> Freenet addresses / discover each other via Freenet" below means libp2p
+> dials seeded by Freenet. Freenet = rooms + occupants seed only.
+
 How the clicker game finds other players without `--dial`: each instance boots an
 embedded Freenet client-peer node on the real mainnet and publishes its libp2p
 addrs into a per-lobby roster contract (`bincode(namespace, lobby)` params).

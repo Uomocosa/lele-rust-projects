@@ -18,6 +18,9 @@ pub fn apply_room(
     let Some(room) = room else {
         return;
     };
+    if Some(room.as_str()) == rooms.left.as_deref() {
+        return;
+    }
     if **rooms.active == room {
         return;
     }
@@ -44,6 +47,7 @@ mod tests {
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<lobby::AppState>();
         app.insert_resource(lobby::RoomRx(Mutex::new(Some(rx))));
+        app.insert_resource(lobby::LeftRoom::default());
         app.insert_resource(clicker::ActiveLobby::default());
         app.insert_resource(lobby::SelectedRoom::default());
         app.insert_resource(freenet_libp2p_bevy_plugin::roster::Lobby::default());
