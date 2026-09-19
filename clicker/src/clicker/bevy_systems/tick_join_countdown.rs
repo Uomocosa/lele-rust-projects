@@ -7,8 +7,12 @@ pub fn tick_join_countdown(
     mut labels: Query<&mut Text2d, With<clicker::CursorLabel>>,
 ) {
     for (reveal, children) in &query {
-        let millis = reveal
-            .reveal_at
+        let deadline = if reveal.player.is_some() {
+            reveal.reveal_at
+        } else {
+            reveal.fail_at
+        };
+        let millis = deadline
             .saturating_duration_since(std::time::Instant::now())
             .as_millis();
         let secs = u64::try_from(millis)
@@ -38,16 +42,18 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        let reveal_at = std::time::Instant::now()
+        let now = std::time::Instant::now();
+        let reveal_at = now
             .checked_add(std::time::Duration::from_millis(2_500))
-            .unwrap_or_else(std::time::Instant::now);
+            .unwrap_or(now);
         let cursor = app
             .world_mut()
             .spawn((
                 clicker::CursorIcon,
                 clicker::PendingReveal {
                     reveal_at,
-                    player: None,
+                    fail_at: now,
+                    player: Some(2),
                 },
             ))
             .id();
@@ -60,5 +66,35 @@ mod tests {
         app.update();
         let text = app.world().get::<Text2d>(label).map(|t| t.0.clone());
         assert_eq!(text, Some("3s".to_string()), "counts down by whole seconds");
+    }
+
+    #[test]
+    fn unresolved_counts_to_fail_deadline() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let now = std::time::Instant::now();
+        let fail_at = now
+            .checked_add(std::time::Duration::from_millis(4_500))
+            .unwrap_or(now);
+        let cursor = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::PendingReveal {
+                    reveal_at: now,
+                    fail_at,
+                    player: None,
+                },
+            ))
+            .id();
+        let label = app
+            .world_mut()
+            .spawn((clicker::CursorLabel, Text2d::new("0")))
+            .id();
+        app.world_mut().entity_mut(cursor).add_child(label);
+        app.add_systems(Update, tick_join_countdown);
+        app.update();
+        let text = app.world().get::<Text2d>(label).map(|t| t.0.clone());
+        assert_eq!(text, Some("5s".to_string()));
     }
 }

@@ -23,6 +23,7 @@ mod tests {
             peer: "peer-2".to_string(),
             joiner: net_id::NetworkId(2),
             reveal_at,
+            fail_at: reveal_at,
         }
     }
 

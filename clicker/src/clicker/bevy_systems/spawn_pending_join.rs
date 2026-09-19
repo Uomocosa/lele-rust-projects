@@ -31,6 +31,7 @@ pub fn spawn_pending_join(
                 commands.entity(entity).insert((
                     clicker::PendingReveal {
                         reveal_at: entry.reveal_at,
+                        fail_at: entry.fail_at,
                         player: (entry.joiner == own).then_some(*own),
                     },
                     clicker::CursorColor(gray),
@@ -49,6 +50,7 @@ pub fn spawn_pending_join(
                         clicker::TargetPos(spot),
                         clicker::PendingReveal {
                             reveal_at: entry.reveal_at,
+                            fail_at: entry.fail_at,
                             player: (entry.joiner == own).then_some(*own),
                         },
                         Mesh2d(meshes.add(clicker::cursor_mesh(1.0))),
@@ -98,15 +100,20 @@ mod tests {
     }
 
     fn arm(app: &mut App, peer: &str, joiner: u64) {
-        let reveal_at = std::time::Instant::now()
+        let now = std::time::Instant::now();
+        let reveal_at = now
             .checked_add(std::time::Duration::from_secs(5))
-            .unwrap_or_else(std::time::Instant::now);
+            .unwrap_or(now);
+        let fail_at = now
+            .checked_add(std::time::Duration::from_secs(30))
+            .unwrap_or(now);
         app.world_mut()
             .resource_mut::<lobby::JoinGate>()
             .arm_pending(lobby::PendingJoin {
                 peer: peer.to_string(),
                 joiner: net_id::NetworkId(joiner),
                 reveal_at,
+                fail_at,
             });
     }
 

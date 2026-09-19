@@ -31,6 +31,7 @@ mod tests {
             peer: "peer-2".to_string(),
             joiner: net_id::NetworkId(2),
             reveal_at: std::time::Instant::now(),
+            fail_at: std::time::Instant::now(),
         }];
         assert!(held(own, &pending, &[], "peer-2", net_id::NetworkId(2)));
         assert!(held(own, &pending, &[], "other-peer", net_id::NetworkId(2)));

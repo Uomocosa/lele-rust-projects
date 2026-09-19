@@ -19,7 +19,6 @@ impl JoinGate {
     pub fn arm_pending(&mut self, entry: lobby::PendingJoin) { lobby::join_gate_arm_pending::arm_pending(self, entry) }
     #[must_use]
     pub fn has_pending(&self, joiner: net_id::NetworkId) -> bool { lobby::join_gate_has_pending::has_pending(self, joiner) }
-    pub fn take_due_pending(&mut self, now: std::time::Instant) -> Vec<lobby::PendingJoin> { lobby::join_gate_take_due_pending::take_due_pending(self, now) }
 }
 
 #[cfg(test)]

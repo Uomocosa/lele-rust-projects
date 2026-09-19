@@ -30,10 +30,16 @@ pub fn decide_join_commit(
     let reveal_at = now
         .checked_add(std::time::Duration::from_millis(lobby::JOIN_REVEAL_MS))
         .unwrap_or(now);
+    let fail_at = now
+        .checked_add(std::time::Duration::from_secs(
+            lobby::PENDING_JOIN_FAIL_SECS,
+        ))
+        .unwrap_or(now);
     gate.arm_pending(lobby::PendingJoin {
         peer: format!("self-{}", *own),
         joiner: own,
         reveal_at,
+        fail_at,
     });
     let msg = clicker::CursorMsg::JoinCommit {
         room: room.clone(),

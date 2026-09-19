@@ -34,7 +34,6 @@ pub use join_gate::JoinGate;
 pub mod join_clock;
 mod join_gate_arm_pending;
 mod join_gate_has_pending;
-mod join_gate_take_due_pending;
 pub use join_clock::JoinClock;
 pub mod join_pending;
 pub use join_pending::JoinPending;

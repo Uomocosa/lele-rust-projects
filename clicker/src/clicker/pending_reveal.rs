@@ -3,6 +3,7 @@ use bevy::prelude::Component;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PendingReveal {
     pub reveal_at: std::time::Instant,
+    pub fail_at: std::time::Instant,
     pub player: Option<u64>,
 }
 
@@ -15,6 +16,7 @@ mod tests {
         let now = std::time::Instant::now();
         let marker = PendingReveal {
             reveal_at: now,
+            fail_at: now,
             player: Some(7),
         };
         assert_eq!(marker.reveal_at, now);

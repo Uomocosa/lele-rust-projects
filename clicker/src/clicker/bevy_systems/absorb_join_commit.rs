@@ -23,13 +23,20 @@ pub fn absorb_join_commit(
             continue;
         };
         if joiner != own {
-            let reveal_at = std::time::Instant::now()
+            let now = std::time::Instant::now();
+            let reveal_at = now
                 .checked_add(std::time::Duration::from_millis(starts_in_ms))
-                .unwrap_or_else(std::time::Instant::now);
+                .unwrap_or(now);
+            let fail_at = now
+                .checked_add(std::time::Duration::from_secs(
+                    lobby::PENDING_JOIN_FAIL_SECS,
+                ))
+                .unwrap_or(now);
             gate.arm_pending(lobby::PendingJoin {
                 peer,
                 joiner,
                 reveal_at,
+                fail_at,
             });
             tracing::info!(target: "clicker", room = %**active, joiner = *joiner, "join commit received");
         }

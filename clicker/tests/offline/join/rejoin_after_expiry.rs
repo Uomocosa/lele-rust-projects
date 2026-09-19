@@ -20,6 +20,9 @@ fn rejoin_after_expiry_respawns() {
             reveal_at: Instant::now()
                 .checked_add(Duration::from_secs(60))
                 .unwrap_or_else(Instant::now),
+            fail_at: Instant::now()
+                .checked_add(Duration::from_secs(90))
+                .unwrap_or_else(Instant::now),
         });
     }
     for _ in 0..2 {
@@ -93,10 +96,12 @@ fn force_due(mesh: &mut testing::Mesh) {
         let mut gate = app.world_mut().resource_mut::<lobby::JoinGate>();
         for entry in &mut gate.pending {
             entry.reveal_at = past;
+            entry.fail_at = past;
         }
         let mut markers = app.world_mut().query::<&mut clicker::PendingReveal>();
         for mut marker in markers.iter_mut(app.world_mut()) {
             marker.reveal_at = past;
+            marker.fail_at = past;
         }
     }
 }

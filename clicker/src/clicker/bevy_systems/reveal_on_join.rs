@@ -15,29 +15,38 @@ pub fn reveal_on_join(
 ) {
     let own = *own.into_inner();
     let lobby = lobby.into_inner();
+    let room = (**lobby).clone();
     let gate = gate.into_inner();
     let now = std::time::Instant::now();
-    for entry in gate.take_due_pending(now) {
-        let target = target_owner(&entry, own);
-        let mut found = false;
-        for (entity, owner, marker) in &targets {
-            if **owner != target {
-                continue;
-            }
-            found = true;
-            if let Some(player) = marker.player {
-                clicker::label_slot(&mut commands, &mut materials, entity, &entry.peer, player);
-                commands.entity(entity).remove::<clicker::PendingReveal>();
-                tracing::info!(target: "clicker", room = %**lobby, player, "join reveal");
-            } else {
-                commands.entity(entity).despawn();
-                gate.absent.push(entry.peer.clone());
-                tracing::warn!(target: "clicker", peer = %entry.peer, "join failed: no identity before reveal");
-            }
-            break;
+    for (entity, owner, marker) in &targets {
+        if now < marker.reveal_at {
+            continue;
         }
-        if !found {
-            gate.absent.push(entry.peer.clone());
+        let held = gate
+            .pending
+            .iter()
+            .find(|entry| target_owner(entry, own) == **owner)
+            .map(|entry| (entry.peer.clone(), entry.joiner));
+        if let Some(player) = marker.player {
+            clicker::label_slot(
+                &mut commands,
+                &mut materials,
+                entity,
+                held.as_ref().map_or("", |(peer, _)| peer.as_str()),
+                player,
+            );
+            commands.entity(entity).remove::<clicker::PendingReveal>();
+            if let Some((_, joiner)) = &held {
+                gate.pending.retain(|entry| entry.joiner != *joiner);
+            }
+            tracing::info!(target: "clicker", room = %room, player, "join reveal");
+        } else if now >= marker.fail_at {
+            commands.entity(entity).despawn();
+            if let Some((peer, joiner)) = &held {
+                gate.absent.push(peer.clone());
+                gate.pending.retain(|entry| entry.joiner != *joiner);
+                tracing::warn!(target: "clicker", room = %room, peer = %peer, "join failed: no identity before the fail deadline");
+            }
         }
     }
 }
@@ -60,7 +69,23 @@ mod tests {
     use crate::lobby;
     use freenet_libp2p_bevy_plugin::net_id;
 
-    fn test_app(reveal_at: std::time::Instant) -> (App, Entity) {
+    fn marker(
+        reveal_at: std::time::Instant,
+        fail_at: std::time::Instant,
+        player: Option<u64>,
+    ) -> clicker::PendingReveal {
+        clicker::PendingReveal {
+            reveal_at,
+            fail_at,
+            player,
+        }
+    }
+
+    fn test_app(
+        reveal_at: std::time::Instant,
+        fail_at: std::time::Instant,
+        player: Option<u64>,
+    ) -> (App, Entity) {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.init_resource::<Assets<ColorMaterial>>();
@@ -71,6 +96,7 @@ mod tests {
             peer: "peer-2".to_string(),
             joiner: net_id::NetworkId(2),
             reveal_at,
+            fail_at,
         });
         app.insert_resource(gate);
         let entity = app
@@ -80,10 +106,7 @@ mod tests {
                 clicker::Owner(net_id::NetworkId::from_peer("peer-2")),
                 clicker::CursorColor(Color::srgb(0.5, 0.5, 0.5)),
                 clicker::ClickCounter::default(),
-                clicker::PendingReveal {
-                    reveal_at,
-                    player: Some(2),
-                },
+                marker(reveal_at, fail_at, player),
             ))
             .id();
         app.add_systems(Update, reveal_on_join);
@@ -95,7 +118,7 @@ mod tests {
         let past = std::time::Instant::now()
             .checked_sub(std::time::Duration::from_secs(1))
             .unwrap_or_else(std::time::Instant::now);
-        let (mut app, entity) = test_app(past);
+        let (mut app, entity) = test_app(past, past, Some(2));
         app.update();
         app.update();
         let player = app.world().get::<clicker::PlayerNo>(entity);
@@ -109,10 +132,11 @@ mod tests {
 
     #[test]
     fn not_due_stays_hidden() {
-        let future = std::time::Instant::now()
+        let now = std::time::Instant::now();
+        let future = now
             .checked_add(std::time::Duration::from_secs(30))
-            .unwrap_or_else(std::time::Instant::now);
-        let (mut app, entity) = test_app(future);
+            .unwrap_or(now);
+        let (mut app, entity) = test_app(future, future, Some(2));
         app.update();
         assert!(app.world().get::<clicker::PlayerNo>(entity).is_none());
         assert!(app.world().get::<clicker::PendingReveal>(entity).is_some());
@@ -120,21 +144,33 @@ mod tests {
     }
 
     #[test]
+    fn late_identity_reveals_without_early_expiry() {
+        let now = std::time::Instant::now();
+        let reveal_at = now
+            .checked_sub(std::time::Duration::from_secs(5))
+            .unwrap_or(now);
+        let fail_at = now
+            .checked_add(std::time::Duration::from_secs(25))
+            .unwrap_or(now);
+        let (mut app, entity) = test_app(reveal_at, fail_at, None);
+        app.update();
+        assert!(
+            app.world().get_entity(entity).is_ok(),
+            "no identity yet, but still within the fail window"
+        );
+        assert!(app.world().get::<clicker::PlayerNo>(entity).is_none());
+    }
+
+    #[test]
     fn expired_identity_despawns_and_marks_absent() {
         let past = std::time::Instant::now()
             .checked_sub(std::time::Duration::from_secs(1))
             .unwrap_or_else(std::time::Instant::now);
-        let (mut app, entity) = test_app(past);
-        app.world_mut()
-            .entity_mut(entity)
-            .insert(clicker::PendingReveal {
-                reveal_at: past,
-                player: None,
-            });
+        let (mut app, entity) = test_app(past, past, None);
         app.update();
         assert!(
             app.world().get_entity(entity).is_err(),
-            "unresolved placeholder despawned"
+            "unresolved placeholder despawned past the fail deadline"
         );
         assert!(
             app.world()
@@ -146,17 +182,15 @@ mod tests {
     }
 
     #[test]
-    fn unknown_identity_stays_gray_until_due() {
-        let future = std::time::Instant::now()
+    fn unknown_identity_stays_gray_until_fail() {
+        let now = std::time::Instant::now();
+        let reveal_at = now
+            .checked_sub(std::time::Duration::from_secs(1))
+            .unwrap_or(now);
+        let fail_at = now
             .checked_add(std::time::Duration::from_secs(30))
-            .unwrap_or_else(std::time::Instant::now);
-        let (mut app, entity) = test_app(future);
-        app.world_mut()
-            .entity_mut(entity)
-            .insert(clicker::PendingReveal {
-                reveal_at: future,
-                player: None,
-            });
+            .unwrap_or(now);
+        let (mut app, entity) = test_app(reveal_at, fail_at, None);
         app.update();
         assert!(app.world().get_entity(entity).is_ok());
         assert!(app.world().get::<clicker::PlayerNo>(entity).is_none());

@@ -54,15 +54,18 @@ pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
             .pending
             .iter()
             .find(|held| held.peer == *from)
-            .map(|held| held.reveal_at);
+            .map(|held| (held.reveal_at, held.fail_at));
         for (entity, owner, numbered, _marker) in &ctx.peers {
             if ***owner != *sender || numbered.is_some() {
                 continue;
             }
             let spot = clicker::spawn_spot(player);
-            if let Some(reveal_at) = pending_reveal {
+            if let Some((reveal_at, fail_at)) = pending_reveal {
+                let now = std::time::Instant::now();
+                let reveal_at = if now >= reveal_at { now } else { reveal_at };
                 ctx.commands.entity(entity).insert(clicker::PendingReveal {
                     reveal_at,
+                    fail_at,
                     player: Some(*claimed),
                 });
             } else {
