@@ -81,6 +81,9 @@ pub use constants::*;
 pub mod label_slot;
 pub use label_slot::label_slot;
 
+pub mod pending_reveal;
+pub use pending_reveal::PendingReveal;
+
 pub mod lobby_count;
 pub use lobby_count::lobby_count;
 

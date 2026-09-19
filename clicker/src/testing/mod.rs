@@ -105,6 +105,9 @@ pub use move_gossip::move_gossip;
 mod owners;
 pub use owners::owners;
 
+mod unresolved_owners;
+pub use unresolved_owners::unresolved_owners;
+
 mod push_to;
 pub use push_to::push_to;
 
@@ -164,3 +167,24 @@ pub use tick_until_merged::tick_until_merged;
 
 pub mod ui_test_plugin;
 pub use ui_test_plugin::UiTestPlugin;
+
+mod request;
+
+pub mod click_xy;
+pub use click_xy::click_xy;
+
+pub mod named_button;
+pub use named_button::NamedButton;
+
+mod parse_named_buttons;
+
+pub mod named_buttons;
+pub use named_buttons::named_buttons;
+
+pub mod center_of;
+pub use center_of::center_of;
+
+pub mod click_button;
+pub use click_button::click_button;
+
+pub mod scenario;

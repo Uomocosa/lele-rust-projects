@@ -5,21 +5,25 @@ use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::p2p;
 
 use crate::clicker;
+use crate::lobby;
 
 pub fn send_want_join(
     mut events: ResMut<p2p::Events<clicker::CursorMsg>>,
     commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
     lobby: Res<clicker::ActiveLobby>,
+    gate: ResMut<lobby::JoinGate>,
     mut live: Local<HashSet<String, std::hash::RandomState>>,
 ) {
     let lobby = lobby.into_inner();
     let commands = commands.into_inner();
+    let gate = gate.into_inner();
     let room = (**lobby).clone();
     let mut rest = Vec::new();
     for event in events.take_all() {
         match event {
             p2p::Event::PeerConnected(peer) => {
                 if !room.is_empty() && live.insert(peer.clone()) {
+                    gate.absent.retain(|held| held != &peer);
                     tracing::debug!(target: "clicker", peer = %peer, room = %room, "join: want sent");
                     commands.push(p2p::Command::Send {
                         peer_id: peer.clone(),
@@ -44,6 +48,7 @@ mod tests {
 
     use super::send_want_join;
     use crate::clicker;
+    use crate::lobby;
     use freenet_libp2p_bevy_plugin::p2p;
 
     #[test]
@@ -53,6 +58,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
         app.world_mut()
             .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::PeerConnected("peer".to_string()));
@@ -86,6 +92,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
         app.add_systems(Update, send_want_join);
         for _ in 0..3 {
             app.world_mut()
@@ -109,6 +116,7 @@ mod tests {
         app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
         app.insert_resource(p2p::Commands::<clicker::CursorMsg>::default());
         app.insert_resource(clicker::ActiveLobby(String::new()));
+        app.insert_resource(lobby::JoinGate::default());
         app.world_mut()
             .resource_mut::<p2p::Events<clicker::CursorMsg>>()
             .push(p2p::Event::PeerConnected("peer".to_string()));

@@ -35,6 +35,7 @@ pub fn poll_directory(
         })
         .collect();
     entries.sort_by_key(|entry| std::cmp::Reverse(entry.updated_at));
+    entries.truncate(lobby::MENU_MAX_ROOMS);
     let same = rooms.entries.len() == entries.len()
         && rooms
             .entries
@@ -96,6 +97,38 @@ mod tests {
         assert_eq!(rooms.entries[0].name, "room-new");
         assert_eq!(rooms.entries[1].name, "room-old");
         assert_eq!(rooms.revision, 1);
+    }
+
+    #[test]
+    fn caps_menu_to_recent_rooms() {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<discovery::DirectoryState>();
+        let mut state = discovery::DirectoryState::new();
+        let cap = u64::try_from(lobby::MENU_MAX_ROOMS).unwrap_or_default();
+        for index in 0..cap.saturating_add(5) {
+            state.insert(
+                format!("room-{index}"),
+                discovery::DirectoryEntry {
+                    params: Vec::new(),
+                    peer_id: "peer".to_string(),
+                    addrs: Vec::new(),
+                    updated_at: index,
+                },
+            );
+        }
+        tx.send(state).expect("send");
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.insert_resource(lobby::DirectoryFeed(Mutex::new(Some(rx))));
+        app.insert_resource(lobby::RoomList::default());
+        app.insert_resource(lobby::DirectoryLive::default());
+        app.add_systems(Update, poll_directory);
+        app.update();
+        let rooms = app.world().resource::<lobby::RoomList>();
+        assert_eq!(rooms.entries.len(), lobby::MENU_MAX_ROOMS);
+        assert_eq!(
+            rooms.entries[0].name,
+            format!("room-{}", cap.saturating_add(4))
+        );
     }
 
     #[test]

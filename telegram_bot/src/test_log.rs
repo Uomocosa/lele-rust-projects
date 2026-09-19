@@ -25,7 +25,9 @@ mod tests {
     fn test_usage() {
         let log = TestLog::open("test_log_delegate_smoke");
         log.line("delegate smoke");
-        assert!(log.path.ends_with("test_log_delegate_smoke.log"));
+        let name = log.path.to_string_lossy();
+        assert!(name.contains("test_log_delegate_smoke-"));
+        assert!(name.ends_with(".log"));
         let _ = std::fs::remove_file(&log.path);
     }
 }

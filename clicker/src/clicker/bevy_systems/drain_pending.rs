@@ -4,12 +4,15 @@ use crate::clicker;
 
 pub fn drain_pending(
     mut commands: Commands,
-    mut targets: Query<(
-        Entity,
-        &clicker::Owner,
-        Option<&clicker::PlayerNo>,
-        &mut clicker::ClickCounter,
-    )>,
+    mut targets: Query<
+        (
+            Entity,
+            &clicker::Owner,
+            Option<&clicker::PlayerNo>,
+            &mut clicker::ClickCounter,
+        ),
+        Without<clicker::PendingReveal>,
+    >,
     mut pending: ResMut<clicker::PendingClicks>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -25,12 +28,15 @@ pub fn drain_pending(
 // needed helper: applies one pending click to the matching slot
 fn drain_item(
     commands: &mut Commands,
-    targets: &mut Query<(
-        Entity,
-        &clicker::Owner,
-        Option<&clicker::PlayerNo>,
-        &mut clicker::ClickCounter,
-    )>,
+    targets: &mut Query<
+        (
+            Entity,
+            &clicker::Owner,
+            Option<&clicker::PlayerNo>,
+            &mut clicker::ClickCounter,
+        ),
+        Without<clicker::PendingReveal>,
+    >,
     materials: &mut Assets<ColorMaterial>,
     item: &clicker::PendingClick,
 ) -> bool {
@@ -59,12 +65,15 @@ fn drain_item(
 
 // needed helper: locates the slot for a pending click without holding borrows
 fn find_slot(
-    targets: &Query<(
-        Entity,
-        &clicker::Owner,
-        Option<&clicker::PlayerNo>,
-        &mut clicker::ClickCounter,
-    )>,
+    targets: &Query<
+        (
+            Entity,
+            &clicker::Owner,
+            Option<&clicker::PlayerNo>,
+            &mut clicker::ClickCounter,
+        ),
+        Without<clicker::PendingReveal>,
+    >,
     item: &clicker::PendingClick,
 ) -> Option<(Entity, i32)> {
     let mut sender = None;

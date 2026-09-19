@@ -37,6 +37,11 @@ pub enum CursorMsg {
         own_score: (net_id::NetworkId, i32),
         joining: Vec<String>,
     },
+    JoinCommit {
+        room: String,
+        joiner: net_id::NetworkId,
+        starts_in_ms: u64,
+    },
 }
 
 #[cfg(test)]
@@ -92,5 +97,13 @@ mod tests {
         let encoded = bincode::serialize(&welcome).unwrap_or_default();
         let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
         assert_eq!(decoded, Some(welcome));
+        let commit = CursorMsg::JoinCommit {
+            room: "alpha".to_string(),
+            joiner: net_id::NetworkId(2),
+            starts_in_ms: 5_000,
+        };
+        let encoded = bincode::serialize(&commit).unwrap_or_default();
+        let decoded: Option<CursorMsg> = bincode::deserialize(&encoded).ok();
+        assert_eq!(decoded, Some(commit));
     }
 }

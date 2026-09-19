@@ -27,7 +27,8 @@ pub fn apply_delta(
                 clicker::CursorMsg::PexAsk { .. }
                 | clicker::CursorMsg::PexResp { .. }
                 | clicker::CursorMsg::WantJoin { .. }
-                | clicker::CursorMsg::Welcome { .. } => {}
+                | clicker::CursorMsg::Welcome { .. }
+                | clicker::CursorMsg::JoinCommit { .. } => {}
                 sync
                 @ (clicker::CursorMsg::SyncReq { .. } | clicker::CursorMsg::SyncAck { .. }) => {
                     rest.push(p2p::Event::Message {

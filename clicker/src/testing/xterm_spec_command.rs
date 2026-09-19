@@ -17,8 +17,12 @@ pub fn command(spec: &XtermSpec) -> String {
     } else {
         " --disable-mdns".to_string()
     };
+    let brp_env = spec
+        .brp_port
+        .map_or(String::new(), |port| format!("CLICKER_BRP_PORT={port} "));
     format!(
-        "stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} --transport {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        "{}stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} --transport {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        brp_env,
         shell_escape(&bin_str),
         shell_escape(spec.namespace),
         lobby_arg,

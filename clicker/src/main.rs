@@ -197,12 +197,25 @@ async fn main() {
     }));
     app.add_plugins(clicker::Plugin);
     app.add_plugins(lobby::Plugin);
+    maybe_add_remote(&mut app);
     if !room.is_empty() {
         app.world_mut()
             .resource_mut::<NextState<lobby::AppState>>()
             .set(lobby::AppState::InRoom);
     }
     app.run();
+}
+
+// needed helper: exposes the Bevy Remote Protocol only when a port is requested
+fn maybe_add_remote(app: &mut App) {
+    let Some(port) = std::env::var("CLICKER_BRP_PORT")
+        .ok()
+        .and_then(|raw| raw.parse::<u16>().ok())
+    else {
+        return;
+    };
+    app.add_plugins(bevy::remote::RemotePlugin::default());
+    app.add_plugins(bevy::remote::http::RemoteHttpPlugin::default().with_port(port));
 }
 
 // needed helper: maps the CLI transport flag onto the swarm transport mode

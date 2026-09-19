@@ -704,6 +704,7 @@ fn spawn_tag(terms: &mut Vec<TerminalGuard>, req: &SpawnRequest<'_>) -> bool {
         since_epoch: req.since_epoch,
         transport: req.transport,
         mdns: req.mdns,
+        brp_port: None,
         log: &log,
     };
     match spawn_xterm(&spec) {

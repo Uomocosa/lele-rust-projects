@@ -44,27 +44,40 @@ pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
         let taken = ctx
             .peers
             .iter()
-            .any(|(_, _, numbered)| numbered.is_some_and(|number| **number == *claimed));
+            .any(|(_, _, numbered, _)| numbered.is_some_and(|number| **number == *claimed));
         if taken {
             rest.push(event);
             continue;
         }
-        for (entity, owner, numbered) in &ctx.peers {
+        let pending_reveal = ctx
+            .gate
+            .pending
+            .iter()
+            .find(|held| held.peer == *from)
+            .map(|held| held.reveal_at);
+        for (entity, owner, numbered, _marker) in &ctx.peers {
             if ***owner != *sender || numbered.is_some() {
                 continue;
             }
             let spot = clicker::spawn_spot(player);
-            clicker::label_slot(
-                &mut ctx.commands,
-                &mut ctx.materials,
-                entity,
-                from,
-                *claimed,
-            );
-            if let Some(saved) = ctx.tombstones.restore(*claimed)
-                && let Ok(mut counter) = ctx.counters.get_mut(entity)
-            {
-                counter.max(saved);
+            if let Some(reveal_at) = pending_reveal {
+                ctx.commands.entity(entity).insert(clicker::PendingReveal {
+                    reveal_at,
+                    player: Some(*claimed),
+                });
+            } else {
+                clicker::label_slot(
+                    &mut ctx.commands,
+                    &mut ctx.materials,
+                    entity,
+                    from,
+                    *claimed,
+                );
+                if let Some(saved) = ctx.tombstones.restore(*claimed)
+                    && let Ok(mut counter) = ctx.counters.get_mut(entity)
+                {
+                    counter.max(saved);
+                }
             }
             for (spot_owner, mut transform, mut target) in &mut ctx.spots {
                 if ***spot_owner != *sender {
@@ -88,6 +101,7 @@ mod tests {
 
     use super::resolve_player;
     use crate::clicker;
+    use crate::lobby;
     use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
     #[test]
@@ -99,6 +113,7 @@ mod tests {
         app.insert_resource(net_id::NetworkId(99));
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(lobby::JoinGate::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()
@@ -153,6 +168,7 @@ mod tests {
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(99));
         app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(lobby::JoinGate::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()
@@ -193,6 +209,7 @@ mod tests {
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(99));
         app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(lobby::JoinGate::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()
@@ -241,6 +258,7 @@ mod tests {
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(99));
         app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(lobby::JoinGate::default());
         let sender = net_id::NetworkId::from_peer("peer");
         app.world_mut().spawn((
             clicker::CursorIcon,
@@ -288,6 +306,7 @@ mod tests {
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
         app.insert_resource(net_id::NetworkId(99));
         app.insert_resource(clicker::ScoreTombstones::default());
+        app.insert_resource(lobby::JoinGate::default());
         let sender = net_id::NetworkId::from_peer("peer");
         let visual = app
             .world_mut()

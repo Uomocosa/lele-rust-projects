@@ -1,35 +1,46 @@
 use bevy::prelude::*;
+use freenet_libp2p_bevy_plugin::net_id;
 
 use crate::lobby;
+
+type LoadingNodes<'w, 's> = Query<
+    'w,
+    's,
+    Entity,
+    Or<(
+        With<lobby::bevy_systems::LoadingRoot>,
+        With<lobby::bevy_systems::JoinSpinner>,
+    )>,
+>;
 
 pub fn clear_pending(
     mut commands: Commands,
     pending: ResMut<lobby::JoinPending>,
     gate: Res<lobby::JoinGate>,
     clock: Res<lobby::JoinClock>,
-    overlays: Query<Entity, With<lobby::bevy_systems::LoadingRoot>>,
-    spinners: Query<Entity, With<lobby::bevy_systems::JoinSpinner>>,
+    own: Res<net_id::NetworkId>,
+    overlays: LoadingNodes<'_, '_>,
 ) {
     let Some(room) = (**pending).clone() else {
         return;
     };
+    if gate.has_pending(*own.into_inner()) {
+        return;
+    }
     let gate = gate.into_inner();
     let clock = clock.into_inner();
-    let Some(wanted) = gate.expected.clone() else {
-        return;
-    };
-    if !is_ready(&wanted, clock) {
-        return;
+    if let Some(wanted) = gate.expected.as_ref() {
+        if !is_ready(wanted, clock) {
+            return;
+        }
+        tracing::info!(target: "clicker", room = %room, peers = wanted.len(), "join ready: quiet roster settled");
+    } else {
+        if !is_capped(clock) {
+            return;
+        }
+        tracing::warn!(target: "clicker", room = %room, "join abandoned: roster never resolved before the alone-cap");
     }
-    tracing::info!(target: "clicker", room = %room, peers = wanted.len(), "join ready: quiet roster settled");
-    let pending = pending.into_inner();
-    **pending = None;
-    for entity in &overlays {
-        commands.entity(entity).despawn();
-    }
-    for entity in &spinners {
-        commands.entity(entity).despawn();
-    }
+    finish_join(&mut commands, pending, &overlays);
 }
 
 // needed helper: ready once discovery goes quiet or the alone-cap expires
@@ -49,6 +60,28 @@ fn is_ready(wanted: &std::collections::BTreeSet<String>, clock: &lobby::JoinCloc
     quiet || capped
 }
 
+// needed helper: true once the alone-cap elapsed without a resolved roster
+fn is_capped(clock: &lobby::JoinClock) -> bool {
+    clock.clicked_at.is_some_and(|at| {
+        std::time::Instant::now()
+            .checked_duration_since(at)
+            .is_none_or(|d| d.as_secs() >= lobby::JOIN_CAP_SECS)
+    })
+}
+
+// needed helper: drops the pending gate and its loading overlay/spinner
+fn finish_join(
+    commands: &mut Commands,
+    pending: ResMut<lobby::JoinPending>,
+    overlays: &LoadingNodes<'_, '_>,
+) {
+    let pending = pending.into_inner();
+    **pending = None;
+    for entity in overlays {
+        commands.entity(entity).despawn();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::clear_pending;
@@ -62,6 +95,7 @@ mod tests {
         app.insert_resource(lobby::JoinPending(Some(room.to_string())));
         app.insert_resource(gate);
         app.insert_resource(clock);
+        app.insert_resource(freenet_libp2p_bevy_plugin::net_id::NetworkId(1));
         app.add_systems(Update, clear_pending);
         app
     }
@@ -71,6 +105,9 @@ mod tests {
         lobby::JoinGate {
             expected: wanted,
             synced: Vec::new(),
+            committed: false,
+            pending: Vec::new(),
+            absent: Vec::new(),
         }
     }
 
@@ -94,6 +131,18 @@ mod tests {
         }
     }
 
+    // needed helper: clock past the alone-cap with no peers discovered
+    fn capped_clock() -> lobby::JoinClock {
+        lobby::JoinClock {
+            clicked_at: Some(
+                std::time::Instant::now()
+                    .checked_sub(std::time::Duration::from_secs(lobby::JOIN_CAP_SECS + 1))
+                    .unwrap_or_else(std::time::Instant::now),
+            ),
+            last_new_peer: None,
+        }
+    }
+
     #[test]
     fn stays_while_expected_unknown() {
         let mut app = test_app("room-a", gate_with(None), busy_clock());
@@ -101,6 +150,21 @@ mod tests {
         assert!(
             app.world().resource::<lobby::JoinPending>().is_some(),
             "loading persists without the expected set"
+        );
+    }
+
+    #[test]
+    fn abandons_when_expected_never_arrives() {
+        let mut app = test_app("room-a", gate_with(None), capped_clock());
+        let overlay = app.world_mut().spawn(lobby::bevy_systems::LoadingRoot).id();
+        app.update();
+        assert!(
+            app.world().resource::<lobby::JoinPending>().is_none(),
+            "unresolved roster releases the gate past the alone-cap"
+        );
+        assert!(
+            app.world().get_entity(overlay).is_err(),
+            "overlay removed when the join is abandoned"
         );
     }
 

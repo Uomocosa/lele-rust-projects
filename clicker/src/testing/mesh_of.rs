@@ -52,7 +52,7 @@ fn link_rosters(mesh: &mut Mesh) {
     }
 }
 
-// needed helper: announces every peer to every app so sync requests fire
+// needed helper: announces every other peer to each app so sync requests fire
 fn push_joins(mesh: &mut Mesh) {
     let names: Vec<String> = mesh
         .players
@@ -60,10 +60,15 @@ fn push_joins(mesh: &mut Mesh) {
         .map(|player| format!("peer-{}", **player))
         .collect();
     for app in &mut mesh.apps {
+        let own = *app.world().resource::<clicker::InstanceInfo>().own_id;
+        let own_name = format!("peer-{own}");
         let mut events = app
             .world_mut()
             .resource_mut::<p2p::Events<clicker::CursorMsg>>();
         for name in &names {
+            if name == &own_name {
+                continue;
+            }
             events.push(p2p::Event::PeerConnected(name.clone()));
         }
     }

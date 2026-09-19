@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::clicker;
 
 pub fn update_cursor_label(
-    targets: Query<(&clicker::ClickCounter, &Children)>,
+    targets: Query<(&clicker::ClickCounter, &Children), Without<clicker::PendingReveal>>,
     mut labels: Query<&mut Text2d, With<clicker::CursorLabel>>,
 ) {
     for (counter, children) in &targets {

@@ -16,6 +16,9 @@ pub fn join_room(
     **rooms.pending = Some(room.to_string());
     rooms.gate.expected = None;
     rooms.gate.synced.clear();
+    rooms.gate.committed = false;
+    rooms.gate.pending.clear();
+    rooms.gate.absent.clear();
     rooms.clock.clicked_at = Some(std::time::Instant::now());
     rooms.clock.last_new_peer = None;
     let active = clicker::ActiveLobby(room.to_string());
@@ -57,6 +60,9 @@ mod tests {
         let mut gate = lobby::JoinGate {
             expected: Some(BTreeSet::from(["old-room-peer".to_string()])),
             synced: vec![lobby::SyncedPeer("old-room-peer".to_string())],
+            committed: true,
+            pending: Vec::new(),
+            absent: Vec::new(),
         };
         let mut clock = lobby::JoinClock::default();
         let mut commands = p2p::Commands::<clicker::CursorMsg>::default();
@@ -78,6 +84,7 @@ mod tests {
         assert_eq!(*pending, Some("room-a".to_string()));
         assert!(gate.expected.is_none(), "stale expected set resets on join");
         assert!(gate.synced.is_empty(), "stale sync record resets on join");
+        assert!(!gate.committed, "stale commit flag resets on join");
         assert!(clock.clicked_at.is_some(), "click starts the alone-cap");
         assert!(
             clock.last_new_peer.is_none(),

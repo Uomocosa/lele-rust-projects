@@ -8,7 +8,7 @@ use telegram_bot::{TestLog, send_video_best_effort};
 
 const TIMEOUT_SECS: u64 = 300;
 const RECORD_SECS: u64 = 240;
-const READY_SECS: u64 = 5;
+const READY_SECS: u64 = 45;
 const CREATE_READY_SECS: u64 = 60;
 
 struct SoftCheck {
@@ -114,6 +114,126 @@ fn resolved_count(path: &std::path::Path) -> usize {
         .unwrap_or_default()
 }
 
+fn parse_owners(path: &std::path::Path) -> std::collections::BTreeSet<u64> {
+    let mut owners = std::collections::BTreeSet::new();
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return owners;
+    };
+    for line in content.lines() {
+        let stripped = strip_ansi(line);
+        if stripped.contains("sync lobby=") {
+            owners.clear();
+            continue;
+        }
+        if !stripped.contains("tick lobby=") {
+            continue;
+        }
+        if let Some(owner) = parse_u64_after(&stripped, " owner=") {
+            owners.insert(owner);
+        }
+    }
+    owners
+}
+
+async fn wait_owners(path: &std::path::Path, expected: usize, secs: u64) -> bool {
+    let start = Instant::now();
+    while start.elapsed().as_secs() < secs {
+        if parse_owners(path).len() == expected {
+            return true;
+        }
+        poke();
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    parse_owners(path).len() == expected
+}
+
+async fn assert_owners(
+    checks: &mut Vec<SoftCheck>,
+    name: &str,
+    log: &std::path::Path,
+    expected: usize,
+    secs: u64,
+) {
+    let ok = wait_owners(log, expected, secs).await;
+    let seen = parse_owners(log).len();
+    soft(
+        checks,
+        name,
+        ok,
+        format!("live owners {seen} (expected {expected})"),
+    );
+    assert_eq!(seen, expected, "{name}: wrong live player count");
+}
+
+async fn assert_all_owners(
+    checks: &mut Vec<SoftCheck>,
+    prefix: &str,
+    logs: &[std::path::PathBuf],
+    expected: usize,
+    secs: u64,
+) {
+    for (index, log) in logs.iter().enumerate() {
+        let name = format!("{prefix}-{}", index.saturating_add(1));
+        assert_owners(checks, &name, log, expected, secs).await;
+    }
+}
+
+async fn assert_rejoin_visible(
+    checks: &mut Vec<SoftCheck>,
+    name: &str,
+    survivor_log: &std::path::Path,
+    logs: &[std::path::PathBuf],
+    secs: u64,
+) {
+    soft(
+        checks,
+        name,
+        log_contains(survivor_log, "join reveal"),
+        "a survivor logged the shared reveal after the rejoin".to_string(),
+    );
+    assert_all_owners(
+        checks,
+        &format!("{name}-owners"),
+        logs,
+        GAME_TITLES.len(),
+        secs,
+    )
+    .await;
+}
+
+async fn await_rejoin(
+    run: &mut Run<'_>,
+    label: &str,
+    rejoining: &std::path::Path,
+    survivor: &std::path::Path,
+) -> Result<SyncState, String> {
+    ensure(
+        wait_until(180, || {
+            log_contains(rejoining, "discovery: roster connected")
+        })
+        .await,
+        format!("{label}: never rejoined the roster"),
+    )?;
+    soft(
+        &mut run.checks,
+        &format!("ui-{label}"),
+        true,
+        format!("{label} rejoined {} via menu button", run.room),
+    );
+    let logs = [run.log1.clone(), run.log2.clone(), run.log3.clone()];
+    assert_rejoin_visible(
+        &mut run.checks,
+        label,
+        survivor,
+        &logs,
+        LAG_AGREE_TIMEOUT_SECS,
+    )
+    .await;
+    agree_within(&logs, u64::from(CLICKS_EACH), LAG_AGREE_TIMEOUT_SECS)
+        .await
+        .ok_or_else(|| format!("{label}: no agreement after rejoin"))
+}
+
 fn room_joined(path: &std::path::Path, room: &str) -> bool {
     log_contains(path, &format!("lobby={room}"))
 }
@@ -140,40 +260,69 @@ fn created_room(path: &std::path::Path) -> Option<String> {
     None
 }
 
-async fn sweep_click(
+const BRP_PORT_BASE: u16 = 17400;
+
+fn brp_port(tag: u64) -> u16 {
+    BRP_PORT_BASE.saturating_add(u16::try_from(tag).unwrap_or_default())
+}
+
+async fn brp_click(title: &str, port: u16, needle: &str) -> Result<(), String> {
+    let title = title.to_string();
+    let needle = needle.to_string();
+    tokio::task::spawn_blocking(move || clicker_lib::testing::click_button(&title, port, &needle))
+        .await
+        .map_err(|err| format!("brp click join: {err}"))?
+}
+
+fn is_fresh_room(room: &str) -> bool {
+    let Some(stamp) = room.strip_prefix("room-") else {
+        return false;
+    };
+    let Ok(epoch) = stamp.parse::<u64>() else {
+        return false;
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs())
+        .unwrap_or_default();
+    now.saturating_sub(epoch) < 300
+}
+
+async fn ui_create_room(
     title: &str,
-    y_center: i32,
-    timeout_secs: u64,
-    cond: impl Fn() -> bool,
-) -> Option<Instant> {
+    log: &std::path::Path,
+    port: u16,
+) -> Option<(String, Instant)> {
     let start = Instant::now();
-    let mut offsets: Vec<i32> = vec![0];
-    for step in 1_i32..=3 {
-        let delta = step.saturating_mul(10);
-        offsets.push(delta);
-        offsets.push(delta.saturating_neg());
-    }
-    let mut attempt = 0usize;
-    while start.elapsed().as_secs() < timeout_secs {
-        let slot = attempt.checked_rem(offsets.len()).unwrap_or(0);
-        let dy = offsets.get(slot).copied().unwrap_or(0);
-        attempt = attempt.saturating_add(1);
-        let clicked = click_at_y(title, 0.5, y_center.saturating_add(dy)).is_ok();
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        if clicked && cond() {
-            return Some(Instant::now());
+    while start.elapsed().as_secs() < 120 {
+        if brp_click(title, port, "create-new-room").await.is_ok()
+            && wait_until(30, || created_room(log).is_some()).await
+        {
+            return created_room(log).map(|room| (room, Instant::now()));
         }
+        tokio::time::sleep(Duration::from_secs(2)).await;
     }
-    cond().then(Instant::now)
+    created_room(log).map(|room| (room, Instant::now()))
 }
 
-async fn ui_create_room(title: &str, log: &std::path::Path) -> Option<(String, Instant)> {
-    let at = sweep_click(title, 84, 120, || created_room(log).is_some()).await?;
-    created_room(log).map(|room| (room, at))
-}
-
-async fn ui_join_room(title: &str, room: &str, log: &std::path::Path) -> Option<Instant> {
-    sweep_click(title, 84, 120, || room_joined(log, room)).await
+async fn ui_join_room(
+    title: &str,
+    room: &str,
+    log: &std::path::Path,
+    port: u16,
+) -> Option<Instant> {
+    let needle = format!("room:{room}");
+    let start = Instant::now();
+    while start.elapsed().as_secs() < 120 {
+        if brp_click(title, port, &needle).await.is_ok() {
+            let clicked_at = Instant::now();
+            if room_joined(log, room) || wait_until(30, || room_joined(log, room)).await {
+                return Some(clicked_at);
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+    None
 }
 
 fn file_len(path: &std::path::Path) -> u64 {
@@ -264,7 +413,7 @@ fn assert_slot_frozen(
     let series = own_slot_series(log, pos, room, slot);
     let ok = series
         .first()
-        .is_some_and(|first| *first <= 1 && series.iter().all(|value| value == first));
+        .is_some_and(|first| *first == 0 && series.iter().all(|value| value == first));
     soft(
         checks,
         name,
@@ -442,6 +591,7 @@ fn spawn_tag(req: &SpawnRequest<'_>) -> Option<TerminalGuard> {
         since_epoch: None,
         transport: req.transport,
         mdns: req.mdns,
+        brp_port: Some(brp_port(req.tag)),
         log: &log,
     };
     match spawn_xterm(&spec) {
@@ -625,9 +775,14 @@ async fn phase_creator(run: &mut Run<'_>) -> Result<(), String> {
         "instance 1 menu answered clicks only after directory live".to_string(),
     );
     let create_pos = file_len(&run.log1);
-    let Some((room, clicked_at)) = ui_create_room(GAME_TITLES[0], &run.log1).await else {
+    let Some((room, clicked_at)) = ui_create_room(GAME_TITLES[0], &run.log1, brp_port(1)).await
+    else {
         return Err("instance 1 never created a room via menu".to_string());
     };
+    ensure(
+        is_fresh_room(&room),
+        format!("create button joined a stale room instead of creating one: {room}"),
+    )?;
     eprintln!("created room via menu: {room}");
     soft(
         &mut run.checks,
@@ -689,7 +844,8 @@ async fn phase_join_2(run: &mut Run<'_>) -> Result<(), String> {
         format!("instance 2 pulled {} via late Get", run.room),
     );
     let join_pos = file_len(&run.log2);
-    let Some(clicked_at) = ui_join_room(GAME_TITLES[1], &run.room, &run.log2).await else {
+    let Some(clicked_at) = ui_join_room(GAME_TITLES[1], &run.room, &run.log2, brp_port(2)).await
+    else {
         return Err("instance 2 never joined room via menu".to_string());
     };
     assert_ready(
@@ -751,7 +907,8 @@ async fn phase_join_3(run: &mut Run<'_>) -> Result<(), String> {
         format!("instance 3 pulled {} via late Get", run.room),
     );
     let join_pos = file_len(&run.log3);
-    let Some(clicked_at) = ui_join_room(GAME_TITLES[2], &run.room, &run.log3).await else {
+    let Some(clicked_at) = ui_join_room(GAME_TITLES[2], &run.room, &run.log3, brp_port(3)).await
+    else {
         return Err("instance 3 never joined room via menu".to_string());
     };
     assert_ready(
@@ -812,6 +969,15 @@ async fn phase_converge_drive(run: &mut Run<'_>) -> Result<(), String> {
         converged,
         format!("tick+room+accounting+resolved>=2 on all 3, resolved={resolved:?}"),
     );
+    let converge_logs = [run.log1.clone(), run.log2.clone(), run.log3.clone()];
+    assert_all_owners(
+        &mut run.checks,
+        "owners",
+        &converge_logs,
+        GAME_TITLES.len(),
+        LAG_AGREE_TIMEOUT_SECS,
+    )
+    .await;
     for title in GAME_TITLES {
         drive_title(title, CLICKS_EACH).await;
     }
@@ -856,6 +1022,15 @@ async fn phase_rejoin_3(run: &mut Run<'_>) -> Result<(), String> {
         true,
         format!("room kept ticking after app3 left, ticks={after_leave}"),
     );
+    let leave_logs = [run.log1.clone(), run.log2.clone()];
+    assert_all_owners(
+        &mut run.checks,
+        "leave-owners",
+        &leave_logs,
+        2,
+        LAG_AGREE_TIMEOUT_SECS,
+    )
+    .await;
     let before_rejoin = tick_lines(&run.log2);
     let Some((guard, log)) = spawn_puller(&PullerRequest {
         bin: run.bin,
@@ -876,7 +1051,8 @@ async fn phase_rejoin_3(run: &mut Run<'_>) -> Result<(), String> {
     run.guard3 = Some(guard);
     run.log3 = log;
     let rejoin_pos = file_len(&run.log3);
-    let Some(clicked_at) = ui_join_room(GAME_TITLES[2], &run.room, &run.log3).await else {
+    let Some(clicked_at) = ui_join_room(GAME_TITLES[2], &run.room, &run.log3, brp_port(3)).await
+    else {
         return Err("instance 3 never rejoined room via menu".to_string());
     };
     assert_ready(
@@ -889,28 +1065,9 @@ async fn phase_rejoin_3(run: &mut Run<'_>) -> Result<(), String> {
         READY_SECS,
     )
     .await;
-    ensure(
-        wait_until(180, || {
-            log_contains(&run.log3, "discovery: roster connected")
-        })
-        .await,
-        "instance 3 never rejoined roster".to_string(),
-    )?;
-    soft(
-        &mut run.checks,
-        "ui-rejoin-3",
-        true,
-        format!("instance 3 rejoined {} via menu button", run.room),
-    );
-    let restored = agree_within(
-        &[run.log1.clone(), run.log2.clone(), run.log3.clone()],
-        u64::from(CLICKS_EACH),
-        LAG_AGREE_TIMEOUT_SECS,
-    )
-    .await;
-    let Some(restored) = restored else {
-        return Err("no agreement after app3 rejoin".to_string());
-    };
+    let rejoining = run.log3.clone();
+    let survivor = run.log2.clone();
+    let restored = await_rejoin(run, "rejoin-3", &rejoining, &survivor).await?;
     let baseline = run.baseline.ok_or_else(|| "baseline missing".to_string())?;
     ensure(
         restored.p1 >= baseline.p1 && restored.p2 >= baseline.p2 && restored.p3 >= baseline.p3,
@@ -978,7 +1135,8 @@ async fn phase_rejoin_creator(run: &mut Run<'_>) -> Result<(), String> {
     run.guard1 = Some(guard);
     run.log1 = log;
     let rejoin_pos = file_len(&run.log1);
-    let Some(clicked_at) = ui_join_room(GAME_TITLES[0], &run.room, &run.log1).await else {
+    let Some(clicked_at) = ui_join_room(GAME_TITLES[0], &run.room, &run.log1, brp_port(1)).await
+    else {
         return Err("creator never rejoined room via menu".to_string());
     };
     assert_ready(
@@ -991,28 +1149,9 @@ async fn phase_rejoin_creator(run: &mut Run<'_>) -> Result<(), String> {
         READY_SECS,
     )
     .await;
-    ensure(
-        wait_until(180, || {
-            log_contains(&run.log1, "discovery: roster connected")
-        })
-        .await,
-        "creator never rejoined roster".to_string(),
-    )?;
-    soft(
-        &mut run.checks,
-        "ui-rejoin-1",
-        true,
-        format!("creator rejoined {} via menu button", run.room),
-    );
-    let final_state = agree_within(
-        &[run.log1.clone(), run.log2.clone(), run.log3.clone()],
-        u64::from(CLICKS_EACH),
-        LAG_AGREE_TIMEOUT_SECS,
-    )
-    .await;
-    let Some(final_state) = final_state else {
-        return Err("no agreement after creator rejoin".to_string());
-    };
+    let rejoining = run.log1.clone();
+    let survivor = run.log2.clone();
+    let final_state = await_rejoin(run, "rejoin-1", &rejoining, &survivor).await?;
     let restored = run.restored.ok_or_else(|| "restored missing".to_string())?;
     ensure(
         final_state.p1 >= restored.p1
@@ -1062,7 +1201,7 @@ async fn phase_leave_load(run: &mut Run<'_>) -> Result<(), String> {
     );
     let join4_pos = file_len(&run.log4);
     ensure(
-        ui_join_room("clicker-4", &run.room, &run.log4)
+        ui_join_room("clicker-4", &run.room, &run.log4, brp_port(4))
             .await
             .is_some(),
         "instance 4 never joined room via menu".to_string(),

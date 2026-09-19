@@ -1,3 +1,6 @@
+mod commit_reveals_together;
+mod no_self_ghost;
+mod rejoin_after_expiry;
 mod spectate_spawns_remotes_while_join_pending;
 mod wantjoin_answered_with_welcome;
 mod welcome_learns_peers_into_roster_and_gate;

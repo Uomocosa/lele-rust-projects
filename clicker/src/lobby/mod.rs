@@ -30,12 +30,19 @@ pub mod expected_rx;
 pub use expected_rx::ExpectedRx;
 pub mod join_gate;
 pub use join_gate::JoinGate;
+
 pub mod join_clock;
+mod join_gate_arm_pending;
+mod join_gate_has_pending;
+mod join_gate_take_due_pending;
 pub use join_clock::JoinClock;
 pub mod join_pending;
 pub use join_pending::JoinPending;
 pub mod synced_peer;
 pub use synced_peer::SyncedPeer;
+
+pub mod pending_join;
+pub use pending_join::PendingJoin;
 
 pub mod join_rooms;
 pub use join_rooms::JoinRooms;

@@ -4,9 +4,11 @@ use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
 use crate::clicker;
+use crate::lobby;
 
 #[derive(SystemParam)]
 pub struct ResolveCtx<'w, 's> {
+    pub(crate) gate: Res<'w, lobby::JoinGate>,
     pub(crate) events: ResMut<'w, p2p::Events<clicker::CursorMsg>>,
     pub(crate) peers: Query<
         'w,
@@ -15,6 +17,7 @@ pub struct ResolveCtx<'w, 's> {
             Entity,
             &'static clicker::Owner,
             Option<&'static clicker::PlayerNo>,
+            Option<&'static clicker::PendingReveal>,
         ),
     >,
     pub(crate) spots: Query<

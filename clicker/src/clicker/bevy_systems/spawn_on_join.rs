@@ -1,19 +1,24 @@
 use bevy::prelude::*;
 
 use freenet_libp2p_bevy_plugin::net_id;
-use freenet_libp2p_bevy_plugin::roster;
 
+use super::spawn_on_join_ctx::SpawnOnJoinCtx;
+use super::spawn_on_join_ctx_held;
 use crate::clicker;
 
 pub fn spawn_on_join(
     mut commands: Commands,
     owners: Query<&clicker::Owner>,
-    roster: Res<roster::Roster>,
-    lobby: Res<clicker::ActiveLobby>,
-    own: Res<net_id::NetworkId>,
+    ctx: SpawnOnJoinCtx,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    let SpawnOnJoinCtx {
+        roster,
+        lobby,
+        own,
+        gate,
+    } = ctx;
     let roster = roster.into_inner();
     let lobby = lobby.into_inner();
     let own = own.into_inner();
@@ -26,7 +31,8 @@ pub fn spawn_on_join(
     };
     for peer in members.values() {
         let id = net_id::NetworkId::from_peer(peer);
-        if id == *own || known.contains(&id) {
+        let held = spawn_on_join_ctx_held::held(*own, &gate.pending, &gate.absent, peer, id);
+        if id == *own || known.contains(&id) || held {
             continue;
         }
         if known.len() >= clicker::LOBBY_CAP {
@@ -77,6 +83,7 @@ mod tests {
         app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(lobby::JoinPending::default());
         app.world_mut().resource_mut::<roster::Roster>().add_entry(
@@ -111,6 +118,7 @@ mod tests {
         app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(lobby::JoinPending::default());
         app.world_mut().resource_mut::<roster::Roster>().add_entry(
@@ -136,6 +144,7 @@ mod tests {
         app.init_resource::<Assets<ColorMaterial>>();
         app.insert_resource(roster::Roster::default());
         app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
         app.insert_resource(net_id::NetworkId(1));
         app.insert_resource(lobby::JoinPending(Some("alpha".to_string())));
         app.world_mut().resource_mut::<roster::Roster>().add_entry(
@@ -152,5 +161,35 @@ mod tests {
             .iter(app.world())
             .count();
         assert_eq!(count, 1, "spectating joiner renders the room while loading");
+    }
+
+    #[test]
+    fn absent_peer_not_respawned() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(roster::Roster::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(net_id::NetworkId(1));
+        app.world_mut().resource_mut::<roster::Roster>().add_entry(
+            "alpha".to_string(),
+            *blake3::hash(b"peer").as_bytes(),
+            "peer".to_string(),
+        );
+        app.world_mut()
+            .resource_mut::<lobby::JoinGate>()
+            .absent
+            .push("peer".to_string());
+        app.add_systems(Update, spawn_on_join);
+        app.update();
+        app.update();
+        let count = app
+            .world_mut()
+            .query::<&clicker::Owner>()
+            .iter(app.world())
+            .count();
+        assert_eq!(count, 0, "a peer marked absent is never respawned");
     }
 }

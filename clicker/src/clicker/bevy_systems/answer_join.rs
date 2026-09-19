@@ -27,7 +27,13 @@ pub fn answer_join(
             } if room.as_str() == lobby.as_str() => {
                 let peers = members
                     .get(&room)
-                    .map(|entries| entries.values().cloned().collect())
+                    .map(|entries| {
+                        entries
+                            .values()
+                            .filter(|peer| peer.as_str() != from.as_str())
+                            .cloned()
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let mut score = 0;
                 for (owner, counter) in &targets {
@@ -122,6 +128,50 @@ mod tests {
                 .is_empty(),
             "the join request is consumed"
         );
+    }
+
+    #[test]
+    fn welcome_never_advertises_the_requester() {
+        let mut app = test_app();
+        {
+            let mut roster = app.world_mut().resource_mut::<roster::Roster>();
+            roster.add_entry(
+                "alpha".to_string(),
+                *blake3::hash(b"peer-9").as_bytes(),
+                "peer-9".to_string(),
+            );
+            roster.add_entry(
+                "alpha".to_string(),
+                *blake3::hash(b"peer-8").as_bytes(),
+                "peer-8".to_string(),
+            );
+        }
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Message {
+                from: "peer-9".to_string(),
+                payload: clicker::CursorMsg::WantJoin {
+                    room: "alpha".to_string(),
+                },
+            });
+        app.add_systems(Update, answer_join);
+        app.update();
+        let commands = app.world().resource::<p2p::Commands<clicker::CursorMsg>>();
+        let peers = commands
+            .iter()
+            .find_map(|command| match command {
+                p2p::Command::Send {
+                    payload: clicker::CursorMsg::Welcome { peers, .. },
+                    ..
+                } => Some(peers.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+        assert!(
+            !peers.contains(&"peer-9".to_string()),
+            "no self echo: {peers:?}"
+        );
+        assert!(peers.contains(&"peer-8".to_string()));
     }
 
     #[test]

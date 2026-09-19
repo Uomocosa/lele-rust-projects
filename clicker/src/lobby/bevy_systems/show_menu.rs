@@ -41,12 +41,28 @@ fn spawn_menu(commands: &mut Commands, rooms: &lobby::RoomList) {
                 lobby::bevy_systems::MenuRoot,
                 Text::new(format!("rooms ({})", rooms.entries.len())),
             ));
+            parent
+                .spawn((
+                    lobby::bevy_systems::MenuRoot,
+                    lobby::bevy_systems::CreateMarker,
+                    Button,
+                    Name::new("create-new-room"),
+                    Node {
+                        padding: UiRect::all(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.2, 0.5, 0.25)),
+                ))
+                .with_children(|button| {
+                    button.spawn((lobby::bevy_systems::MenuRoot, Text::new("create new room")));
+                });
             for entry in &rooms.entries {
                 parent
                     .spawn((
                         lobby::bevy_systems::MenuRoot,
                         lobby::bevy_systems::RoomButton(entry.name.clone()),
                         Button,
+                        Name::new(format!("room:{}", entry.name)),
                         Node {
                             padding: UiRect::all(Val::Px(10.0)),
                             ..default()
@@ -58,20 +74,6 @@ fn spawn_menu(commands: &mut Commands, rooms: &lobby::RoomList) {
                             .spawn((lobby::bevy_systems::MenuRoot, Text::new(entry.name.clone())));
                     });
             }
-            parent
-                .spawn((
-                    lobby::bevy_systems::MenuRoot,
-                    lobby::bevy_systems::CreateMarker,
-                    Button,
-                    Node {
-                        padding: UiRect::all(Val::Px(10.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.2, 0.5, 0.25)),
-                ))
-                .with_children(|button| {
-                    button.spawn((lobby::bevy_systems::MenuRoot, Text::new("create new room")));
-                });
         });
 }
 

@@ -12,6 +12,7 @@ pub struct XtermSpec<'a> {
     pub since_epoch: Option<u64>,
     pub transport: &'a str,
     pub mdns: bool,
+    pub brp_port: Option<u16>,
     pub log: &'a Path,
 }
 
@@ -39,6 +40,7 @@ mod tests {
             since_epoch: None,
             transport: "tcp",
             mdns: true,
+            brp_port: None,
             log: Path::new("/tmp/x.log"),
         };
         assert!(spec.command().contains("--namespace"));
