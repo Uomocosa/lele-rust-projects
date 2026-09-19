@@ -30,7 +30,9 @@ pub fn tick_log(
     let mut p1 = 0;
     let mut p2 = 0;
     let mut p3 = 0;
+    let mut ids: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
     for (player, counter) in &logical {
+        ids.insert(**player);
         if **player == 1 {
             p1 = **counter;
         } else if **player == 2 {
@@ -39,8 +41,13 @@ pub fn tick_log(
             p3 = **counter;
         }
     }
+    let players = ids
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<String>>()
+        .join(",");
     tracing::info!(
-        "sync lobby={} p1={p1} p2={p2} p3={p3} global={}",
+        "sync lobby={} p1={p1} p2={p2} p3={p3} players={players} global={}",
         **lobby,
         **global
     );

@@ -118,23 +118,22 @@ fn parse_owners(path: &std::path::Path) -> std::collections::BTreeSet<u64> {
     let Ok(content) = std::fs::read_to_string(path) else {
         return std::collections::BTreeSet::new();
     };
-    let mut current = std::collections::BTreeSet::new();
-    let mut last = std::collections::BTreeSet::new();
+    let mut live = std::collections::BTreeSet::new();
     for line in content.lines() {
         let stripped = strip_ansi(line);
-        if stripped.contains("sync lobby=") {
-            last.clone_from(&current);
-            current.clear();
+        let Some(rest) = stripped.split("sync lobby=").nth(1) else {
             continue;
-        }
-        if !stripped.contains("tick lobby=") {
+        };
+        let Some(players) = rest.split(" players=").nth(1) else {
             continue;
-        }
-        if let Some(owner) = parse_u64_after(&stripped, " owner=") {
-            current.insert(owner);
-        }
+        };
+        let list = players.split(" global=").next().unwrap_or_default();
+        live = list
+            .split(',')
+            .filter_map(|value| value.parse::<u64>().ok())
+            .collect();
     }
-    if current.is_empty() { last } else { current }
+    live
 }
 
 async fn wait_owners(path: &std::path::Path, expected: usize, secs: u64) -> bool {
@@ -162,9 +161,9 @@ async fn assert_owners(
         checks,
         name,
         ok,
-        format!("live owners {seen} (expected {expected})"),
+        format!("resolved players {seen} (expected {expected})"),
     );
-    assert_eq!(seen, expected, "{name}: wrong live player count");
+    assert_eq!(seen, expected, "{name}: wrong resolved player count");
 }
 
 async fn assert_all_owners(
