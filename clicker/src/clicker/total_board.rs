@@ -219,6 +219,7 @@ mod tests {
         out: Res<StatsOut>,
         mut exit: MessageWriter<AppExit>,
     ) {
+        let time = time.into_inner();
         if time.elapsed_secs() < RUN_SECS {
             return;
         }

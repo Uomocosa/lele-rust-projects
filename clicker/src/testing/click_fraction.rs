@@ -7,8 +7,8 @@ use super::window_size;
 pub fn click_fraction(title: &str, fx: f64, fy: f64) -> Result<(), String> {
     let wid = window_id::window_id(title)?;
     let (width, height) = window_size::window_size(&wid)?;
-    let x = (f64::from(width) * fx) as i32;
-    let y = f64::from(height).mul_add(fy, 0.0) as i32;
+    let x = f64::from(width) * fx;
+    let y = f64::from(height).mul_add(fy, 0.0);
     mouse_click_at::mouse_click_at(&wid, x, y)
 }
 

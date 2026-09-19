@@ -1,0 +1,7 @@
+mod bootstrapped_hints_dedup_across_freenet_and_libp2p;
+mod cold_start_partitions_heal_through_directory_merge;
+mod disjoint_singletons_union_on_bridge;
+mod higher_dialer_force_dials_after_one_silent_period;
+mod simultaneous_learn_triggers_single_dialer;
+mod stale_rooms_never_win_pick;
+mod star_leaves_still_resolve_the_same_room;

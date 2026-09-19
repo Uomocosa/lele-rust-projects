@@ -45,6 +45,13 @@ pub use require_xterm::require_xterm;
 pub mod spawn_xterm;
 pub use spawn_xterm::spawn_xterm;
 
+mod shell_escape;
+
+mod xterm_spec;
+pub use xterm_spec::XtermSpec;
+
+mod xterm_spec_command;
+
 pub mod speed_clip;
 pub use speed_clip::speed_clip;
 
@@ -86,17 +93,40 @@ pub use get_count::get_count;
 pub mod get_global;
 pub use get_global::get_global;
 
+mod seed_directory;
+pub use seed_directory::seed_directory;
+
+mod live_snapshot;
+pub use live_snapshot::live_snapshot;
+
+mod move_gossip;
+pub use move_gossip::move_gossip;
+
+mod owners;
+pub use owners::owners;
+
+mod push_to;
+pub use push_to::push_to;
+
+mod gossip_roster;
+pub use gossip_roster::gossip_roster;
+
+mod history_chunk;
+pub use history_chunk::history_chunk;
+
 pub mod mesh;
 pub use mesh::Mesh;
 
-mod mesh_click;
+pub mod turmoil;
+
+mod mesh_await_convergence;
 
 mod mesh_count;
 pub use mesh_count::MeshCount;
 
+mod mesh_count_count;
 mod mesh_count_is_consistent;
-
-mod mesh_count_wanted;
+mod mesh_count_of;
 
 mod mesh_counts;
 
@@ -108,6 +138,8 @@ mod fake_dht_put;
 
 mod mesh_component;
 mod mesh_heal;
+mod mesh_index_of;
+mod mesh_of;
 mod mesh_partition;
 mod mesh_severed;
 
@@ -115,7 +147,17 @@ mod mesh_route;
 
 mod mesh_step;
 
-mod mesh_three;
+mod player;
+pub use player::Player;
+
+mod player_new;
+
+mod peer;
+mod peer_click_once;
+mod peer_clicks;
+mod peer_heal_with;
+mod peer_new;
+mod peer_partition_from;
 
 pub mod tick_until_merged;
 pub use tick_until_merged::tick_until_merged;

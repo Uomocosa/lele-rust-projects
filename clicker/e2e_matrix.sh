@@ -30,7 +30,7 @@ run_cell() {
     local start
     start=$(date +%s)
     local out
-    out=$(RUST_LOG="info,rodio=off,cpal=off,alsa=off" cargo nextest run --test "$suite" --features dev --run-ignored all -- --nocapture 2>&1)
+    out=$(RUST_LOG="info,rodio=off,cpal=off,alsa=off" cargo nextest run --test "$suite" --all-features --run-ignored all -- --nocapture 2>&1)
     local code=$?
     local end
     end=$(date +%s)
@@ -58,5 +58,5 @@ if [ "$SUITES" = "all" ] || [ "$SUITES" = "mainnet_local" ]; then
 fi
 
 TABLE=$(cat "$REPORT")
-cargo run --quiet --features dev --example send_text_msg -- "clicker e2e matrix ${STAMP}" "$TABLE" 2>&1 | tail -2
+cargo run --quiet --all-features --example send_text_msg -- "clicker e2e matrix ${STAMP}" "$TABLE" 2>&1 | tail -2
 echo "matrix report: $REPORT"

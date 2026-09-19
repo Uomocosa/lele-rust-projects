@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use telegram_bot;
-
 fn main() -> std::process::ExitCode {
     match run() {
         Ok(()) => std::process::ExitCode::SUCCESS,

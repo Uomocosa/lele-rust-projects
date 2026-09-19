@@ -1,21 +1,25 @@
 use super::mesh_count::MeshCount;
 
-pub const fn is_consistent(count: &MeshCount) -> bool {
-    count.global == count.p1.saturating_add(count.p2).saturating_add(count.p3)
+#[must_use]
+pub fn is_consistent(count: &MeshCount) -> bool {
+    let sum = count.per.values().copied().fold(0, i32::saturating_add);
+    count.global == sum
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_consistent;
-    use crate::testing;
+    use super::super::player::Player;
+    use super::{MeshCount, is_consistent};
 
     #[test]
     fn test_usage() {
-        assert!(is_consistent(&testing::MeshCount::wanted(1, 2, 3)));
-        assert!(!is_consistent(&testing::MeshCount {
-            p1: 1,
-            p2: 0,
-            p3: 0,
+        assert!(is_consistent(&MeshCount::of([
+            (Player(1), 1),
+            (Player(2), 2),
+            (Player(3), 3),
+        ])));
+        assert!(!is_consistent(&MeshCount {
+            per: std::iter::once((Player(1), 1)).collect(),
             global: 0,
         }));
     }

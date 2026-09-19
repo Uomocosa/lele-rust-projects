@@ -40,19 +40,19 @@
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
 
   tasks = {
-    "lele:build" = { exec = "cargo build --all-targets"; showOutput = true; };
-    "lele:clippy" = { exec = "cargo clippy --all-targets -- -D warnings"; showOutput = true; };
+    "lele:build" = { exec = "cargo build --all-targets --all-features"; showOutput = true; };
+    "lele:clippy" = { exec = "cargo clippy --all-targets --all-features -- -D warnings"; showOutput = true; };
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
-    "lele:nextest" = { exec = "cargo nextest run --all-targets --features dev"; showOutput = true; };
+    "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
     "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
-    "freenet:run-local-mainnet" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test mainnet_local --features dev --run-ignored all -- --nocapture"; showOutput = true; };
-    "freenet:run-rooms-rejoin" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test rooms_rejoin --features dev --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-local-mainnet" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-rooms-rejoin" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test rooms_rejoin --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:e2e-matrix" = { exec = "bash e2e_matrix.sh 2>&1"; showOutput = true; };
-    "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --features dev --run-ignored all -- --nocapture"; showOutput = true; };
-    "ui:previews-telegram" = { exec = "export VK_ICD_FILENAMES=\"${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json\" && cargo nextest run ui_png_preview --features dev --run-ignored all -- --nocapture && cargo nextest run ui_mp4_preview --features dev --run-ignored all -- --nocapture && cargo run --features dev --example send_previews"; showOutput = true; };
+    "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "ui:previews-telegram" = { exec = "export VK_ICD_FILENAMES=\"${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json\" && cargo nextest run ui_png_preview --all-features --run-ignored all -- --nocapture && cargo nextest run ui_mp4_preview --all-features --run-ignored all -- --nocapture && cargo run --features dev --example send_previews"; showOutput = true; };
   };
 
   git-hooks.hooks = {

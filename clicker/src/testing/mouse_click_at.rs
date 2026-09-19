@@ -2,7 +2,7 @@ use std::process::Command;
 
 /// # Errors
 /// Returns an error if the cursor cannot be moved or clicked.
-pub(crate) fn mouse_click_at(wid: &str, x: i32, y: i32) -> Result<(), String> {
+pub fn mouse_click_at(wid: &str, x: f64, y: f64) -> Result<(), String> {
     let raised = Command::new("xdotool")
         .args(["windowactivate", wid])
         .status()
@@ -12,7 +12,13 @@ pub(crate) fn mouse_click_at(wid: &str, x: i32, y: i32) -> Result<(), String> {
     }
     std::thread::sleep(std::time::Duration::from_millis(300));
     let moved = Command::new("xdotool")
-        .args(["mousemove", "--window", wid, &x.to_string(), &y.to_string()])
+        .args([
+            "mousemove",
+            "--window",
+            wid,
+            &format!("{x:.0}"),
+            &format!("{y:.0}"),
+        ])
         .status()
         .map_err(|err| format!("xdotool mousemove: {err}"))?;
     if !moved.success() {
@@ -35,6 +41,6 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        assert!(mouse_click_at("no-such-wid-xyz", 10, 10).is_err());
+        assert!(mouse_click_at("no-such-wid-xyz", 10.0, 10.0).is_err());
     }
 }

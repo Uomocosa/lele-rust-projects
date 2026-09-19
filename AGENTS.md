@@ -10,11 +10,11 @@ Read [OBJECTIVE.md](./OBJECTIVE.md) for the project's goals, constraints, and cu
 
 | Key | Command |
 |-----|---------|
-| `RUN_ALL_TESTS` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings && cargo fmt -- --check && cargo nextest run --all-targets && cargo run --manifest-path ../lele_lint/Cargo.toml` |
-| `RUN_BUILD_CLIPPY` | `cargo build --workspace --all-targets && cargo clippy --workspace -- -D warnings` |
+| `RUN_ALL_TESTS` | `cargo build --workspace --all-targets --all-features && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo fmt -- --check && cargo nextest run --all-targets --all-features && cargo run --manifest-path ../lele_lint/Cargo.toml` |
+| `RUN_BUILD_CLIPPY` | `cargo build --workspace --all-targets --all-features && cargo clippy --workspace --all-targets --all-features -- -D warnings` |
 | `RUN_LELE_LINT` | `cargo run --manifest-path ../lele_lint/Cargo.toml` |
 
-> `bacon clippy -- -- -D warnings` is **USER-ONLY** — agents NEVER run `bacon` (TUI, user tool). Agents use `cargo clippy -- -D warnings` via `devenv tasks run`.
+> `bacon clippy -- -- -D warnings` is **USER-ONLY** — agents NEVER run `bacon` (TUI, user tool). Agents use `cargo clippy --all-targets --all-features -- -D warnings` via `devenv tasks run`.
 
 ## Devenv Tasks — MANDATORY (CRITICAL)
 
@@ -29,10 +29,10 @@ Read [OBJECTIVE.md](./OBJECTIVE.md) for the project's goals, constraints, and cu
 
 Verify changes with:
 ```bash
-cargo build --all-targets
-cargo clippy -- -D warnings
+cargo build --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt -- --check
-cargo nextest run --all-targets
+cargo nextest run --all-targets --all-features
 cargo run --manifest-path ../lele_lint/Cargo.toml
 ```
 Via devenv (per-crate `devenv.nix`):
@@ -43,14 +43,14 @@ devenv tasks run lele:fmt 2>&1
 devenv tasks run lele:nextest 2>&1
 devenv tasks run lele:lint 2>&1
 # fallbacks when devenv is absent or for shell isolation checks:
-devenv shell -- cargo build --all-targets 2>&1
-devenv shell -- cargo clippy -- -D warnings 2>&1
+devenv shell -- cargo build --all-targets --all-features 2>&1
+devenv shell -- cargo clippy --all-targets --all-features -- -D warnings 2>&1
 devenv shell -- cargo fmt -- --check 2>&1
-devenv shell -- cargo nextest run --all-targets 2>&1
+devenv shell -- cargo nextest run --all-targets --all-features 2>&1
 cargo run --manifest-path ../lele_lint/Cargo.toml 2>&1
 ```
 Test both direct and `devenv shell --` invocations when devenv is present.
-At the end of every non-trivial code change, run `cargo clippy -- -D warnings` via `devenv tasks run lele:clippy 2>&1` (or `cargo clippy -- -D warnings 2>&1` without devenv) before `lele_lint` (`devenv tasks run lele:lint 2>&1` or `cargo run --manifest-path ../lele_lint/Cargo.toml 2>&1`); fix `clippy -D warnings` first, then lint violations. **Agents NEVER run `bacon` — it is user-only.**
+At the end of every non-trivial code change, run `cargo clippy --all-targets --all-features -- -D warnings` via `devenv tasks run lele:clippy 2>&1` (or `cargo clippy --all-targets --all-features -- -D warnings 2>&1` without devenv) before `lele_lint` (`devenv tasks run lele:lint 2>&1` or `cargo run --manifest-path ../lele_lint/Cargo.toml 2>&1`); fix `clippy -D warnings` first, then lint violations. **Agents NEVER run `bacon` — it is user-only.**
 
 ## Bacon — USER-ONLY
 

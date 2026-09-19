@@ -16,7 +16,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut mesh = testing::Mesh::three();
+        let mut mesh = testing::Mesh::of(3);
         mesh.partition(0, 1);
         heal(&mut mesh, 0, 1);
         assert!(!mesh.blocks.contains(&(0, 1)));

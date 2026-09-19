@@ -190,6 +190,7 @@ mod tests {
     // needed helper:
     #[cfg(feature = "dev")]
     fn exit_after_run(time: Res<Time>, mut exit: MessageWriter<AppExit>) {
+        let time = time.into_inner();
         if time.elapsed_secs() > RUN_SECS {
             exit.write(AppExit::Success);
         }

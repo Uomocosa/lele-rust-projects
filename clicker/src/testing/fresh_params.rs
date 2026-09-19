@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn test_usage() {
         let first = fresh_params("blackboard-v1", "alpha");
-        assert!(!first.is_empty());
+        assert_ne!(first, "");
         let decoded: (String, String, u128) =
             bincode::deserialize(&hex::decode(&first).unwrap_or_default()).unwrap_or_default();
         assert_eq!(decoded.0, "blackboard-v1");

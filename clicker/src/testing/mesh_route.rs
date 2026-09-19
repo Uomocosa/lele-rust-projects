@@ -13,20 +13,16 @@ pub fn route(mesh: &mut Mesh) {
                 .take_all(),
         );
     }
-    let from_names = mesh.names.clone();
+    let names: Vec<String> = mesh
+        .players
+        .iter()
+        .map(|player| format!("peer-{}", **player))
+        .collect();
     let mut history = std::mem::take(&mut mesh.history);
     let mut pending: Vec<(usize, p2p::Event<clicker::CursorMsg>)> = Vec::new();
-    for (from, (name, cmds)) in from_names.iter().zip(out.iter()).enumerate() {
+    for (from, (name, cmds)) in names.iter().zip(out.iter()).enumerate() {
         for cmd in cmds {
-            route_command(
-                mesh,
-                &from_names,
-                &mut history,
-                from,
-                name,
-                cmd,
-                &mut pending,
-            );
+            route_command(mesh, &names, &mut history, from, name, cmd, &mut pending);
         }
     }
     mesh.history = history;
@@ -49,7 +45,7 @@ pub fn route(mesh: &mut Mesh) {
 // needed helper: translates one outgoing command into routed inbound events
 fn route_command(
     mesh: &Mesh,
-    names: &[String; 3],
+    names: &[String],
     history: &mut fake_dht::FakeDht,
     from: usize,
     from_name: &str,
@@ -120,7 +116,9 @@ fn route_command(
                     continue;
                 }
                 pending.push((target, p2p::Event::PeerConnected(from_name.to_string())));
-                pending.push((from, p2p::Event::PeerConnected(names[target].clone())));
+                if let Some(name) = names.get(target) {
+                    pending.push((from, p2p::Event::PeerConnected(name.clone())));
+                }
             }
         }
         p2p::Command::Dial { .. }
@@ -144,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut mesh = testing::Mesh::three();
+        let mut mesh = testing::Mesh::of(3);
         for app in &mut mesh.apps {
             app.world_mut()
                 .resource_mut::<p2p::Commands<clicker::CursorMsg>>()

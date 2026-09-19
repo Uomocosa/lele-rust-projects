@@ -2,7 +2,7 @@ use std::process::Command;
 
 /// # Errors
 /// Returns an error if the window geometry cannot be read or parsed.
-pub(crate) fn window_size(wid: &str) -> Result<(i32, i32), String> {
+pub fn window_size(wid: &str) -> Result<(i32, i32), String> {
     let output = Command::new("xdotool")
         .args(["getwindowgeometry", "--shell", wid])
         .output()

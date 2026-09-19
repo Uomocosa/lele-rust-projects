@@ -7,8 +7,8 @@ use super::window_size;
 pub fn drive_center(title: &str, clicks: u32) -> Result<(), String> {
     let wid = window_id::window_id(title)?;
     let (width, height) = window_size::window_size(&wid)?;
-    let x = width / 2;
-    let y = height / 2;
+    let x = f64::from(width / 2);
+    let y = f64::from(height / 2);
     for _ in 0..clicks {
         mouse_click_at::mouse_click_at(&wid, x, y)?;
         std::thread::sleep(std::time::Duration::from_millis(300));

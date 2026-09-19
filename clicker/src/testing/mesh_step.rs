@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut mesh = testing::Mesh::three();
+        let mut mesh = testing::Mesh::of(3);
         step(&mut mesh);
         for app in &mut mesh.apps {
             assert!(

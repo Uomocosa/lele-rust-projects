@@ -2,7 +2,7 @@ use std::process::Command;
 
 /// # Errors
 /// Returns an error if no visible window matches the title.
-pub(crate) fn window_id(title: &str) -> Result<String, String> {
+pub fn window_id(title: &str) -> Result<String, String> {
     let output = Command::new("xdotool")
         .args(["search", "--onlyvisible", "--name", &format!("{title} \\[")])
         .output()

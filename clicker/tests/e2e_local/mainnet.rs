@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
 use clicker_lib::testing::{
-    TerminalGuard, build_game, cleanup_stale, drive_random, finish_record, poke, require_xterm,
-    spawn_xterm, speed_clip, start_record, tile_three, wakeup_screen,
+    TerminalGuard, XtermSpec, build_game, cleanup_stale, drive_random, finish_record, poke,
+    require_xterm, spawn_xterm, speed_clip, start_record, tile_three, wakeup_screen,
 };
 use telegram_bot::{TestLog, send_video_best_effort};
 
@@ -38,6 +38,16 @@ fn parse_number_after(stripped: &str, needle: &str) -> Option<f64> {
     rest.get(..end)?.parse::<f64>().ok()
 }
 
+fn parse_u64_after(stripped: &str, needle: &str) -> Option<u64> {
+    let idx = stripped.find(needle)?;
+    let start = idx.checked_add(needle.len())?;
+    let rest = stripped.get(start..)?;
+    let end = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(rest.len());
+    rest.get(..end)?.parse::<u64>().ok()
+}
+
 fn parse_hues(path: &std::path::Path) -> Vec<(u64, f64)> {
     let mut hues = Vec::new();
     let Ok(content) = std::fs::read_to_string(path) else {
@@ -45,17 +55,11 @@ fn parse_hues(path: &std::path::Path) -> Vec<(u64, f64)> {
     };
     for line in content.lines() {
         let stripped = strip_ansi(line);
-        if stripped.contains("cursor resolved") {
+        let resolved = stripped.contains("cursor resolved");
+        let colored = stripped.contains("cursor color player=") && !stripped.contains("player=?");
+        if resolved || colored {
             let (Some(player), Some(hue)) = (
-                parse_number_after(&stripped, " player=").map(|v| v as u64),
-                parse_number_after(&stripped, " hue="),
-            ) else {
-                continue;
-            };
-            hues.push((player, hue));
-        } else if stripped.contains("cursor color player=") && !stripped.contains("player=?") {
-            let (Some(player), Some(hue)) = (
-                parse_number_after(&stripped, " player=").map(|v| v as u64),
+                parse_u64_after(&stripped, " player="),
                 parse_number_after(&stripped, " hue="),
             ) else {
                 continue;
@@ -86,24 +90,24 @@ fn color_report(terms: &[TerminalGuard]) -> SoftCheck {
                 .filter(|(p, _)| *p == player)
                 .map(|(_, h)| h)
                 .collect();
-            if hues.is_empty() {
+            let Some(first_hue) = hues.first().copied() else {
                 player_ok = false;
                 detail = format!("inst{} missing", i.saturating_add(1));
                 break;
-            }
-            if hues.iter().any(|h| h.to_bits() != hues[0].to_bits()) {
+            };
+            if hues.iter().any(|h| h.to_bits() != first_hue.to_bits()) {
                 player_ok = false;
                 detail = format!("inst{} drift", i.saturating_add(1));
                 break;
             }
-            if hues[0].to_bits() != expected.to_bits() {
+            if first_hue.to_bits() != expected.to_bits() {
                 player_ok = false;
                 detail = format!("inst{} wrong hue", i.saturating_add(1));
                 break;
             }
             match first {
-                None => first = Some(hues[0]),
-                Some(f) if f.to_bits() != hues[0].to_bits() => {
+                None => first = Some(first_hue),
+                Some(f) if f.to_bits() != first_hue.to_bits() => {
                     player_ok = false;
                     detail = format!("inst{} disagree", i.saturating_add(1));
                     break;
@@ -124,14 +128,12 @@ fn color_report(terms: &[TerminalGuard]) -> SoftCheck {
     if ok {
         for i in 0..agreed.len() {
             for j in (i.saturating_add(1))..agreed.len() {
-                if agreed[i].1.to_bits() == agreed[j].1.to_bits() {
+                let (Some(a), Some(b)) = (agreed.get(i), agreed.get(j)) else {
+                    continue;
+                };
+                if a.1.to_bits() == b.1.to_bits() {
                     ok = false;
-                    parts.push(format!(
-                        "collision p{}=p{}{}",
-                        agreed[i].0,
-                        agreed[j].0,
-                        check_emoji(false)
-                    ));
+                    parts.push(format!("collision p{}=p{}{}", a.0, b.0, check_emoji(false)));
                 }
             }
         }
@@ -159,7 +161,7 @@ fn parse_flash(path: &std::path::Path) -> Vec<(Option<u64>, String)> {
         if !stripped.contains("cursor flash done") {
             continue;
         }
-        let player = parse_number_after(&stripped, " player=").map(|v| v as u64);
+        let player = parse_u64_after(&stripped, " player=");
         let Some(color_idx) = stripped.find(" color=") else {
             continue;
         };
@@ -192,29 +194,29 @@ fn flash_report(terms: &[TerminalGuard]) -> SoftCheck {
                 .filter(|(p, _)| *p == Some(player))
                 .map(|(_, c)| c)
                 .collect();
-            if colors.is_empty() {
+            let Some(first_color) = colors.first() else {
                 player_ok = false;
                 detail = format!("inst{} missing", i.saturating_add(1));
                 break;
-            }
-            if colors.iter().any(|c| *c != colors[0]) {
+            };
+            if colors.iter().any(|c| c != first_color) {
                 player_ok = false;
                 detail = format!("inst{} drift", i.saturating_add(1));
                 break;
             }
-            if colors[0] != expected {
+            if *first_color != expected {
                 player_ok = false;
                 detail = format!("inst{} wrong color", i.saturating_add(1));
                 break;
             }
             if let Some(f) = first.as_ref() {
-                if *f != colors[0] {
+                if *f != *first_color {
                     player_ok = false;
                     detail = format!("inst{} disagree", i.saturating_add(1));
                     break;
                 }
             } else {
-                first = Some(colors[0].clone());
+                first = Some(first_color.clone());
             }
         }
         if player_ok {
@@ -230,14 +232,12 @@ fn flash_report(terms: &[TerminalGuard]) -> SoftCheck {
     if ok {
         for i in 0..agreed.len() {
             for j in (i.saturating_add(1))..agreed.len() {
-                if agreed[i].1 == agreed[j].1 {
+                let (Some(a), Some(b)) = (agreed.get(i), agreed.get(j)) else {
+                    continue;
+                };
+                if a.1 == b.1 {
                     ok = false;
-                    parts.push(format!(
-                        "collision p{}=p{}{}",
-                        agreed[i].0,
-                        agreed[j].0,
-                        check_emoji(false)
-                    ));
+                    parts.push(format!("collision p{}=p{}{}", a.0, b.0, check_emoji(false)));
                 }
             }
         }
@@ -267,7 +267,7 @@ fn parse_pos(path: &std::path::Path) -> Vec<PosSample> {
             continue;
         }
         let (Some(player), Some(x), Some(y)) = (
-            parse_number_after(&stripped, " player=").map(|v| v as u64),
+            parse_u64_after(&stripped, " player="),
             parse_number_after(&stripped, " x="),
             parse_number_after(&stripped, " y="),
         ) else {
@@ -277,8 +277,7 @@ fn parse_pos(path: &std::path::Path) -> Vec<PosSample> {
             .split_whitespace()
             .next()
             .and_then(|token| chrono::DateTime::parse_from_rfc3339(token).ok())
-            .map(|dt| dt.timestamp_millis())
-            .unwrap_or(-1);
+            .map_or(-1, |dt| dt.timestamp_millis());
         if ts_ms < 0 {
             continue;
         }
@@ -307,14 +306,14 @@ fn move_report(terms: &[TerminalGuard]) -> Vec<SoftCheck> {
                 fresh_ok = false;
                 travel_ok = false;
                 fresh_detail = format!("inst{} p{player} no samples", i.saturating_add(1));
-                travel_detail = fresh_detail.clone();
+                travel_detail.clone_from(&fresh_detail);
                 continue;
             };
             if series.len() < 2 {
                 fresh_ok = false;
                 travel_ok = false;
                 fresh_detail = format!("inst{} p{player} 1 sample", i.saturating_add(1));
-                travel_detail = fresh_detail.clone();
+                travel_detail.clone_from(&fresh_detail);
                 continue;
             }
             let mut worst_gap = 0_i64;
@@ -322,7 +321,7 @@ fn move_report(terms: &[TerminalGuard]) -> Vec<SoftCheck> {
             let mut max_x = last.x;
             let mut min_y = last.y;
             let mut max_y = last.y;
-            let mut prev = series.first().map(|s| s.ts_ms).unwrap_or(0);
+            let mut prev = series.first().map_or(0, |s| s.ts_ms);
             for sample in &series {
                 let gap = sample.ts_ms.checked_sub(prev).unwrap_or(i64::MAX);
                 worst_gap = worst_gap.max(gap);
@@ -505,10 +504,10 @@ fn parse_last_sync(path: &std::path::Path) -> Option<SyncState> {
             continue;
         }
         let (Some(p1), Some(p2), Some(p3), Some(global)) = (
-            parse_number_after(&stripped, " p1=").map(|v| v as u64),
-            parse_number_after(&stripped, " p2=").map(|v| v as u64),
-            parse_number_after(&stripped, " p3=").map(|v| v as u64),
-            parse_number_after(&stripped, " global=").map(|v| v as u64),
+            parse_u64_after(&stripped, " p1="),
+            parse_u64_after(&stripped, " p2="),
+            parse_u64_after(&stripped, " p3="),
+            parse_u64_after(&stripped, " global="),
         ) else {
             continue;
         };
@@ -534,9 +533,9 @@ async fn probe_lag(terms: &[TerminalGuard], drive_end: Instant) -> SoftCheck {
             && a == b
             && b == c
             && a.global == a.p1.saturating_add(a.p2).saturating_add(a.p3)
-            && a.p1 >= CLICKS_EACH as u64
-            && a.p2 >= CLICKS_EACH as u64
-            && a.p3 >= CLICKS_EACH as u64
+            && a.p1 >= u64::from(CLICKS_EACH)
+            && a.p2 >= u64::from(CLICKS_EACH)
+            && a.p3 >= u64::from(CLICKS_EACH)
         {
             agreed = Some((*a, elapsed_ms));
             break;
@@ -553,17 +552,21 @@ async fn probe_lag(terms: &[TerminalGuard], drive_end: Instant) -> SoftCheck {
     let mut first_seen = [None; 3];
     for (ms, states) in &history {
         for (i, state) in states.iter().enumerate() {
-            if first_seen[i].is_none() && *state == Some(final_state) {
-                first_seen[i] = Some(*ms);
+            if let Some(slot) = first_seen.get_mut(i)
+                && slot.is_none()
+                && *state == Some(final_state)
+            {
+                *slot = Some(*ms);
             }
         }
     }
-    let mut spread_ms = 0_u128;
-    if first_seen.iter().all(|v| v.is_some()) {
+    let spread_ms = if first_seen.iter().all(std::option::Option::is_some) {
         let min = first_seen.iter().filter_map(|v| *v).min().unwrap_or(0);
         let max = first_seen.iter().filter_map(|v| *v).max().unwrap_or(0);
-        spread_ms = max.saturating_sub(min);
-    }
+        max.saturating_sub(min)
+    } else {
+        0_u128
+    };
     let ok = spread_ms <= LAG_SPREAD_BUDGET_MS;
     SoftCheck {
         name: "lag-spread-2s".to_string(),
@@ -678,170 +681,129 @@ fn mesh_report(terms: &[TerminalGuard]) -> (bool, Vec<String>) {
     (ok, lines)
 }
 
-fn spawn_tag(
-    terms: &mut Vec<TerminalGuard>,
-    bin: &std::path::Path,
-    dir: &std::path::Path,
+struct SpawnRequest<'a> {
+    bin: &'a std::path::Path,
+    dir: &'a std::path::Path,
     tag: u64,
-    contract_params: &str,
-    lobby: Option<&str>,
+    contract_params: &'a str,
+    lobby: Option<&'a str>,
     since_epoch: Option<u64>,
-    transport: &str,
+    transport: &'a str,
     mdns: bool,
-) -> bool {
-    let log = dir.join(format!("instance-{tag}.log"));
-    match spawn_xterm(
-        bin,
-        "blackboard-v1",
-        lobby,
-        tag == 1,
-        tag,
-        contract_params,
-        since_epoch,
-        transport,
-        mdns,
-        &log,
-    ) {
+}
+
+fn spawn_tag(terms: &mut Vec<TerminalGuard>, req: &SpawnRequest<'_>) -> bool {
+    let log = req.dir.join(format!("instance-{}.log", req.tag));
+    let spec = XtermSpec {
+        bin: req.bin,
+        namespace: "blackboard-v1",
+        lobby: req.lobby,
+        create: req.tag == 1,
+        tag: req.tag,
+        contract_params: req.contract_params,
+        since_epoch: req.since_epoch,
+        transport: req.transport,
+        mdns: req.mdns,
+        log: &log,
+    };
+    match spawn_xterm(&spec) {
         Ok(guard) => {
             terms.push(guard);
             true
         }
         Err(e) => {
-            eprintln!("spawn xterm {tag}: {e}");
+            eprintln!("spawn xterm {}: {e}", req.tag);
             false
         }
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-#[ignore = "local-mainnet: needs X + 3 clicker windows + public Freenet mainnet; run with --ignored --nocapture"]
-#[telegram_bot::telegram_notify]
-async fn local_mesh() {
-    let test_log = TestLog::open("local_mesh");
-    test_log.line("test started");
-    let total_start = Instant::now();
-    wakeup_screen();
-    assert!(require_xterm().is_ok(), "xterm/xdotool/wmctrl missing");
-    cleanup_stale();
-    let build_start = Instant::now();
-    let mut bin = std::path::PathBuf::new();
-    match build_game() {
-        Ok(path) => bin = path,
-        Err(e) => eprintln!("build clicker release: {e}"),
-    }
-    let build_elapsed = build_start.elapsed();
-    assert!(bin.exists(), "binary not found: {}", bin.display());
+struct MeshSetup<'a> {
+    bin: &'a std::path::Path,
+    persist_dir: &'a std::path::Path,
+    room: &'a str,
+    transport: &'a str,
+    mdns: bool,
+    contract_params: &'a str,
+}
 
-    let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S").to_string();
-    let persist_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(".local-run")
-        .join(format!("clicker-{timestamp}"));
-    assert!(
-        std::fs::create_dir_all(&persist_dir).is_ok(),
-        "create {}",
-        persist_dir.display()
-    );
-
+async fn spawn_instances(setup: &MeshSetup<'_>, test_start_epoch: u64) -> Vec<TerminalGuard> {
     let mut terms = Vec::new();
-    let test_start_epoch = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or_default();
-    let room = format!("room-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
-    let transport = std::env::var("CLICKER_TRANSPORT")
-        .ok()
-        .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| "both".to_string());
-    let mdns = std::env::var("CLICKER_MDNS")
-        .ok()
-        .is_some_and(|v| v == "on");
-    let contract_params = std::env::var("CLICKER_CONTRACT_PARAMS")
-        .ok()
-        .filter(|v| !v.is_empty())
-        .unwrap_or_default();
-    let raw_path = persist_dir.join("raw.mp4");
-    let recording = start_record(RECORD_SECS, &raw_path);
     assert!(
         spawn_tag(
             &mut terms,
-            &bin,
-            &persist_dir,
-            1,
-            &contract_params,
-            Some(&room),
-            None,
-            &transport,
-            mdns
+            &SpawnRequest {
+                bin: setup.bin,
+                dir: setup.persist_dir,
+                tag: 1,
+                contract_params: setup.contract_params,
+                lobby: Some(setup.room),
+                since_epoch: None,
+                transport: setup.transport,
+                mdns: setup.mdns,
+            }
         ),
         "spawn 1"
     );
-    let log0 = persist_dir.join("instance-1.log");
+    let log0 = setup.persist_dir.join("instance-1.log");
     assert!(
         wait_until(180, || log_contains(&log0, "discovery: roster connected")).await,
         "instance 1 never joined roster"
     );
     assert!(
-        wait_until(60, || room_resolved(&log0, &room)).await,
+        wait_until(60, || room_resolved(&log0, setup.room)).await,
         "instance 1 never resolved room"
     );
     assert!(
         spawn_tag(
             &mut terms,
-            &bin,
-            &persist_dir,
-            2,
-            &contract_params,
-            None,
-            Some(test_start_epoch),
-            &transport,
-            mdns
+            &SpawnRequest {
+                bin: setup.bin,
+                dir: setup.persist_dir,
+                tag: 2,
+                contract_params: setup.contract_params,
+                lobby: None,
+                since_epoch: Some(test_start_epoch),
+                transport: setup.transport,
+                mdns: setup.mdns,
+            }
         ),
         "spawn 2"
     );
-    let log1 = persist_dir.join("instance-2.log");
+    let log1 = setup.persist_dir.join("instance-2.log");
     assert!(
         wait_until(180, || log_contains(&log1, "discovery: roster connected")).await,
         "instance 2 never joined roster"
     );
     assert!(
-        wait_until(180, || room_joined(&log1, &room)).await,
+        wait_until(180, || room_joined(&log1, setup.room)).await,
         "instance 2 never auto-joined room"
     );
     assert!(
         spawn_tag(
             &mut terms,
-            &bin,
-            &persist_dir,
-            3,
-            &contract_params,
-            None,
-            Some(test_start_epoch),
-            &transport,
-            mdns
+            &SpawnRequest {
+                bin: setup.bin,
+                dir: setup.persist_dir,
+                tag: 3,
+                contract_params: setup.contract_params,
+                lobby: None,
+                since_epoch: Some(test_start_epoch),
+                transport: setup.transport,
+                mdns: setup.mdns,
+            }
         ),
         "spawn 3"
     );
-    let log2 = persist_dir.join("instance-3.log");
+    let log2 = setup.persist_dir.join("instance-3.log");
     assert!(
-        wait_until(180, || room_joined(&log2, &room)).await,
+        wait_until(180, || room_joined(&log2, setup.room)).await,
         "instance 3 never auto-joined room"
     );
-    assert!(tile_three(GAME_TITLES).is_ok(), "tile game windows");
+    terms
+}
 
-    let room_marker = format!("lobby={room}");
-    let converged = wait_until(TIMEOUT_SECS, || {
-        terms
-            .iter()
-            .all(|g| log_contains(&g.log, "connected, running indefinitely"))
-            && terms.iter().all(|g| log_contains(&g.log, "tick lobby="))
-            && terms.iter().all(|g| log_contains(&g.log, &room_marker))
-            && terms
-                .iter()
-                .all(|g| log_contains(&g.log, "accounting for remote owner="))
-            && terms.iter().all(|g| resolved_count(&g.log) >= 2)
-    })
-    .await;
-
+async fn drive_clicks(setup: &MeshSetup<'_>) -> Instant {
     for title in GAME_TITLES {
         eprintln!("drive_random {title} x{CLICKS_EACH}");
         let drive_result =
@@ -855,10 +817,10 @@ async fn local_mesh() {
     for _ in 0..3 {
         let mut short: Vec<(&str, u64)> = Vec::new();
         for (tag, title) in OWN_IDS.iter().zip(GAME_TITLES.iter()) {
-            let log = persist_dir.join(format!("instance-{tag}.log"));
+            let log = setup.persist_dir.join(format!("instance-{tag}.log"));
             let local = local_count(&log, *tag).unwrap_or_default();
-            if local < CLICKS_EACH as u64 {
-                short.push((title, (CLICKS_EACH as u64).saturating_sub(local)));
+            if local < u64::from(CLICKS_EACH) {
+                short.push((title, u64::from(CLICKS_EACH).saturating_sub(local)));
             }
         }
         if short.is_empty() {
@@ -877,9 +839,10 @@ async fn local_mesh() {
         }
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
-    let drive_end = Instant::now();
-    eprintln!("drive done, waiting for settle");
+    Instant::now()
+}
 
+async fn collect_reports(terms: &[TerminalGuard], drive_end: Instant) -> (Vec<SoftCheck>, String) {
     let auto_ok = wait_until(180, || {
         OWN_IDS.iter().enumerate().all(|(i, tag)| {
             terms
@@ -890,19 +853,102 @@ async fn local_mesh() {
     .await;
     tokio::time::sleep(Duration::from_secs(15)).await;
     eprintln!("probe_lag from settle end");
-    let lag_check = probe_lag(&terms, drive_end).await;
+    let lag_check = probe_lag(terms, drive_end).await;
     eprintln!("probe_lag done: {} {}", lag_check.name, lag_check.detail);
 
-    let (mesh_ok, mesh_lines) = mesh_report(&terms);
+    let (mesh_ok, mesh_lines) = mesh_report(terms);
     let mesh_ok = auto_ok && mesh_ok;
 
     let mut checks = Vec::new();
     soft(&mut checks, "mesh-counts", mesh_ok, mesh_lines.join("; "));
     checks.push(lag_check);
-    checks.push(color_report(&terms));
-    checks.push(flash_report(&terms));
-    checks.push(player_report(&terms));
-    checks.extend(move_report(&terms));
+    checks.push(color_report(terms));
+    checks.push(flash_report(terms));
+    checks.push(player_report(terms));
+    checks.extend(move_report(terms));
+    (checks, mesh_lines.join("\n"))
+}
+
+fn build_binary() -> (std::path::PathBuf, Duration) {
+    wakeup_screen();
+    assert!(require_xterm().is_ok(), "xterm/xdotool/wmctrl missing");
+    cleanup_stale();
+    let build_start = Instant::now();
+    let mut bin = std::path::PathBuf::new();
+    match build_game() {
+        Ok(path) => bin = path,
+        Err(e) => eprintln!("build clicker release: {e}"),
+    }
+    let elapsed = build_start.elapsed();
+    assert!(bin.exists(), "binary not found: {}", bin.display());
+    (bin, elapsed)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "local-mainnet: needs X + 3 clicker windows + public Freenet mainnet; run with --ignored --nocapture"]
+#[telegram_bot::telegram_notify]
+async fn local_mesh() {
+    let test_log = TestLog::open("local_mesh");
+    test_log.line("test started");
+    let total_start = Instant::now();
+    let (bin, build_elapsed) = build_binary();
+
+    let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S").to_string();
+    let persist_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join(".local-run")
+        .join(format!("clicker-{timestamp}"));
+    assert!(
+        std::fs::create_dir_all(&persist_dir).is_ok(),
+        "create {}",
+        persist_dir.display()
+    );
+
+    let test_start_epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or_default();
+    let room = format!("room-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
+    let transport = std::env::var("CLICKER_TRANSPORT")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| "both".to_string());
+    let mdns = std::env::var("CLICKER_MDNS").is_ok_and(|v| v == "on");
+    let contract_params = std::env::var("CLICKER_CONTRACT_PARAMS")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_default();
+    let setup = MeshSetup {
+        bin: &bin,
+        persist_dir: &persist_dir,
+        room: &room,
+        transport: &transport,
+        mdns,
+        contract_params: &contract_params,
+    };
+
+    let raw_path = persist_dir.join("raw.mp4");
+    let recording = start_record(RECORD_SECS, &raw_path);
+    let mut terms = spawn_instances(&setup, test_start_epoch).await;
+    assert!(tile_three(GAME_TITLES).is_ok(), "tile game windows");
+
+    let room_marker = format!("lobby={room}");
+    let converged = wait_until(TIMEOUT_SECS, || {
+        terms
+            .iter()
+            .all(|g| log_contains(&g.log, "connected, running indefinitely"))
+            && terms.iter().all(|g| log_contains(&g.log, "tick lobby="))
+            && terms.iter().all(|g| log_contains(&g.log, &room_marker))
+            && terms
+                .iter()
+                .all(|g| log_contains(&g.log, "accounting for remote owner="))
+            && terms.iter().all(|g| resolved_count(&g.log) >= 2)
+    })
+    .await;
+
+    let drive_end = drive_clicks(&setup).await;
+    eprintln!("drive done, waiting for settle");
+
+    let (checks, mesh_lines) = collect_reports(&terms, drive_end).await;
 
     let recording_start = Instant::now();
     let clip_path = persist_dir.join("clip.mp4");
@@ -915,7 +961,11 @@ async fn local_mesh() {
 
     let Some(clip) = clip else {
         test_log.line(&format!("clip missing at {}", clip_path.display()));
-        assert!(false, "clip missing at {}", clip_path.display());
+        assert!(
+            raw_path.exists() && clip_path.exists(),
+            "clip missing at {}",
+            clip_path.display()
+        );
         return;
     };
     let check_lines: Vec<String> = checks
@@ -927,7 +977,7 @@ async fn local_mesh() {
         "clicker local-mesh room={room} transport={transport} mdns={mdns} · {} converged={converged} {} all_ok={all_ok}\n{}\n{}\nlogs: {} · build {} s · recording {} s · total {} s",
         check_emoji(converged),
         check_emoji(all_ok),
-        mesh_lines.join("\n"),
+        mesh_lines,
         check_lines.join("\n"),
         persist_dir.display(),
         fmt_secs(build_elapsed),

@@ -1,0 +1,2 @@
+mod gossip_does_not_resurrect_removed_peer;
+mod gossip_learned_peer_visible_without_connection;

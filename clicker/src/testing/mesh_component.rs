@@ -21,7 +21,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mesh = testing::Mesh::three();
+        let mesh = testing::Mesh::of(3);
         assert_eq!(component(&mesh, 0).len(), 3);
     }
 }

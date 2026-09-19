@@ -7,8 +7,8 @@ use super::window_size;
 pub fn click_at_y(title: &str, fx: f64, y: i32) -> Result<(), String> {
     let wid = window_id::window_id(title)?;
     let (width, _) = window_size::window_size(&wid)?;
-    let x = (f64::from(width) * fx) as i32;
-    mouse_click_at::mouse_click_at(&wid, x, y)
+    let x = f64::from(width) * fx;
+    mouse_click_at::mouse_click_at(&wid, x, f64::from(y))
 }
 
 #[cfg(test)]

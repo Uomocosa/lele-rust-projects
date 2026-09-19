@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::mesh::Mesh;
 use super::mesh_count::MeshCount;
+use super::player::Player;
 use crate::clicker;
 
 pub fn counts(mesh: &mut Mesh) -> Vec<MeshCount> {
@@ -15,12 +16,8 @@ fn count_one(app: &mut App) -> MeshCount {
         .world_mut()
         .query::<(&clicker::PlayerNo, &clicker::ClickCounter)>();
     for (player, counter) in query.iter(app.world()) {
-        if **player == 1 {
-            out.p1 = **counter;
-        } else if **player == 2 {
-            out.p2 = **counter;
-        } else if **player == 3 {
-            out.p3 = **counter;
+        if **counter != 0 {
+            out.per.insert(Player(**player), **counter);
         }
     }
     out.global = **app.world().resource::<clicker::GlobalCounter>();
@@ -34,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut mesh = testing::Mesh::three();
+        let mut mesh = testing::Mesh::of(3);
         let counts = counts(&mut mesh);
         assert_eq!(counts.len(), 3);
         assert!(counts.iter().all(|c| *c == testing::MeshCount::default()));
