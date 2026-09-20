@@ -95,3 +95,6 @@ turmoil = { version = "0.7", optional = true }
 [dev-dependencies]
 telegram_bot = { path = "../telegram_bot" }
 rstest = "=0.27.0"
+
+[profile.dev.package."*"]
+opt-level = 3

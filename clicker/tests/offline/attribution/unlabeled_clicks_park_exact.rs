@@ -1,3 +1,4 @@
+use bevy::time::TimeUpdateStrategy;
 use clicker_lib::{clicker, testing};
 use freenet_libp2p_bevy_plugin::{net_id, p2p, roster};
 
@@ -109,7 +110,12 @@ fn unlabeled_clicks_park_exact() {
         .world_mut()
         .resource_mut::<roster::Roster>()
         .remove_entry("alpha", [3u8; 32]);
-    for _ in 0..3 {
+    mesh.apps[one]
+        .world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::from_secs(1),
+        ));
+    for _ in 0..70 {
         mesh.step();
     }
     let stones = mesh.apps[one]

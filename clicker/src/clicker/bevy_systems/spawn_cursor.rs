@@ -74,7 +74,7 @@ mod tests {
     fn test_logging(app: &mut App) {
         app.add_plugins(bevy::log::LogPlugin {
             level: bevy::log::Level::DEBUG,
-            filter: "info,clicker_lib=debug".to_string(),
+            filter: "info,clicker=debug,clicker_lib=debug".to_string(),
             ..default()
         });
     }

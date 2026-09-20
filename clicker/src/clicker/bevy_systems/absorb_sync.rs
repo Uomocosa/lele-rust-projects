@@ -26,9 +26,18 @@ pub fn absorb_sync(
             p2p::Event::Message { from, payload } => match payload {
                 clicker::CursorMsg::SyncReq { requester } => {
                     if requester == own {
+                        tracing::debug!(target: "clicker", from = %from, "sync: req dropped self-requester");
+                        clicker::DecisionLog::record(&format!(
+                            "sync: req dropped self-requester from={from}"
+                        ));
                         continue;
                     }
                     let entries = ctx.snapshot_entries(&targets);
+                    tracing::debug!(target: "clicker", from = %from, requester = ?requester, entries = entries.len(), "sync: req received, ack queued");
+                    clicker::DecisionLog::record(&format!(
+                        "sync: req received, ack queued from={from} requester={requester:?} entries={}",
+                        entries.len()
+                    ));
                     commands.push(p2p::Command::Send {
                         peer_id: from,
                         payload: clicker::CursorMsg::SyncAck {
@@ -39,8 +48,16 @@ pub fn absorb_sync(
                 }
                 clicker::CursorMsg::SyncAck { target, entries } => {
                     if target != own {
+                        tracing::debug!(target: "clicker", from = %from, target = ?target, "sync: ack dropped foreign target");
+                        clicker::DecisionLog::record(&format!(
+                            "sync: ack dropped foreign target from={from} target={target:?}"
+                        ));
                         continue;
                     }
+                    tracing::debug!(target: "clicker", from = %from, entries = entries.len(), detail = ?entries, "sync: ack received");
+                    clicker::DecisionLog::record(&format!(
+                        "sync: ack received from={from} entries={entries:?}"
+                    ));
                     if !ctx
                         .gate
                         .synced
@@ -81,13 +98,26 @@ fn merge_entries(
             if ***slot_owner == *id || player.is_some_and(|p| **p == *id) {
                 let current = **counter;
                 if count > current {
+                    tracing::debug!(target: "clicker", id = ?id, old = current, new = count, "sync: entry merged");
+                    clicker::DecisionLog::record(&format!(
+                        "sync: entry merged id={id:?} old={current} new={count}"
+                    ));
                     counter.add(count.saturating_sub(current));
+                } else {
+                    tracing::debug!(target: "clicker", id = ?id, current = current, incoming = count, "sync: entry skipped stale");
+                    clicker::DecisionLog::record(&format!(
+                        "sync: entry skipped stale id={id:?} current={current} incoming={count}"
+                    ));
                 }
                 done = true;
                 break;
             }
         }
         if !done {
+            tracing::debug!(target: "clicker", id = ?id, count = count, "sync: entry parked pending");
+            clicker::DecisionLog::record(&format!(
+                "sync: entry parked pending id={id:?} count={count}"
+            ));
             pending.items.push(clicker::PendingClick {
                 sender,
                 owner: id,

@@ -164,6 +164,7 @@ async fn main() {
     app.insert_resource(clicker::ActiveLobby(room.clone()));
     app.insert_resource(clicker::GlobalCounter::default());
     app.insert_resource(clicker::PendingClicks::default());
+    app.insert_resource(clicker::DecisionLog(decision_file()));
     app.insert_resource(lobby::DirectoryFeed(std::sync::Mutex::new(Some(
         ch.directory_rx,
     ))));
@@ -204,6 +205,20 @@ async fn main() {
             .set(lobby::AppState::InRoom);
     }
     app.run();
+}
+
+// needed helper: opens the per-instance sync decision file when requested
+fn decision_file() -> Option<std::fs::File> {
+    std::env::var("CLICKER_DECISION_LOG")
+        .ok()
+        .filter(|path| !path.is_empty())
+        .and_then(|path| {
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .ok()
+        })
 }
 
 // needed helper: exposes the Bevy Remote Protocol only when a port is requested

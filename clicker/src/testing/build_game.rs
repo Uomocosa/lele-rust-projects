@@ -6,6 +6,7 @@ use std::process::Command;
 pub fn build_game() -> Result<PathBuf, String> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let game_dir = manifest.to_path_buf();
+    let profile = std::env::var("CLICKER_BUILD_PROFILE").unwrap_or_else(|_| "release".to_string());
     let mut cmd = Command::new("cargo");
     cmd.current_dir(&game_dir)
         .env(
@@ -15,7 +16,8 @@ pub fn build_game() -> Result<PathBuf, String> {
         .arg("build")
         .arg("--bin")
         .arg("clicker")
-        .arg("--release");
+        .arg("--profile")
+        .arg(&profile);
     let output = cmd
         .output()
         .map_err(|e| format!("spawning cargo build: {e}"))?;
@@ -24,7 +26,11 @@ pub fn build_game() -> Result<PathBuf, String> {
         return Err(format!("cargo build failed:\n{stderr}"));
     }
     let target = target_dir_from_metadata(&game_dir)?;
-    let bin = target.join("release").join("clicker");
+    let folder = match profile.as_str() {
+        "dev" => "debug".to_string(),
+        other => other.to_string(),
+    };
+    let bin = target.join(folder).join("clicker");
     if !bin.exists() {
         return Err(format!("expected build output {} not found", bin.display()));
     }

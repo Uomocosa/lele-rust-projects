@@ -122,6 +122,9 @@ pub use score_tombstones::ScoreTombstones;
 mod score_tombstones_keep;
 mod score_tombstones_restore;
 
+pub mod decision_log;
+pub use decision_log::DecisionLog;
+
 pub mod decode_snapshot;
 pub use decode_snapshot::decode_snapshot;
 

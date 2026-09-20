@@ -20,9 +20,16 @@ pub fn command(spec: &XtermSpec) -> String {
     let brp_env = spec
         .brp_port
         .map_or(String::new(), |port| format!("CLICKER_BRP_PORT={port} "));
+    let decision_env = spec.decision_log.map_or(String::new(), |path| {
+        format!(
+            "CLICKER_DECISION_LOG={} ",
+            shell_escape(path.to_string_lossy().as_ref())
+        )
+    });
     format!(
-        "{}stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} --transport {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
+        "{}{}stdbuf -oL -eL {} --namespace {} {}{} --instance-tag {} --own-id {} --contract-params {}{} --transport {}{} 2>&1 | tee -a {}; echo \"[clicker-3 #{} exited $?]\"; exec bash",
         brp_env,
+        decision_env,
         shell_escape(&bin_str),
         shell_escape(spec.namespace),
         lobby_arg,

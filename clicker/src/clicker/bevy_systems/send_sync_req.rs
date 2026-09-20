@@ -18,14 +18,27 @@ pub fn send_sync_req(
         match event {
             p2p::Event::PeerConnected(peer) => {
                 if live.insert(peer.clone()) {
+                    tracing::debug!(target: "clicker", peer = %peer, requester = ?own, "sync: req sent on connect");
+                    clicker::DecisionLog::record(&format!(
+                        "sync: req sent on connect peer={peer} requester={own:?}"
+                    ));
                     commands.push(p2p::Command::Send {
                         peer_id: peer.clone(),
                         payload: clicker::CursorMsg::SyncReq { requester: *own },
                     });
+                } else {
+                    tracing::debug!(target: "clicker", peer = %peer, "sync: req suppressed duplicate connect");
+                    clicker::DecisionLog::record(&format!(
+                        "sync: req suppressed duplicate connect peer={peer}"
+                    ));
                 }
                 rest.push(p2p::Event::PeerConnected(peer));
             }
             p2p::Event::PeerDisconnected(peer) => {
+                tracing::debug!(target: "clicker", peer = %peer, "sync: peer disconnected, live guard cleared");
+                clicker::DecisionLog::record(&format!(
+                    "sync: peer disconnected, live guard cleared peer={peer}"
+                ));
                 live.remove(peer.as_str());
                 rest.push(p2p::Event::PeerDisconnected(peer));
             }

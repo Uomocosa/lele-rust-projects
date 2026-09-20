@@ -70,3 +70,10 @@ Clicks and cursor moves ride gossipsub topics per room; scores sync
 via unicast `SyncReq`/`SyncAck` heartbeats (transitive: a center peer's
 ack carries third-party entries) plus kad history snapshots. None of
 this discovers anyone — it only flows once discovery connected them.
+
+## Mainnet problems and solutions
+
+All observed mainnet failures, their fixes, and open slices live in
+`mainnet_problems/` (one file per problem), indexed by
+`MAINNET_PROBLEMS_INDEX.md` — start there. The index also documents
+how to add new problems/solutions.

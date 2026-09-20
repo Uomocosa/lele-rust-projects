@@ -694,6 +694,7 @@ struct SpawnRequest<'a> {
 
 fn spawn_tag(terms: &mut Vec<TerminalGuard>, req: &SpawnRequest<'_>) -> bool {
     let log = req.dir.join(format!("instance-{}.log", req.tag));
+    let decision = req.dir.join(format!("sync-{}.log", req.tag));
     let spec = XtermSpec {
         bin: req.bin,
         namespace: "blackboard-v1",
@@ -706,6 +707,7 @@ fn spawn_tag(terms: &mut Vec<TerminalGuard>, req: &SpawnRequest<'_>) -> bool {
         mdns: req.mdns,
         brp_port: None,
         log: &log,
+        decision_log: Some(&decision),
     };
     match spawn_xterm(&spec) {
         Ok(guard) => {

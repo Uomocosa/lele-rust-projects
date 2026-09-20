@@ -9,7 +9,12 @@ pub fn spawn_pending_join(
     mut commands: Commands,
     gate: Res<lobby::JoinGate>,
     own: Res<net_id::NetworkId>,
-    owners: Query<(Entity, &clicker::Owner, Option<&clicker::PendingReveal>)>,
+    owners: Query<(
+        Entity,
+        &clicker::Owner,
+        Option<&clicker::PendingReveal>,
+        Option<&clicker::PlayerNo>,
+    )>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -18,12 +23,20 @@ pub fn spawn_pending_join(
     let gray = Color::srgb(0.5, 0.5, 0.5);
     for entry in pending {
         let target = target_owner(entry, own);
+        let mut resolved = false;
         let mut existing = None;
-        for (entity, owner, marker) in &owners {
+        for (entity, owner, marker, numbered) in &owners {
             if **owner == target {
+                if numbered.is_some() && target != own {
+                    resolved = true;
+                    break;
+                }
                 existing = Some((entity, marker.is_some()));
                 break;
             }
+        }
+        if resolved {
+            continue;
         }
         match existing {
             Some((_, true)) => {}
@@ -174,5 +187,27 @@ mod tests {
             .iter(app.world())
             .count();
         assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn labeled_slot_never_rearmed() {
+        let mut app = test_app();
+        let labeled = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(net_id::NetworkId::from_peer("peer-2")),
+                clicker::PlayerNo(2),
+                clicker::ClickCounter(15),
+            ))
+            .id();
+        arm(&mut app, "peer-2", 2);
+        app.add_systems(Update, spawn_pending_join);
+        app.update();
+        app.update();
+        assert!(
+            app.world().get::<clicker::PendingReveal>(labeled).is_none(),
+            "a resolved slot takes no reveal marker from a stale pending entry"
+        );
     }
 }

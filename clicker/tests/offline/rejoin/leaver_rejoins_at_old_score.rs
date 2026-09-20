@@ -1,3 +1,4 @@
+use bevy::time::TimeUpdateStrategy;
 use clicker_lib::{clicker, testing};
 use freenet_libp2p_bevy_plugin::roster;
 
@@ -30,8 +31,14 @@ fn leaver_rejoins_at_old_score() {
         .world_mut()
         .resource_mut::<roster::Roster>()
         .remove_entry("alpha", [2u8; 32]);
-    mesh.apps[0].update();
-    mesh.apps[0].update();
+    mesh.apps[0]
+        .world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::from_secs(1),
+        ));
+    for _ in 0..70 {
+        mesh.apps[0].update();
+    }
     assert_eq!(restored_count(&mut mesh, 0, 2), None);
     assert_eq!(
         mesh.apps[0]

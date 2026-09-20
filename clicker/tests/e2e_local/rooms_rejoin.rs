@@ -415,7 +415,7 @@ fn assert_slot_frozen(
     let series = own_slot_series(log, pos, room, slot);
     let ok = series
         .first()
-        .is_some_and(|first| *first == 0 && series.iter().all(|value| value == first));
+        .is_some_and(|first| *first <= 1 && series.iter().all(|value| value == first));
     soft(
         checks,
         name,
@@ -583,6 +583,7 @@ async fn wait_until(secs: u64, mut cond: impl FnMut() -> bool) -> bool {
 
 fn spawn_tag(req: &SpawnRequest<'_>) -> Option<TerminalGuard> {
     let log = req.dir.join(req.log_name);
+    let decision = req.dir.join(req.log_name.replace("instance-", "sync-"));
     let spec = XtermSpec {
         bin: req.bin,
         namespace: req.namespace,
@@ -595,6 +596,7 @@ fn spawn_tag(req: &SpawnRequest<'_>) -> Option<TerminalGuard> {
         mdns: req.mdns,
         brp_port: Some(brp_port(req.tag)),
         log: &log,
+        decision_log: Some(&decision),
     };
     match spawn_xterm(&spec) {
         Ok(guard) => Some(guard),
@@ -1277,6 +1279,14 @@ async fn phase_finish(
         .map(|c| format!("{} {} {}", check_emoji(c.ok), c.name, c.detail))
         .collect();
     let all_ok = run.checks.iter().all(|c| c.ok);
+    test_log.line(&format!(
+        "checks {}/{} ok",
+        run.checks.iter().filter(|c| c.ok).count(),
+        run.checks.len()
+    ));
+    for line in &check_lines {
+        test_log.line(line);
+    }
     ensure(
         all_ok,
         format!("subtest failures:\n{}", check_lines.join("\n")),

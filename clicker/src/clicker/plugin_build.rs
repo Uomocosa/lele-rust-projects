@@ -2,6 +2,7 @@ use crate::clicker;
 use crate::lobby;
 use bevy::prelude::*;
 pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
+    app.init_resource::<clicker::DecisionLog>();
     app.init_resource::<clicker::ScoreTombstones>();
     app.init_resource::<lobby::JoinPending>();
     app.init_resource::<lobby::JoinGate>();
@@ -60,7 +61,8 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
         .add_systems(Update, clicker::bevy_systems::update_cursor_label)
         .add_systems(Update, clicker::bevy_systems::update_score)
         .add_systems(Update, clicker::bevy_systems::tick_log)
-        .add_systems(Update, clicker::bevy_systems::pos_log);
+        .add_systems(Update, clicker::bevy_systems::pos_log)
+        .add_systems(Update, clicker::bevy_systems::drain_decisions);
 }
 
 #[cfg(test)]

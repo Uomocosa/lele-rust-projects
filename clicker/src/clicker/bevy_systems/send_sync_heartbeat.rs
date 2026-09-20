@@ -30,6 +30,12 @@ pub fn send_sync_heartbeat(
     }
     *last = now;
     counts.insert((**lobby).clone(), members.len());
+    tracing::debug!(target: "clicker", room = %**lobby, members = members.len(), grew = changed, requester = ?own, "sync: heartbeat req sent");
+    clicker::DecisionLog::record(&format!(
+        "sync: heartbeat req sent room={} members={} grew={changed} requester={own:?}",
+        **lobby,
+        members.len()
+    ));
     for peer in members.values() {
         commands.push(p2p::Command::Send {
             peer_id: peer.clone(),

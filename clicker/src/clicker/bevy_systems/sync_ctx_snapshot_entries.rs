@@ -45,6 +45,8 @@ pub fn snapshot_entries(
             entries.push((id, *count));
         }
     }
+    tracing::debug!(target: "clicker", entries = entries.len(), detail = ?entries, "sync: snapshot built");
+    clicker::DecisionLog::record(&format!("sync: snapshot built entries={entries:?}"));
     entries
 }
 

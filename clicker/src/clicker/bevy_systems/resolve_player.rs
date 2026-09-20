@@ -301,6 +301,62 @@ mod tests {
     }
 
     #[test]
+    fn armed_pending_defers_label_to_reveal() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(99));
+        app.insert_resource(clicker::ScoreTombstones::default());
+        let now = std::time::Instant::now();
+        let mut gate = lobby::JoinGate::default();
+        gate.arm_pending(lobby::PendingJoin {
+            peer: "peer".to_string(),
+            joiner: net_id::NetworkId::from_peer("peer"),
+            reveal_at: now,
+            fail_at: now
+                .checked_add(std::time::Duration::from_secs(30))
+                .unwrap_or(now),
+        });
+        app.insert_resource(gate);
+        let sender = net_id::NetworkId::from_peer("peer");
+        let visual = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(sender),
+                clicker::TargetPos(Vec2::ZERO),
+                Transform::default(),
+            ))
+            .id();
+        let msg = clicker::CursorMsg::Move {
+            owner: net_id::NetworkId(5),
+            pos: [30.0, 40.0],
+        };
+        let data = bincode::serialize(&msg).unwrap_or_default();
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .push(p2p::Event::Gossip {
+                topic: "clicker/alpha/pos".to_string(),
+                from: "peer".to_string(),
+                data,
+            });
+        app.add_systems(Update, resolve_player);
+        app.update();
+        let marker = app.world().get::<clicker::PendingReveal>(visual);
+        assert_eq!(
+            marker.map(|mark| mark.player),
+            Some(Some(5)),
+            "armed pending defers the claimed identity to the reveal path"
+        );
+        assert!(
+            app.world().get::<clicker::PlayerNo>(visual).is_none(),
+            "no direct label while the reveal path owns the peer"
+        );
+    }
+
+    #[test]
     fn test_foreign_topic_never_resolves() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);

@@ -14,6 +14,7 @@ pub struct XtermSpec<'a> {
     pub mdns: bool,
     pub brp_port: Option<u16>,
     pub log: &'a Path,
+    pub decision_log: Option<&'a Path>,
 }
 
 #[rustfmt::skip]
@@ -42,6 +43,7 @@ mod tests {
             mdns: true,
             brp_port: None,
             log: Path::new("/tmp/x.log"),
+            decision_log: None,
         };
         assert!(spec.command().contains("--namespace"));
     }

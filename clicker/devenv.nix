@@ -49,7 +49,8 @@
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };
-    "freenet:run-rooms-rejoin" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test rooms_rejoin --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-rooms-rejoin" = { exec = "RUST_LOG=\"info,clicker=debug,clicker_lib=debug,rodio=off,cpal=off,alsa=off\" cargo nextest run --test rooms_rejoin --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "freenet:run-rooms-rejoin-dev" = { exec = "CLICKER_BUILD_PROFILE=\"dev\" RUST_LOG=\"info,clicker=debug,clicker_lib=debug,rodio=off,cpal=off,alsa=off\" cargo nextest run --test rooms_rejoin --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:e2e-matrix" = { exec = "bash e2e_matrix.sh 2>&1"; showOutput = true; };
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "ui:previews-telegram" = { exec = "export VK_ICD_FILENAMES=\"${pkgs.mesa}/share/vulkan/icd.d/radeon_icd.x86_64.json\" && cargo nextest run ui_png_preview --all-features --run-ignored all -- --nocapture && cargo nextest run ui_mp4_preview --all-features --run-ignored all -- --nocapture && cargo run --features dev --example send_previews"; showOutput = true; };

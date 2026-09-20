@@ -11,15 +11,26 @@ pub fn reveal_on_join(
     own: Res<net_id::NetworkId>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     lobby: Res<clicker::ActiveLobby>,
-    targets: Query<(Entity, &clicker::Owner, &clicker::PendingReveal)>,
+    targets: Query<(
+        Entity,
+        &clicker::Owner,
+        &clicker::PendingReveal,
+        Option<&clicker::PlayerNo>,
+    )>,
 ) {
     let own = *own.into_inner();
     let lobby = lobby.into_inner();
     let room = (**lobby).clone();
     let gate = gate.into_inner();
     let now = std::time::Instant::now();
-    for (entity, owner, marker) in &targets {
+    for (entity, owner, marker, numbered) in &targets {
         if now < marker.reveal_at {
+            continue;
+        }
+        if numbered.is_some() {
+            commands.entity(entity).remove::<clicker::PendingReveal>();
+            gate.pending
+                .retain(|entry| target_owner(entry, own) != **owner);
             continue;
         }
         let held = gate
@@ -194,5 +205,48 @@ mod tests {
         app.update();
         assert!(app.world().get_entity(entity).is_ok());
         assert!(app.world().get::<clicker::PlayerNo>(entity).is_none());
+    }
+
+    #[test]
+    fn labeled_slot_survives_fail_deadline() {
+        let past = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_secs(1))
+            .unwrap_or_else(std::time::Instant::now);
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<Assets<ColorMaterial>>();
+        app.insert_resource(clicker::ActiveLobby("alpha".to_string()));
+        app.insert_resource(net_id::NetworkId(1));
+        let mut gate = lobby::JoinGate::default();
+        gate.arm_pending(lobby::PendingJoin {
+            peer: "peer-2".to_string(),
+            joiner: net_id::NetworkId(2),
+            reveal_at: past,
+            fail_at: past,
+        });
+        app.insert_resource(gate);
+        let armed = app
+            .world_mut()
+            .spawn((
+                clicker::CursorIcon,
+                clicker::Owner(net_id::NetworkId::from_peer("peer-2")),
+                clicker::PlayerNo(2),
+                clicker::ClickCounter(15),
+                marker(past, past, None),
+            ))
+            .id();
+        app.add_systems(Update, reveal_on_join);
+        app.update();
+        assert!(
+            app.world().get_entity(armed).is_ok(),
+            "the fail deadline never despawns a resolved slot"
+        );
+        assert!(
+            !app.world()
+                .resource::<lobby::JoinGate>()
+                .absent
+                .contains(&"peer-2".to_string()),
+            "a resolved peer is never marked absent"
+        );
     }
 }
