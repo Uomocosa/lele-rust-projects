@@ -16,12 +16,14 @@ it alone.
 
 ## Evidence (logs)
 
-- `.local-run/rooms-rejoin-20260921-081242/` (run 3): survivors
-  `join-reveal=0`.
-- Baseline HEAD run `/tmp/opencode/slow-base.log`: also
-  `❌ rejoin-3`/`❌ rejoin-1`.
-- Rate: **9/20** of the most recent `rooms_rejoin` runs show the
-  rejoin-3 ❌ before this slice.
+Absence of the line (`clicker/.local-run/`, `instance-{1,2}.log`):
+
+- `rooms-rejoin-20260921-081242/` (Phase 4A run 3): `join reveal` = 0.
+- `rooms-rejoin-20260921-085608/` (HEAD A/B run): `join reveal` = 0.
+
+Rate (before this slice): **9/20** —
+`grep "❌ rejoin-3 a survivor logged the shared reveal"` over the last
+20 `telegram_bot/.local-run/rooms_rejoin-*.log` summaries.
 
 ## Root cause
 
@@ -44,7 +46,7 @@ None yet (open).
 
 - Fast suite green (does not exercise the mainnet rejoin timing).
 - Slow: RED only on this check; all converge/owner/agreement checks
-  pass (`16` seen in 5/5 post-#13 runs and the HEAD A/B run).
+  pass (this check fires in 5/5 post-#13 runs and the HEAD A/B run).
 
 ## Open / next slice
 

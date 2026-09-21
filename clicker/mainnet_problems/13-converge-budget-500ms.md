@@ -12,14 +12,35 @@ the budget alone.
 
 ## Evidence (logs)
 
-Historic scatter (pre-fix): 731ms (`…155748`), 539ms (`…052230`),
-526ms (`…053918`), 434ms, 382ms, 242ms, 148ms.
+Pre-fix scatter, `baseline-converge-ms` summary line (all
+`telegram_bot/.local-run/`):
 
-A/B on the same host sealed the cause. `tick_log` emits the `sync`
-line only once per second; `agree_within` reads the **last** such line
-every 50ms. The metric therefore tracks which instance crosses its
-next 1 Hz log boundary last (offset per process start), not network
-latency. Real propagation is 11–62ms (click gossip → `credit_click`).
+- 731ms `rooms_rejoin-20260920-155746.log`
+- 539ms `rooms_rejoin-20260921-052152.log`
+- 526ms `rooms_rejoin-20260921-053916.log`
+- 434ms `rooms_rejoin-20260920-154050.log`
+- 388ms `rooms_rejoin-20260919-162337.log`
+- 382ms `rooms_rejoin-20260920-155034.log`
+- 251ms `rooms_rejoin-20260920-074643.log`
+- 242ms `rooms_rejoin-20260921-052653.log`
+- 148ms `rooms_rejoin-20260921-053436.log`
+
+**Cause proof (A/B, same host).** The metric tracks each instance's
+next 1 Hz `sync` boundary, not network latency. First
+`sync … p1/p2/p3` final line per instance (`clicker/.local-run/`):
+
+| build | run dir | instance-1 | instance-2 | instance-3 | spread | summary |
+|---|---|---|---|---|---|---|
+| fixed | `rooms-rejoin-20260921-083047` | `:2063` 08:32:14.311 | `:1279` .299 | `:1394` .279 | 32ms | 54ms |
+| fixed | `rooms-rejoin-20260921-083501` | `:1593` 08:36:33.213 | `:1442` .213 | `:1180` .181 | 32ms | 54ms |
+| fixed | `rooms-rejoin-20260921-083933` | `:3897` 08:44:13.418 | `:1393` .418 | `:1219` .385 | 33ms | 107ms |
+| fixed | `rooms-rejoin-20260921-084618` | `:1442` 08:47:47.836 | `:1692` .823 | `:1084` .801 | 35ms | 58ms |
+| fixed | `rooms-rejoin-20260921-085032` | `:1501` 08:51:58.543 | `:1254` .547 | `:1081` .527 | 20ms | 50ms |
+| HEAD | `rooms-rejoin-20260921-085608` | `:2017` 08:57:56.756 | `:1228` .756 | `:1320` .057 | **699ms** | 485ms |
+
+Fixed runs land within 20–35ms; the HEAD (1 Hz) run spreads
+**699ms** (instance-3 `.057` → instance-1 `.756`), which is the probe
+period. Summary files: `telegram_bot/.local-run/rooms_rejoin-20260921-{083013,083459,083930,084616,085029,085531}.log`.
 
 ## Root cause
 
@@ -44,20 +65,37 @@ round-trip, plus the `_12` fail-deadline kill) — not the budget flake.
 ## Verification
 
 - Fast: `lele:build/clippy/fmt/nextest/lint` green (380 tests).
-- A/B same host: HEAD (1 Hz probe) = **485ms**; with the fix, 5 runs =
-  **54 / 54 / 107 / 58 / 50 ms** — all ≪500ms, no budget ❌.
-- Slow gate is still RED, but only on `rejoin-3`/`rejoin-1 a survivor
-  logged the shared reveal` — a pre-existing flake (9/20 baseline) now
-  tracked in `16-rejoin-reveal-log-flake.md`; both the HEAD A/B run and
-  all fixed runs show it, so it is independent of this fix.
+- A/B: HEAD (1 Hz) 485ms vs fixed 54/54/107/58/50ms — all ≪500ms.
+- Slow gate still RED, but only on the `rejoin-3`/`rejoin-1` reveal
+  check — pre-existing, tracked in `16-rejoin-reveal-log-flake.md`
+  (identical on HEAD and the fixed build).
+
+## Attempts (not in git)
+
+`label-from-SyncAck directly` (Phase 4A) was implemented and reverted
+before commit. Design: new wire `ScoreEntry { owner, logical, count }`
+provenance, `PendingClick.logical`, and draining acks to labels (a
+duplicate logical on another slot is **dropped**; implementation style
+extends `PendingClick`), plus a `JoinGate.pending` defer so ack labels
+do not bypass `reveal_on_join`.
+
+Run-by-run summary (`telegram_bot/.local-run/`): run1
+`rooms_rejoin-20260921-080035.log` 48ms ✅; run2 `…080539.log` 92ms ✅;
+run3 `…081239.log` 52ms ❌ (reveal check, see `16`); run4 `…081915.log`
+73ms ✅; run5 `…082406.log` ❌ `phase rejoin creator: "rejoin-1: no
+agreement"`.
+
+Definitive regression, run5 (`clicker/.local-run/rooms-rejoin-20260921-082408/`):
+`instance-1-rejoin.log:626-627` labeled two peers as player 1, then
+`:629` reported `global=63`, while the survivors stayed
+`instance-2.log:3626` / `instance-3-rejoin.log:1841` at `global=47` —
+two slots labeled 1 double-count `47+16`. Reverted. A future slice
+must route every label site through `resolve_player`'s `taken` guard
+and the reveal defer before touching the ack path.
 
 ## Open / next slice
 
 - Budget stays 500ms (user call); the probe fix makes it reliable.
-- `label-from-SyncAck directly` was **attempted and reverted**: adding
-  `ScoreEntry { owner, logical, count }` provenance + `PendingClick.logical`
-  and labeling drained acks caused a creator-rejoin double-count
-  (`instance-1-rejoin` `global=63` = 47+16, two slots labeled 1) and let
-  ack labels bypass `reveal_on_join`. Reverted to keep the gate stable;
-  a future slice must reuse `resolve_player`'s `taken` guard and the
-  `JoinGate.pending` defer across every label site.
+- The real "late labeler" tail (parked pending → 5s `SyncReq` heartbeat)
+  remains untouched; it only bites the historical 41s/never-merge case,
+  not the budget.
