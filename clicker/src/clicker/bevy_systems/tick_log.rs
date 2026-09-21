@@ -9,24 +9,12 @@ pub fn tick_log(
     lobby: Res<clicker::ActiveLobby>,
     time: Res<Time>,
     mut last: Local<f64>,
+    mut prev: Local<String>,
 ) {
     let time = time.into_inner();
     let now = time.elapsed().as_secs_f64();
-    if now - *last < 1.0 {
-        return;
-    }
-    *last = now;
     let global = global.into_inner();
     let lobby = lobby.into_inner();
-    for (owner, counter) in &query {
-        tracing::info!(
-            "tick lobby={} owner={} count={} global={}",
-            **lobby,
-            ***owner,
-            **counter,
-            **global
-        );
-    }
     let mut p1 = 0;
     let mut p2 = 0;
     let mut p3 = 0;
@@ -46,6 +34,25 @@ pub fn tick_log(
         .map(u64::to_string)
         .collect::<Vec<String>>()
         .join(",");
+    let key = format!("{p1}/{p2}/{p3}/{}/{players}", **global);
+    let heartbeat = now - *last >= 1.0;
+    if heartbeat {
+        *last = now;
+        for (owner, counter) in &query {
+            tracing::info!(
+                "tick lobby={} owner={} count={} global={}",
+                **lobby,
+                ***owner,
+                **counter,
+                **global
+            );
+        }
+    }
+    let changed = *prev != key;
+    if !changed && !heartbeat {
+        return;
+    }
+    *prev = key;
     tracing::info!(
         "sync lobby={} p1={p1} p2={p2} p3={p3} players={players} global={}",
         **lobby,

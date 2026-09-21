@@ -54,9 +54,10 @@
 | 10 | `mainnet_problems/10-join-handshake-welcome.md` | SOLVED | `WantJoin`/`Welcome` + spectate + 1s-quiet/30s-cap readiness (commit `733fd77`) |
 | 11 | `mainnet_problems/11-score-retention-tombstones.md` | SOLVED | Retention rule + tombstones on `SyncAck` + dup-identity + messenger-mismatch fixes |
 | 12 | `mainnet_problems/12-leave-sticks-dead-cursor.md` | MITIGATED | `LeftRoom` + R1/R2 disarm; survivor-side leave broadcast still missing (F1 ghost) |
-| 13 | `mainnet_problems/13-converge-budget-500ms.md` | OPEN | 382/434ms pass, 731ms kills; late-labeler round-trip; label-from-`SyncAck` candidate |
+| 13 | `mainnet_problems/13-converge-budget-500ms.md` | MITIGATED | 1 Hz `sync` probe fixed → event-driven; 5/5 runs 50–107ms; gate still red on `16` |
 | 14 | `mainnet_problems/14-turmoil-rig-fidelity.md` | LIVING DOC | Turmoil coverage matrix #1–17, lessons, remaining rig work |
 | 15 | `mainnet_problems/15-hint-union-dial-before-get.md` | MITIGATED | Q1 dial-before-Get + synthetic-connect dedup; stall kills 0/5, reveal race + budget open |
+| 16 | `mainnet_problems/16-rejoin-reveal-log-flake.md` | OPEN | Survivor `join reveal` line missing after rejoin (9/20 baseline); gate REDs on it |
 
 ## Retired sources
 
