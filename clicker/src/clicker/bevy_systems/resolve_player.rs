@@ -4,10 +4,11 @@ use freenet_libp2p_bevy_plugin::{net_id, p2p};
 
 use super::resolve_ctx;
 use crate::clicker;
+use crate::lobby;
 
 pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
     let topic = ctx.topic();
-    let own = ctx.own.into_inner();
+    let own = *ctx.own;
     let mut rest = Vec::new();
     for event in ctx.events.take_all() {
         // Identity comes only from gossip: request_response echoes our own
@@ -36,7 +37,7 @@ pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
         };
         let sender = net_id::NetworkId::from_peer(from);
         let claimed = owner;
-        if sender == *own || *claimed == 0 {
+        if sender == own || *claimed == 0 {
             rest.push(event);
             continue;
         }
@@ -60,14 +61,23 @@ pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
                 continue;
             }
             let spot = clicker::spawn_spot(player);
-            if let Some((reveal_at, fail_at)) = pending_reveal {
-                let now = std::time::Instant::now();
-                let reveal_at = if now >= reveal_at { now } else { reveal_at };
+            let now = std::time::Instant::now();
+            let fail_at = now
+                .checked_add(std::time::Duration::from_secs(
+                    lobby::PENDING_JOIN_FAIL_SECS,
+                ))
+                .unwrap_or(now);
+            let reveal_at = pending_reveal.map(|(at, _)| if now >= at { now } else { at });
+            if let Some(reveal_at) = reveal_at {
                 ctx.commands.entity(entity).insert(clicker::PendingReveal {
                     reveal_at,
                     fail_at,
                     player: Some(*claimed),
                 });
+                clicker::DecisionLog::record(&format!(
+                    "resolve: defer-to-reveal player={} from={from}",
+                    *claimed
+                ));
             } else {
                 clicker::label_slot(
                     &mut ctx.commands,
@@ -76,26 +86,42 @@ pub fn resolve_player(mut ctx: resolve_ctx::ResolveCtx) {
                     from,
                     *claimed,
                 );
+                clicker::DecisionLog::record(&format!(
+                    "resolve: direct-label player={} from={from}",
+                    *claimed
+                ));
                 if let Some(saved) = ctx.tombstones.restore(*claimed)
                     && let Ok(mut counter) = ctx.counters.get_mut(entity)
                 {
                     counter.max(saved);
                 }
             }
-            for (spot_owner, mut transform, mut target) in &mut ctx.spots {
-                if ***spot_owner != *sender {
-                    continue;
-                }
-                transform.translation.x = spot.x;
-                transform.translation.y = spot.y;
-                **target = spot;
-                break;
-            }
+            move_to_spot(&mut ctx.spots, sender, spot);
             break;
         }
         rest.push(event);
     }
     ctx.events.extend(rest);
+}
+
+// needed helper: snaps the sender's cursor to its spawn spot
+fn move_to_spot(
+    spots: &mut Query<
+        (&clicker::Owner, &mut Transform, &mut clicker::TargetPos),
+        With<clicker::CursorIcon>,
+    >,
+    sender: net_id::NetworkId,
+    spot: Vec2,
+) {
+    for (spot_owner, mut transform, mut target) in &mut *spots {
+        if ***spot_owner != *sender {
+            continue;
+        }
+        transform.translation.x = spot.x;
+        transform.translation.y = spot.y;
+        **target = spot;
+        break;
+    }
 }
 
 #[cfg(test)]

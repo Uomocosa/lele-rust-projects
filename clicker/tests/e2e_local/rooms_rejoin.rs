@@ -184,13 +184,14 @@ async fn assert_rejoin_visible(
     checks: &mut Vec<SoftCheck>,
     name: &str,
     survivor_log: &std::path::Path,
+    survivor_pos: u64,
     logs: &[std::path::PathBuf],
     secs: u64,
 ) {
     soft(
         checks,
         name,
-        log_contains(survivor_log, "join reveal"),
+        reveal_since(survivor_log, survivor_pos),
         "a survivor logged the shared reveal after the rejoin".to_string(),
     );
     assert_all_owners(
@@ -208,6 +209,7 @@ async fn await_rejoin(
     label: &str,
     rejoining: &std::path::Path,
     survivor: &std::path::Path,
+    survivor_pos: u64,
 ) -> Result<SyncState, String> {
     ensure(
         wait_until(180, || {
@@ -227,6 +229,7 @@ async fn await_rejoin(
         &mut run.checks,
         label,
         survivor,
+        survivor_pos,
         &logs,
         LAG_AGREE_TIMEOUT_SECS,
     )
@@ -347,6 +350,21 @@ fn ready_since(path: &std::path::Path, room: &str, pos: u64) -> bool {
     }
     tail.lines()
         .any(|line| line.contains("join ready") && line.contains(room))
+}
+
+fn reveal_since(path: &std::path::Path, pos: u64) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    if file.seek(SeekFrom::Start(pos)).is_err() {
+        return false;
+    }
+    let mut tail = String::new();
+    if file.read_to_string(&mut tail).is_err() {
+        return false;
+    }
+    tail.contains("join reveal")
 }
 
 fn own_slot_series(path: &std::path::Path, pos: u64, room: &str, slot: &str) -> Vec<u64> {
@@ -1044,6 +1062,7 @@ async fn phase_rejoin_3(run: &mut Run<'_>) -> Result<(), String> {
     )
     .await;
     let before_rejoin = tick_lines(&run.log2);
+    let survivor_pos = file_len(&run.log2);
     let Some((guard, log)) = spawn_puller(&PullerRequest {
         bin: run.bin,
         dir: run.persist_dir,
@@ -1079,7 +1098,7 @@ async fn phase_rejoin_3(run: &mut Run<'_>) -> Result<(), String> {
     .await;
     let rejoining = run.log3.clone();
     let survivor = run.log2.clone();
-    let restored = await_rejoin(run, "rejoin-3", &rejoining, &survivor).await?;
+    let restored = await_rejoin(run, "rejoin-3", &rejoining, &survivor, survivor_pos).await?;
     let baseline = run.baseline.ok_or_else(|| "baseline missing".to_string())?;
     ensure(
         restored.p1 >= baseline.p1 && restored.p2 >= baseline.p2 && restored.p3 >= baseline.p3,
@@ -1128,6 +1147,7 @@ async fn phase_rejoin_creator(run: &mut Run<'_>) -> Result<(), String> {
             tick_lines(&run.log2)
         ),
     );
+    let survivor_pos = file_len(&run.log2);
     let Some((guard, log)) = spawn_puller(&PullerRequest {
         bin: run.bin,
         dir: run.persist_dir,
@@ -1163,7 +1183,7 @@ async fn phase_rejoin_creator(run: &mut Run<'_>) -> Result<(), String> {
     .await;
     let rejoining = run.log1.clone();
     let survivor = run.log2.clone();
-    let final_state = await_rejoin(run, "rejoin-1", &rejoining, &survivor).await?;
+    let final_state = await_rejoin(run, "rejoin-1", &rejoining, &survivor, survivor_pos).await?;
     let restored = run.restored.ok_or_else(|| "restored missing".to_string())?;
     ensure(
         final_state.p1 >= restored.p1

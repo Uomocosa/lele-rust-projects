@@ -31,6 +31,7 @@ pub fn reveal_on_join(
             commands.entity(entity).remove::<clicker::PendingReveal>();
             gate.pending
                 .retain(|entry| target_owner(entry, own) != **owner);
+            clicker::DecisionLog::record(&format!("reveal: numbered-skip owner={:?}", **owner));
             continue;
         }
         let held = gate
@@ -50,12 +51,17 @@ pub fn reveal_on_join(
             if let Some((_, joiner)) = &held {
                 gate.pending.retain(|entry| entry.joiner != *joiner);
             }
+            clicker::DecisionLog::record(&format!("reveal: revealed player={player}"));
             tracing::info!(target: "clicker", room = %room, player, "join reveal");
         } else if now >= marker.fail_at {
             commands.entity(entity).despawn();
             if let Some((peer, joiner)) = &held {
                 gate.absent.push(peer.clone());
                 gate.pending.retain(|entry| entry.joiner != *joiner);
+                clicker::DecisionLog::record(&format!(
+                    "reveal: fail-deadline peer={peer} owner={:?}",
+                    **owner
+                ));
                 tracing::warn!(target: "clicker", room = %room, peer = %peer, "join failed: no identity before the fail deadline");
             }
         }

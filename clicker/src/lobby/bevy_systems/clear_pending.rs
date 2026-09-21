@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::net_id;
 
+use crate::clicker;
 use crate::lobby;
 
 type LoadingNodes<'w, 's> = Query<
@@ -40,6 +41,10 @@ pub fn clear_pending(
         }
         tracing::warn!(target: "clicker", room = %room, "join abandoned: roster never resolved before the alone-cap");
     }
+    clicker::DecisionLog::record(&format!(
+        "join: clear room={room} committed={}",
+        gate.committed
+    ));
     finish_join(&mut commands, pending, &overlays);
 }
 

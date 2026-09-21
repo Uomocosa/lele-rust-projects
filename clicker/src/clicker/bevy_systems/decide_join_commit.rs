@@ -8,18 +8,17 @@ use crate::lobby;
 pub fn decide_join_commit(
     mut gate: ResMut<lobby::JoinGate>,
     clock: Res<lobby::JoinClock>,
-    join_pending: Res<lobby::JoinPending>,
     lobby: Res<clicker::ActiveLobby>,
     own: Res<net_id::NetworkId>,
     commands: ResMut<p2p::Commands<clicker::CursorMsg>>,
 ) {
-    let join_pending = join_pending.into_inner();
     let clock = clock.into_inner();
-    let Some(room) = (**join_pending).clone() else {
-        return;
-    };
     let own = *own.into_inner();
-    if gate.has_pending(own) || gate.committed {
+    if clock.clicked_at.is_none() || gate.has_pending(own) || gate.committed {
+        return;
+    }
+    let room = (**lobby).clone();
+    if room.is_empty() {
         return;
     }
     if !ready(&gate, clock) {
@@ -51,6 +50,7 @@ pub fn decide_join_commit(
         topic: clicker::pos_topic(lobby.into_inner()),
         data,
     });
+    clicker::DecisionLog::record(&format!("commit: sent joiner={} room={room}", *own));
     tracing::info!(target: "clicker", room = %room, joiner = *own, "join commit sent");
 }
 
@@ -159,6 +159,18 @@ mod tests {
                 .len(),
             1,
             "commit is broadcast once"
+        );
+    }
+
+    #[test]
+    fn commits_after_join_pending_cleared() {
+        let mut app = test_app(BTreeSet::new(), Vec::new());
+        app.insert_resource(lobby::JoinPending::default());
+        app.add_systems(Update, decide_join_commit);
+        app.update();
+        assert!(
+            app.world().resource::<lobby::JoinGate>().committed,
+            "the commit still fires after the loading gate cleared"
         );
     }
 }

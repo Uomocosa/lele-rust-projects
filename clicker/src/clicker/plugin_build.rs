@@ -43,6 +43,7 @@ pub fn build(_plugin: &clicker::Plugin, app: &mut App) {
                 .chain(),
         )
         .add_systems(Update, clicker::bevy_systems::ease_remote)
+        .add_systems(Update, clicker::bevy_systems::tick_presence)
         .add_systems(
             Update,
             (

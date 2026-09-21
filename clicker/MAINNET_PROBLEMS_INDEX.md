@@ -57,7 +57,9 @@
 | 13 | `mainnet_problems/13-converge-budget-500ms.md` | MITIGATED | 1 Hz `sync` probe fixed → event-driven; 5/5 runs 50–107ms; gate still red on `16` |
 | 14 | `mainnet_problems/14-turmoil-rig-fidelity.md` | LIVING DOC | Turmoil coverage matrix #1–17, lessons, remaining rig work |
 | 15 | `mainnet_problems/15-hint-union-dial-before-get.md` | MITIGATED | Q1 dial-before-Get + synthetic-connect dedup; stall kills 0/5, reveal race + budget open |
-| 16 | `mainnet_problems/16-rejoin-reveal-log-flake.md` | OPEN | Survivor `join reveal` line missing after rejoin (9/20 baseline); gate REDs on it |
+| 16 | `mainnet_problems/16-rejoin-reveal-log-flake.md` | OPEN | P1–P3 + instrumentation landed; gate now honest (rejoin-3 real, rejoin-1 ghost); P4 deferred |
+| 17 | `mainnet_problems/17-menu-double-despawn.md` | MITIGATED | Recursive menu despawn spammed `bevy_ecs` warnings; 3A fix landed, 2 residual in leave-load |
+| 18 | `mainnet_problems/18-leave-button-ui-flake.md` | OPEN | `ui_leave_room` false negative: leave succeeds, `directory listed rooms` marker never logs |
 
 ## Retired sources
 

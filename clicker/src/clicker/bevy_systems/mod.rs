@@ -41,6 +41,8 @@ pub mod log_connected;
 pub use log_connected::log_connected;
 pub mod pos_log;
 pub use pos_log::pos_log;
+pub mod tick_presence;
+pub use tick_presence::tick_presence;
 pub mod publish_cursor;
 pub use publish_cursor::publish_cursor;
 pub mod publish_snapshot;

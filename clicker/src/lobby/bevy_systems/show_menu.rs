@@ -4,7 +4,7 @@ use crate::lobby;
 
 pub fn show_menu(
     mut commands: Commands,
-    menus: Query<Entity, With<lobby::bevy_systems::MenuRoot>>,
+    menus: Query<Entity, (With<lobby::bevy_systems::MenuRoot>, Without<ChildOf>)>,
     rooms: Res<lobby::RoomList>,
 ) {
     let changed = rooms.is_changed();
