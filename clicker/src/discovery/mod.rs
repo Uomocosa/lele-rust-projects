@@ -51,6 +51,9 @@ pub use contract_params::contract_params;
 pub mod error;
 pub use error::Error;
 
+pub mod hint_union;
+pub use hint_union::hint_union;
+
 pub mod merge_directory;
 pub use merge_directory::merge_directory;
 

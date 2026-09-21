@@ -53,6 +53,8 @@ struct Channels {
     obs_rx: tokio::sync::watch::Receiver<Option<Vec<String>>>,
     link_tx: tokio::sync::mpsc::UnboundedSender<(String, bool)>,
     link_rx: tokio::sync::mpsc::UnboundedReceiver<(String, bool)>,
+    dial_failed_tx: tokio::sync::mpsc::UnboundedSender<String>,
+    dial_failed_rx: tokio::sync::mpsc::UnboundedReceiver<String>,
     lobby_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event<clicker::CursorMsg>>,
     lobby_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::Event<clicker::CursorMsg>>,
     room_tx: tokio::sync::watch::Sender<Option<String>>,
@@ -75,6 +77,7 @@ fn channels() -> Channels {
     let (ready_tx, ready_rx) = tokio::sync::watch::channel::<Option<(String, Vec<String>)>>(None);
     let (obs_tx, obs_rx) = tokio::sync::watch::channel::<Option<Vec<String>>>(None);
     let (link_tx, link_rx) = tokio::sync::mpsc::unbounded_channel::<(String, bool)>();
+    let (dial_failed_tx, dial_failed_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
     let (lobby_tx, lobby_rx) =
         tokio::sync::mpsc::unbounded_channel::<p2p::Event<clicker::CursorMsg>>();
     let (room_tx, room_rx) = tokio::sync::watch::channel::<Option<String>>(None);
@@ -95,6 +98,8 @@ fn channels() -> Channels {
         obs_rx,
         link_tx,
         link_rx,
+        dial_failed_tx,
+        dial_failed_rx,
         lobby_tx,
         lobby_rx,
         room_tx,
@@ -129,6 +134,7 @@ async fn main() {
         ch.obs_tx,
         ch.link_tx,
         ch.lobby_tx,
+        ch.dial_failed_tx,
     ));
     let namespace_arg = args.namespace.clone();
     let params_arg = args.contract_params.clone();
@@ -139,6 +145,7 @@ async fn main() {
         observed: ch.obs_rx,
         links: ch.link_rx,
         lobby_events: ch.lobby_rx,
+        dial_failed: ch.dial_failed_rx,
         namespace: namespace_arg,
         lobby: None,
         params_override: params_arg,
@@ -249,6 +256,7 @@ async fn forward_events(
     obs_tx: tokio::sync::watch::Sender<Option<Vec<String>>>,
     link_tx: tokio::sync::mpsc::UnboundedSender<(String, bool)>,
     lobby_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event<clicker::CursorMsg>>,
+    dial_failed_tx: tokio::sync::mpsc::UnboundedSender<String>,
 ) {
     while let Some(event) = raw_rx.recv().await {
         if let p2p::Event::Ready { peer_id, addrs } = &event {
@@ -281,6 +289,7 @@ async fn forward_events(
             }
             p2p::Event::DialFailed { peer_id, reason } => {
                 tracing::warn!("p2p dial failed peer={peer_id} reason={reason}");
+                dial_failed_tx.send(peer_id.clone()).ok();
             }
             p2p::Event::RelayReserved { relay_peer_id } => {
                 tracing::info!("p2p relay reserved relay={relay_peer_id}");

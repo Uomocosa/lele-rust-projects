@@ -9,6 +9,7 @@ pub struct RunConfig {
     pub observed: tokio::sync::watch::Receiver<Option<Vec<String>>>,
     pub links: tokio::sync::mpsc::UnboundedReceiver<(String, bool)>,
     pub lobby_events: tokio::sync::mpsc::UnboundedReceiver<p2p::Event<clicker::CursorMsg>>,
+    pub dial_failed: tokio::sync::mpsc::UnboundedReceiver<String>,
     pub namespace: String,
     pub lobby: Option<String>,
     pub params_override: Option<String>,
@@ -33,6 +34,7 @@ mod tests {
         let (_obs_tx, observed) = tokio::sync::watch::channel(None);
         let (_link_tx, links) = tokio::sync::mpsc::unbounded_channel();
         let (_lobby_tx, lobby_events) = tokio::sync::mpsc::unbounded_channel();
+        let (_dial_failed_tx, dial_failed) = tokio::sync::mpsc::unbounded_channel::<String>();
         let (room_tx, _room_rx) = tokio::sync::watch::channel(None);
         let (_req_tx, room_requests) = tokio::sync::mpsc::unbounded_channel::<String>();
         let (directory_tx, _directory_rx) =
@@ -44,6 +46,7 @@ mod tests {
             observed,
             links,
             lobby_events,
+            dial_failed,
             namespace: "blackboard-v1".to_string(),
             lobby: Some("room-20250101-120000".to_string()),
             params_override: None,

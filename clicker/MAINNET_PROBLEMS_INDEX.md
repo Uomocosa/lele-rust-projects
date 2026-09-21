@@ -49,13 +49,14 @@
 | 5 | `mainnet_problems/05-full-mesh-data-plane.md` | BY DESIGN | Unicast game traffic needs full mesh; transitive sync closes stars for scores only |
 | 6 | `mainnet_problems/06-resolution-gate.md` | SOLVED | Gate asserts `resolved>=2`, not just connection |
 | 7 | `mainnet_problems/07-dial-storm-tiebreak.md` | MITIGATED | Simultaneous multi-addr dials flap; lower-id-dials tie-break + dial-once per gossip id |
-| 8 | `mainnet_problems/08-roster-get-stall.md` | OPEN | Contract `Get` hangs past 5s/60s on churned rings; biggest gate killer (2/5 RED) |
+| 8 | `mainnet_problems/08-roster-get-stall.md` | MITIGATED | Q1 hint-union dial-before-Get landed (`15`): stalls survive the gate (0/5 kills); budget/reveal tails open |
 | 9 | `mainnet_problems/09-instant-join-path.md` | MITIGATED | P0–P5: loading gate, DirectoryLive, resolve quantum, pre-switch links, event starvation |
 | 10 | `mainnet_problems/10-join-handshake-welcome.md` | SOLVED | `WantJoin`/`Welcome` + spectate + 1s-quiet/30s-cap readiness (commit `733fd77`) |
 | 11 | `mainnet_problems/11-score-retention-tombstones.md` | SOLVED | Retention rule + tombstones on `SyncAck` + dup-identity + messenger-mismatch fixes |
 | 12 | `mainnet_problems/12-leave-sticks-dead-cursor.md` | MITIGATED | `LeftRoom` + R1/R2 disarm; survivor-side leave broadcast still missing (F1 ghost) |
 | 13 | `mainnet_problems/13-converge-budget-500ms.md` | OPEN | 382/434ms pass, 731ms kills; late-labeler round-trip; label-from-`SyncAck` candidate |
 | 14 | `mainnet_problems/14-turmoil-rig-fidelity.md` | LIVING DOC | Turmoil coverage matrix #1–17, lessons, remaining rig work |
+| 15 | `mainnet_problems/15-hint-union-dial-before-get.md` | MITIGATED | Q1 dial-before-Get + synthetic-connect dedup; stall kills 0/5, reveal race + budget open |
 
 ## Retired sources
 

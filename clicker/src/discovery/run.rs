@@ -33,6 +33,7 @@ struct RunContext {
     peer_id: String,
     links: tokio::sync::mpsc::UnboundedReceiver<(String, bool)>,
     lobby_events: tokio::sync::mpsc::UnboundedReceiver<p2p::Event<clicker::CursorMsg>>,
+    dial_failed: tokio::sync::mpsc::UnboundedReceiver<String>,
     observed: tokio::sync::watch::Receiver<Option<Vec<String>>>,
     last_addrs: Vec<String>,
     last_announce: std::time::Instant,
@@ -84,33 +85,15 @@ pub async fn run(mut config: discovery::RunConfig) {
     };
     info!(target: "clicker", room = %room, "discovery: room resolved");
     config.room_tx.send_replace(Some(room.clone()));
-    let roster = loop {
-        let attempt = std::time::Instant::now();
-        match discovery::connect_roster(
-            "127.0.0.1",
-            ws_port,
-            clicker::contract_wasm(),
-            &room_params,
-            config.own,
-            &peer_id,
-            &addrs,
-        )
-        .await
-        {
-            Ok(roster) => {
-                info!(target: "clicker", room = %room, slots = roster.slots.len(), elapsed_ms = attempt.elapsed().as_millis(), "discovery: roster fetched");
-                break roster;
-            }
-            Err(e) => {
-                warn!(target: "clicker", error = %e, "discovery: roster connect failed, retrying");
-                tokio::time::sleep(Duration::from_secs(5)).await;
-            }
-        }
-    };
+    publish_pre_get_union(&config.expected_tx, &directory.slots, &peer_id, &room);
+    let roster =
+        connect_roster_retry(ws_port, &room, &room_params, config.own, &peer_id, &addrs).await;
     info!(target: "clicker", key = %roster.contract_key, own = *config.own, "discovery: roster connected");
     send_expected(&config.expected_tx, &roster.slots, config.own);
     let connected: ConnectedMap = std::collections::HashMap::new();
     let mut staggers: StaggerMap = std::collections::HashMap::new();
+    let mut attempted: std::collections::HashMap<String, std::time::Instant> =
+        std::collections::HashMap::new();
     dial_known(
         &config.cmd_tx,
         &connected,
@@ -118,6 +101,15 @@ pub async fn run(mut config: discovery::RunConfig) {
         &roster.slots,
         config.own,
         config.transport,
+    );
+    dial_directory_publishers(
+        &config.cmd_tx,
+        &mut attempted,
+        &connected,
+        &mut staggers,
+        &peer_id,
+        config.transport,
+        &directory.slots,
     );
     if roster.announce().is_err() {
         warn!(target: "clicker", "discovery: initial announce failed");
@@ -132,6 +124,7 @@ pub async fn run(mut config: discovery::RunConfig) {
         peer_id,
         links: config.links,
         lobby_events: config.lobby_events,
+        dial_failed: config.dial_failed,
         observed: config.observed,
         room_requests: config.room_requests,
         room_tx: config.room_tx,
@@ -147,7 +140,7 @@ pub async fn run(mut config: discovery::RunConfig) {
         last_directory_bridge: None,
         started: now,
         connected,
-        attempted: std::collections::HashMap::new(),
+        attempted,
         staggers,
         transport: config.transport,
         directory_tx: config.directory_tx,
@@ -160,6 +153,57 @@ pub async fn run(mut config: discovery::RunConfig) {
         last_pex: now,
     };
     drive_roster(&mut ctx).await;
+}
+
+// needed helper: publishes the pre-Get hint union so the gate never waits on a stalled roster Get
+fn publish_pre_get_union(
+    expected_tx: &tokio::sync::mpsc::UnboundedSender<Vec<String>>,
+    slots: &discovery::DirectoryState,
+    peer_id: &str,
+    room: &str,
+) {
+    let union = discovery::hint_union(
+        slots,
+        &discovery::HintStore::default(),
+        peer_id,
+        epoch_secs(),
+    );
+    info!(target: "clicker", room = %room, peers = union.len(), "discovery: expected hint-union published before roster get");
+    expected_tx.send(union).ok();
+}
+
+// needed helper: connects the roster contract, retrying until the node answers
+async fn connect_roster_retry(
+    ws_port: u16,
+    room: &str,
+    room_params: &[u8],
+    own: discovery::PlayerId,
+    peer_id: &str,
+    addrs: &[String],
+) -> discovery::Roster {
+    loop {
+        let attempt = std::time::Instant::now();
+        match discovery::connect_roster(
+            "127.0.0.1",
+            ws_port,
+            clicker::contract_wasm(),
+            room_params,
+            own,
+            peer_id,
+            addrs,
+        )
+        .await
+        {
+            Ok(roster) => {
+                info!(target: "clicker", room = %room, slots = roster.slots.len(), elapsed_ms = attempt.elapsed().as_millis(), "discovery: roster fetched");
+                return roster;
+            }
+            Err(e) => {
+                warn!(target: "clicker", error = %e, "discovery: roster connect failed, retrying");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    }
 }
 
 // needed helper: connects the directory contract, retrying until the node answers
@@ -326,6 +370,27 @@ fn send_merged_directory(ctx: &RunContext) {
     ctx.directory_tx.send(view).ok();
 }
 
+// needed helper: drains connection and dial-failure events into link counts and prune sets
+fn drain_link_events(ctx: &mut RunContext) {
+    while let Ok((peer, up)) = ctx.links.try_recv() {
+        if up {
+            let fresh = !ctx.connected.contains_key(&peer);
+            count_link(ctx, peer.clone());
+            if fresh {
+                send_pex_ask(&ctx.cmd_tx, &peer);
+                ctx.pex_asked.insert(peer, std::time::Instant::now());
+            }
+        } else {
+            decrement_link(ctx, &peer);
+        }
+    }
+    while let Ok(peer) = ctx.dial_failed.try_recv() {
+        ctx.staggers.remove(&peer);
+        ctx.pex.remove(peer.as_str());
+        warn!(target: "clicker", peer = %peer, "discovery: pruned dial-failed peer");
+    }
+}
+
 // needed helper: counts one open connection per peer so sub-connection
 // churn never reads as a full drop (the swarm reports per-connection,
 // while redial must only fire when the last connection closes)
@@ -349,6 +414,7 @@ fn decrement_link(ctx: &mut RunContext, peer: &str) {
 
 // needed helper: reconnects roster and directory to a newly requested room
 async fn switch_room(ctx: &mut RunContext, room: &str) -> bool {
+    send_hint_union(ctx);
     let params = discovery::resolve_params(&ctx.namespace, room, ctx.params_override.as_deref());
     let attempt = std::time::Instant::now();
     match discovery::connect_roster(
@@ -425,18 +491,7 @@ async fn drive_roster(ctx: &mut RunContext) {
                 ctx.pending_switch = Some((room, attempts.saturating_add(1)));
             }
         }
-        while let Ok((peer, up)) = ctx.links.try_recv() {
-            if up {
-                let fresh = !ctx.connected.contains_key(&peer);
-                count_link(ctx, peer.clone());
-                if fresh {
-                    send_pex_ask(&ctx.cmd_tx, &peer);
-                    ctx.pex_asked.insert(peer, std::time::Instant::now());
-                }
-            } else {
-                decrement_link(ctx, &peer);
-            }
-        }
+        drain_link_events(ctx);
         let mut hub = DialHub {
             cmd_tx: &ctx.cmd_tx,
             attempted: &mut ctx.attempted,
@@ -947,6 +1002,26 @@ fn free_udp_port() -> Result<u16, discovery::Error> {
     Ok(port)
 }
 
+// needed helper: publishes the pre-Get hint union and dials it so the gate never waits on a stalled roster Get
+fn send_hint_union(ctx: &mut RunContext) {
+    let union = discovery::hint_union(&ctx.directory.slots, &ctx.pex, &ctx.peer_id, epoch_secs());
+    info!(target: "clicker", peers = union.len(), "discovery: expected hint-union published");
+    ctx.expected_tx.send(union).ok();
+    let mut hints = directory_hints(&ctx.directory.slots);
+    hints.extend(ctx.pex.values().cloned());
+    for hint in discovery::merge_peer_hints(hints) {
+        dial_hint(
+            &ctx.cmd_tx,
+            &mut ctx.attempted,
+            &ctx.connected,
+            &mut ctx.staggers,
+            &ctx.peer_id,
+            ctx.transport,
+            &hint,
+        );
+    }
+}
+
 // needed helper: publishes the fresh foreign peer ids so the join gate knows the full set
 fn send_expected(
     expected_tx: &tokio::sync::mpsc::UnboundedSender<Vec<String>>,
@@ -967,6 +1042,21 @@ fn send_expected(
     peers.dedup();
     info!(target: "clicker", peers = peers.len(), "discovery: expected set published");
     expected_tx.send(peers).ok();
+}
+
+// needed helper: dials directory publishers at connect time so joins never wait on the roster Get
+fn dial_directory_publishers(
+    cmd_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Command<clicker::CursorMsg>>,
+    attempted: &mut std::collections::HashMap<String, std::time::Instant>,
+    connected: &ConnectedMap,
+    staggers: &mut StaggerMap,
+    peer_id: &str,
+    mode: p2p::TransportMode,
+    slots: &discovery::DirectoryState,
+) {
+    for hint in directory_hints(slots) {
+        dial_hint(cmd_tx, attempted, connected, staggers, peer_id, mode, &hint);
+    }
 }
 
 // needed helper: dials foreign roster entries already present at connect time

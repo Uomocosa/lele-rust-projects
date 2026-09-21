@@ -27,11 +27,16 @@ pub fn poll_expected(
             .expected
             .as_ref()
             .is_none_or(|old| incoming.iter().any(|peer| !old.contains(peer)));
+        let known: std::collections::BTreeSet<String> = gate.expected.clone().unwrap_or_default();
+        let fresh: Vec<String> = peers
+            .into_iter()
+            .filter(|peer| !known.contains(peer))
+            .collect();
         gate.expected = Some(incoming);
         if grown {
             clock.last_new_peer = Some(std::time::Instant::now());
         }
-        for peer in &peers {
+        for peer in &fresh {
             events.push(p2p::Event::PeerConnected(peer.clone()));
         }
     }
@@ -85,6 +90,71 @@ mod tests {
             gate.expected
                 .as_ref()
                 .is_some_and(|set| { set.len() == 1 && set.contains("peer-4") })
+        );
+    }
+
+    #[test]
+    fn republish_same_set_announces_nothing() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
+        app.insert_resource(lobby::ExpectedRx(Mutex::new(Some(rx))));
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::JoinClock::default());
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        tx.send(vec!["peer-2".to_string()]).ok();
+        app.add_systems(Update, poll_expected);
+        app.update();
+        tx.send(vec!["peer-2".to_string()]).ok();
+        app.update();
+        let announced: Vec<String> = app
+            .world()
+            .resource::<p2p::Events<clicker::CursorMsg>>()
+            .iter()
+            .filter_map(|event| match event {
+                p2p::Event::PeerConnected(peer) => Some(peer.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            announced,
+            vec!["peer-2".to_string()],
+            "re-published peers never draw a second synthetic connect: \
+             phantom connects strand the roster refcount and the leaver never despawns"
+        );
+    }
+
+    #[test]
+    fn growth_announces_only_newcomers() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
+        app.insert_resource(lobby::ExpectedRx(Mutex::new(Some(rx))));
+        app.insert_resource(lobby::JoinGate::default());
+        app.insert_resource(lobby::JoinClock::default());
+        app.insert_resource(p2p::Events::<clicker::CursorMsg>::default());
+        tx.send(vec!["peer-2".to_string()]).ok();
+        app.add_systems(Update, poll_expected);
+        app.update();
+        app.world_mut()
+            .resource_mut::<p2p::Events<clicker::CursorMsg>>()
+            .take_all();
+        tx.send(vec!["peer-2".to_string(), "peer-3".to_string()])
+            .ok();
+        app.update();
+        let announced: Vec<String> = app
+            .world()
+            .resource::<p2p::Events<clicker::CursorMsg>>()
+            .iter()
+            .filter_map(|event| match event {
+                p2p::Event::PeerConnected(peer) => Some(peer.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            announced,
+            vec!["peer-3".to_string()],
+            "only genuinely new peers draw a synthetic connect"
         );
     }
 
