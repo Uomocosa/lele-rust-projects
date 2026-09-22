@@ -1,13 +1,15 @@
-use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::{App, Plugin};
 
 use super::global_counter::GlobalCounter;
 
+#[derive(Default)]
 pub struct GamePlugin;
 
-#[atomic_delegate]
 impl GamePlugin {
-    pub fn new() -> Self {}
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
 }
 
 impl Plugin for GamePlugin {

@@ -3,6 +3,8 @@ use quote::format_ident;
 use quote::quote;
 use syn::spanned::Spanned;
 
+const RESERVED_DELEGATE_METHODS: &[&str] = &["new"];
+
 #[proc_macro_attribute]
 pub fn atomic_delegate(attr: TokenStream, item: TokenStream) -> TokenStream {
     if !attr.is_empty() {
@@ -50,6 +52,12 @@ fn expand(item: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStrea
             ));
         }
         let name = &method.sig.ident;
+        if RESERVED_DELEGATE_METHODS.contains(&name.to_string().as_str()) {
+            return Err(syn::Error::new(
+                name.span(),
+                "`new` is a constructor and must be defined in the struct file, not delegated",
+            ));
+        }
         let mut args: Vec<proc_macro2::TokenStream> = Vec::new();
         for input in &method.sig.inputs {
             match input {
@@ -150,6 +158,12 @@ mod tests {
     #[test]
     fn test_usage_rejects_trait_impl() {
         let input = quote! { impl Default for Foo { fn default() -> Self { Foo } } };
+        assert!(expand(input).is_err());
+    }
+
+    #[test]
+    fn test_usage_rejects_reserved_new() {
+        let input = quote! { impl Foo { pub fn new() -> Self {} } };
         assert!(expand(input).is_err());
     }
 

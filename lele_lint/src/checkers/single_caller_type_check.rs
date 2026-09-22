@@ -29,6 +29,9 @@ pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnost
         if has_atomic_delegate(file, name) {
             continue;
         }
+        if has_real_inherent_method(file, name) {
+            continue;
+        }
 
         let callers: Vec<&PathBuf> = refs
             .iter()
@@ -132,6 +135,28 @@ fn has_atomic_delegate(file: &syn::File, type_name: &str) -> bool {
             return false;
         }
         common::has_atomic_delegate(&impl_block.attrs) || impl_is_all_delegate(impl_block)
+    })
+}
+
+// needed helper: inherent method with a real (non-delegate) body in the type's file
+fn has_real_inherent_method(file: &syn::File, type_name: &str) -> bool {
+    file.items.iter().any(|item| {
+        let syn::Item::Impl(impl_block) = item else {
+            return false;
+        };
+        if impl_block.trait_.is_some() {
+            return false;
+        }
+        if common::self_type_last(&impl_block.self_ty).as_deref() != Some(type_name) {
+            return false;
+        }
+        impl_block.items.iter().any(|item| {
+            matches!(
+                item,
+                syn::ImplItem::Fn(method)
+                    if !method.block.stmts.is_empty() && !common::is_delegate_call(&method.block)
+            )
+        })
     })
 }
 
@@ -279,6 +304,17 @@ mod tests {
         let file: syn::File =
             syn::parse_str("impl Foo { pub fn new() -> Self { Self { x: 1 } } }").unwrap();
         assert!(!has_atomic_delegate(&file, "Foo"));
+    }
+
+    #[test]
+    fn test_usage_real_inherent_method_is_exempt() {
+        let file: syn::File =
+            syn::parse_str("impl Foo { pub const fn new() -> Self { Self } }").unwrap();
+        assert!(super::has_real_inherent_method(&file, "Foo"));
+
+        let delegated: syn::File =
+            syn::parse_str("impl Foo { pub fn new() -> Self { foo_new::new() } }").unwrap();
+        assert!(!super::has_real_inherent_method(&delegated, "Foo"));
     }
 }
 

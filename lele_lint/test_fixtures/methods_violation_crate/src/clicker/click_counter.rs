@@ -11,4 +11,5 @@ impl ClickCounter {
 #[atomic_delegate]
 impl ClickCounter {
     pub fn increment(&mut self) {}
+    pub fn new() -> Self {}
 }
