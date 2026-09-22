@@ -340,6 +340,7 @@ mod tests {
             entries: Vec::new(),
             module_info: std::collections::HashMap::default(),
             parsed_files: std::collections::HashMap::default(),
+            ..Project::default()
         }
     }
 }

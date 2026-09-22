@@ -5,4 +5,6 @@ use std::collections::HashMap;
 pub struct LeleLintSection {
     #[serde(default)]
     pub checkers: HashMap<String, bool>,
+    #[serde(default)]
+    pub layout: Option<String>,
 }

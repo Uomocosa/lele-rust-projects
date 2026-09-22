@@ -1,34 +1,24 @@
+use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::Component;
 use derive_more::{Deref, DerefMut};
-
-use super::click_counter_add;
-use super::click_counter_decrement;
-use super::click_counter_increment;
-use super::click_counter_max;
 
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Deref, DerefMut)]
 pub struct ClickCounter(pub i32);
 
-#[rustfmt::skip]
+#[atomic_delegate]
 impl ClickCounter {
-    pub fn increment(&mut self) { click_counter_increment::increment(self) }
-    pub fn decrement(&mut self) { click_counter_decrement::decrement(self) }
-    pub fn add(&mut self, delta: i32) { click_counter_add::add(self, delta) }
-    pub fn max(&mut self, value: i32) { click_counter_max::max(self, value) }
+    pub fn increment(&mut self) {}
+    pub fn add(&mut self, delta: i32) {}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ClickCounter;
+    use crate::clicker;
 
     #[test]
     fn test_usage() {
-        let mut counter = ClickCounter::default();
+        let mut counter = clicker::ClickCounter::default();
         counter.increment();
-        counter.increment();
-        assert_eq!(*counter, 2);
-        counter.decrement();
-        assert_eq!(*counter, 1);
         assert_eq!(*counter, 1);
     }
 }

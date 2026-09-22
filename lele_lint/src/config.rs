@@ -5,8 +5,10 @@ use serde::Deserialize;
 use derive_more::Deref;
 
 use super::config_checker_enabled;
+use super::config_layout;
 use super::config_load;
 use crate::Error;
+use crate::Layout;
 use crate::LeleLintSection;
 
 pub const CONFIG_FILENAME: &str = "lele.toml";
@@ -22,6 +24,10 @@ impl Config {
 
     pub fn checker_enabled(&self, name: &str) -> bool {
         config_checker_enabled::checker_enabled(self, name)
+    }
+
+    pub fn layout(&self) -> Layout {
+        config_layout::layout(self)
     }
 }
 

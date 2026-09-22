@@ -2,7 +2,7 @@
 name = "clicker"
 version = "0.1.0"
 edition = "2024"
-description = "Clicker game (64 cursors, button + count colored by pubkey hash) on freenet_libp2p_bevy_plugin"
+description = "Clicker game on freenet_libp2p_bevy_plugin"
 license = "MIT OR Apache-2.0"
 
 [lib]
@@ -12,41 +12,6 @@ crate-type = ["lib", "cdylib"]
 [[bin]]
 name = "clicker"
 path = "src/main.rs"
-
-[[test]]
-name = "mainnet_local"
-path = "tests/e2e_local/mainnet.rs"
-required-features = ["dev"]
-
-[[test]]
-name = "rooms_rejoin"
-path = "tests/e2e_local/rooms_rejoin.rs"
-required-features = ["dev"]
-
-[[test]]
-name = "offline"
-path = "tests/offline/main.rs"
-required-features = ["dev"]
-
-[[test]]
-name = "turmoil"
-path = "tests/turmoil/main.rs"
-required-features = ["dev"]
-
-[[example]]
-name = "send_previews"
-required-features = ["dev"]
-
-[[example]]
-name = "send_one"
-required-features = ["dev"]
-
-[[example]]
-name = "send_text_msg"
-required-features = ["dev"]
-
-[lints.rust]
-non_snake_case = "allow"
 
 [lints.clippy]
 pedantic = { level = "deny", priority = -1 }
@@ -65,36 +30,10 @@ panic = "deny"
 exit = "deny"
 as_conversions = "deny"
 
-[features]
-dev = ["dep:serde_json", "dep:chrono", "dep:turmoil", "dep:reqwest"]
-default = []
-
 [dependencies]
-freenet-libp2p-bevy-plugin = { path = "../freenet_libp2p_bevy_plugin" }
-freenet = "=0.2.132"
-freenet-stdlib = { version = "=0.8.5", features = ["net"] }
-tokio-tungstenite = "=0.27.0"
-http = "=1.4.1"
-futures-util = "=0.3.32"
-tempfile = "=3.27.0"
-hex = "=0.4.3"
-bevy = { version = "=0.19.0", features = ["bevy_remote"] }
+atomic_delegate_macros = { path = "../atomic_delegate_macros" }
+bevy = { version = "=0.19.0" }
 derive_more = { version = "=2.1.1", features = ["deref", "deref_mut", "from"] }
-serde = { version = "=1.0.228", features = ["derive"] }
-bincode = "=1.3.3"
-thiserror = "=2.0.18"
-tracing = "=0.1.44"
-clap = { version = "=4.5.39", features = ["derive"] }
-tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "io-util"] }
-blake3 = "=1.8.3"
-serde_json = { version = "=1.0.150", optional = true }
-reqwest = { version = "=0.12.28", default-features = false, features = ["blocking", "json"], optional = true }
-chrono = { version = "=0.4.45", default-features = false, features = ["clock"], optional = true }
-turmoil = { version = "0.7", optional = true }
-
-[dev-dependencies]
-telegram_bot = { path = "../telegram_bot" }
-rstest = "=0.27.0"
 
 [profile.dev.package."*"]
 opt-level = 3

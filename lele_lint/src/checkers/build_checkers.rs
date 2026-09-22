@@ -4,13 +4,16 @@ use super::clippy_config_cargo;
 use super::clippy_config_clippy;
 use super::constants_placement;
 use super::constructor_no_skip;
+use super::delegate_macro;
 use super::domain_import;
 use super::helper_count;
 use super::method_file_co_location;
 use super::method_visibility;
+use super::methods_layout;
 use super::mod_rs_purity;
 use super::no_allow_attributes;
 use super::no_collection_newtype;
+use super::no_comments;
 use super::no_crate_paths;
 use super::no_cross_domain_reexport;
 use super::no_positional;
@@ -53,6 +56,9 @@ pub fn build_checkers(config: &Config) -> Vec<Box<dyn Checker>> {
     single_caller_type::SingleCallerType::register(&mut checkers, config);
     clippy_config_cargo::ClippyConfigCargo::register(&mut checkers, config);
     clippy_config_clippy::ClippyConfigClippy::register(&mut checkers, config);
+    methods_layout::MethodsLayout::register(&mut checkers, config);
+    no_comments::NoComments::register(&mut checkers, config);
+    delegate_macro::DelegateMacro::register(&mut checkers, config);
     checkers
 }
 

@@ -12,8 +12,9 @@ fn fixture_path(name: &str) -> PathBuf {
 }
 
 fn run_checkers(path: &str) -> Result<Vec<Diagnostic>, Box<dyn std::error::Error>> {
-    let p = Project::discover(Some(&fixture_path(path)), None)?;
+    let mut p = Project::discover(Some(&fixture_path(path)), None)?;
     let config = Config::load(&p.root).unwrap_or_default();
+    p.apply_layout(&config)?;
     let checkers = build_checkers(&config);
     Ok(checkers.iter().flat_map(|c| c.check(&p)).collect())
 }
@@ -57,6 +58,31 @@ fn violation_crate_catches_all_errors() -> Result<(), Box<dyn std::error::Error>
     for code in expected {
         if !codes.contains(&code) {
             return Err(format!("expected {code} in violation crate, got codes: {codes:?}").into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn methods_crate_has_no_violations() -> Result<(), Box<dyn std::error::Error>> {
+    let diags = run_checkers("methods_crate")?;
+    if !diags.is_empty() {
+        return Err(format!("expected no violations in methods crate, got {diags:?}").into());
+    }
+    Ok(())
+}
+
+#[test]
+fn methods_violation_crate_catches_layout_errors() -> Result<(), Box<dyn std::error::Error>> {
+    let diags = run_checkers("methods_violation_crate")?;
+    let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+
+    for code in ["E030", "E031", "E032"] {
+        if !codes.contains(&code) {
+            return Err(format!(
+                "expected {code} in methods violation crate, got codes: {codes:?}"
+            )
+            .into());
         }
     }
     Ok(())

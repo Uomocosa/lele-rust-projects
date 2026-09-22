@@ -32,6 +32,7 @@ pub fn discover(
         entries,
         module_info,
         parsed_files,
+        ..Project::default()
     })
 }
 
@@ -55,6 +56,7 @@ fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, Error> {
         entries,
         module_info,
         parsed_files,
+        ..Project::default()
     })
 }
 

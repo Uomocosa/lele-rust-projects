@@ -68,6 +68,7 @@ mod tests {
             entries: Vec::new(),
             module_info: HashMap::default(),
             parsed_files,
+            ..Project::default()
         };
         check(&NoAllowAttributes, &project).len()
     }

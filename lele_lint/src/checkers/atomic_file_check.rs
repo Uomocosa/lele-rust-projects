@@ -265,6 +265,7 @@ mod tests {
             entries: Vec::new(),
             module_info: std::collections::HashMap::default(),
             parsed_files: std::collections::HashMap::default(),
+            ..Project::default()
         };
         let known: HashSet<String> = HashSet::from(["lele_config".to_string()]);
         let empty: HashSet<String> = HashSet::new();
@@ -308,6 +309,7 @@ mod tests {
             entries: Vec::new(),
             module_info: std::collections::HashMap::default(),
             parsed_files: std::collections::HashMap::default(),
+            ..Project::default()
         };
         let file: syn::File =
             syn::parse_str("pub struct Cache { pub x: u32 }\npub fn discover() {}\n").unwrap();
@@ -338,6 +340,7 @@ mod tests {
             entries: Vec::new(),
             module_info: std::collections::HashMap::default(),
             parsed_files: std::collections::HashMap::default(),
+            ..Project::default()
         };
         let file: syn::File =
             syn::parse_str("struct Cache { x: u32 }\npub fn discover() {}\n").unwrap();
@@ -360,6 +363,7 @@ mod tests {
             entries: Vec::new(),
             module_info: std::collections::HashMap::default(),
             parsed_files: std::collections::HashMap::default(),
+            ..Project::default()
         };
         let file: syn::File =
             syn::parse_str("pub const MAX: usize = 8;\npub fn discover() {}\n").unwrap();

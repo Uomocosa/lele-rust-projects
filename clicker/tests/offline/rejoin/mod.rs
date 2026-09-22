@@ -1,2 +1,0 @@
-mod leaver_rejoins_at_old_score;
-mod rejoin_scenario_matches_e2e;

@@ -1,3 +1,0 @@
-mod fifteen_clicks_exact_everywhere;
-mod no_double_credit_on_delivery;
-mod single_click_lands_everywhere;

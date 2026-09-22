@@ -131,7 +131,7 @@ fn has_atomic_delegate(file: &syn::File, type_name: &str) -> bool {
         if common::self_type_last(&impl_block.self_ty).as_deref() != Some(type_name) {
             return false;
         }
-        impl_is_all_delegate(impl_block)
+        common::has_atomic_delegate(&impl_block.attrs) || impl_is_all_delegate(impl_block)
     })
 }
 

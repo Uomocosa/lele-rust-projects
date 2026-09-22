@@ -11,6 +11,9 @@ pub enum Error {
     #[error("scan folder not found or not a directory: {0}")]
     NoScanFolder(String),
 
+    #[error("methods layout requested but no `methods/` directory was found")]
+    NoMethodsDir,
+
     #[error("filesystem error: {0}")]
     WalkDir(#[from] walkdir::Error),
 

@@ -1,0 +1,70 @@
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+
+use crate::Layout;
+use crate::Project;
+
+pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, BTreeSet<String>> {
+    let mut map: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    if project.layout != Layout::Methods {
+        return map;
+    }
+    for (rel_path, file) in &project.parsed_files {
+        let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let Some(primary) = super::primary_type_name(file, stem) else {
+            continue;
+        };
+        let type_snake = super::to_snake_case(&primary);
+        for item in &file.items {
+            let syn::Item::Impl(impl_block) = item else {
+                continue;
+            };
+            if impl_block.trait_.is_some() {
+                continue;
+            }
+            if super::self_type_last(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
+                continue;
+            }
+            if !super::has_atomic_delegate(&impl_block.attrs) {
+                continue;
+            }
+            let methods = map.entry(type_snake.clone()).or_default();
+            for impl_item in &impl_block.items {
+                if let syn::ImplItem::Fn(method) = impl_item {
+                    methods.insert(method.sig.ident.to_string());
+                }
+            }
+        }
+    }
+    map
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::collect_declared;
+    use crate::Layout;
+    use crate::Project;
+
+    #[test]
+    fn test_usage() {
+        let mut project = Project {
+            layout: Layout::Methods,
+            ..Project::default()
+        };
+        let file: syn::File = syn::parse_str(
+            "pub struct ClickCounter(pub i32);\n#[atomic_delegate]\nimpl ClickCounter { pub fn add(&mut self) {} }",
+        )
+        .unwrap();
+        project
+            .parsed_files
+            .insert(PathBuf::from("clicker/click_counter.rs"), file);
+        let declared = collect_declared(&project);
+        assert!(declared
+            .get("click_counter")
+            .is_some_and(|set| set.contains("add")));
+    }
+}

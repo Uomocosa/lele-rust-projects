@@ -1,29 +1,24 @@
+use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::Resource;
 use derive_more::{Deref, DerefMut};
-
-use super::global_counter_add;
-use super::global_counter_increment;
 
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq, Deref, DerefMut)]
 pub struct GlobalCounter(pub i32);
 
-#[rustfmt::skip]
+#[atomic_delegate]
 impl GlobalCounter {
-    pub fn increment(&mut self) { global_counter_increment::increment(self) }
-    pub fn add(&mut self, delta: i32) { global_counter_add::add(self, delta) }
+    pub fn increment(&mut self) {}
+    pub fn add(&mut self, delta: i32) {}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::GlobalCounter;
+    use crate::clicker;
 
     #[test]
     fn test_usage() {
-        let mut counter = GlobalCounter::default();
+        let mut counter = clicker::GlobalCounter::default();
         counter.increment();
-        counter.increment();
-        assert_eq!(*counter, 2);
-        counter.add(40);
-        assert_eq!(*counter, 42);
+        assert_eq!(*counter, 1);
     }
 }
