@@ -16,6 +16,7 @@ use crate::p2p;
 
 pub async fn run<T: p2p::Message>(
     mut cmd_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::Command<T>>,
+    mut net_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::NetCommand>,
     event_tx: tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
     keypair: Keypair,
     mode: p2p::TransportMode,
@@ -69,6 +70,13 @@ pub async fn run<T: p2p::Message>(
                     break;
                 }
             }
+            net_cmd = net_rx.recv() => {
+                if let Some(net) = net_cmd {
+                    dispatch_net_command(&mut swarm, &event_tx, &mut lobby_queries, net);
+                } else {
+                    break;
+                }
+            }
             event = swarm.select_next_some() => {
                 handle_swarm(
                     &mut swarm,
@@ -105,7 +113,7 @@ fn handle_swarm<T: p2p::Message>(
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::RequestResponse(
             request_response::Event::Message { peer, message, .. },
         )) => {
-            handle_request_response(swarm, &event_tx, &peer, message);
+            handle_request_response(swarm, event_tx, &peer, message);
         }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Kademlia(
             kad::Event::OutboundQueryProgressed {
@@ -113,7 +121,7 @@ fn handle_swarm<T: p2p::Message>(
                 ..
             },
         )) => {
-            handle_found_record(&event_tx, peer_record);
+            handle_found_record(event_tx, peer_record);
         }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Kademlia(
             kad::Event::OutboundQueryProgressed {
@@ -126,10 +134,10 @@ fn handle_swarm<T: p2p::Message>(
                 ..
             },
         )) => {
-            handle_found_providers(&event_tx, lobby_queries, id, &providers);
+            handle_found_providers(event_tx, lobby_queries, id, &providers);
         }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Gossipsub(gossip_event)) => {
-            handle_gossipsub(&*swarm, &event_tx, gossip_event);
+            handle_gossipsub(swarm, event_tx, gossip_event);
         }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::RelayClient(
             relay::client::Event::ReservationReqAccepted { relay_peer_id, .. },
@@ -152,7 +160,6 @@ fn handle_swarm<T: p2p::Message>(
         ))) => {
             dial_mdns_peers(swarm, mode, peers);
         }
-        SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Mdns(mdns::Event::Expired(_))) => {}
         SwarmEvent::ConnectionEstablished {
             peer_id,
             connection_id,
@@ -185,7 +192,7 @@ fn handle_swarm<T: p2p::Message>(
                 .ok();
         }
         SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-            note_dial_failure(&event_tx, peer_id, &error);
+            note_dial_failure(event_tx, peer_id, &error);
         }
         _ => {}
     }
@@ -412,19 +419,65 @@ fn dispatch_command<T: p2p::Message>(
     lobby_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
     cmd: Option<p2p::Command<T>>,
 ) -> bool {
-    match cmd {
-        Some(p2p::Command::Dial { peer_id, addrs }) => {
-            dial_peer(swarm, event_tx, &peer_id, &addrs, false);
-        }
+    let net = match cmd {
+        Some(p2p::Command::Net(net)) => net,
+        Some(p2p::Command::Dial { peer_id, addrs }) => p2p::NetCommand::Dial { peer_id, addrs },
         Some(p2p::Command::DialForce { peer_id, addrs }) => {
-            dial_peer(swarm, event_tx, &peer_id, &addrs, true);
+            p2p::NetCommand::DialForce { peer_id, addrs }
         }
         Some(p2p::Command::ReserveRelay { relay_addr }) => {
+            p2p::NetCommand::ReserveRelay { relay_addr }
+        }
+        Some(p2p::Command::SetMdns { enabled }) => p2p::NetCommand::SetMdns { enabled },
+        Some(p2p::Command::AddKadPeer { peer_id, addrs }) => {
+            p2p::NetCommand::AddKadPeer { peer_id, addrs }
+        }
+        Some(p2p::Command::ProvideLobby { lobby }) => p2p::NetCommand::ProvideLobby { lobby },
+        Some(p2p::Command::FindLobby { lobby }) => p2p::NetCommand::FindLobby { lobby },
+        Some(p2p::Command::PutHistory { lobby, chunk, data }) => {
+            p2p::NetCommand::PutHistory { lobby, chunk, data }
+        }
+        Some(p2p::Command::FetchHistory { lobby, chunk }) => {
+            p2p::NetCommand::FetchHistory { lobby, chunk }
+        }
+        Some(p2p::Command::FetchRoster { lobby }) => p2p::NetCommand::FetchRoster { lobby },
+        Some(p2p::Command::Subscribe { topic }) => p2p::NetCommand::Subscribe { topic },
+        Some(p2p::Command::Publish { topic, data }) => p2p::NetCommand::Publish { topic, data },
+        Some(p2p::Command::Send { peer_id, payload }) => {
+            if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
+                swarm
+                    .behaviour_mut()
+                    .request_response
+                    .send_request(&pid, payload);
+            }
+            return true;
+        }
+        None => return false,
+    };
+    dispatch_net_command(swarm, event_tx, lobby_queries, net);
+    true
+}
+
+// needed helper: applies one non-generic network command to the swarm
+fn dispatch_net_command<T: p2p::Message>(
+    swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
+    event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
+    lobby_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
+    command: p2p::NetCommand,
+) {
+    match command {
+        p2p::NetCommand::Dial { peer_id, addrs } => {
+            dial_peer(swarm, event_tx, &peer_id, &addrs, false);
+        }
+        p2p::NetCommand::DialForce { peer_id, addrs } => {
+            dial_peer(swarm, event_tx, &peer_id, &addrs, true);
+        }
+        p2p::NetCommand::ReserveRelay { relay_addr } => {
             if let Ok(addr) = relay_addr.parse::<libp2p::Multiaddr>() {
                 let _ = swarm.listen_on(addr);
             }
         }
-        Some(p2p::Command::SetMdns { enabled }) => {
+        p2p::NetCommand::SetMdns { enabled } => {
             swarm.behaviour_mut().mdns = Toggle::from(
                 enabled
                     .then(|| {
@@ -434,31 +487,23 @@ fn dispatch_command<T: p2p::Message>(
                     .flatten(),
             );
         }
-        Some(p2p::Command::AddKadPeer { peer_id, addrs }) => {
+        p2p::NetCommand::AddKadPeer { peer_id, addrs } => {
             seed_kad_peer(swarm, &peer_id, &addrs);
         }
-        Some(p2p::Command::ProvideLobby { lobby }) => {
+        p2p::NetCommand::ProvideLobby { lobby } => {
             let _ = swarm
                 .behaviour_mut()
                 .kademlia
                 .start_providing(p2p::provider_key(&lobby));
         }
-        Some(p2p::Command::FindLobby { lobby }) => {
+        p2p::NetCommand::FindLobby { lobby } => {
             let id = swarm
                 .behaviour_mut()
                 .kademlia
                 .get_providers(p2p::provider_key(&lobby));
             lobby_queries.insert(id, lobby);
         }
-        Some(p2p::Command::Send { peer_id, payload }) => {
-            if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
-                swarm
-                    .behaviour_mut()
-                    .request_response
-                    .send_request(&pid, payload);
-            }
-        }
-        Some(p2p::Command::PutHistory { lobby, chunk, data }) => {
+        p2p::NetCommand::PutHistory { lobby, chunk, data } => {
             let key = p2p::history_key(&lobby, chunk);
             let record = kad::Record {
                 key: key.clone(),
@@ -472,11 +517,11 @@ fn dispatch_command<T: p2p::Message>(
                 .put_record(record, kad::Quorum::One);
             let _ = swarm.behaviour_mut().kademlia.start_providing(key);
         }
-        Some(p2p::Command::FetchHistory { lobby, chunk }) => {
+        p2p::NetCommand::FetchHistory { lobby, chunk } => {
             let key = p2p::history_key(&lobby, chunk);
             swarm.behaviour_mut().kademlia.get_record(key);
         }
-        Some(p2p::Command::FetchRoster { lobby }) => {
+        p2p::NetCommand::FetchRoster { lobby } => {
             let _ = swarm
                 .behaviour_mut()
                 .kademlia
@@ -487,17 +532,15 @@ fn dispatch_command<T: p2p::Message>(
                 .get_providers(p2p::provider_key(&lobby));
             lobby_queries.insert(id, lobby);
         }
-        Some(p2p::Command::Subscribe { topic }) => {
+        p2p::NetCommand::Subscribe { topic } => {
             let topic = gossipsub::IdentTopic::new(topic);
             let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);
         }
-        Some(p2p::Command::Publish { topic, data }) => {
+        p2p::NetCommand::Publish { topic, data } => {
             let topic = gossipsub::IdentTopic::new(topic);
             let _ = swarm.behaviour_mut().gossipsub.publish(topic, data);
         }
-        None => return false,
     }
-    true
 }
 // needed helper: dials one peer with peer binding when the id parses
 fn dial_peer<T: p2p::Message>(
@@ -547,10 +590,10 @@ fn seed_kad_peer<T: p2p::Message>(
     };
     let mut added = false;
     for addr in addrs {
-        if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
-            if swarm.behaviour_mut().kademlia.add_address(&pid, ma) == kad::RoutingUpdate::Success {
-                added = true;
-            }
+        if let Ok(ma) = addr.parse::<libp2p::Multiaddr>()
+            && swarm.behaviour_mut().kademlia.add_address(&pid, ma) == kad::RoutingUpdate::Success
+        {
+            added = true;
         }
     }
     if added {

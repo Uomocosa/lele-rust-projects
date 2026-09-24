@@ -1,11 +1,8 @@
-pub mod roster;
-pub use roster::Roster;
+pub mod lobby_roster;
+pub use lobby_roster::LobbyRoster;
 
 pub mod lobby;
 pub use lobby::Lobby;
-
-mod roster_add_entry;
-mod roster_remove_entry;
 
 pub mod bevy_systems;
 

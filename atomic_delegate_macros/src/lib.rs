@@ -1,3 +1,4 @@
+use lele_snake_case::to_snake_case;
 use proc_macro::TokenStream;
 use quote::format_ident;
 use quote::quote;
@@ -105,27 +106,6 @@ fn last_type_ident(ty: &syn::Type) -> syn::Result<syn::Ident> {
         ty.span(),
         "`#[atomic_delegate]` requires a named type",
     ))
-}
-
-// needed helper: PascalCase -> snake_case for the methods module name
-fn to_snake_case(name: &str) -> String {
-    let chars: Vec<char> = name.chars().collect();
-    let mut out = String::new();
-    for (i, c) in chars.iter().enumerate() {
-        if !c.is_uppercase() {
-            out.push(*c);
-            continue;
-        }
-        let prev = i.checked_sub(1).and_then(|j| chars.get(j));
-        let next = chars.get(i.saturating_add(1));
-        let needs_sep = prev.is_some_and(|p| p.is_lowercase() || p.is_ascii_digit())
-            || (prev.is_some_and(|p| p.is_uppercase()) && next.is_some_and(|n| n.is_lowercase()));
-        if needs_sep {
-            out.push('_');
-        }
-        out.extend(c.to_lowercase());
-    }
-    out
 }
 
 #[cfg(test)]

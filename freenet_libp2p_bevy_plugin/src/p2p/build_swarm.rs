@@ -8,9 +8,6 @@ use libp2p::{
 
 use crate::p2p;
 
-/// # Errors
-/// Returns error if swarm construction fails or the internal
-/// replication factor is invalid.
 pub fn build_swarm<T: p2p::Message>(
     keypair: Keypair,
     mdns_enabled: bool,

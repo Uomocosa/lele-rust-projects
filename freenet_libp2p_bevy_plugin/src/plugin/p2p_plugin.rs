@@ -1,16 +1,16 @@
+use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::App;
 use derive_more::Deref;
 
-use super::p2p_plugin_build;
 use crate::p2p;
 use crate::plugin;
 
 #[derive(Deref)]
 pub struct P2PPlugin<T: p2p::Message>(pub plugin::Config<T>);
 
-#[rustfmt::skip]
+#[atomic_delegate]
 impl<T: p2p::Message> P2PPlugin<T> {
-    pub fn build_plugin(&self, app: &mut App) { p2p_plugin_build::build(self, app) }
+    pub fn build_plugin(&self, app: &mut App) {}
 }
 
 impl<T: p2p::Message> bevy::prelude::Plugin for P2PPlugin<T> {
@@ -33,17 +33,19 @@ mod tests {
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, Deref)]
     struct Dummy(u32);
 
-    #[test]
-    fn test_usage() {
-        let own_id = net_id::NetworkId(1);
-        let (cmd_tx, _) = tokio::sync::mpsc::unbounded_channel();
-        let (_, event_rx) = tokio::sync::mpsc::unbounded_channel();
+    #[tokio::test]
+    async fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.add_plugins(P2PPlugin(plugin::Config::<Dummy>::new(
-            own_id, cmd_tx, event_rx,
+            net_id::NetworkId(1),
+            p2p::TransportMode::Both,
+            false,
         )));
         app.update();
         assert!(app.world().get_resource::<p2p::Events<Dummy>>().is_some());
+        assert!(app.world().get_resource::<p2p::Outbox>().is_some());
+        assert!(app.world().get_resource::<p2p::EventTap>().is_some());
+        assert!(app.world().get_resource::<p2p::Signals>().is_some());
     }
 }

@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::common;
@@ -15,15 +14,17 @@ pub fn sync_methods(project: &Project) -> Result<(), Error> {
         return Err(Error::NoMethodsDir);
     };
     let declared = common::collect_declared(project);
-    let types: BTreeSet<String> = declared.keys().cloned().collect();
     write_if_changed(
         &methods_dir.join("mod.rs"),
-        &common::root_index_content(&types),
+        &common::root_index_content(&declared),
     )?;
-    for (type_snake, methods) in &declared {
+    for (type_snake, declared_type) in &declared {
         let dir = methods_dir.join(type_snake);
         std::fs::create_dir_all(&dir)?;
-        write_if_changed(&dir.join("mod.rs"), &common::type_index_content(methods))?;
+        write_if_changed(
+            &dir.join("mod.rs"),
+            &common::type_index_content(&declared_type.methods),
+        )?;
     }
     Ok(())
 }

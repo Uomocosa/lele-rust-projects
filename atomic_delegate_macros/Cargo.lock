@@ -6,10 +6,15 @@ version = 4
 name = "atomic_delegate_macros"
 version = "0.1.0"
 dependencies = [
+ "lele_snake_case",
  "proc-macro2",
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "lele_snake_case"
+version = "0.1.0"
 
 [[package]]
 name = "proc-macro2"

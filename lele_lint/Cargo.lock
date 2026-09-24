@@ -197,6 +197,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "derive_more",
+ "lele_snake_case",
  "proc-macro2",
  "quote",
  "rustc_lexer",
@@ -207,6 +208,10 @@ dependencies = [
  "toml",
  "walkdir",
 ]
+
+[[package]]
+name = "lele_snake_case"
+version = "0.1.0"
 
 [[package]]
 name = "libc"

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::roster;
-pub const fn despawn_on_leave(_roster: Res<roster::Roster>) {}
+pub const fn despawn_on_leave(_roster: Res<roster::LobbyRoster>) {}
 #[cfg(test)]
 mod tests {
     #[test]

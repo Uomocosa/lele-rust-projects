@@ -1,18 +1,16 @@
+use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::Resource;
 use derive_more::Deref;
 use serde::{Deserialize, Serialize};
-
-use super::network_id_from_peer;
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Deref, Resource,
 )]
 pub struct NetworkId(pub u64);
 
-#[rustfmt::skip]
+#[atomic_delegate]
 impl NetworkId {
-    #[must_use]
-    pub fn from_peer(peer: &str) -> Self { network_id_from_peer::from_peer(peer) }
+    pub fn from_peer(peer: &str) -> Self {}
 }
 
 #[cfg(test)]

@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "=4.6.6", features = ["derive"] }
+lele_snake_case = { path = "../lele_snake_case" }
 walkdir = "=2.5.0"
 thiserror = "=2.0.19"
 serde = { version = "=1.0.229", features = ["derive"] }

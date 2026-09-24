@@ -4,7 +4,7 @@ use crate::p2p;
 use crate::roster;
 
 pub fn poll_roster<T: p2p::Message>(
-    mut roster: ResMut<roster::Roster>,
+    mut roster: ResMut<roster::LobbyRoster>,
     lobby: Res<roster::Lobby>,
     mut events: ResMut<p2p::Events<T>>,
     mut links: Local<std::collections::HashMap<String, u32, std::hash::RandomState>>,
@@ -63,7 +63,7 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(roster::Roster::default());
+        app.insert_resource(roster::LobbyRoster::default());
         app.insert_resource(roster::Lobby("alpha".to_string()));
         app.insert_resource(p2p::Events::<Dummy>::default());
         app.world_mut()
@@ -79,13 +79,13 @@ mod tests {
         app.update();
         let alpha = app
             .world()
-            .resource::<roster::Roster>()
+            .resource::<roster::LobbyRoster>()
             .get("alpha")
             .map_or(0, std::collections::BTreeMap::len);
         assert_eq!(alpha, 1);
         assert!(
             app.world()
-                .resource::<roster::Roster>()
+                .resource::<roster::LobbyRoster>()
                 .get("default")
                 .is_none()
         );
@@ -95,7 +95,7 @@ mod tests {
         app.update();
         let members: usize = app
             .world()
-            .resource::<roster::Roster>()
+            .resource::<roster::LobbyRoster>()
             .values()
             .map(BTreeMap::len)
             .sum();
@@ -107,7 +107,7 @@ mod tests {
     fn sub_connection_drop_keeps_member() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(roster::Roster::default());
+        app.insert_resource(roster::LobbyRoster::default());
         app.insert_resource(roster::Lobby("alpha".to_string()));
         app.insert_resource(p2p::Events::<Dummy>::default());
         app.world_mut()
@@ -124,7 +124,7 @@ mod tests {
         app.update();
         let members: usize = app
             .world()
-            .resource::<roster::Roster>()
+            .resource::<roster::LobbyRoster>()
             .values()
             .map(BTreeMap::len)
             .sum();
@@ -135,7 +135,7 @@ mod tests {
         app.update();
         let members: usize = app
             .world()
-            .resource::<roster::Roster>()
+            .resource::<roster::LobbyRoster>()
             .values()
             .map(BTreeMap::len)
             .sum();

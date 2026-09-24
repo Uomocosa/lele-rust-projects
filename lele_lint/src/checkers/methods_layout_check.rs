@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::path::Path;
 
 use super::methods_layout::MethodsLayout;
@@ -16,8 +15,8 @@ pub(crate) fn check(_self: &MethodsLayout, project: &Project) -> Vec<Diagnostic>
     }
     let declared = common::collect_declared(project);
 
-    for (type_snake, methods) in &declared {
-        for method in methods {
+    for (type_snake, declared_type) in &declared {
+        for method in &declared_type.methods {
             let rel = Path::new(type_snake).join(format!("{method}.rs"));
             match project.methods_parsed_files.get(&rel) {
                 Some(file) => {
@@ -51,7 +50,7 @@ pub(crate) fn check(_self: &MethodsLayout, project: &Project) -> Vec<Diagnostic>
         }
 
         let mod_rel = Path::new(type_snake).join("mod.rs");
-        let expected = common::type_index_content(methods);
+        let expected = common::type_index_content(&declared_type.methods);
         if project.methods_parsed_files.contains_key(&mod_rel) {
             if read_methods_file(project, &mod_rel).as_deref() != Some(expected.as_str()) {
                 diags.push(diag(
@@ -81,7 +80,10 @@ pub(crate) fn check(_self: &MethodsLayout, project: &Project) -> Vec<Diagnostic>
         let Some(stem) = file_stem(rel) else {
             continue;
         };
-        if !declared.get(&parent).is_some_and(|set| set.contains(&stem)) {
+        if !declared
+            .get(&parent)
+            .is_some_and(|declared_type| declared_type.methods.contains(&stem))
+        {
             diags.push(diag(
                 project,
                 rel,
@@ -94,8 +96,7 @@ pub(crate) fn check(_self: &MethodsLayout, project: &Project) -> Vec<Diagnostic>
 
     if !declared.is_empty() {
         let root_mod = Path::new("mod.rs");
-        let types: BTreeSet<String> = declared.keys().cloned().collect();
-        let expected = common::root_index_content(&types);
+        let expected = common::root_index_content(&declared);
         if project.methods_parsed_files.contains_key(root_mod) {
             if read_methods_file(project, root_mod).as_deref() != Some(expected.as_str()) {
                 diags.push(diag(

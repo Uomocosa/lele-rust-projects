@@ -14,14 +14,13 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let _ = args.namespace;
-    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Command<boxes::Payload>>();
-    let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<boxes::Payload>>();
-    let _ = (cmd_rx, event_tx);
     let own_id = NetworkId(1);
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(P2PPlugin(Config::<boxes::Payload>::new(
-            own_id, cmd_tx, event_rx,
+            own_id,
+            p2p::TransportMode::Both,
+            false,
         )))
         .add_plugins(boxes::Plugin(boxes::Config::new(own_id)))
         .run();

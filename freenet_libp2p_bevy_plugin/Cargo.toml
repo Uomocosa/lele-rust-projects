@@ -25,12 +25,14 @@ panic = "deny"
 exit = "deny"
 as_conversions = "deny"
 module_inception = "allow"
+missing_errors_doc = "allow"
 
 [dependencies]
+atomic_delegate_macros = { path = "../atomic_delegate_macros" }
 bevy = "=0.19.0"
 derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
 libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "gossipsub", "mdns", "macros"] }
-tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time"] }
+tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "io-util"] }
 thiserror = "=2.0.18"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
@@ -42,5 +44,20 @@ futures-util = "=0.3.32"
 hex = "=0.4.3"
 blake3 = "=1.8.3"
 clap = { version = "=4.5.39", features = ["derive"] }
+freenet = { version = "=0.2.132", optional = true }
+freenet-stdlib = { version = "=0.8.5", features = ["net"], optional = true }
+tokio-tungstenite = { version = "=0.27.0", optional = true }
+http = { version = "=1.4.1", optional = true }
+tempfile = { version = "=3.27.0", optional = true }
+
+[features]
+default = ["room_lobby"]
+room_lobby = [
+    "dep:freenet",
+    "dep:freenet-stdlib",
+    "dep:tokio-tungstenite",
+    "dep:http",
+    "dep:tempfile",
+]
 
 [dev-dependencies]

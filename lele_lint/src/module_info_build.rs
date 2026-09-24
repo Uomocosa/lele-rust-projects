@@ -10,7 +10,7 @@ pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
     let mut map = ModuleInfoMap::new();
 
     for entry in entries {
-        if !is_mod_rs(&entry.relative_path) {
+        if !is_index_file(&entry.relative_path) {
             continue;
         }
 
@@ -34,11 +34,11 @@ pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
     map
 }
 
-// needed helper: mod.rs filename check
-fn is_mod_rs(path: &Path) -> bool {
+// needed helper: crate root or directory index filename check
+fn is_index_file(path: &Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())
-        .is_some_and(|n| n == "mod.rs")
+        .is_some_and(|n| matches!(n, "mod.rs" | "lib.rs" | "main.rs"))
 }
 
 // needed helper: mod.rs AST parsing for declarations and re-exports
@@ -57,6 +57,7 @@ fn parse_mod_rs(content: &str) -> (Vec<ModDecl>, Vec<Reexport>) {
                 decls.push(ModDecl {
                     name: m.ident.to_string(),
                     is_public: matches!(m.vis, syn::Visibility::Public(_)),
+                    cfg: cfg_attribute(&m.attrs),
                 });
             }
             syn::Item::Use(u) => {
@@ -71,6 +72,17 @@ fn parse_mod_rs(content: &str) -> (Vec<ModDecl>, Vec<Reexport>) {
     }
 
     (decls, reexports)
+}
+
+// needed helper: stringify the first #[cfg(...)] predicate on a module declaration
+fn cfg_attribute(attrs: &[syn::Attribute]) -> Option<String> {
+    attrs.iter().find_map(|attr| {
+        if !attr.path().is_ident("cfg") {
+            return None;
+        }
+        let meta = attr.parse_args::<syn::Meta>().ok()?;
+        Some(quote::quote!(#meta).to_string())
+    })
 }
 
 // needed helper: re-export path extraction from use tree

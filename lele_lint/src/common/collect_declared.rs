@@ -1,14 +1,16 @@
 use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 
+use super::module_cfgs;
+use super::DeclaredType;
 use crate::Layout;
 use crate::Project;
 
-pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, BTreeSet<String>> {
-    let mut map: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, DeclaredType> {
+    let mut map: BTreeMap<String, DeclaredType> = BTreeMap::new();
     if project.layout != Layout::Methods {
         return map;
     }
+    let cfg_map = module_cfgs::build(&project.module_info);
     for (rel_path, file) in &project.parsed_files {
         let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
             continue;
@@ -30,10 +32,13 @@ pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, BTreeSet<S
             if !super::has_atomic_delegate(&impl_block.attrs) {
                 continue;
             }
-            let methods = map.entry(type_snake.clone()).or_default();
+            let entry = map.entry(type_snake.clone()).or_default();
+            if entry.cfgs.is_empty() {
+                entry.cfgs = module_cfgs::file_cfgs(&cfg_map, rel_path);
+            }
             for impl_item in &impl_block.items {
                 if let syn::ImplItem::Fn(method) = impl_item {
-                    methods.insert(method.sig.ident.to_string());
+                    entry.methods.insert(method.sig.ident.to_string());
                 }
             }
         }
@@ -65,6 +70,6 @@ mod tests {
         let declared = collect_declared(&project);
         assert!(declared
             .get("click_counter")
-            .is_some_and(|set| set.contains("add")));
+            .is_some_and(|d| d.methods.contains("add")));
     }
 }

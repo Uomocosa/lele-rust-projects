@@ -14,7 +14,11 @@ pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnost
     let defined_types = collect_defined_types(&project.parsed_files);
     let defined_names: HashSet<String> = defined_types.iter().map(|(n, _)| n.clone()).collect();
     let embedded = collect_embedded_type_names(&project.parsed_files);
-    let refs = collect_file_references(&project.parsed_files, &defined_names);
+    let mut refs = collect_file_references(&project.parsed_files, &defined_names);
+    refs.extend(collect_file_references(
+        &project.methods_parsed_files,
+        &defined_names,
+    ));
 
     for (name, rel_path) in &defined_types {
         if is_exempt_path(rel_path) {

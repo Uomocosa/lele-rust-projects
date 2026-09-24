@@ -4,5 +4,8 @@ declared_dishonest = ["std::time::SystemTime::now", "std::time::Instant::now", "
 honesty_depth = 1
 entry_allowlist = ["src/main.rs", "examples/**", "src/testing/**"]
 
+[lele.lint]
+layout = "methods"
+
 [lele.lint.checkers]
 no_allow_attributes = false

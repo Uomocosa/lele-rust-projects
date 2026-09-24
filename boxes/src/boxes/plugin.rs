@@ -23,7 +23,7 @@ mod tests {
     fn install_network_resources(app: &mut App) {
         app.insert_resource(p2p::Commands::<boxes::Payload>::default());
         app.insert_resource(p2p::Events::<boxes::Payload>::default());
-        app.insert_resource(roster::Roster::default());
+        app.insert_resource(roster::LobbyRoster::default());
     }
 
     #[test]

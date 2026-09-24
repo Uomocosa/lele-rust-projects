@@ -8,7 +8,7 @@
 )]
 use std::process::Command;
 
-fn needs_build(src: &[&str], dst: &str) -> bool {
+fn needs_build(src: &[String], dst: &str) -> bool {
     let Ok(wasm_meta) = std::fs::metadata(dst).and_then(|m| m.modified()) else {
         return true;
     };
@@ -22,18 +22,7 @@ fn needs_build(src: &[&str], dst: &str) -> bool {
     false
 }
 
-fn build_one(manifest: &str, out: &str, target_dir: &str) {
-    let src = vec![
-        manifest.to_string(),
-        format!(
-            "{}/Cargo.lock",
-            manifest
-                .trim_end_matches("Cargo.toml")
-                .trim_end_matches('/')
-        ),
-    ];
-    // handled via rerun-if-changed outside
-    let _ = src;
+fn build_one(manifest: &str, wasm_name: &str, out: &str, target_dir: &str) {
     let status = Command::new("cargo")
         .args([
             "build",
@@ -52,55 +41,38 @@ fn build_one(manifest: &str, out: &str, target_dir: &str) {
     if !status.success() {
         panic!("contract WASM build failed for {manifest}");
     }
-    let wasm_src = format!(
-        "{target_dir}/wasm32-unknown-unknown/release/{}.wasm",
-        if manifest.contains("directory") {
-            "directory_contract"
-        } else {
-            "board_contract"
-        }
-    );
+    let wasm_src = format!("{target_dir}/wasm32-unknown-unknown/release/{wasm_name}.wasm");
     std::fs::copy(&wasm_src, out).expect("failed to copy contract WASM");
 }
 
 fn main() {
-    println!("cargo:rerun-if-changed=contract/directory/src/lib.rs");
-    println!("cargo:rerun-if-changed=contract/directory/Cargo.toml");
-    println!("cargo:rerun-if-changed=contract/directory/Cargo.lock");
-    println!("cargo:rerun-if-changed=contract/board/src/lib.rs");
-    println!("cargo:rerun-if-changed=contract/board/Cargo.toml");
-    println!("cargo:rerun-if-changed=contract/board/Cargo.lock");
-    println!("cargo:rerun-if-changed=contract/directory/directory_contract.wasm");
-    println!("cargo:rerun-if-changed=contract/board/board_contract.wasm");
-
-    let dir_wasm = "contract/directory/directory_contract.wasm";
-    let board_wasm = "contract/board/board_contract.wasm";
-
-    let dir_src = [
-        "contract/directory/src/lib.rs",
-        "contract/directory/Cargo.toml",
+    let contracts = [
+        ("directory", "directory_contract"),
+        ("board", "board_contract"),
+        ("roster", "roster_contract"),
     ];
-    let board_src = ["contract/board/src/lib.rs", "contract/board/Cargo.toml"];
-
-    let dir_needs = needs_build(&dir_src, dir_wasm);
-    let board_needs = needs_build(&board_src, board_wasm);
-
-    if !dir_needs && !board_needs {
-        return;
+    for (dir, wasm_name) in contracts {
+        println!("cargo:rerun-if-changed=contract/{dir}/src/lib.rs");
+        println!("cargo:rerun-if-changed=contract/{dir}/Cargo.toml");
+        println!("cargo:rerun-if-changed=contract/{dir}/Cargo.lock");
+        println!("cargo:rerun-if-changed=contract/{dir}/{wasm_name}.wasm");
     }
 
-    if dir_needs {
-        build_one(
-            "contract/directory/Cargo.toml",
-            dir_wasm,
-            "contract/directory/target",
-        );
+    let mut pending = Vec::new();
+    for (dir, wasm_name) in contracts {
+        let wasm = format!("contract/{dir}/{wasm_name}.wasm");
+        let src = vec![
+            format!("contract/{dir}/src/lib.rs"),
+            format!("contract/{dir}/Cargo.toml"),
+        ];
+        if needs_build(&src, &wasm) {
+            pending.push((dir, wasm_name, wasm));
+        }
     }
-    if board_needs {
-        build_one(
-            "contract/board/Cargo.toml",
-            board_wasm,
-            "contract/board/target",
-        );
+
+    for (dir, wasm_name, wasm) in pending {
+        let manifest = format!("contract/{dir}/Cargo.toml");
+        let target_dir = format!("contract/{dir}/target");
+        build_one(&manifest, wasm_name, &wasm, &target_dir);
     }
 }

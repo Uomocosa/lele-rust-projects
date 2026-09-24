@@ -43,6 +43,7 @@ mod tests {
                     decls.push(ModDecl {
                         name: m.ident.to_string(),
                         is_public: matches!(m.vis, syn::Visibility::Public(_)),
+                        cfg: None,
                     });
                 }
                 syn::Item::Use(u) => {

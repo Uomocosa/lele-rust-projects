@@ -1,8 +1,8 @@
+use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::Resource;
 use derive_more::{Deref, DerefMut};
 use serde::Serialize;
 
-use super::events_take_all;
 use crate::p2p;
 
 #[derive(Resource, Deref, DerefMut, Serialize)]
@@ -14,9 +14,9 @@ impl<T: p2p::Message> Default for Events<T> {
     }
 }
 
-#[rustfmt::skip]
+#[atomic_delegate]
 impl<T: p2p::Message> Events<T> {
-    pub fn take_all(&mut self) -> Vec<p2p::Event<T>> { events_take_all::take_all(self) }
+    pub fn take_all(&mut self) -> Vec<p2p::Event<T>> {}
 }
 
 #[cfg(test)]

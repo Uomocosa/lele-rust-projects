@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+use super::net_command::NetCommand;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command<T> {
+    Net(NetCommand),
     Dial {
         peer_id: String,
         addrs: Vec<String>,
@@ -56,6 +59,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     use super::Command;
+    use crate::p2p;
     use derive_more::Deref;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
@@ -68,5 +72,9 @@ mod tests {
             addrs: vec![],
         };
         let _: Command<Dummy> = c;
+        let net: Command<Dummy> = Command::Net(p2p::NetCommand::FindLobby {
+            lobby: "l".to_string(),
+        });
+        assert!(matches!(net, Command::Net(_)));
     }
 }
