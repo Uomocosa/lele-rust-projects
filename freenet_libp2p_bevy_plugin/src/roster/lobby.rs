@@ -12,6 +12,13 @@ impl Default for Lobby {
     }
 }
 
+impl Lobby {
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self(name)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Lobby;
@@ -19,6 +26,6 @@ mod tests {
     #[test]
     fn test_usage() {
         assert_eq!(&*Lobby::default(), "default");
-        assert_eq!(&*Lobby("alpha".to_string()), "alpha");
+        assert_eq!(&*Lobby::new("alpha".to_string()), "alpha");
     }
 }

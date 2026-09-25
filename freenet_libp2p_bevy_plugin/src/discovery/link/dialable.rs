@@ -2,7 +2,7 @@
 pub fn dialable(addrs: Vec<String>) -> Vec<String> {
     addrs
         .into_iter()
-        .filter(|a| !a.contains("0.0.0.0"))
+        .filter(|addr| !addr.contains("0.0.0.0"))
         .collect()
 }
 
@@ -16,7 +16,6 @@ mod tests {
             dialable(vec!["/ip4/0.0.0.0/tcp/9000".to_string()]),
             Vec::<String>::new()
         );
-        let addrs = dialable(vec!["/ip4/1.2.3.4/tcp/9000".to_string()]);
-        assert_eq!(addrs.len(), 1);
+        assert_eq!(dialable(vec!["/ip4/1.2.3.4/tcp/9000".to_string()]).len(), 1);
     }
 }

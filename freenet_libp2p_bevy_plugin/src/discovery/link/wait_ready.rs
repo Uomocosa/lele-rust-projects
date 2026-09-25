@@ -1,6 +1,6 @@
-use crate::p2p;
-
 use std::time::Duration;
+
+use crate::p2p;
 
 use super::super::constants;
 
@@ -22,7 +22,10 @@ pub async fn wait_ready(
             .await
             .is_err()
         {
-            return ready.borrow().clone().map(|r| (r.peer_id, r.addrs));
+            return ready
+                .borrow()
+                .clone()
+                .map(|info| (info.peer_id, info.addrs));
         }
     }
 }

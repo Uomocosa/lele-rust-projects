@@ -1,26 +1,26 @@
 use crate::p2p;
 
-use super::params::discovery_timing::DiscoveryTiming;
-use super::params::game_name::GameName;
-use super::params::unique_game_id::UniqueGameId;
+use super::id::game_name::GameName;
+use super::id::game_token::GameToken;
+use super::timing::Timing;
 
+#[derive(Debug, Clone)]
 pub struct Config {
-    pub id: UniqueGameId,
-    pub timing: DiscoveryTiming,
+    pub game_name: GameName,
+    pub token: GameToken,
+    pub timing: Timing,
     pub transport: p2p::TransportMode,
+    pub capacity: u16,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or_default();
-        let token = format!("{nanos:x}-{}", std::process::id());
         Self {
-            id: UniqueGameId::new(&GameName("test".to_string()), &token),
-            timing: DiscoveryTiming::default(),
+            game_name: GameName("test".to_string()),
+            token: GameToken("test".to_string()),
+            timing: Timing::default(),
             transport: p2p::TransportMode::Both,
+            capacity: 8,
         }
     }
 }
@@ -28,11 +28,13 @@ impl Default for Config {
 #[cfg(test)]
 mod tests {
     use super::Config;
+    use crate::discovery;
 
     #[test]
     fn test_usage() {
         let config = Config::default();
-        assert_eq!(config.timing.tick_secs, 5);
-        assert!(config.id.as_str().starts_with("test/"));
+        let id = discovery::id::UniqueGameId::new(&config.game_name, &config.token);
+        assert_eq!(id.as_str(), "test/test");
+        assert_eq!(config.capacity, 8);
     }
 }

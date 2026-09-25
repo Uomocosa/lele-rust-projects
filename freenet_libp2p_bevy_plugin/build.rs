@@ -49,7 +49,6 @@ fn main() {
     let contracts = [
         ("directory", "directory_contract"),
         ("board", "board_contract"),
-        ("roster", "roster_contract"),
     ];
     for (dir, wasm_name) in contracts {
         println!("cargo:rerun-if-changed=contract/{dir}/src/lib.rs");
