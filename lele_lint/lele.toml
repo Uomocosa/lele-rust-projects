@@ -1,2 +1,3 @@
 [lele.lint.checkers]
 domain_import = false
+container_placement = false

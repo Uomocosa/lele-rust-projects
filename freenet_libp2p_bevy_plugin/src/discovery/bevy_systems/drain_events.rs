@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 
 use super::super::Event;
-use super::super::event_feed::EventFeed;
+use super::super::EventFeed;
 
 pub fn drain_events(feed: Res<EventFeed>, mut events: MessageWriter<Event>) {
     let Ok(mut guard) = feed.lock() else {

@@ -1,4 +1,4 @@
-use super::catalogue::RoomCatalogue;
+use super::RoomCatalogue;
 use super::merge_room::merge_room;
 
 #[must_use]

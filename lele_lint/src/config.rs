@@ -5,8 +5,10 @@ use serde::Deserialize;
 use derive_more::Deref;
 
 use super::config_checker_enabled;
+use super::config_dunder;
 use super::config_layout;
 use super::config_load;
+use crate::Dunder;
 use crate::Error;
 use crate::Layout;
 use crate::LeleLintSection;
@@ -28,6 +30,10 @@ impl Config {
 
     pub fn layout(&self) -> Layout {
         config_layout::layout(self)
+    }
+
+    pub fn dunder(&self) -> Dunder {
+        config_dunder::dunder(self)
     }
 }
 

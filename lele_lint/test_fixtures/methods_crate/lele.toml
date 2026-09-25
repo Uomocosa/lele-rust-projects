@@ -1,2 +1,5 @@
 [lele.lint]
 layout = "methods"
+
+[lele.lint.checkers]
+container_placement = false

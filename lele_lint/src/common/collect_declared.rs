@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use super::file_cfgs;
 use super::module_cfgs;
 use super::DeclaredType;
 use crate::Layout;
@@ -34,7 +35,7 @@ pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, DeclaredTy
             }
             let entry = map.entry(type_snake.clone()).or_default();
             if entry.cfgs.is_empty() {
-                entry.cfgs = module_cfgs::file_cfgs(&cfg_map, rel_path);
+                entry.cfgs = file_cfgs(&cfg_map, rel_path);
             }
             for impl_item in &impl_block.items {
                 if let syn::ImplItem::Fn(method) = impl_item {

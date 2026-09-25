@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use super::discovery_status::DiscoveryStatus;
-use super::member::Member;
-use super::members::Members;
+use super::DiscoveryStatus;
+use super::Member;
+use super::Members;
 use crate::discovery;
 
 pub fn merge_peers(

@@ -79,3 +79,9 @@ e2e = ["room_lobby"]
 telegram_bot = { path = "../telegram_bot" }
 freenet = "=0.2.132"
 tempfile = "=3.27.0"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

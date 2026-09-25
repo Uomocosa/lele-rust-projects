@@ -3,9 +3,9 @@ use super::super::Event;
 use super::super::id::now_epoch;
 use super::super::link::NetLink;
 use super::super::room_peers::{Members, merge_peers, peer_topic};
+use super::Room;
 use super::announce::announce;
 use super::dial_known::dial_known;
-use super::room::Room;
 use super::session::Session;
 use crate::p2p;
 

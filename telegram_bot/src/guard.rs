@@ -1,6 +1,7 @@
 use super::guard_start;
 use super::load_creds;
 use super::send_text;
+use super::status_enabled;
 
 pub struct Guard {
     pub name: String,
@@ -21,6 +22,9 @@ impl Drop for Guard {
             "PASSED"
         };
         let text = format!("{} {} in {:?}", status, self.name, self.start.elapsed());
+        if !status_enabled::status_enabled() {
+            return;
+        }
         let Some(creds) = load_creds::load_creds() else {
             eprintln!("telegram skipped (no creds): {text}");
             return;

@@ -6,5 +6,7 @@ pub use lobby::Lobby;
 
 pub mod bevy_systems;
 
-pub mod constants;
-pub use constants::*;
+#[path = "__basic__/mod.rs"]
+pub mod basic;
+
+pub use basic::constants::*;

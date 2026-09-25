@@ -1,5 +1,5 @@
-use super::super::id::presence::Presence;
-use super::super::id::room_record::RoomRecord;
+use super::super::id::Presence;
+use super::super::id::RoomRecord;
 
 #[must_use]
 pub fn merge_room(current: Option<RoomRecord>, incoming: RoomRecord) -> RoomRecord {

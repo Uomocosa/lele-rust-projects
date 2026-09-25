@@ -3,6 +3,7 @@ use std::path::Path;
 use super::domain_import::DomainImport;
 use crate::common;
 use crate::Diagnostic;
+use crate::Dunder;
 use crate::Entry;
 use crate::Project;
 use crate::Severity;
@@ -13,7 +14,7 @@ pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> 
     for (rel_path, file) in &project.parsed_files {
         for item in &file.items {
             if let syn::Item::Use(item_use) = item {
-                if let Some(msg) = check_import(item_use) {
+                if let Some(msg) = check_import(item_use, &project.dunder) {
                     if let Some(line) = find_use_line(&project.entries, rel_path, item_use) {
                         diags.push(Diagnostic {
                             file: project.src_dir.join(rel_path),
@@ -33,11 +34,19 @@ pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> 
 }
 
 // needed helper: import style validation
-fn check_import(item_use: &syn::ItemUse) -> Option<String> {
+fn check_import(item_use: &syn::ItemUse, dunder: &Dunder) -> Option<String> {
     let segments = collect_use_segments(&item_use.tree);
     let first = segments.first()?;
 
     if first == "crate" && segments.len() >= 3 {
+        if segments.iter().any(|segment| {
+            dunder
+                .folders
+                .values()
+                .any(|module| module.as_str() == segment)
+        }) {
+            return None;
+        }
         if let [.., prev, last] = &segments[..] {
             if common::is_stuttered_path(prev, last) {
                 return None;
@@ -93,30 +102,31 @@ fn find_use_line(entries: &[Entry], rel_path: &Path, _item_use: &syn::ItemUse) -
 #[cfg(test)]
 mod tests {
     use super::{check_import, is_pub_use};
+    use crate::Dunder;
     use syn::parse_quote;
 
     #[test]
     fn test_usage_flags_direct_type_import() {
         let u: syn::ItemUse = parse_quote! { use crate::player::PlayerId; };
-        assert!(check_import(&u).is_some());
+        assert!(check_import(&u, &Dunder::default()).is_some());
     }
 
     #[test]
     fn test_usage_allows_domain_import() {
         let u: syn::ItemUse = parse_quote! { use crate::player; };
-        assert!(check_import(&u).is_none());
+        assert!(check_import(&u, &Dunder::default()).is_none());
     }
 
     #[test]
     fn test_usage_flags_subfolder_import() {
         let u: syn::ItemUse = parse_quote! { use crate::clicker::plugin::ClickerPlugin; };
-        assert!(check_import(&u).is_some());
+        assert!(check_import(&u, &Dunder::default()).is_some());
     }
 
     #[test]
     fn test_usage_allows_super_import() {
         let u: syn::ItemUse = parse_quote! { use super::player_new; };
-        assert!(check_import(&u).is_none());
+        assert!(check_import(&u, &Dunder::default()).is_none());
     }
 
     #[test]
@@ -128,13 +138,13 @@ mod tests {
     #[test]
     fn test_usage_allows_direct_stutter_import() {
         let u: syn::ItemUse = parse_quote! { use crate::diagnostic::Diagnostic; };
-        assert!(check_import(&u).is_none());
+        assert!(check_import(&u, &Dunder::default()).is_none());
     }
 
     #[test]
     fn test_usage_still_flags_direct_non_stutter_import() {
         let u: syn::ItemUse = parse_quote! { use crate::module_info::ModuleInfoMap; };
-        assert!(check_import(&u).is_some());
+        assert!(check_import(&u, &Dunder::default()).is_some());
     }
 }
 

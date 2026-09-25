@@ -5,8 +5,8 @@ use freenet_stdlib::prelude::*;
 use tracing::info;
 
 use super::super::error::Error;
-use super::catalogue::RoomCatalogue;
-use super::index_client::IndexClient;
+use super::IndexClient;
+use super::RoomCatalogue;
 use crate::discovery;
 
 pub async fn connect(

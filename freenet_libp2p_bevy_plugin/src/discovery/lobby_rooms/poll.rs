@@ -4,8 +4,8 @@ use freenet_stdlib::client_api::{ContractResponse, HostResponse};
 use freenet_stdlib::prelude::UpdateData;
 
 use super::super::error::Error;
-use super::catalogue::RoomCatalogue;
-use super::index_client::IndexClient;
+use super::IndexClient;
+use super::RoomCatalogue;
 use super::merge_board::merge_board;
 
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(10);

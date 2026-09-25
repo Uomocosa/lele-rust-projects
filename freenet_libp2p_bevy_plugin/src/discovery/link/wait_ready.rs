@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::p2p;
 
-use super::super::constants;
+use super::super::basic::constants;
 
 pub async fn wait_ready(
     ready: &mut tokio::sync::watch::Receiver<Option<p2p::Ready>>,

@@ -8,6 +8,8 @@ use crate::Layout;
 pub(crate) fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error> {
     let layout = config.layout();
     project.layout = layout;
+    project.dunder = config.dunder();
+    project.container_placement = config.checker_enabled("container_placement");
 
     if layout != Layout::Methods {
         return Ok(());

@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 
 use super::super::Command;
-use super::super::command_sender::CommandSender;
+use super::super::CommandSender;
 
 pub fn forward_commands(mut commands: MessageReader<Command>, sender: Res<CommandSender>) {
     for command in commands.read() {

@@ -19,8 +19,13 @@ pub use history_key::history_key;
 pub mod provider_key;
 pub use provider_key::provider_key;
 
-pub mod constants;
-pub use constants::*;
+#[path = "__basic__/mod.rs"]
+pub mod basic;
+
+pub use basic::constants::*;
+pub use basic::enums::{Command, Event, NetCommand, TapEvent, TransportMode};
+pub use basic::resources::{Bridge, NetBridge};
+pub use basic::structs::Ready;
 
 pub mod build_swarm;
 pub use build_swarm::build_swarm;
@@ -28,20 +33,8 @@ pub use build_swarm::build_swarm;
 pub mod run;
 pub use run::run;
 
-pub mod command;
-pub use command::Command;
-
-pub mod bridge;
-pub use bridge::Bridge;
-
 pub mod spawn_runner;
 pub use spawn_runner::spawn_runner;
-
-pub mod transport_mode;
-pub use transport_mode::TransportMode;
-
-pub mod event;
-pub use event::Event;
 
 pub mod commands;
 pub use commands::Commands;
@@ -49,26 +42,14 @@ pub use commands::Commands;
 pub mod events;
 pub use events::Events;
 
-pub mod ready;
-pub use ready::Ready;
-
 pub mod signals;
 pub use signals::Signals;
-
-pub mod tap_event;
-pub use tap_event::TapEvent;
 
 pub mod event_tap;
 pub use event_tap::EventTap;
 
-pub mod net_command;
-pub use net_command::NetCommand;
-
 pub mod outbox;
 pub use outbox::Outbox;
-
-pub mod net_bridge;
-pub use net_bridge::NetBridge;
 
 pub mod config;
 pub use config::Config;

@@ -7,6 +7,7 @@ use super::project_discover;
 use super::project_find_cargo_root;
 use super::project_get_parsed;
 use crate::Config;
+use crate::Dunder;
 use crate::Entry;
 use crate::Error;
 use crate::Layout;
@@ -20,6 +21,8 @@ pub struct Project {
     pub module_info: ModuleInfoMap,
     pub parsed_files: HashMap<PathBuf, syn::File>,
     pub layout: Layout,
+    pub dunder: Dunder,
+    pub container_placement: bool,
     pub methods_dir: Option<PathBuf>,
     pub methods_entries: Vec<Entry>,
     pub methods_parsed_files: HashMap<PathBuf, syn::File>,

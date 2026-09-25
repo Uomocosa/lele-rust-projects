@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use tracing::warn;
 
-use super::super::constants;
+use super::super::basic::constants;
 use super::super::id::UniqueGameId;
+use super::IndexClient;
 use super::board_params::board_params;
 use super::connect::connect;
 use super::contract_wasm::contract_wasm;
-use super::index_client::IndexClient;
 
 pub async fn connect_retry(host: &str, port: u16, id: &UniqueGameId) -> IndexClient {
     loop {

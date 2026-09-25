@@ -1,7 +1,7 @@
 use derive_more::Deref;
 
-use super::game_name::GameName;
-use super::game_token::GameToken;
+use super::GameName;
+use super::GameToken;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deref)]
 pub struct UniqueGameId(pub String);

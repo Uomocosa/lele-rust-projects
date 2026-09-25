@@ -4,13 +4,13 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest};
 use freenet_stdlib::prelude::{StateDelta, UpdateData};
 
 use super::super::error::Error;
-use super::super::id::epoch_secs::EpochSecs;
-use super::super::id::presence::Presence;
-use super::super::id::remote_peer_id::RemotePeerId;
-use super::super::id::room_name::RoomName;
-use super::super::id::room_record::RoomRecord;
-use super::catalogue::RoomCatalogue;
-use super::index_client::IndexClient;
+use super::super::id::EpochSecs;
+use super::super::id::Presence;
+use super::super::id::RemotePeerId;
+use super::super::id::RoomName;
+use super::super::id::RoomRecord;
+use super::IndexClient;
+use super::RoomCatalogue;
 use super::merge_board::merge_board;
 
 pub fn publish_presence(

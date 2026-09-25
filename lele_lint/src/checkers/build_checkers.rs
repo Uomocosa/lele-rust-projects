@@ -4,6 +4,7 @@ use super::clippy_config_cargo;
 use super::clippy_config_clippy;
 use super::constants_placement;
 use super::constructor_no_skip;
+use super::container_placement;
 use super::delegate_macro;
 use super::domain_import;
 use super::helper_count;
@@ -47,6 +48,7 @@ pub fn build_checkers(config: &Config) -> Vec<Box<dyn Checker>> {
     atomic_delegates::AtomicDelegates::register(&mut checkers, config);
     constructor_no_skip::ConstructorNoSkip::register(&mut checkers, config);
     constants_placement::ConstantsPlacement::register(&mut checkers, config);
+    container_placement::ContainerPlacement::register(&mut checkers, config);
     helper_count::HelperCount::register(&mut checkers, config);
     single_field_newtype::SingleFieldNewtype::register(&mut checkers, config);
     mod_rs_purity::ModRsPurity::register(&mut checkers, config);

@@ -2,7 +2,7 @@ use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::Resource;
 use tokio::sync::watch::{self, Receiver, Sender};
 
-use super::ready::Ready;
+use super::Ready;
 
 #[derive(Resource)]
 pub struct Signals {

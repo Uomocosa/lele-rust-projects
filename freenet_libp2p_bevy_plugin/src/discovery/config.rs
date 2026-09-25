@@ -1,7 +1,7 @@
 use crate::p2p;
 
-use super::id::game_name::GameName;
-use super::id::game_token::GameToken;
+use super::id::GameName;
+use super::id::GameToken;
 use super::timing::Timing;
 
 #[derive(Debug, Clone)]

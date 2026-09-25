@@ -1,8 +1,8 @@
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 
 use super::super::error::Error;
-use super::catalogue::RoomCatalogue;
-use super::index_client::IndexClient;
+use super::IndexClient;
+use super::RoomCatalogue;
 use super::merge_board::merge_board;
 
 pub async fn refresh(client: &mut IndexClient) -> Result<RoomCatalogue, Error> {

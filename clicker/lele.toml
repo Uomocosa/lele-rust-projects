@@ -6,3 +6,6 @@ entry_allowlist = ["src/main.rs", "examples/**", "src/testing/**"]
 
 [lele.lint]
 layout = "methods"
+
+[lele.lint.checkers]
+container_placement = false

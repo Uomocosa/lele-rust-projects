@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 
 use super::super::Multiplayer;
-use super::super::multiplayer_feed::MultiplayerFeed;
+use super::super::MultiplayerFeed;
 
 pub fn drain_multiplayer(feed: Res<MultiplayerFeed>, mut multiplayer: ResMut<Multiplayer>) {
     let Ok(mut guard) = feed.lock() else {

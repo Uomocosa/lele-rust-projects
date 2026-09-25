@@ -3,6 +3,7 @@ use std::path::Path;
 use super::test_usage::TestUsage;
 use crate::common;
 use crate::Diagnostic;
+use crate::Dunder;
 use crate::EntryKind;
 use crate::Project;
 use crate::Severity;
@@ -13,7 +14,7 @@ pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
-        if is_exempt(rel_path, file) {
+        if is_exempt(rel_path, file, &project.dunder) {
             continue;
         }
 
@@ -68,7 +69,7 @@ fn opt_out_at_end(content: &str) -> bool {
 }
 
 // needed helper: file exemption rules
-fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
+fn is_exempt(rel_path: &Path, file: &syn::File, dunder: &Dunder) -> bool {
     let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     if file_name == "main.rs" {
@@ -83,6 +84,10 @@ fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
         return true;
     }
 
+    if is_dunder_path(rel_path, dunder) {
+        return true;
+    }
+
     if rel_path
         .components()
         .any(|c| c.as_os_str().to_str() == Some("tests"))
@@ -91,6 +96,22 @@ fn is_exempt(rel_path: &Path, file: &syn::File) -> bool {
     }
 
     is_type_only(file) || is_atomic_delegate_only(file)
+}
+
+// needed helper: whitelisted dunder folder or file path check
+fn is_dunder_path(rel_path: &Path, dunder: &Dunder) -> bool {
+    let in_folder = rel_path.components().any(|c| {
+        c.as_os_str()
+            .to_str()
+            .is_some_and(|name| dunder.folders.contains_key(name))
+    });
+    if in_folder {
+        return true;
+    }
+    rel_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .is_some_and(|stem| dunder.files.iter().any(|file| file.as_str() == stem))
 }
 
 // needed helper: pure module tree detection

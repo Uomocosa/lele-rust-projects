@@ -12,6 +12,9 @@ pub(crate) fn check(_self: &SnakeCaseFiles, project: &Project) -> Vec<Diagnostic
     for entry in &project.entries {
         let name = extract_name(&entry.relative_path, entry.kind == EntryKind::Directory);
         if let Some(name) = name {
+            if is_allowed_dunder(project, name) {
+                continue;
+            }
             if !is_snake_case(name) {
                 let kind = if entry.kind == EntryKind::Directory {
                     "directory"
@@ -54,6 +57,16 @@ fn is_snake_case(name: &str) -> bool {
         && !name.starts_with('_')
         && !name.ends_with('_')
         && !name.contains("__")
+}
+
+// needed helper: configured/whitelisted dunder folder or file names are exempt from snake_case
+fn is_allowed_dunder(project: &Project, name: &str) -> bool {
+    project.dunder.folders.contains_key(name)
+        || project
+            .dunder
+            .files
+            .iter()
+            .any(|file| file.as_str() == name)
 }
 
 #[cfg(test)]

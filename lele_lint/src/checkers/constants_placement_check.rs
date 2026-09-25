@@ -99,7 +99,7 @@ fn check_fn_file_const(
         .iter()
         .any(|item| matches!(item, syn::Item::Fn(f) if is_exposed(&f.vis)));
     if has_pub_fn {
-        let sibling = sibling_constants(rel_path);
+        let sibling = sibling_constants(rel_path, project);
         diags.push(Diagnostic {
             file: project.src_dir.join(rel_path),
             line: 1,
@@ -126,14 +126,16 @@ fn check_lift_to_ancestor(
     let ancestor = common_ancestor_dir(users);
     let def_dir = parent_dir(rel_path);
     if ancestor.is_empty() && !def_dir.is_empty() {
+        let target = constants_target(project, &PathBuf::new());
         diags.push(Diagnostic {
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
             code: "E026".to_string(),
             message: format!(
-                "const `{name}` is used across top-level dirs but lives in `{}` — lift it to `src/constants.rs`",
+                "const `{name}` is used across top-level dirs but lives in `{}` — lift it to `src/{}`",
                 rel_path.display(),
+                target.display(),
             ),
             severity: Severity::Error,
         });
@@ -155,28 +157,43 @@ fn check_lower_to_subdir(
     if ancestor.as_os_str().is_empty() {
         return;
     }
+    let target = constants_target(project, &ancestor);
     diags.push(Diagnostic {
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
         code: "E026".to_string(),
         message: format!(
-            "const `{name}` lives at root but is only used under `{}` — lower it to `{}/constants.rs`",
+            "const `{name}` lives at root but is only used under `{}` — lower it to `{}`",
             ancestor.display(),
-            ancestor.display(),
+            target.display(),
         ),
         severity: Severity::Error,
     });
 }
 
-// needed helper: sibling constants.rs path for a file
-fn sibling_constants(rel_path: &Path) -> PathBuf {
-    let parent = parent_dir(rel_path);
-    if parent.as_os_str().is_empty() {
+// needed helper: canonical dunder folder name (sorted for determinism)
+fn dunder_folder(project: &Project) -> Option<String> {
+    project.dunder.folders.keys().min().cloned()
+}
+
+// needed helper: constants.rs target path for a domain directory
+fn constants_target(project: &Project, dir: &Path) -> PathBuf {
+    if project.container_placement {
+        if let Some(folder) = dunder_folder(project) {
+            return dir.join(folder).join("constants.rs");
+        }
+    }
+    if dir.as_os_str().is_empty() {
         PathBuf::from("constants.rs")
     } else {
-        parent.join("constants.rs")
+        dir.join("constants.rs")
     }
+}
+
+// needed helper: sibling constants.rs path for a file
+fn sibling_constants(rel_path: &Path, project: &Project) -> PathBuf {
+    constants_target(project, &parent_dir(rel_path))
 }
 
 // needed helper: parent dir of a relative path
@@ -226,6 +243,7 @@ fn is_exposed(vis: &syn::Visibility) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{common_ancestor_dir, common_prefix, sibling_constants};
+    use crate::Project;
     use std::collections::HashSet;
     use std::path::PathBuf;
 
@@ -235,12 +253,13 @@ mod tests {
 
     #[test]
     fn test_usage_sibling_constants() {
+        let project = Project::default();
         assert_eq!(
-            sibling_constants(&PathBuf::from("discover.rs")),
+            sibling_constants(&PathBuf::from("discover.rs"), &project),
             PathBuf::from("constants.rs")
         );
         assert_eq!(
-            sibling_constants(&PathBuf::from("checkers/foo.rs")),
+            sibling_constants(&PathBuf::from("checkers/foo.rs"), &project),
             PathBuf::from("checkers/constants.rs")
         );
     }

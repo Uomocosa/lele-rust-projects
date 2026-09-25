@@ -1,4 +1,4 @@
-use super::epoch_secs::EpochSecs;
+use super::EpochSecs;
 
 #[must_use]
 pub fn now_epoch() -> EpochSecs {

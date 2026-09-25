@@ -4,6 +4,7 @@ use std::path::Path;
 use super::atomic_file::AtomicFile;
 use crate::common;
 use crate::Diagnostic;
+use crate::Dunder;
 use crate::Project;
 use crate::Severity;
 
@@ -14,7 +15,7 @@ pub(crate) fn check(_self: &AtomicFile, project: &Project) -> Vec<Diagnostic> {
     for (rel_path, file) in &project.parsed_files {
         let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-        if is_exempt_path(rel_path, file_name) {
+        if is_exempt_path(rel_path, file_name, &project.dunder) {
             continue;
         }
 
@@ -137,13 +138,32 @@ impl PubItemKind {
 }
 
 // needed helper: path exemption logic
-fn is_exempt_path(rel_path: &Path, file_name: &str) -> bool {
+fn is_exempt_path(rel_path: &Path, file_name: &str, dunder: &Dunder) -> bool {
     if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
+        return true;
+    }
+    if is_dunder_path(rel_path, dunder) {
         return true;
     }
     rel_path
         .components()
         .any(|c| c.as_os_str().to_str() == Some("tests"))
+}
+
+// needed helper: whitelisted dunder folder or file path check
+fn is_dunder_path(rel_path: &Path, dunder: &Dunder) -> bool {
+    let in_folder = rel_path.components().any(|c| {
+        c.as_os_str()
+            .to_str()
+            .is_some_and(|name| dunder.folders.contains_key(name))
+    });
+    if in_folder {
+        return true;
+    }
+    rel_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .is_some_and(|stem| dunder.files.iter().any(|file| file.as_str() == stem))
 }
 
 // needed helper: pub item collection
@@ -238,6 +258,7 @@ mod tests {
         check_filename_match, check_fn_file_purity, collect_pub_items, has_known_parent_prefix,
         is_exempt_path, is_exposed,
     };
+    use crate::Dunder;
     use crate::Project;
     use std::path::Path;
 
@@ -250,10 +271,15 @@ mod tests {
         assert_eq!(items[0].name, "AtomicFile");
         assert_eq!(items[1].name, "helper");
 
-        assert!(is_exempt_path(Path::new("checkers/mod.rs"), "mod.rs"));
+        assert!(is_exempt_path(
+            Path::new("checkers/mod.rs"),
+            "mod.rs",
+            &Dunder::default()
+        ));
         assert!(!is_exempt_path(
             Path::new("checkers/atomic_file.rs"),
-            "atomic_file.rs"
+            "atomic_file.rs",
+            &Dunder::default()
         ));
     }
 
