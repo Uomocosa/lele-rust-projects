@@ -1,11 +1,12 @@
-use super::super::Event;
-use super::super::id::{RemotePeerId, now_epoch};
-use super::super::link::NetLink;
-use super::super::room_peers::{DiscoveryStatus, MeshMessage, merge_peers, peer_topic};
-use super::announce::announce;
-use super::dial_known::dial_known;
-use super::session::Session;
+use crate::discovery;
 use crate::p2p;
+use discovery::Event;
+use discovery::id::{RemotePeerId, now_epoch};
+use discovery::link::NetLink;
+use discovery::room_peers::{DiscoveryStatus, MeshMessage, merge_peers, peer_topic};
+use discovery::session::Session;
+use discovery::session::announce::announce;
+use discovery::session::dial_known::dial_known;
 
 pub fn apply_tap(
     session: &mut Session,

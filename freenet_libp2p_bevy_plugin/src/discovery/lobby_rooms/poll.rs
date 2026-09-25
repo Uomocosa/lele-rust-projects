@@ -3,10 +3,10 @@ use std::time::Duration;
 use freenet_stdlib::client_api::{ContractResponse, HostResponse};
 use freenet_stdlib::prelude::UpdateData;
 
-use super::super::error::Error;
-use super::IndexClient;
-use super::RoomCatalogue;
-use super::merge_board::merge_board;
+use crate::discovery;
+use discovery::Error;
+use discovery::lobby_rooms::merge_board::merge_board;
+use discovery::lobby_rooms::{IndexClient, RoomCatalogue};
 
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(10);
 

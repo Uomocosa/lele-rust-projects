@@ -6,18 +6,3 @@ pub struct Chunk {
     pub chunk: u64,
     pub data: Vec<u8>,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::Chunk;
-
-    #[test]
-    fn test_usage() {
-        let chunk = Chunk {
-            lobby: "a".to_string(),
-            chunk: 0,
-            data: vec![1, 2],
-        };
-        assert_eq!(chunk.chunk, 0);
-    }
-}

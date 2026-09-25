@@ -4,10 +4,9 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractRespons
 use freenet_stdlib::prelude::*;
 use tracing::info;
 
-use super::super::error::Error;
-use super::IndexClient;
-use super::RoomCatalogue;
 use crate::discovery;
+use discovery::Error;
+use discovery::lobby_rooms::{IndexClient, RoomCatalogue};
 
 pub async fn connect(
     host: &str,

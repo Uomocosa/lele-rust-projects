@@ -1,15 +1,15 @@
 use std::time::Duration;
 
-use super::super::id::{RemotePeerId, UniqueGameId};
-use super::super::link::{dialable, wait_ready};
-use super::super::lobby_rooms::connect_retry;
-use super::RunConfig;
-use super::apply_command::apply_command;
-use super::apply_tap::apply_tap;
-use super::maintain::maintain;
-use super::maintain_board::maintain_board;
-use super::session::Session;
-use super::snapshot::snapshot;
+use crate::discovery;
+use discovery::id::{RemotePeerId, UniqueGameId};
+use discovery::link::{dialable, wait_ready};
+use discovery::lobby_rooms::connect_retry;
+use discovery::session::apply_command::apply_command;
+use discovery::session::apply_tap::apply_tap;
+use discovery::session::maintain::maintain;
+use discovery::session::maintain_board::maintain_board;
+use discovery::session::snapshot::snapshot;
+use discovery::session::{RunConfig, Session};
 
 pub async fn run(run: RunConfig) {
     let RunConfig {

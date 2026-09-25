@@ -1,5 +1,7 @@
-pub use super::basic::newtypes::{EpochSecs, GameName, GameToken, RemotePeerId, RoomName};
-pub use super::basic::structs::{Presence, RoomRecord};
+pub use crate::discovery::basic::newtypes::{
+    EpochSecs, GameName, GameToken, RemotePeerId, RoomName,
+};
+pub use crate::discovery::basic::structs::{Presence, RoomRecord};
 
 pub mod now_epoch;
 pub use now_epoch::now_epoch;

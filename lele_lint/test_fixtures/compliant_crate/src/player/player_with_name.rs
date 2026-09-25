@@ -1,7 +1,7 @@
-use super::player::Player;
+use crate::player;
 
-pub fn with_name(player: Player, name: String) -> Player {
-    Player { name, ..player }
+pub fn with_name(base: player::Player, name: String) -> player::Player {
+    player::Player { name, ..base }
 }
 
 #[cfg(test)]

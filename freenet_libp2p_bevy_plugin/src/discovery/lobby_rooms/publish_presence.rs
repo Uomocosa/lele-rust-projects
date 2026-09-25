@@ -3,15 +3,11 @@ use std::collections::BTreeMap;
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest};
 use freenet_stdlib::prelude::{StateDelta, UpdateData};
 
-use super::super::error::Error;
-use super::super::id::EpochSecs;
-use super::super::id::Presence;
-use super::super::id::RemotePeerId;
-use super::super::id::RoomName;
-use super::super::id::RoomRecord;
-use super::IndexClient;
-use super::RoomCatalogue;
-use super::merge_board::merge_board;
+use crate::discovery;
+use discovery::Error;
+use discovery::id::{EpochSecs, Presence, RemotePeerId, RoomName, RoomRecord};
+use discovery::lobby_rooms::merge_board::merge_board;
+use discovery::lobby_rooms::{IndexClient, RoomCatalogue};
 
 pub fn publish_presence(
     client: &mut IndexClient,

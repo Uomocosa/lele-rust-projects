@@ -1,10 +1,11 @@
 use std::time::Instant;
 
-use super::super::Event;
-use super::super::id::now_epoch;
-use super::super::lobby_rooms::{IndexClient, poll, publish_presence, refresh};
-use super::super::timing::Timing;
-use super::session::Session;
+use crate::discovery;
+use discovery::Event;
+use discovery::Timing;
+use discovery::id::now_epoch;
+use discovery::lobby_rooms::{IndexClient, poll, publish_presence, refresh};
+use discovery::session::Session;
 
 pub async fn maintain_board(
     session: &mut Session,

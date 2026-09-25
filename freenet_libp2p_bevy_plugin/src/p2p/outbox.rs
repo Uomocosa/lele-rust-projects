@@ -3,7 +3,8 @@ use bevy::prelude::Resource;
 use derive_more::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
-use super::NetCommand;
+use crate::p2p;
+use p2p::NetCommand;
 
 #[derive(Resource, Debug, Default, Deref, DerefMut, Serialize, Deserialize)]
 pub struct Outbox(pub Vec<NetCommand>);

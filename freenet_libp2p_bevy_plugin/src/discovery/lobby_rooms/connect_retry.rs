@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use tracing::warn;
 
-use super::super::basic::constants;
-use super::super::id::UniqueGameId;
-use super::IndexClient;
-use super::board_params::board_params;
-use super::connect::connect;
-use super::contract_wasm::contract_wasm;
+use crate::discovery;
+use discovery::basic::constants;
+use discovery::id::UniqueGameId;
+use discovery::lobby_rooms::IndexClient;
+use discovery::lobby_rooms::board_params::board_params;
+use discovery::lobby_rooms::connect::connect;
+use discovery::lobby_rooms::contract_wasm::contract_wasm;
 
 pub async fn connect_retry(host: &str, port: u16, id: &UniqueGameId) -> IndexClient {
     loop {

@@ -1,8 +1,8 @@
 #![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
 
-use super::super::Multiplayer;
-use super::super::MultiplayerFeed;
+use crate::discovery;
+use discovery::{Multiplayer, MultiplayerFeed};
 
 pub fn drain_multiplayer(feed: Res<MultiplayerFeed>, mut multiplayer: ResMut<Multiplayer>) {
     let Ok(mut guard) = feed.lock() else {

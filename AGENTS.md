@@ -71,7 +71,14 @@ At the end of every non-trivial code change, run `cargo clippy --all-targets --a
 
 - **Delegate pattern:** Structs hold only data fields. All methods are defined as free
   functions in sibling `<struct>_<method>.rs` files. Method files are private modules
-  consumed exclusively through the struct's thin delegates (`#[rustfmt::skip]`).
+  consumed exclusively through the struct's thin delegates (`#[rustfmt::skip]`). Delegate
+  dispatch imports the domain (`use crate::<module>;`) and calls
+  `<module>::<struct>_<method>::<method>()` — `super::` is tests-only (E033).
+
+- **Import style (E033/E034):** `super::` is forbidden outside `#[cfg(test)]` (any depth,
+  in `use` items and inline paths); import the domain and qualify (`use crate::<domain>;`
+  then `<domain>::Type`). `__basic__/` dunder containers hold declarations only — no tests
+  (E034); cover the function or method that consumes the types instead.
 
 - **Struct field shape (E018):** A struct with exactly one field must be a **tuple newtype**
   `pub struct X(T)` with `#[derive(Deref)]` (from `derive_more`), accessed via deref.

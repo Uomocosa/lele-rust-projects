@@ -1,5 +1,5 @@
-use super::super::id::Presence;
-use super::super::id::RoomRecord;
+use crate::discovery;
+use discovery::id::{Presence, RoomRecord};
 
 #[must_use]
 pub fn merge_room(current: Option<RoomRecord>, incoming: RoomRecord) -> RoomRecord {

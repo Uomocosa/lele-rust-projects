@@ -1,4 +1,5 @@
-use super::super::id::unique_game_id::UniqueGameId;
+use crate::discovery;
+use discovery::id::UniqueGameId;
 
 #[must_use]
 pub fn board_params(id: &UniqueGameId) -> Vec<u8> {

@@ -1,8 +1,8 @@
 mod board_params;
 pub use board_params::board_params;
 
-pub use super::basic::structs::IndexClient;
-pub use super::basic::type_aliases::RoomCatalogue;
+pub use crate::discovery::basic::structs::IndexClient;
+pub use crate::discovery::basic::type_aliases::RoomCatalogue;
 
 mod connect;
 pub use connect::connect;

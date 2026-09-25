@@ -1,4 +1,5 @@
-use super::EpochSecs;
+use crate::discovery;
+use discovery::id::EpochSecs;
 
 #[must_use]
 pub fn now_epoch() -> EpochSecs {

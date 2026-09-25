@@ -1,5 +1,6 @@
-use super::super::Multiplayer;
-use super::session::Session;
+use crate::discovery;
+use discovery::Multiplayer;
+use discovery::session::Session;
 
 #[must_use]
 pub fn snapshot(session: &Session) -> Multiplayer {

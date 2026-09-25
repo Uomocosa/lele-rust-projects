@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
-use super::DiscoveryStatus;
-use super::Member;
-use super::Members;
 use crate::discovery;
+use discovery::room_peers::{DiscoveryStatus, Member, Members};
 
 pub fn merge_peers(
     members: &mut Members,

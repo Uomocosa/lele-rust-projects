@@ -1,6 +1,7 @@
-use super::super::id::now_epoch;
-use super::super::room_peers::merge_peers;
-use super::session::Session;
+use crate::discovery;
+use discovery::id::now_epoch;
+use discovery::room_peers::merge_peers;
+use discovery::session::Session;
 
 pub fn seed_from_board(session: &mut Session) {
     let Some(room_name) = session.room.as_ref().map(|room| room.name.clone()) else {

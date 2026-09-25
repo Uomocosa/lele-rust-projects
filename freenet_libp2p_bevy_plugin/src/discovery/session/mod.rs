@@ -10,7 +10,7 @@ mod seed_from_board;
 mod session;
 mod snapshot;
 
-pub use super::basic::structs::{Room, RunConfig};
+pub use crate::discovery::basic::structs::{Room, RunConfig};
 pub use run::run;
 pub use session::Session;
 pub use snapshot::snapshot;

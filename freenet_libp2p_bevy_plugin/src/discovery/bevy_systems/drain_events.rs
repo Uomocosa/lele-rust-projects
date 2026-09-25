@@ -1,8 +1,8 @@
 #![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
 
-use super::super::Event;
-use super::super::EventFeed;
+use crate::discovery;
+use discovery::{Event, EventFeed};
 
 pub fn drain_events(feed: Res<EventFeed>, mut events: MessageWriter<Event>) {
     let Ok(mut guard) = feed.lock() else {

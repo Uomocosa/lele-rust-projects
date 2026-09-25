@@ -28,7 +28,7 @@ pub(crate) fn check(_self: &NoCratePaths, project: &Project) -> Vec<Diagnostic> 
                 col: 0,
                 code: "E020".to_string(),
                 message: format!(
-                    "`{}` path used outside a top-level `use` declaration — add `use crate::<module>;` at the top of the file or use a `super::`-relative path instead",
+                    "`{}` path used outside a top-level `use` declaration — add `use crate::<module>;` at the top of the file and reference `<module>::…` instead",
                     hit.path
                 ),
                 severity: Severity::Error,

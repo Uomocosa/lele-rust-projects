@@ -1,5 +1,6 @@
-use super::super::id::now_epoch;
-use super::session::Session;
+use crate::discovery;
+use discovery::id::now_epoch;
+use discovery::session::Session;
 
 pub fn prune_members(session: &mut Session, ttl_secs: u64) {
     let now = now_epoch();

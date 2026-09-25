@@ -1,4 +1,4 @@
-use super::settings_load;
+use crate::settings;
 
 pub struct Settings {
     pub root: String,
@@ -16,7 +16,7 @@ impl Default for Settings {
 
 #[rustfmt::skip]
 impl Settings {
-    pub fn load() -> Self { settings_load::load() }
+    pub fn load() -> Self { settings::settings_load::load() }
 }
 
 #[cfg(test)]

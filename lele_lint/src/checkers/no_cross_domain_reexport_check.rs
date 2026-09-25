@@ -9,11 +9,7 @@ pub(crate) fn check(_self: &NoCrossDomainReexport, project: &Project) -> Vec<Dia
     let mut diags = Vec::new();
 
     for (mod_rs_path, info) in &project.module_info {
-        let own_domain = mod_rs_path
-            .parent()
-            .unwrap_or(Path::new(""))
-            .to_string_lossy()
-            .to_string();
+        let own_domain = own_domain_of(mod_rs_path);
 
         for reexport in &info.reexports {
             if let Some(target_domain) = reexport_target_domain(&reexport.segments) {
@@ -52,8 +48,20 @@ fn reexport_target_domain(segments: &[String]) -> Option<String> {
     None
 }
 
+// needed helper: top-level domain owning a mod.rs
+fn own_domain_of(mod_rs_path: &Path) -> String {
+    mod_rs_path
+        .components()
+        .next()
+        .map(|component| component.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    use super::own_domain_of;
     use super::reexport_target_domain;
 
     #[test]
@@ -71,5 +79,14 @@ mod tests {
             reexport_target_domain(&["event".into(), "PlayerEvent".into()]),
             None
         );
+    }
+
+    #[test]
+    fn test_usage_own_domain_uses_top_level_segment() {
+        assert_eq!(
+            own_domain_of(Path::new("discovery/room_peers/mod.rs")),
+            "discovery"
+        );
+        assert_eq!(own_domain_of(Path::new("player/mod.rs")), "player");
     }
 }

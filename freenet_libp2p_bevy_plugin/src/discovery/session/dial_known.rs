@@ -1,7 +1,8 @@
-use super::super::link::NetLink;
-use super::super::room_peers::DiscoveryStatus;
-use super::session::Session;
+use crate::discovery;
 use crate::p2p;
+use discovery::link::NetLink;
+use discovery::room_peers::DiscoveryStatus;
+use discovery::session::Session;
 
 pub fn dial_known(session: &Session, link: &NetLink) {
     let Some(room) = &session.room else {

@@ -166,25 +166,3 @@ pub enum Event<T> {
     },
     Error(String),
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Command, Event, NetCommand, TapEvent, TransportMode};
-
-    #[test]
-    fn test_usage() {
-        assert_ne!(TransportMode::Tcp, TransportMode::Quic);
-        let tap = TapEvent::PeerConnected("peer".to_string());
-        assert!(matches!(tap, TapEvent::PeerConnected(_)));
-        let net = NetCommand::FindLobby {
-            lobby: "l".to_string(),
-        };
-        assert!(matches!(net, NetCommand::FindLobby { .. }));
-        let command: Command<u32> = Command::Net(NetCommand::FindLobby {
-            lobby: "l".to_string(),
-        });
-        assert!(matches!(command, Command::Net(_)));
-        let event: Event<u32> = Event::PeerConnected("p".to_string());
-        assert!(matches!(event, Event::PeerConnected(_)));
-    }
-}

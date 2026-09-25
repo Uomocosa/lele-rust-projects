@@ -1,5 +1,6 @@
-use super::RoomCatalogue;
-use super::merge_room::merge_room;
+use crate::discovery;
+use discovery::lobby_rooms::RoomCatalogue;
+use discovery::lobby_rooms::merge_room::merge_room;
 
 #[must_use]
 pub fn merge_board(mut base: RoomCatalogue, incoming: RoomCatalogue) -> RoomCatalogue {

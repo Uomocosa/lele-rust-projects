@@ -1,8 +1,8 @@
 #![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
 
-use super::super::Command;
-use super::super::CommandSender;
+use crate::discovery;
+use discovery::{Command, CommandSender};
 
 pub fn forward_commands(mut commands: MessageReader<Command>, sender: Res<CommandSender>) {
     for command in commands.read() {

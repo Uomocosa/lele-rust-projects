@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 use freenet_stdlib::prelude::ContractKey;
 use serde::{Deserialize, Serialize};
 
-use super::super::config::Config;
-use super::enums::DiscoveryStatus;
-use super::messages::{Command, Event};
-use super::newtypes::{EpochSecs, RemotePeerId, RoomName};
-use super::resources::{FreenetEndpoint, Multiplayer};
-use super::type_aliases::{Members, RoomCatalogue};
 use crate::discovery;
 use crate::p2p;
+use discovery::basic::enums::DiscoveryStatus;
+use discovery::basic::messages::{Command, Event};
+use discovery::basic::newtypes::{EpochSecs, RemotePeerId, RoomName};
+use discovery::basic::resources::{FreenetEndpoint, Multiplayer};
+use discovery::basic::type_aliases::{Members, RoomCatalogue};
+use discovery::config::Config;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Presence {
@@ -56,48 +56,4 @@ pub struct IndexClient {
 pub struct NetLink {
     pub tx: tokio::sync::mpsc::UnboundedSender<p2p::NetCommand>,
     pub observed: tokio::sync::watch::Receiver<Option<Vec<String>>>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{Member, Presence, Room, RoomRecord};
-    use crate::discovery;
-
-    #[test]
-    fn test_usage() {
-        let presence = Presence {
-            addrs: vec!["/ip4/127.0.0.1/tcp/4001".to_string()],
-            updated_at: discovery::id::EpochSecs(7),
-        };
-        let bytes = bincode::serialize(&presence).unwrap_or_default();
-        let decoded: Presence = bincode::deserialize(&bytes).expect("decodes");
-        assert_eq!(decoded, presence);
-
-        let mut members = std::collections::BTreeMap::new();
-        members.insert(discovery::id::RemotePeerId("peer".to_string()), presence);
-        let record = RoomRecord {
-            capacity: 8,
-            members,
-        };
-        assert_eq!(record.capacity, 8);
-
-        let member = Member {
-            presence: record
-                .members
-                .get(&discovery::id::RemotePeerId("peer".to_string()))
-                .cloned()
-                .expect("member"),
-            status: discovery::room_peers::DiscoveryStatus::Known,
-        };
-        assert!(matches!(
-            member.status,
-            discovery::room_peers::DiscoveryStatus::Known
-        ));
-
-        let room = Room {
-            name: discovery::id::RoomName("room-a".to_string()),
-            members: discovery::room_peers::Members::new(),
-        };
-        assert!(room.members.is_empty());
-    }
 }

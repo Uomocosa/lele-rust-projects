@@ -1,7 +1,7 @@
-use super::player::Player;
+use crate::player;
 
-pub fn new() -> Player {
-    Player::default()
+pub fn new() -> player::Player {
+    player::Player::default()
 }
 
 #[cfg(test)]

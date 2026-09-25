@@ -1,10 +1,11 @@
-use super::super::link::{NetLink, dialable};
-use super::super::timing::Timing;
-use super::announce::announce;
-use super::dial_known::dial_known;
-use super::prune_members::prune_members;
-use super::seed_from_board::seed_from_board;
-use super::session::Session;
+use crate::discovery;
+use discovery::Timing;
+use discovery::link::{NetLink, dialable};
+use discovery::session::Session;
+use discovery::session::announce::announce;
+use discovery::session::dial_known::dial_known;
+use discovery::session::prune_members::prune_members;
+use discovery::session::seed_from_board::seed_from_board;
 
 pub fn maintain(session: &mut Session, link: &mut NetLink, timing: &Timing) {
     refresh_observed(session, link);

@@ -1,7 +1,7 @@
 use bevy::prelude::Resource;
 use derive_more::Deref;
 
-use super::basic::constants;
+use crate::roster::basic::constants;
 
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deref)]
 pub struct Lobby(pub String);

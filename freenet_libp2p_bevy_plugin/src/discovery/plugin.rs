@@ -2,7 +2,8 @@ use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::App;
 use derive_more::Deref;
 
-use super::config::Config;
+use crate::discovery;
+use discovery::Config;
 
 #[derive(Deref)]
 pub struct Plugin(pub Config);

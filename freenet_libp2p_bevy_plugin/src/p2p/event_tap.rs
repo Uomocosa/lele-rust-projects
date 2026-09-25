@@ -4,7 +4,8 @@ use atomic_delegate_macros::atomic_delegate;
 use bevy::prelude::Resource;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use super::TapEvent;
+use crate::p2p;
+use p2p::TapEvent;
 
 #[derive(Resource)]
 pub struct EventTap {

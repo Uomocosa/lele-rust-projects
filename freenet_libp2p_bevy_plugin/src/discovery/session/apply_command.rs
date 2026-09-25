@@ -1,13 +1,12 @@
-use super::super::Command;
-use super::super::Event;
-use super::super::id::now_epoch;
-use super::super::link::NetLink;
-use super::super::room_peers::{Members, merge_peers, peer_topic};
-use super::Room;
-use super::announce::announce;
-use super::dial_known::dial_known;
-use super::session::Session;
+use crate::discovery;
 use crate::p2p;
+use discovery::id::now_epoch;
+use discovery::link::NetLink;
+use discovery::room_peers::{Members, merge_peers, peer_topic};
+use discovery::session::announce::announce;
+use discovery::session::dial_known::dial_known;
+use discovery::session::{Room, Session};
+use discovery::{Command, Event};
 
 pub fn apply_command(
     session: &mut Session,
@@ -29,7 +28,7 @@ pub fn apply_command(
 fn join(
     session: &mut Session,
     link: &NetLink,
-    room: super::super::id::RoomName,
+    room: discovery::id::RoomName,
     events: &tokio::sync::mpsc::UnboundedSender<Event>,
 ) {
     let mut members = Members::new();

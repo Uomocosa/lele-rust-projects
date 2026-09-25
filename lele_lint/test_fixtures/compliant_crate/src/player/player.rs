@@ -1,5 +1,4 @@
-use super::player_new;
-use super::player_with_name;
+use crate::player;
 
 pub struct Player {
     pub name: String,
@@ -17,9 +16,9 @@ impl Default for Player {
 
 #[rustfmt::skip]
 impl Player {
-    pub fn new() -> Self { player_new::new() }
+    pub fn new() -> Self { player::player_new::new() }
 
-    pub fn with_name(self, name: String) -> Self { player_with_name::with_name(self, name) }
+    pub fn with_name(self, name: String) -> Self { player::player_with_name::with_name(self, name) }
 }
 
 #[cfg(test)]

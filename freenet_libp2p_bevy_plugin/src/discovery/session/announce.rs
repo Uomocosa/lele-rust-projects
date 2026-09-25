@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
-use super::super::link::NetLink;
-use super::super::room_peers::{MeshMessage, peer_topic};
-use super::session::Session;
+use crate::discovery;
 use crate::p2p;
+use discovery::link::NetLink;
+use discovery::room_peers::{MeshMessage, peer_topic};
+use discovery::session::Session;
 
 pub fn announce(session: &Session, link: &NetLink) {
     let Some(room) = &session.room else {

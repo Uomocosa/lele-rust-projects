@@ -1,5 +1,5 @@
-use super::EpochSecs;
-use super::RoomRecord;
+use crate::discovery;
+use discovery::id::{EpochSecs, RoomRecord};
 
 #[must_use]
 pub fn occupancy(record: &RoomRecord, now: EpochSecs, ttl_secs: u64) -> usize {

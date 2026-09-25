@@ -1,9 +1,9 @@
 use freenet_stdlib::client_api::{ClientRequest, ContractRequest, ContractResponse, HostResponse};
 
-use super::super::error::Error;
-use super::IndexClient;
-use super::RoomCatalogue;
-use super::merge_board::merge_board;
+use crate::discovery;
+use discovery::Error;
+use discovery::lobby_rooms::merge_board::merge_board;
+use discovery::lobby_rooms::{IndexClient, RoomCatalogue};
 
 pub async fn refresh(client: &mut IndexClient) -> Result<RoomCatalogue, Error> {
     let instance_id = *client.contract_key.id();

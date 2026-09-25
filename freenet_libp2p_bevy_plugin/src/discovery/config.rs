@@ -1,8 +1,8 @@
+use crate::discovery;
 use crate::p2p;
 
-use super::id::GameName;
-use super::id::GameToken;
-use super::timing::Timing;
+use discovery::Timing;
+use discovery::id::{GameName, GameToken};
 
 #[derive(Debug, Clone)]
 pub struct Config {

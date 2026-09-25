@@ -1,7 +1,7 @@
-use super::settings::Settings;
+use crate::settings;
 
-pub fn load() -> Settings {
-    Settings::default()
+pub fn load() -> settings::Settings {
+    settings::Settings::default()
 }
 
 #[cfg(test)]

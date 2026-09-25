@@ -1,9 +1,10 @@
 use std::time::Instant;
 
-use super::super::id::RemotePeerId;
-use super::super::id::unique_game_id::UniqueGameId;
-use super::super::lobby_rooms::RoomCatalogue;
-use super::Room;
+use crate::discovery;
+use discovery::id::RemotePeerId;
+use discovery::id::UniqueGameId;
+use discovery::lobby_rooms::RoomCatalogue;
+use discovery::session::Room;
 
 pub struct Session {
     pub id: UniqueGameId,
