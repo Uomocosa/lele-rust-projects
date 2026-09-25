@@ -11,7 +11,7 @@ pub async fn connect(
     port: u16,
     contract_wasm: &[u8],
     params: &[u8],
-) -> Result<discovery::link::DirectoryClient, discovery::Error> {
+) -> Result<discovery::link::CatalogClient, discovery::Error> {
     let mut client = discovery::link::Client::connect(host, port).await?;
     let contract_code = Arc::new(ContractCode::from(contract_wasm.to_vec()));
     let params = Parameters::from(params.to_vec());
@@ -19,8 +19,8 @@ pub async fn connect(
     let contract_key = wrapped.key;
     let instance_id = *contract_key.id();
     let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
-    let initial = discovery::directory::DirectoryState::new();
-    let (key, slots) = match recv_after_get_directory(&mut client, instance_id).await {
+    let initial = discovery::directory::RoomCatalog::new();
+    let (key, slots) = match recv_after_get_catalog(&mut client, instance_id).await {
         Ok(found) => found,
         Err(discovery::Error::ContractNotFound) => {
             let put_req = ContractRequest::Put {
@@ -43,11 +43,11 @@ pub async fn connect(
                     return Err(discovery::Error::UnexpectedResponse(format!("{other:?}")));
                 }
             }
-            recv_after_get_directory(&mut client, instance_id).await?
+            recv_after_get_catalog(&mut client, instance_id).await?
         }
         Err(e) => return Err(e),
     };
-    Ok(discovery::link::DirectoryClient {
+    Ok(discovery::link::CatalogClient {
         client,
         contract_key: key,
         contract: container,
@@ -57,10 +57,10 @@ pub async fn connect(
 }
 
 // needed helper: issues a blocking subscribe-get and reads the first state
-async fn recv_after_get_directory(
+async fn recv_after_get_catalog(
     client: &mut discovery::link::Client,
     instance_id: ContractInstanceId,
-) -> Result<(ContractKey, discovery::directory::DirectoryState), discovery::Error> {
+) -> Result<(ContractKey, discovery::directory::RoomCatalog), discovery::Error> {
     let get_req = ContractRequest::Get {
         key: instance_id,
         return_contract_code: false,

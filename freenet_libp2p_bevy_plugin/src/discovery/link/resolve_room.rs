@@ -1,80 +1,51 @@
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use tracing::warn;
 
-use super::super::constants;
-use super::super::dial::auto_join::auto_join;
-use super::super::directory::Entry;
-use super::super::directory::pick_room::pick_room;
-use super::super::params::resolve_params::resolve_params;
-use super::dial_hint_raw::dial_hint_raw;
-use super::directory_client::DirectoryClient;
-use super::directory_hints::directory_hints;
+use super::super::params::contract_params::ContractParams;
+use super::super::params::remote_peer_id::RemotePeerId;
+use super::super::params::room_name::RoomName;
+use super::super::params::room_params::room_params;
+use super::super::params::unique_game_id::UniqueGameId;
+use super::catalog_client::CatalogClient;
+use super::dial_directory_publishers::dial_directory_publishers;
 use super::fire_due_staggers_raw::fire_due_staggers_raw;
-use super::maps::{ConnectedMap, StaggerMap};
+use super::maps::{AttemptedMap, ConnectedMap, StaggerMap};
 use super::run_config::RunConfig;
+use std::collections::HashMap;
 
 #[must_use]
 pub async fn resolve_room(
     config: &mut RunConfig,
-    directory: &mut DirectoryClient,
-    peer_id: &str,
+    directory: &mut CatalogClient,
+    peer_id: &RemotePeerId,
     addrs: &[String],
-) -> Option<(String, Vec<u8>)> {
-    if let Some(room) = config.lobby.as_deref() {
-        let params = resolve_params(&config.namespace, room, config.params_override.as_deref());
-        if directory
-            .publish_room(room, &params, peer_id, addrs)
-            .is_err()
-        {
-            warn!(target: "room_lobby", "discovery: room publish failed");
-        }
-        return Some((room.to_string(), params));
-    }
-    let deadline = Instant::now().checked_add(Duration::from_secs(constants::DISCOVERY_SECS))?;
-    let mut attempted: HashMap<String, Instant> = HashMap::new();
+) -> Option<(RoomName, ContractParams)> {
+    let deadline = Instant::now().checked_add(Duration::from_secs(config.timing.timeout_secs))?;
+    let mut attempted: AttemptedMap = HashMap::new();
     let connected: ConnectedMap = HashMap::new();
     let mut staggers: StaggerMap = HashMap::new();
     loop {
         if let Ok(room) = config.room_requests.try_recv() {
             return Some(resolve_requested(
-                directory,
-                &config.namespace,
-                config.params_override.as_deref(),
-                room,
-                peer_id,
-                addrs,
+                directory, &config.id, room, peer_id, addrs,
             ));
         }
         match directory.poll().await {
             Ok(slots) => {
                 config.directory_tx.send(slots.clone()).ok();
-                for hint in directory_hints(&slots) {
-                    dial_hint_raw(
-                        &config.net_tx,
-                        &mut attempted,
-                        &connected,
-                        &mut staggers,
-                        peer_id,
-                        config.transport,
-                        &hint,
-                    );
-                }
-                if auto_join(std::env::var("ROOM_LOBBY_NO_AUTOJOIN").ok().map(|_| true))
-                    && let Some((room, entry)) = pick_room(&slots, config.since_secs)
-                {
-                    let params = room_params(
-                        &config.namespace,
-                        &room,
-                        config.params_override.as_deref(),
-                        entry,
-                    );
-                    return Some((room, params));
-                }
+                dial_directory_publishers(
+                    &config.net_tx,
+                    &mut attempted,
+                    &connected,
+                    &mut staggers,
+                    peer_id.as_str(),
+                    config.transport,
+                    &slots,
+                );
             }
             Err(e) => {
-                warn!(target: "room_lobby", error = %e, "discovery: room poll failed");
+                warn!(target: "room_lobby", error = %e, "discovery: catalog poll failed");
             }
         }
         if Instant::now() >= deadline {
@@ -84,16 +55,11 @@ pub async fn resolve_room(
         let request = tokio::select! {
             biased;
             request = config.room_requests.recv() => request,
-            () = tokio::time::sleep(Duration::from_secs(constants::DIRECTORY_TICK_SECS)) => None,
+            () = tokio::time::sleep(Duration::from_secs(config.timing.tick_secs)) => None,
         };
         if let Some(room) = request {
             return Some(resolve_requested(
-                directory,
-                &config.namespace,
-                config.params_override.as_deref(),
-                room,
-                peer_id,
-                addrs,
+                directory, &config.id, room, peer_id, addrs,
             ));
         }
     }
@@ -101,14 +67,13 @@ pub async fn resolve_room(
 
 // needed helper: publishes a user-requested room and resolves its join params
 fn resolve_requested(
-    directory: &DirectoryClient,
-    namespace: &str,
-    params_override: Option<&str>,
-    room: String,
-    peer_id: &str,
+    directory: &CatalogClient,
+    id: &UniqueGameId,
+    room: RoomName,
+    peer_id: &RemotePeerId,
     addrs: &[String],
-) -> (String, Vec<u8>) {
-    let params = resolve_params(namespace, &room, params_override);
+) -> (RoomName, ContractParams) {
+    let params = room_params(id, &room);
     if directory
         .publish_room(&room, &params, peer_id, addrs)
         .is_err()
@@ -118,43 +83,21 @@ fn resolve_requested(
     (room, params)
 }
 
-// needed helper: picks join params from the directory entry or recomputes them
-fn room_params(
-    namespace: &str,
-    room: &str,
-    params_override: Option<&str>,
-    entry: Entry,
-) -> Vec<u8> {
-    if entry.params.is_empty() {
-        resolve_params(namespace, room, params_override)
-    } else {
-        entry.params
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{resolve_params, room_params};
+    use super::room_params;
     use crate::discovery;
 
     #[test]
     fn test_usage() {
-        let stored = discovery::directory::Entry {
-            params: vec![7],
-            peer_id: "peer".to_string(),
-            addrs: Vec::new(),
-            updated_at: 100,
-        };
-        assert_eq!(room_params("ns", "room", None, stored), vec![7]);
-        let empty = discovery::directory::Entry {
-            params: Vec::new(),
-            peer_id: "peer".to_string(),
-            addrs: Vec::new(),
-            updated_at: 100,
-        };
-        assert_eq!(
-            room_params("ns", "room", Some("ab"), empty),
-            resolve_params("ns", "room", Some("ab"))
+        let id = discovery::params::UniqueGameId::new(
+            &discovery::params::GameName("test".to_string()),
+            "token",
         );
+        let room = discovery::params::RoomName("room-a".to_string());
+        let params = room_params(&id, &room);
+        let decoded: (String, String) = bincode::deserialize(&params).unwrap_or_default();
+        assert_eq!(decoded.0, "test/token");
+        assert_eq!(decoded.1, "room-a");
     }
 }

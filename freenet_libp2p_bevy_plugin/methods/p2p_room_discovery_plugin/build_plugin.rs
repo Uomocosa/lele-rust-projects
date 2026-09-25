@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
 use bevy::prelude::*;
+use tracing::error;
 
 use crate::discovery;
 use crate::net_id;
@@ -50,27 +51,31 @@ pub fn build_plugin(p2p_plugin: &discovery::P2PRoomDiscoveryPlugin, app: &mut Ap
         .map_or(discovery::params::PlayerId(0), |id| {
             discovery::params::PlayerId(**id)
         });
+    let ws_port = app
+        .world()
+        .get_resource::<discovery::params::FreenetEndpoint>()
+        .copied();
 
-    if let (Some(tap_rx), Some(net_tx)) = (tap_rx, net_tx) {
-        let run_config = discovery::link::RunConfig {
-            net_tx,
-            tap_rx,
-            ready_rx,
-            observed_rx,
-            namespace: config.namespace.clone(),
-            lobby: config.lobby.clone(),
-            params_override: config.params_override.clone(),
-            since_secs: config.since_secs,
-            own,
-            transport: config.transport,
-            node: config.node,
-            room_tx,
-            room_requests: req_rx,
-            directory_tx: dir_tx,
-            expected_tx: exp_tx,
-        };
-        tokio::spawn(discovery::link::run(run_config));
-    }
+    let (Some(tap_rx), Some(net_tx), Some(endpoint)) = (tap_rx, net_tx, ws_port) else {
+        error!(target: "room_lobby", error = %discovery::Error::MissingLink, "discovery: link disabled");
+        return;
+    };
+    let run_config = discovery::link::RunConfig {
+        net_tx,
+        tap_rx,
+        ready_rx,
+        observed_rx,
+        id: config.id.clone(),
+        timing: config.timing,
+        own,
+        transport: config.transport,
+        room_tx,
+        room_requests: req_rx,
+        directory_tx: dir_tx,
+        expected_tx: exp_tx,
+        endpoint,
+    };
+    tokio::spawn(discovery::link::run(run_config));
 
     app.add_systems(
         Update,

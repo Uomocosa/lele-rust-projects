@@ -8,7 +8,6 @@ pub const PEX_MAX_HINTS: usize = 128;
 pub const PEX_MAX_ROOMS: usize = 32;
 pub const STALE_ENTRY_SECS: u64 = 300;
 pub const SNAPSHOT_CHUNK: u64 = 0;
-pub const DISCOVERY_SECS: u64 = 300;
 pub const DIRECTORY_TICK_SECS: u64 = 5;
 pub const TICK_SECS: u64 = 1;
 pub const READY_TIMEOUT_SECS: u64 = 120;

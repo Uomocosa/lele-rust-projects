@@ -20,7 +20,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<discovery::params::RoomName>();
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.add_message::<discovery::session::RoomRequest>();
@@ -28,8 +28,10 @@ mod tests {
         app.add_systems(Update, request_room);
         app.world_mut()
             .resource_mut::<Messages<discovery::session::RoomRequest>>()
-            .write(discovery::session::RoomRequest::Join("room-a".to_string()));
+            .write(discovery::session::RoomRequest::Join(
+                discovery::params::RoomName("room-a".to_string()),
+            ));
         app.update();
-        assert_eq!(rx.try_recv().unwrap_or_default(), "room-a");
+        assert!(rx.try_recv().is_ok_and(|room| room.as_str() == "room-a"));
     }
 }

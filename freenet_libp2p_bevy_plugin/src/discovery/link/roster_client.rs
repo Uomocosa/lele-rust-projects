@@ -6,6 +6,7 @@ use freenet_stdlib::prelude::{ContractContainer, ContractKey};
 use super::super::membership::peer_entry::PeerEntry;
 use super::super::membership::roster_state::RosterState;
 use super::super::params::player_id::PlayerId;
+use super::super::params::remote_peer_id::RemotePeerId;
 use super::client::Client;
 use crate::discovery;
 
@@ -15,7 +16,7 @@ pub struct RosterClient {
     pub(crate) contract: ContractContainer,
     pub(crate) slots: RosterState,
     pub own: PlayerId,
-    pub(crate) peer_id: String,
+    pub(crate) peer_id: RemotePeerId,
     pub addrs: Vec<String>,
     pub(crate) foreign_seen: Option<Instant>,
     pub(crate) foreign_sum: u64,
@@ -30,7 +31,7 @@ impl RosterClient {
         contract_wasm: &[u8],
         params: &[u8],
         own: PlayerId,
-        peer_id: &str,
+        peer_id: &RemotePeerId,
         addrs: &[String],
     ) -> Result<Self, discovery::Error> {
     }

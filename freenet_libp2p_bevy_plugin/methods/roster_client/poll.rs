@@ -74,7 +74,7 @@ fn note_foreign(roster: &mut discovery::link::RosterClient) {
         .slots
         .iter()
         .filter(|(id, _)| **id != own)
-        .map(|(_, e)| e.updated_at)
+        .map(|(_, e)| *e.updated_at)
         .sum();
     if sum != roster.foreign_sum {
         roster.foreign_sum = sum;

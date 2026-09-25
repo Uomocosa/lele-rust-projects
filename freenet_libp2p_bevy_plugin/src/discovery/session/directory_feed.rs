@@ -3,10 +3,10 @@ use std::sync::Mutex;
 use bevy::prelude::Resource;
 use derive_more::Deref;
 
-use super::super::directory::directory_state::DirectoryState;
+use super::super::directory::room_catalog::RoomCatalog;
 
 #[derive(Resource, Debug, Deref)]
-pub struct DirectoryFeed(pub Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<DirectoryState>>>);
+pub struct DirectoryFeed(pub Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<RoomCatalog>>>);
 
 #[cfg(test)]
 mod tests {

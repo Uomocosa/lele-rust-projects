@@ -4,20 +4,20 @@ use freenet_stdlib::prelude::*;
 use crate::discovery;
 
 pub fn publish_room(
-    directory: &discovery::link::DirectoryClient,
-    room: &str,
-    params: &[u8],
-    peer_id: &str,
+    directory: &discovery::link::CatalogClient,
+    room: &discovery::params::RoomName,
+    params: &discovery::params::ContractParams,
+    peer_id: &discovery::params::RemotePeerId,
     addrs: &[String],
 ) -> Result<(), discovery::Error> {
-    let mut single = discovery::directory::DirectoryState::new();
+    let mut single = discovery::directory::RoomCatalog::new();
     single.insert(
-        room.to_string(),
-        discovery::directory::Entry {
-            params: params.to_vec(),
-            peer_id: peer_id.to_string(),
+        room.clone(),
+        discovery::directory::RoomPayload {
+            params: params.clone(),
+            peer_id: peer_id.clone(),
             addrs: addrs.to_vec(),
-            updated_at: now_secs(),
+            updated_at: discovery::params::EpochSecs(now_secs()),
         },
     );
     let merged = discovery::directory::merge_directory(directory.slots.clone(), single);
@@ -31,7 +31,7 @@ pub fn publish_room(
     Ok(())
 }
 
-// needed helper: seconds since the unix epoch for entry timestamps
+// needed helper: seconds since the unix epoch for payload timestamps
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

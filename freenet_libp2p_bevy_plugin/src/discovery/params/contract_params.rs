@@ -1,20 +1,19 @@
-#[must_use]
-pub fn contract_params(namespace: &str, lobby: &str) -> Vec<u8> {
-    bincode::serialize(&(namespace.to_string(), lobby.to_string())).unwrap_or_default()
-}
+use derive_more::Deref;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Deref)]
+pub struct ContractParams(pub Vec<u8>);
 
 #[cfg(test)]
 mod tests {
-    use super::contract_params;
+    use super::ContractParams;
 
     #[test]
     fn test_usage() {
-        let params = contract_params("blackboard-v1", "alpha");
-        let decoded: (String, String) = bincode::deserialize(&params).unwrap_or_default();
-        assert_eq!(decoded, ("blackboard-v1".to_string(), "alpha".to_string()));
-        assert_ne!(
-            contract_params("blackboard-v1", "alpha"),
-            contract_params("blackboard-v1", "beta")
-        );
+        let params = ContractParams(vec![1, 2]);
+        assert_eq!(params.len(), 2);
+        let bytes = bincode::serialize(&params).unwrap_or_default();
+        let decoded: ContractParams = bincode::deserialize(&bytes).unwrap_or_default();
+        assert_eq!(decoded, params);
     }
 }

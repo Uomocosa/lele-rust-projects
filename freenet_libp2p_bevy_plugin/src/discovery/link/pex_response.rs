@@ -1,7 +1,9 @@
 use super::super::constants;
-use super::super::directory::Entry;
+use super::super::directory::room_payload::RoomPayload;
 use super::super::gossip::merge_peer_hints::merge_peer_hints;
 use super::super::gossip::peer_hint::PeerHint;
+use super::super::params::epoch_secs::EpochSecs;
+use super::super::params::room_name::RoomName;
 use super::epoch_secs::epoch_secs;
 use super::pex_msg::PexMsg;
 use super::run_context::RunContext;
@@ -26,17 +28,17 @@ pub fn pex_response(ctx: &RunContext) -> PexMsg {
         .into_iter()
         .take(constants::PEX_MAX_HINTS)
         .collect();
-    let rooms: Vec<(String, Entry)> = ctx
+    let rooms: Vec<(RoomName, RoomPayload)> = ctx
         .known_rooms
         .iter()
-        .map(|(name, entry)| (name.clone(), entry.clone()))
+        .map(|(name, payload)| (name.clone(), payload.clone()))
         .chain([(
             ctx.room.clone(),
-            Entry {
+            RoomPayload {
                 params: ctx.room_params.clone(),
                 peer_id: ctx.peer_id.clone(),
                 addrs: ctx.last_addrs.clone(),
-                updated_at: epoch_secs(),
+                updated_at: EpochSecs(epoch_secs()),
             },
         )])
         .take(constants::PEX_MAX_ROOMS)

@@ -6,7 +6,7 @@ use super::run_context::RunContext;
 pub fn absorb_roster_gossip(ctx: &mut RunContext, from: &str, data: &[u8]) {
     let slots: RosterState = bincode::deserialize(data).unwrap_or_default();
     for entry in slots.values() {
-        if entry.peer_id == from || entry.peer_id.is_empty() {
+        if entry.peer_id.as_str() == from || entry.peer_id.is_empty() {
             continue;
         }
         let hint = PeerHint {

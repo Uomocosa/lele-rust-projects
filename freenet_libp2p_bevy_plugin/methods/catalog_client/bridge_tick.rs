@@ -8,7 +8,7 @@ use crate::discovery;
 const BRIDGE_INTERVAL_SECS: u64 = 30;
 
 pub fn bridge_tick(
-    directory: &mut discovery::link::DirectoryClient,
+    directory: &mut discovery::link::CatalogClient,
     now: Instant,
 ) -> Result<(), discovery::Error> {
     let due = directory.last_bridge.is_none_or(|t| {

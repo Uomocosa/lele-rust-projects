@@ -1,6 +1,6 @@
 use crate::p2p;
 
-use super::super::directory::DirectoryState;
+use super::super::directory::room_catalog::RoomCatalog;
 use super::dial_hint_raw::dial_hint_raw;
 use super::directory_hints::directory_hints;
 use super::maps::{AttemptedMap, ConnectedMap, StaggerMap};
@@ -12,7 +12,7 @@ pub fn dial_directory_publishers(
     staggers: &mut StaggerMap,
     peer_id: &str,
     mode: p2p::TransportMode,
-    slots: &DirectoryState,
+    slots: &RoomCatalog,
 ) {
     for hint in directory_hints(slots) {
         dial_hint_raw(net_tx, attempted, connected, staggers, peer_id, mode, &hint);

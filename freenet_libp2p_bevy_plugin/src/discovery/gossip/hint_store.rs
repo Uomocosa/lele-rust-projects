@@ -22,10 +22,10 @@ mod tests {
 
     fn hint(peer_id: &str, updated_at: u64) -> discovery::gossip::PeerHint {
         discovery::gossip::PeerHint {
-            peer_id: peer_id.to_string(),
+            peer_id: discovery::params::RemotePeerId(peer_id.to_string()),
             addrs: vec!["/ip4/127.0.0.1/tcp/1".to_string()],
             rooms: Vec::new(),
-            updated_at,
+            updated_at: discovery::params::EpochSecs(updated_at),
         }
     }
 
@@ -35,7 +35,7 @@ mod tests {
         store.insert(hint("a", 5));
         assert_eq!(store.len(), 1);
         store.insert(hint("a", 3));
-        assert_eq!(store.get("a").map(|h| h.updated_at), Some(5));
+        assert_eq!(store.get("a").map(|h| *h.updated_at), Some(5));
         store.insert(hint("", 5));
         assert_eq!(store.len(), 1);
     }

@@ -26,7 +26,7 @@ pub async fn drive_roster(ctx: &mut RunContext) {
         }
         if let Some((room, attempts)) = ctx.pending_switch.take() {
             if attempts == 0 || attempts % 10 == 0 {
-                info!(target: "room_lobby", room = %room, attempts, "discovery: switching room");
+                info!(target: "room_lobby", room = %room.as_str(), attempts, "discovery: switching room");
             }
             if !switch_room(ctx, &room).await {
                 ctx.pending_switch = Some((room, attempts.saturating_add(1)));
@@ -58,7 +58,7 @@ pub async fn drive_roster(ctx: &mut RunContext) {
         if ctx.last_pex.elapsed().as_secs() >= constants::PEX_INTERVAL_SECS {
             ctx.last_pex = Instant::now();
             ctx.pex.prune(epoch_secs());
-            publish_pex(&ctx.net_tx, &ctx.namespace, &PexMsg::Ask);
+            publish_pex(&ctx.net_tx, &ctx.id, &PexMsg::Ask);
         }
         fire_due_staggers(ctx);
         if ctx.observed_rx.has_changed().unwrap_or(false) {

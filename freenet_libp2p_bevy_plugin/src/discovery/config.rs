@@ -1,26 +1,26 @@
 use crate::p2p;
 
-use super::constants;
-use super::params::node_mode::NodeMode;
+use super::params::discovery_timing::DiscoveryTiming;
+use super::params::game_name::GameName;
+use super::params::unique_game_id::UniqueGameId;
 
 pub struct Config {
-    pub namespace: String,
-    pub lobby: Option<String>,
-    pub params_override: Option<String>,
-    pub node: NodeMode,
+    pub id: UniqueGameId,
+    pub timing: DiscoveryTiming,
     pub transport: p2p::TransportMode,
-    pub since_secs: u64,
 }
 
 impl Default for Config {
     fn default() -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or_default();
+        let token = format!("{nanos:x}-{}", std::process::id());
         Self {
-            namespace: constants::DEFAULT_NAMESPACE.to_string(),
-            lobby: None,
-            params_override: None,
-            node: NodeMode::Embedded,
+            id: UniqueGameId::new(&GameName("test".to_string()), &token),
+            timing: DiscoveryTiming::default(),
             transport: p2p::TransportMode::Both,
-            since_secs: 0,
         }
     }
 }
@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn test_usage() {
         let config = Config::default();
-        assert_eq!(config.namespace, "blackboard-v1");
-        assert!(config.lobby.is_none());
+        assert_eq!(config.timing.tick_secs, 5);
+        assert!(config.id.as_str().starts_with("test/"));
     }
 }

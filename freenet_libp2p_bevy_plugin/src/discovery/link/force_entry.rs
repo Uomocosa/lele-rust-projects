@@ -12,13 +12,13 @@ pub fn force_entry(ctx: &RunContext, entry: &PeerEntry) {
     if entry.addrs.is_empty() {
         return;
     }
-    if epoch_secs().saturating_sub(entry.updated_at) > constants::STALE_ENTRY_SECS {
+    if epoch_secs().saturating_sub(*entry.updated_at) > constants::STALE_ENTRY_SECS {
         return;
     }
-    info!(target: "room_lobby", peer = %entry.peer_id, "discovery: force-dialing peer");
+    info!(target: "room_lobby", peer = %entry.peer_id.as_str(), "discovery: force-dialing peer");
     ctx.net_tx
         .send(p2p::NetCommand::DialForce {
-            peer_id: entry.peer_id.clone(),
+            peer_id: (*entry.peer_id).clone(),
             addrs: with_loopback(&entry.addrs),
         })
         .ok();

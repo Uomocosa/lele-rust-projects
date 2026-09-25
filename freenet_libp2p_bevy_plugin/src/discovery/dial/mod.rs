@@ -1,6 +1,3 @@
-pub mod auto_join;
-pub use auto_join::auto_join;
-
 pub mod decide_dial;
 pub use decide_dial::decide_dial;
 

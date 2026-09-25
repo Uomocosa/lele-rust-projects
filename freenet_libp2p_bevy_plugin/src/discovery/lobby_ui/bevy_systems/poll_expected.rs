@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 
 use bevy::prelude::*;
 
+use super::super::super::params::remote_peer_id::RemotePeerId;
 use super::super::super::session::expected_rx::ExpectedRx;
 use super::super::super::session::join_clock::JoinClock;
 use super::super::super::session::join_gate::JoinGate;
@@ -18,14 +19,14 @@ pub fn poll_expected(
     let Some(rx) = guard.as_mut() else {
         return;
     };
-    let mut latest: Option<Vec<String>> = None;
+    let mut latest: Option<Vec<RemotePeerId>> = None;
     while let Ok(peers) = rx.try_recv() {
         latest = Some(peers);
     }
     let Some(peers) = latest else {
         return;
     };
-    let incoming: BTreeSet<String> = peers.into_iter().collect();
+    let incoming: BTreeSet<RemotePeerId> = peers.into_iter().collect();
     let grown = gate
         .expected
         .as_ref()
@@ -45,22 +46,25 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
+        let (tx, rx) =
+            tokio::sync::mpsc::unbounded_channel::<Vec<discovery::params::RemotePeerId>>();
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(discovery::session::ExpectedRx(Mutex::new(Some(rx))));
         app.insert_resource(discovery::session::JoinGate::default());
         app.insert_resource(discovery::session::JoinClock::default());
-        tx.send(vec!["peer-2".to_string(), "peer-3".to_string()])
-            .ok();
+        tx.send(vec![
+            discovery::params::RemotePeerId("peer-2".to_string()),
+            discovery::params::RemotePeerId("peer-3".to_string()),
+        ])
+        .ok();
         app.add_systems(Update, poll_expected);
         app.update();
         let gate = app.world().resource::<discovery::session::JoinGate>();
-        assert!(
-            gate.expected
-                .as_ref()
-                .is_some_and(|set| { set.contains("peer-2") && set.contains("peer-3") })
-        );
+        assert!(gate.expected.as_ref().is_some_and(|set| {
+            set.contains(&discovery::params::RemotePeerId("peer-2".to_string()))
+                && set.contains(&discovery::params::RemotePeerId("peer-3".to_string()))
+        }));
         assert!(
             app.world()
                 .resource::<discovery::session::JoinClock>()
@@ -71,21 +75,22 @@ mod tests {
 
     #[test]
     fn latest_snapshot_wins() {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
+        let (tx, rx) =
+            tokio::sync::mpsc::unbounded_channel::<Vec<discovery::params::RemotePeerId>>();
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(discovery::session::ExpectedRx(Mutex::new(Some(rx))));
         app.insert_resource(discovery::session::JoinGate::default());
         app.insert_resource(discovery::session::JoinClock::default());
-        tx.send(vec!["peer-2".to_string()]).ok();
-        tx.send(vec!["peer-4".to_string()]).ok();
+        tx.send(vec![discovery::params::RemotePeerId("peer-2".to_string())])
+            .ok();
+        tx.send(vec![discovery::params::RemotePeerId("peer-4".to_string())])
+            .ok();
         app.add_systems(Update, poll_expected);
         app.update();
         let gate = app.world().resource::<discovery::session::JoinGate>();
-        assert!(
-            gate.expected
-                .as_ref()
-                .is_some_and(|set| { set.len() == 1 && set.contains("peer-4") })
-        );
+        assert!(gate.expected.as_ref().is_some_and(|set| {
+            set.len() == 1 && set.contains(&discovery::params::RemotePeerId("peer-4".to_string()))
+        }));
     }
 }

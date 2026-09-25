@@ -13,7 +13,7 @@ pub async fn connect(
     contract_wasm: &[u8],
     params: &[u8],
     own: discovery::params::PlayerId,
-    peer_id: &str,
+    peer_id: &discovery::params::RemotePeerId,
     addrs: &[String],
 ) -> Result<discovery::link::RosterClient, discovery::Error> {
     let mut client = discovery::link::Client::connect(host, port).await?;
@@ -24,9 +24,9 @@ pub async fn connect(
     let instance_id = *contract_key.id();
     let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
     let own_entry = discovery::membership::PeerEntry {
-        peer_id: peer_id.to_string(),
+        peer_id: peer_id.clone(),
         addrs: addrs.to_vec(),
-        updated_at: now_secs(),
+        updated_at: discovery::params::EpochSecs(now_secs()),
     };
     let mut initial = discovery::membership::RosterState::new();
     initial.insert(own, own_entry);
@@ -63,7 +63,7 @@ pub async fn connect(
         contract: container,
         slots,
         own,
-        peer_id: peer_id.to_string(),
+        peer_id: peer_id.clone(),
         addrs: addrs.to_vec(),
         foreign_seen: None,
         foreign_sum: 0,
@@ -79,7 +79,7 @@ fn refresh_foreign(mut roster: discovery::link::RosterClient) -> discovery::link
         .slots
         .iter()
         .filter(|(id, _)| **id != own)
-        .map(|(_, e)| e.updated_at)
+        .map(|(_, e)| *e.updated_at)
         .sum();
     roster.foreign_sum = sum;
     if sum > 0 {
@@ -142,7 +142,7 @@ mod tests {
             &[],
             &[],
             discovery::params::PlayerId(0),
-            "peer",
+            &discovery::params::RemotePeerId("peer".to_string()),
             &[],
         )
         .await;

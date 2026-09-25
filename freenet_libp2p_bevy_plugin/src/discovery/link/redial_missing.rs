@@ -13,14 +13,14 @@ pub fn redial_missing(ctx: &mut RunContext) {
         .map(|(_, entry)| entry.clone())
         .collect();
     for entry in &entries {
-        if ctx.connected.contains_key(&entry.peer_id) {
+        if ctx.connected.contains_key(entry.peer_id.as_str()) {
             continue;
         }
         dial_entry(ctx, entry);
     }
     let hints: Vec<PeerHint> = ctx.pex.values().cloned().collect();
     for hint in &hints {
-        if ctx.connected.contains_key(&hint.peer_id) {
+        if ctx.connected.contains_key(hint.peer_id.as_str()) {
             continue;
         }
         dial_hint(ctx, hint);

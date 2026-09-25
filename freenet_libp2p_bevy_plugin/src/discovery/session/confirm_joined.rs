@@ -1,5 +1,6 @@
 use crate::roster;
 
+use super::super::params::room_name::RoomName;
 use super::active_room::ActiveRoom;
 use super::join_clock::JoinClock;
 use super::join_gate::JoinGate;
@@ -13,11 +14,11 @@ pub fn confirm_joined(
     gate: &mut JoinGate,
     clock: &mut JoinClock,
     lobby: &mut roster::Lobby,
-    room: String,
+    room: RoomName,
 ) {
     **active = Some(room.clone());
     **selected = Some(room.clone());
-    *lobby = roster::Lobby(room.clone());
+    *lobby = roster::Lobby((*room).clone());
     **pending = Some(room);
     gate.expected = None;
     gate.committed = false;
@@ -30,6 +31,7 @@ mod tests {
     use crate::roster;
 
     use super::{ActiveRoom, JoinClock, JoinGate, JoinPending, SelectedRoom, confirm_joined};
+    use crate::discovery;
 
     #[test]
     fn test_usage() {
@@ -46,11 +48,23 @@ mod tests {
             &mut gate,
             &mut clock,
             &mut lobby,
-            "room-a".to_string(),
+            discovery::params::RoomName("room-a".to_string()),
         );
-        assert_eq!(active.as_deref(), Some("room-a"));
-        assert_eq!(selected.as_deref(), Some("room-a"));
-        assert_eq!(pending.as_deref(), Some("room-a"));
+        assert!(
+            active
+                .as_ref()
+                .is_some_and(|room| room.as_str() == "room-a")
+        );
+        assert!(
+            selected
+                .as_ref()
+                .is_some_and(|room| room.as_str() == "room-a")
+        );
+        assert!(
+            pending
+                .as_ref()
+                .is_some_and(|room| room.as_str() == "room-a")
+        );
         assert_eq!(lobby.as_str(), "room-a");
         assert!(gate.expected.is_none());
         assert!(!gate.committed);

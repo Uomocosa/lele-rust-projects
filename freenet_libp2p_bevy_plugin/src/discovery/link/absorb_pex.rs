@@ -9,7 +9,7 @@ pub fn absorb_pex(ctx: &mut RunContext, from: &str, data: &[u8]) {
         return;
     };
     match msg {
-        PexMsg::Ask => publish_pex(&ctx.net_tx, &ctx.namespace, &pex_response(ctx)),
+        PexMsg::Ask => publish_pex(&ctx.net_tx, &ctx.id, &pex_response(ctx)),
         PexMsg::Resp { peers, rooms } => absorb_pex_resp(ctx, from, &peers, &rooms),
     }
 }

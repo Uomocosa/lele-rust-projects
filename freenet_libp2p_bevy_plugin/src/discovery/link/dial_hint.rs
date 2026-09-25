@@ -9,7 +9,7 @@ pub fn dial_hint(ctx: &mut RunContext, hint: &PeerHint) {
     if hint.peer_id.is_empty() || hint.peer_id == ctx.peer_id || hint.addrs.is_empty() {
         return;
     }
-    if epoch_secs().saturating_sub(hint.updated_at) > constants::STALE_ENTRY_SECS {
+    if epoch_secs().saturating_sub(*hint.updated_at) > constants::STALE_ENTRY_SECS {
         return;
     }
     let entry = PeerEntry {

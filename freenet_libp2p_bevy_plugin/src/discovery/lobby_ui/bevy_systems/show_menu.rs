@@ -3,6 +3,7 @@ use bevy::prelude::*;
 
 use super::super::super::directory::room_entry::RoomEntry;
 use super::super::super::directory::room_list::RoomList;
+use super::super::super::params::room_name::RoomName;
 use super::super::create_marker::CreateMarker;
 use super::super::menu_root::MenuRoot;
 use super::super::room_button::RoomButton;
@@ -71,7 +72,7 @@ fn spawn_room_button(parent: &mut ChildSpawnerCommands, entry: &RoomEntry) {
     parent
         .spawn((
             MenuRoot,
-            RoomButton(entry.name.clone()),
+            RoomButton(RoomName(entry.name.clone())),
             Button,
             Name::new(format!("room:{}", entry.name)),
             Node {

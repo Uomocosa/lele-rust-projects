@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
+use super::super::params::remote_peer_id::RemotePeerId;
 use super::peer_hint::PeerHint;
 
 #[must_use]
 pub fn merge_peer_hints(hints: Vec<PeerHint>) -> Vec<PeerHint> {
-    let mut newest: BTreeMap<String, PeerHint> = BTreeMap::new();
+    let mut newest: BTreeMap<RemotePeerId, PeerHint> = BTreeMap::new();
     for hint in hints {
         let keep = newest
             .get(&hint.peer_id)
@@ -34,16 +35,16 @@ mod tests {
     fn test_usage() {
         let merged = merge_peer_hints(vec![
             discovery::gossip::PeerHint {
-                peer_id: "a".to_string(),
+                peer_id: discovery::params::RemotePeerId("a".to_string()),
                 addrs: vec!["/ip4/1/tcp/1".to_string()],
-                rooms: vec!["r1".to_string()],
-                updated_at: 5,
+                rooms: vec![discovery::params::RoomName("r1".to_string())],
+                updated_at: discovery::params::EpochSecs(5),
             },
             discovery::gossip::PeerHint {
-                peer_id: "a".to_string(),
+                peer_id: discovery::params::RemotePeerId("a".to_string()),
                 addrs: vec!["/ip4/1/tcp/1".to_string()],
-                rooms: vec!["r2".to_string()],
-                updated_at: 9,
+                rooms: vec![discovery::params::RoomName("r2".to_string())],
+                updated_at: discovery::params::EpochSecs(9),
             },
         ]);
         assert_eq!(merged.len(), 1);

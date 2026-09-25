@@ -1,20 +1,21 @@
 use super::super::constants;
-use super::super::directory::directory_state::DirectoryState;
+use super::super::directory::room_catalog::RoomCatalog;
+use super::super::params::remote_peer_id::RemotePeerId;
 use super::hint_store::HintStore;
 
 #[must_use]
 pub fn hint_union(
-    directory: &DirectoryState,
+    directory: &RoomCatalog,
     pex: &HintStore,
-    own_peer_id: &str,
+    own_peer_id: &RemotePeerId,
     now_secs: u64,
-) -> Vec<String> {
-    let mut peers: Vec<String> = Vec::new();
+) -> Vec<RemotePeerId> {
+    let mut peers: Vec<RemotePeerId> = Vec::new();
     for entry in directory.values() {
         push_fresh(
             &mut peers,
             &entry.peer_id,
-            entry.updated_at,
+            *entry.updated_at,
             own_peer_id,
             now_secs,
         );
@@ -23,7 +24,7 @@ pub fn hint_union(
         push_fresh(
             &mut peers,
             &hint.peer_id,
-            hint.updated_at,
+            *hint.updated_at,
             own_peer_id,
             now_secs,
         );
@@ -35,10 +36,10 @@ pub fn hint_union(
 
 // needed helper: collects one peer id unless empty, own, or stale
 fn push_fresh(
-    peers: &mut Vec<String>,
-    peer_id: &str,
+    peers: &mut Vec<RemotePeerId>,
+    peer_id: &RemotePeerId,
     updated_at: u64,
-    own_peer_id: &str,
+    own_peer_id: &RemotePeerId,
     now_secs: u64,
 ) {
     if peer_id.is_empty() || peer_id == own_peer_id {
@@ -47,7 +48,7 @@ fn push_fresh(
     if now_secs.saturating_sub(updated_at) > constants::STALE_ENTRY_SECS {
         return;
     }
-    peers.push(peer_id.to_string());
+    peers.push(peer_id.clone());
 }
 
 #[cfg(test)]
@@ -57,31 +58,34 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut directory = discovery::directory::DirectoryState::new();
+        let mut directory = discovery::directory::RoomCatalog::new();
         directory.insert(
-            "room-a".to_string(),
-            discovery::directory::Entry {
-                params: Vec::new(),
-                peer_id: "peer-a".to_string(),
+            discovery::params::RoomName("room-a".to_string()),
+            discovery::directory::RoomPayload {
+                params: discovery::params::ContractParams::default(),
+                peer_id: discovery::params::RemotePeerId("peer-a".to_string()),
                 addrs: Vec::new(),
-                updated_at: 1000,
+                updated_at: discovery::params::EpochSecs(1000),
             },
         );
         directory.insert(
-            "room-b".to_string(),
-            discovery::directory::Entry {
-                params: Vec::new(),
-                peer_id: "own".to_string(),
+            discovery::params::RoomName("room-b".to_string()),
+            discovery::directory::RoomPayload {
+                params: discovery::params::ContractParams::default(),
+                peer_id: discovery::params::RemotePeerId("own".to_string()),
                 addrs: Vec::new(),
-                updated_at: 1000,
+                updated_at: discovery::params::EpochSecs(1000),
             },
         );
         let union = hint_union(
             &directory,
             &discovery::gossip::HintStore::default(),
-            "own",
+            &discovery::params::RemotePeerId("own".to_string()),
             1000,
         );
-        assert_eq!(union, vec!["peer-a".to_string()]);
+        assert_eq!(
+            union,
+            vec![discovery::params::RemotePeerId("peer-a".to_string())]
+        );
     }
 }

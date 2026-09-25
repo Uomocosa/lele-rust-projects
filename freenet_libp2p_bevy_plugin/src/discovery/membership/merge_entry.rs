@@ -15,9 +15,9 @@ mod tests {
 
     fn entry(peer_id: &str, updated_at: u64) -> discovery::membership::PeerEntry {
         discovery::membership::PeerEntry {
-            peer_id: peer_id.to_string(),
+            peer_id: discovery::params::RemotePeerId(peer_id.to_string()),
             addrs: Vec::new(),
-            updated_at,
+            updated_at: discovery::params::EpochSecs(updated_at),
         }
     }
 

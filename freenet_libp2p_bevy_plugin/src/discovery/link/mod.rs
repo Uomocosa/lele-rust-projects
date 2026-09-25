@@ -9,14 +9,14 @@ mod absorb_pex_resp;
 pub mod apply_decision;
 pub use apply_decision::apply_decision;
 
-pub mod bootstrap_node;
-pub use bootstrap_node::bootstrap_node;
+pub mod catalog_client;
+pub use catalog_client::CatalogClient;
 
 pub mod client;
 pub use client::Client;
 
-pub mod connect_directory_retry;
-pub use connect_directory_retry::connect_directory_retry;
+pub mod connect_catalog_retry;
+pub use connect_catalog_retry::connect_catalog_retry;
 
 pub mod connect_roster_retry;
 pub use connect_roster_retry::connect_roster_retry;
@@ -54,9 +54,6 @@ mod dial_preferred_raw;
 
 pub mod dialable;
 pub use dialable::dialable;
-
-pub mod directory_client;
-pub use directory_client::DirectoryClient;
 
 pub mod directory_hints;
 pub use directory_hints::directory_hints;
@@ -137,9 +134,6 @@ pub use send_hint_union::send_hint_union;
 
 pub mod send_merged_directory;
 pub use send_merged_directory::send_merged_directory;
-
-pub mod start_node;
-pub use start_node::start_node;
 
 pub mod subscribe_topics;
 pub use subscribe_topics::subscribe_topics;

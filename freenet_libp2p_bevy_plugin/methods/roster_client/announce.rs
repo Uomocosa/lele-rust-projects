@@ -7,7 +7,7 @@ pub fn announce(roster: &discovery::link::RosterClient) -> Result<(), discovery:
     let entry = discovery::membership::PeerEntry {
         peer_id: roster.peer_id.clone(),
         addrs: roster.addrs.clone(),
-        updated_at: now_secs(),
+        updated_at: discovery::params::EpochSecs(now_secs()),
     };
     let mut single = discovery::membership::RosterState::new();
     single.insert(roster.own, entry);

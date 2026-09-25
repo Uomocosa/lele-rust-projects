@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 
 use super::super::super::constants;
-use super::super::super::directory::directory_state::DirectoryState;
+use super::super::super::directory::room_catalog::RoomCatalog;
 use super::super::super::directory::room_entry::RoomEntry;
 use super::super::super::directory::room_list::RoomList;
 use super::super::super::session::directory_feed::DirectoryFeed;
@@ -19,7 +19,7 @@ pub fn poll_directory(
     let Some(rx) = guard.as_mut() else {
         return;
     };
-    let mut latest: Option<DirectoryState> = None;
+    let mut latest: Option<RoomCatalog> = None;
     while let Ok(state) = rx.try_recv() {
         latest = Some(state);
     }
@@ -32,9 +32,9 @@ pub fn poll_directory(
     }
     let mut entries: Vec<RoomEntry> = state
         .iter()
-        .map(|(name, entry)| RoomEntry {
-            name: name.clone(),
-            updated_at: entry.updated_at,
+        .map(|(name, payload)| RoomEntry {
+            name: (**name).clone(),
+            updated_at: *payload.updated_at,
         })
         .collect();
     entries.sort_by_key(|entry| std::cmp::Reverse(entry.updated_at));
@@ -65,25 +65,24 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let (tx, rx) =
-            tokio::sync::mpsc::unbounded_channel::<discovery::directory::DirectoryState>();
-        let mut state = discovery::directory::DirectoryState::new();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<discovery::directory::RoomCatalog>();
+        let mut state = discovery::directory::RoomCatalog::new();
         state.insert(
-            "room-old".to_string(),
-            discovery::directory::Entry {
-                params: Vec::new(),
-                peer_id: "peer".to_string(),
+            discovery::params::RoomName("room-old".to_string()),
+            discovery::directory::RoomPayload {
+                params: discovery::params::ContractParams::default(),
+                peer_id: discovery::params::RemotePeerId("peer".to_string()),
                 addrs: Vec::new(),
-                updated_at: 5,
+                updated_at: discovery::params::EpochSecs(5),
             },
         );
         state.insert(
-            "room-new".to_string(),
-            discovery::directory::Entry {
-                params: Vec::new(),
-                peer_id: "peer".to_string(),
+            discovery::params::RoomName("room-new".to_string()),
+            discovery::directory::RoomPayload {
+                params: discovery::params::ContractParams::default(),
+                peer_id: discovery::params::RemotePeerId("peer".to_string()),
                 addrs: Vec::new(),
-                updated_at: 9,
+                updated_at: discovery::params::EpochSecs(9),
             },
         );
         tx.send(state).expect("send");
@@ -103,8 +102,7 @@ mod tests {
 
     #[test]
     fn silent_feed_keeps_menu_dark() {
-        let (_tx, rx) =
-            tokio::sync::mpsc::unbounded_channel::<discovery::directory::DirectoryState>();
+        let (_tx, rx) = tokio::sync::mpsc::unbounded_channel::<discovery::directory::RoomCatalog>();
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(discovery::session::DirectoryFeed(Mutex::new(Some(rx))));

@@ -1,25 +1,27 @@
 use crate::p2p;
 
-use super::super::directory::directory_state::DirectoryState;
-use super::super::params::node_mode::NodeMode;
+use super::super::directory::room_catalog::RoomCatalog;
+use super::super::params::discovery_timing::DiscoveryTiming;
+use super::super::params::freenet_endpoint::FreenetEndpoint;
 use super::super::params::player_id::PlayerId;
+use super::super::params::remote_peer_id::RemotePeerId;
+use super::super::params::room_name::RoomName;
+use super::super::params::unique_game_id::UniqueGameId;
 
 pub struct RunConfig {
     pub net_tx: tokio::sync::mpsc::UnboundedSender<p2p::NetCommand>,
     pub tap_rx: tokio::sync::mpsc::UnboundedReceiver<p2p::TapEvent>,
     pub ready_rx: tokio::sync::watch::Receiver<Option<p2p::Ready>>,
     pub observed_rx: tokio::sync::watch::Receiver<Option<Vec<String>>>,
-    pub namespace: String,
-    pub lobby: Option<String>,
-    pub params_override: Option<String>,
-    pub since_secs: u64,
+    pub id: UniqueGameId,
+    pub timing: DiscoveryTiming,
     pub own: PlayerId,
     pub transport: p2p::TransportMode,
-    pub node: NodeMode,
-    pub room_tx: tokio::sync::watch::Sender<Option<String>>,
-    pub room_requests: tokio::sync::mpsc::UnboundedReceiver<String>,
-    pub directory_tx: tokio::sync::mpsc::UnboundedSender<DirectoryState>,
-    pub expected_tx: tokio::sync::mpsc::UnboundedSender<Vec<String>>,
+    pub room_tx: tokio::sync::watch::Sender<Option<RoomName>>,
+    pub room_requests: tokio::sync::mpsc::UnboundedReceiver<RoomName>,
+    pub directory_tx: tokio::sync::mpsc::UnboundedSender<RoomCatalog>,
+    pub expected_tx: tokio::sync::mpsc::UnboundedSender<Vec<RemotePeerId>>,
+    pub endpoint: FreenetEndpoint,
 }
 
 #[cfg(test)]
@@ -35,28 +37,31 @@ mod tests {
         let (_ready_tx, ready_rx) = tokio::sync::watch::channel(None);
         let (_obs_tx, observed_rx) = tokio::sync::watch::channel(None);
         let (room_tx, _room_rx) = tokio::sync::watch::channel(None);
-        let (_req_tx, room_requests) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let (_req_tx, room_requests) =
+            tokio::sync::mpsc::unbounded_channel::<discovery::params::RoomName>();
         let (directory_tx, _directory_rx) =
-            tokio::sync::mpsc::unbounded_channel::<discovery::directory::DirectoryState>();
-        let (expected_tx, _expected_rx) = tokio::sync::mpsc::unbounded_channel::<Vec<String>>();
+            tokio::sync::mpsc::unbounded_channel::<discovery::directory::RoomCatalog>();
+        let (expected_tx, _expected_rx) =
+            tokio::sync::mpsc::unbounded_channel::<Vec<discovery::params::RemotePeerId>>();
         let config = RunConfig {
             net_tx,
             tap_rx,
             ready_rx,
             observed_rx,
-            namespace: "blackboard-v1".to_string(),
-            lobby: Some("room-20250101-120000".to_string()),
-            params_override: None,
-            since_secs: 0,
+            id: discovery::params::UniqueGameId::new(
+                &discovery::params::GameName("test".to_string()),
+                "token",
+            ),
+            timing: discovery::params::DiscoveryTiming::default(),
             own: discovery::params::PlayerId(1),
             transport: p2p::TransportMode::Both,
-            node: discovery::params::NodeMode::Embedded,
             room_tx,
             room_requests,
             directory_tx,
             expected_tx,
+            endpoint: discovery::params::FreenetEndpoint(7509),
         };
-        assert_eq!(config.namespace, "blackboard-v1");
-        assert_eq!(config.since_secs, 0);
+        assert_eq!(config.id.as_str(), "test/token");
+        assert_eq!(*config.endpoint, 7509);
     }
 }

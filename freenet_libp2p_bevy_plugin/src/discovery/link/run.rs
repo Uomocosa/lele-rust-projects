@@ -4,7 +4,8 @@ use std::time::Instant;
 use tracing::{info, warn};
 
 use super::super::gossip::hint_store::HintStore;
-use super::connect_directory_retry::connect_directory_retry;
+use super::super::params::remote_peer_id::RemotePeerId;
+use super::connect_catalog_retry::connect_catalog_retry;
 use super::connect_roster_retry::connect_roster_retry;
 use super::dial_directory_publishers::dial_directory_publishers;
 use super::dial_known::dial_known;
@@ -16,7 +17,6 @@ use super::resolve_room::resolve_room;
 use super::run_config::RunConfig;
 use super::run_context::RunContext;
 use super::send_expected::send_expected;
-use super::start_node::start_node;
 use super::subscribe_topics::subscribe_topics;
 use super::wait_ready::wait_ready;
 
@@ -25,15 +25,10 @@ pub async fn run(mut config: RunConfig) {
         warn!(target: "room_lobby", "discovery: no libp2p ready signal, discovery disabled");
         return;
     };
+    let peer_id = RemotePeerId(peer_id);
     let addrs = dialable(addrs);
-    let (node_guard, ws_port) = match start_node(config.node).await {
-        Ok(node) => node,
-        Err(e) => {
-            warn!(target: "room_lobby", error = %e, "discovery: node bootstrap failed");
-            return;
-        }
-    };
-    let mut directory = connect_directory_retry(ws_port, &config.namespace).await;
+    let ws_port = *config.endpoint;
+    let mut directory = connect_catalog_retry(ws_port, &config.id).await;
     info!(target: "room_lobby", key = %directory.contract_key, "discovery: directory connected");
     let Some((room, room_params)) =
         resolve_room(&mut config, &mut directory, &peer_id, &addrs).await
@@ -41,14 +36,14 @@ pub async fn run(mut config: RunConfig) {
         warn!(target: "room_lobby", "discovery: no room resolved, discovery disabled");
         return;
     };
-    info!(target: "room_lobby", room = %room, "discovery: room resolved");
+    info!(target: "room_lobby", room = %room.as_str(), "discovery: room resolved");
     config.room_tx.send_replace(Some(room.clone()));
     publish_pre_get_union(&config.expected_tx, &directory.slots, &peer_id, &room);
     let roster =
         connect_roster_retry(ws_port, &room, &room_params, config.own, &peer_id, &addrs).await;
     info!(target: "room_lobby", key = %roster.contract_key, own = *config.own, "discovery: roster connected");
     send_expected(&config.expected_tx, &roster.slots, config.own);
-    subscribe_topics(&config.net_tx, &config.namespace, &room);
+    subscribe_topics(&config.net_tx, &config.id, &room);
 
     let mut attempted: AttemptedMap = HashMap::new();
     let mut staggers: StaggerMap = HashMap::new();
@@ -83,8 +78,7 @@ pub async fn run(mut config: RunConfig) {
         peer_id,
         tap_rx: config.tap_rx,
         observed_rx: config.observed_rx,
-        namespace: config.namespace,
-        params_override: config.params_override,
+        id: config.id,
         last_addrs: addrs,
         last_announce: now,
         last_gossip: now,
@@ -104,7 +98,6 @@ pub async fn run(mut config: RunConfig) {
         ws_port,
         own: config.own,
         pending_switch: None,
-        node_guard,
     };
     drive_roster(&mut ctx).await;
 }

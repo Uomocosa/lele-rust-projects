@@ -7,8 +7,8 @@ use crate::discovery;
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(10);
 
 pub async fn poll(
-    directory: &mut discovery::link::DirectoryClient,
-) -> Result<discovery::directory::DirectoryState, discovery::Error> {
+    directory: &mut discovery::link::CatalogClient,
+) -> Result<discovery::directory::RoomCatalog, discovery::Error> {
     while let Some(result) = directory.client.recv_response_timeout(DRAIN_TIMEOUT).await {
         match result? {
             HostResponse::ContractResponse(ContractResponse::UpdateNotification {
@@ -23,9 +23,9 @@ pub async fn poll(
     Ok(directory.slots.clone())
 }
 
-// needed helper: merges one notification into the directory
+// needed helper: merges one notification into the catalog
 fn absorb_update(
-    directory: &mut discovery::link::DirectoryClient,
+    directory: &mut discovery::link::CatalogClient,
     update: freenet_stdlib::prelude::UpdateData<'static>,
 ) {
     use freenet_stdlib::prelude::UpdateData;
@@ -40,9 +40,9 @@ fn absorb_update(
     }
 }
 
-// needed helper: merges raw directory bytes
-fn absorb_bytes(directory: &mut discovery::link::DirectoryClient, bytes: &[u8]) {
-    let incoming: discovery::directory::DirectoryState =
+// needed helper: merges raw catalog bytes
+fn absorb_bytes(directory: &mut discovery::link::CatalogClient, bytes: &[u8]) {
+    let incoming: discovery::directory::RoomCatalog =
         bincode::deserialize(bytes).unwrap_or_default();
     directory.slots = discovery::directory::merge_directory(directory.slots.clone(), incoming);
 }

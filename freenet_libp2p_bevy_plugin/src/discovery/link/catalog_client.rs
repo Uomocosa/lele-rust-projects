@@ -3,20 +3,23 @@ use std::time::Instant;
 use atomic_delegate_macros::atomic_delegate;
 use freenet_stdlib::prelude::{ContractContainer, ContractKey};
 
-use super::super::directory::directory_state::DirectoryState;
+use super::super::directory::room_catalog::RoomCatalog;
+use super::super::params::contract_params::ContractParams;
+use super::super::params::remote_peer_id::RemotePeerId;
+use super::super::params::room_name::RoomName;
 use super::client::Client;
 use crate::discovery;
 
-pub struct DirectoryClient {
+pub struct CatalogClient {
     pub(crate) client: Client,
     pub contract_key: ContractKey,
     pub(crate) contract: ContractContainer,
-    pub(crate) slots: DirectoryState,
+    pub(crate) slots: RoomCatalog,
     pub(crate) last_bridge: Option<Instant>,
 }
 
 #[atomic_delegate]
-impl DirectoryClient {
+impl CatalogClient {
     pub async fn connect(
         host: &str,
         port: u16,
@@ -24,12 +27,12 @@ impl DirectoryClient {
         params: &[u8],
     ) -> Result<Self, discovery::Error> {
     }
-    pub async fn poll(&mut self) -> Result<DirectoryState, discovery::Error> {}
+    pub async fn poll(&mut self) -> Result<RoomCatalog, discovery::Error> {}
     pub fn publish_room(
         &self,
-        room: &str,
-        params: &[u8],
-        peer_id: &str,
+        room: &RoomName,
+        params: &ContractParams,
+        peer_id: &RemotePeerId,
         addrs: &[String],
     ) -> Result<(), discovery::Error> {
     }

@@ -18,7 +18,7 @@ pub async fn refresh_directory(ctx: &mut RunContext) {
             }
         }
         Err(e) => {
-            warn!(target: "room_lobby", error = %e, "discovery: directory poll failed");
+            warn!(target: "room_lobby", error = %e, "discovery: catalog poll failed");
         }
     }
     if ctx
@@ -26,10 +26,10 @@ pub async fn refresh_directory(ctx: &mut RunContext) {
         .publish_room(&ctx.room, &ctx.room_params, &ctx.peer_id, &ctx.last_addrs)
         .is_err()
     {
-        warn!(target: "room_lobby", "discovery: directory refresh failed");
+        warn!(target: "room_lobby", "discovery: catalog refresh failed");
     }
     if ctx.directory.bridge_tick(Instant::now()).is_err() {
-        warn!(target: "room_lobby", "discovery: directory bridge failed");
+        warn!(target: "room_lobby", "discovery: catalog bridge failed");
     }
 }
 

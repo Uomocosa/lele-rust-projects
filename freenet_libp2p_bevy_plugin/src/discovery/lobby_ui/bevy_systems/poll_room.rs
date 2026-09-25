@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let (tx, rx) = tokio::sync::watch::channel(None::<String>);
+        let (tx, rx) = tokio::sync::watch::channel(None::<discovery::params::RoomName>);
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.add_plugins(bevy::state::app::StatesPlugin);
@@ -77,14 +77,14 @@ mod tests {
                 .resource::<discovery::session::ActiveRoom>()
                 .is_none()
         );
-        tx.send_replace(Some("room-auto".to_string()));
+        tx.send_replace(Some(discovery::params::RoomName("room-auto".to_string())));
         app.update();
         app.update();
-        assert_eq!(
+        assert!(
             app.world()
                 .resource::<discovery::session::ActiveRoom>()
-                .as_deref(),
-            Some("room-auto")
+                .as_ref()
+                .is_some_and(|room| room.as_str() == "room-auto")
         );
         assert_eq!(
             app.world().resource::<roster::Lobby>().as_str(),

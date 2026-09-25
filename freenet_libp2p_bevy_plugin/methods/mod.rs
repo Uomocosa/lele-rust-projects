@@ -1,9 +1,9 @@
 #[cfg(feature = "room_lobby")]
+pub mod catalog_client;
+#[cfg(feature = "room_lobby")]
 pub mod client;
 pub mod commands;
 pub mod config;
-#[cfg(feature = "room_lobby")]
-pub mod directory_client;
 pub mod event_tap;
 pub mod events;
 #[cfg(feature = "room_lobby")]

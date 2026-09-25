@@ -1,14 +1,32 @@
+pub mod catalog_params;
+pub use catalog_params::catalog_params;
+
 pub mod contract_params;
-pub use contract_params::contract_params;
+pub use contract_params::ContractParams;
 
-pub mod dir_params;
-pub use dir_params::dir_params;
+pub mod discovery_timing;
+pub use discovery_timing::DiscoveryTiming;
 
-pub mod node_mode;
-pub use node_mode::NodeMode;
+pub mod epoch_secs;
+pub use epoch_secs::EpochSecs;
+
+pub mod freenet_endpoint;
+pub use freenet_endpoint::FreenetEndpoint;
+
+pub mod game_name;
+pub use game_name::GameName;
 
 pub mod player_id;
 pub use player_id::PlayerId;
 
-pub mod resolve_params;
-pub use resolve_params::resolve_params;
+pub mod remote_peer_id;
+pub use remote_peer_id::RemotePeerId;
+
+pub mod room_name;
+pub use room_name::RoomName;
+
+pub mod room_params;
+pub use room_params::room_params;
+
+pub mod unique_game_id;
+pub use unique_game_id::UniqueGameId;

@@ -2,15 +2,18 @@ use std::time::{Duration, Instant};
 
 use tracing::{info, warn};
 
+use super::super::params::contract_params::ContractParams;
 use super::super::params::player_id::PlayerId;
+use super::super::params::remote_peer_id::RemotePeerId;
+use super::super::params::room_name::RoomName;
 use super::roster_client::RosterClient;
 
 pub async fn connect_roster_retry(
     ws_port: u16,
-    room: &str,
-    room_params: &[u8],
+    room: &RoomName,
+    room_params: &ContractParams,
     own: PlayerId,
-    peer_id: &str,
+    peer_id: &RemotePeerId,
     addrs: &[String],
 ) -> RosterClient {
     loop {
@@ -27,7 +30,7 @@ pub async fn connect_roster_retry(
         .await
         {
             Ok(roster) => {
-                info!(target: "room_lobby", room = %room, slots = roster.slots.len(), elapsed_ms = attempt.elapsed().as_millis(), "discovery: roster fetched");
+                info!(target: "room_lobby", room = %room.as_str(), slots = roster.slots.len(), elapsed_ms = attempt.elapsed().as_millis(), "discovery: roster fetched");
                 return roster;
             }
             Err(e) => {

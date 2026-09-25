@@ -17,8 +17,8 @@ pub fn dial_preferred_raw(
     mode: p2p::TransportMode,
     entry: &PeerEntry,
 ) {
-    if connected.contains_key(&entry.peer_id) {
-        staggers.remove(&entry.peer_id);
+    if connected.contains_key(entry.peer_id.as_str()) {
+        staggers.remove(entry.peer_id.as_str());
         return;
     }
     let ranked = rank_addrs(&with_loopback(&entry.addrs), mode);
@@ -26,15 +26,15 @@ pub fn dial_preferred_raw(
     let Some(first) = queue.pop_front() else {
         return;
     };
-    dial_addrs(net_tx, &entry.peer_id, &[first], &entry.addrs);
+    dial_addrs(net_tx, entry.peer_id.as_str(), &[first], &entry.addrs);
     if queue.is_empty() {
-        staggers.remove(&entry.peer_id);
+        staggers.remove(entry.peer_id.as_str());
         return;
     }
     let due = Instant::now()
         .checked_add(Duration::from_secs(constants::STAGGER_SECS))
         .unwrap_or_else(Instant::now);
-    staggers.insert(entry.peer_id.clone(), (queue, due));
+    staggers.insert((*entry.peer_id).clone(), (queue, due));
 }
 
 // no test_usage necessary

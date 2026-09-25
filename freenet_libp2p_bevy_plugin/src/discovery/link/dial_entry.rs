@@ -11,10 +11,10 @@ pub fn dial_entry(ctx: &mut RunContext, entry: &PeerEntry) {
     if entry.addrs.is_empty() {
         return;
     }
-    if epoch_secs().saturating_sub(entry.updated_at) > constants::STALE_ENTRY_SECS {
+    if epoch_secs().saturating_sub(*entry.updated_at) > constants::STALE_ENTRY_SECS {
         return;
     }
-    let age = ctx.attempted.get(&entry.peer_id).and_then(|seen| {
+    let age = ctx.attempted.get(entry.peer_id.as_str()).and_then(|seen| {
         Instant::now()
             .checked_duration_since(*seen)
             .map(|d| d.as_secs())
@@ -22,7 +22,7 @@ pub fn dial_entry(ctx: &mut RunContext, entry: &PeerEntry) {
     if age.is_some_and(|seen_secs| seen_secs < constants::REDIAL_SECS) {
         return;
     }
-    let decision = decide_dial(&ctx.peer_id, &entry.peer_id, age);
+    let decision = decide_dial(ctx.peer_id.as_str(), entry.peer_id.as_str(), age);
     apply_decision(ctx, entry, decision);
 }
 

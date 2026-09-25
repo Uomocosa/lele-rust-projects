@@ -26,6 +26,8 @@ pub enum Error {
     UnexpectedResponse(String),
     #[error("node error: {0}")]
     Node(String),
+    #[error("missing bevy link resources")]
+    MissingLink,
 }
 
 #[rustfmt::skip]

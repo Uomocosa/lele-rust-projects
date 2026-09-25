@@ -11,8 +11,8 @@ pub fn leave_rooms(
     pending: &mut JoinPending,
     gate: &mut JoinGate,
 ) {
-    if let Some(room) = active.as_deref() {
-        **left = Some(room.to_string());
+    if let Some(room) = active.as_ref() {
+        **left = Some(room.clone());
     }
     **active = None;
     **selected = None;
@@ -24,13 +24,14 @@ pub fn leave_rooms(
 #[cfg(test)]
 mod tests {
     use super::{ActiveRoom, JoinGate, JoinPending, LeftRoom, SelectedRoom, leave_rooms};
+    use crate::discovery;
 
     #[test]
     fn test_usage() {
-        let mut active = ActiveRoom(Some("room-a".to_string()));
-        let mut selected = SelectedRoom(Some("room-a".to_string()));
+        let mut active = ActiveRoom(Some(discovery::params::RoomName("room-a".to_string())));
+        let mut selected = SelectedRoom(Some(discovery::params::RoomName("room-a".to_string())));
         let mut left = LeftRoom::default();
-        let mut pending = JoinPending(Some("room-a".to_string()));
+        let mut pending = JoinPending(Some(discovery::params::RoomName("room-a".to_string())));
         let mut gate = JoinGate::default();
         leave_rooms(
             &mut active,
@@ -41,7 +42,7 @@ mod tests {
         );
         assert!(active.is_none());
         assert!(selected.is_none());
-        assert_eq!(left.as_deref(), Some("room-a"));
+        assert!(left.as_ref().is_some_and(|room| room.as_str() == "room-a"));
         assert!(pending.is_none());
         assert!(gate.expected.is_none());
         assert!(!gate.committed);
