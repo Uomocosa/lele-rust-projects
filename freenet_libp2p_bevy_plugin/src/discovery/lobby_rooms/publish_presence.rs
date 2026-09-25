@@ -11,9 +11,10 @@ use super::super::id::room_name::RoomName;
 use super::super::id::room_record::RoomRecord;
 use super::catalogue::RoomCatalogue;
 use super::index_client::IndexClient;
+use super::merge_board::merge_board;
 
 pub fn publish_presence(
-    client: &IndexClient,
+    client: &mut IndexClient,
     room: &RoomName,
     me: &RemotePeerId,
     addrs: &[String],
@@ -36,6 +37,7 @@ pub fn publish_presence(
         data: UpdateData::Delta(StateDelta::from(data)),
     };
     client.client.send(&ClientRequest::ContractOp(request))?;
+    client.slots = merge_board(client.slots.clone(), update);
     Ok(())
 }
 

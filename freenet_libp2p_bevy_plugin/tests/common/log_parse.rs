@@ -1,0 +1,77 @@
+use std::path::Path;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tick {
+    pub catalogue: Vec<String>,
+    pub room: Option<String>,
+    pub members: usize,
+    pub connected: usize,
+}
+
+#[must_use]
+pub fn log_contains(path: &Path, needle: &str) -> bool {
+    strip_ansi(&std::fs::read_to_string(path).unwrap_or_default()).contains(needle)
+}
+
+#[must_use]
+pub fn log_matches(path: &Path, needle: &str) -> usize {
+    strip_ansi(&std::fs::read_to_string(path).unwrap_or_default())
+        .lines()
+        .filter(|line| line.contains(needle))
+        .count()
+}
+
+#[must_use]
+pub fn last_tick(path: &Path) -> Option<Tick> {
+    let content = strip_ansi(&std::fs::read_to_string(path).ok()?);
+    content.lines().filter_map(parse_tick_line).next_back()
+}
+
+// needed helper: parses one `lobby tick ...` marker line
+fn parse_tick_line(line: &str) -> Option<Tick> {
+    let start = line.find("lobby tick ")?;
+    let rest = line.get(start.checked_add("lobby tick ".len())?..)?;
+    let mut tick = Tick {
+        catalogue: Vec::new(),
+        room: None,
+        members: 0,
+        connected: 0,
+    };
+    for token in rest.split_whitespace() {
+        if let Some(value) = token.strip_prefix("catalogue=") {
+            if value != "none" {
+                tick.catalogue = value
+                    .split(',')
+                    .filter(|name| !name.is_empty())
+                    .map(str::to_string)
+                    .collect();
+            }
+        } else if let Some(value) = token.strip_prefix("room=") {
+            tick.room = (value != "none").then(|| value.to_string());
+        } else if let Some(value) = token.strip_prefix("members=") {
+            tick.members = value.parse().unwrap_or(0);
+        } else if let Some(value) = token.strip_prefix("connected=") {
+            tick.connected = value.parse().unwrap_or(0);
+        }
+    }
+    Some(tick)
+}
+
+// needed helper: removes ANSI escapes so markers survive colored tracing output
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' && chars.peek() == Some(&'[') {
+            chars.next();
+            for cc in chars.by_ref() {
+                if cc == 'm' {
+                    break;
+                }
+            }
+            continue;
+        }
+        out.push(c);
+    }
+    out
+}

@@ -11,23 +11,22 @@ use super::merge_board::merge_board;
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(10);
 
 pub async fn poll(client: &mut IndexClient) -> Result<RoomCatalogue, Error> {
-    let mut board: Option<RoomCatalogue> = None;
     while let Some(result) = client.client.recv_response_timeout(DRAIN_TIMEOUT).await {
         match result? {
             HostResponse::ContractResponse(ContractResponse::UpdateNotification {
                 update, ..
-            }) => absorb_update(update, &mut board),
+            }) => absorb_update(client, update),
             HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-                absorb_bytes(state.as_ref(), &mut board);
+                absorb_bytes(client, state.as_ref());
             }
             _ => {}
         }
     }
-    board.ok_or(Error::Disconnected)
+    Ok(client.slots.clone())
 }
 
-// needed helper: merges one notification into the latest board snapshot
-fn absorb_update(update: UpdateData<'static>, board: &mut Option<RoomCatalogue>) {
+// needed helper: merges one notification into the cached board
+fn absorb_update(client: &mut IndexClient, update: UpdateData<'static>) {
     let bytes = match update {
         UpdateData::State(state) | UpdateData::StateAndDelta { state, .. } => {
             Some(state.as_ref().to_vec())
@@ -36,23 +35,14 @@ fn absorb_update(update: UpdateData<'static>, board: &mut Option<RoomCatalogue>)
         _ => None,
     };
     if let Some(bytes) = bytes {
-        let incoming: RoomCatalogue = bincode::deserialize(&bytes).unwrap_or_default();
-        merge_into(board, incoming);
+        absorb_bytes(client, &bytes);
     }
 }
 
-// needed helper: merges raw board bytes into the latest snapshot
-fn absorb_bytes(bytes: &[u8], board: &mut Option<RoomCatalogue>) {
+// needed helper: merges raw board bytes into the cached board
+fn absorb_bytes(client: &mut IndexClient, bytes: &[u8]) {
     let incoming: RoomCatalogue = bincode::deserialize(bytes).unwrap_or_default();
-    merge_into(board, incoming);
-}
-
-// needed helper: last snapshot wins, merged by freshness
-fn merge_into(board: &mut Option<RoomCatalogue>, incoming: RoomCatalogue) {
-    match board {
-        Some(current) => *current = merge_board(current.clone(), incoming),
-        None => *board = Some(incoming),
-    }
+    client.slots = merge_board(client.slots.clone(), incoming);
 }
 
 #[cfg(test)]

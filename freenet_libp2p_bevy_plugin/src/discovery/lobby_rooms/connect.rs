@@ -21,11 +21,11 @@ pub async fn connect(
     let contract_key = wrapped.key;
     let instance_id = *contract_key.id();
     let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
-    match recv_after_get(&mut client, instance_id).await {
-        Ok(()) => {}
+    let slots = match recv_board(&mut client, instance_id).await {
+        Ok(board) => board,
         Err(Error::ContractNotFound) => {
             let put = ContractRequest::Put {
-                contract: container.clone(),
+                contract: container,
                 state: WrappedState::new(bincode::serialize(&RoomCatalogue::new())?),
                 related_contracts: RelatedContracts::default(),
                 subscribe: true,
@@ -42,21 +42,22 @@ pub async fn connect(
                 }
                 other => return Err(Error::UnexpectedResponse(format!("{other:?}"))),
             }
-            recv_after_get(&mut client, instance_id).await?;
+            recv_board(&mut client, instance_id).await?
         }
         Err(e) => return Err(e),
-    }
+    };
     Ok(IndexClient {
         client,
         contract_key,
+        slots,
     })
 }
 
-// needed helper: issues a blocking subscribe-get and ignores the first state
-async fn recv_after_get(
+// needed helper: issues a blocking subscribe-get and returns the current board
+async fn recv_board(
     client: &mut discovery::link::Client,
     instance_id: ContractInstanceId,
-) -> Result<(), Error> {
+) -> Result<RoomCatalogue, Error> {
     let get = ContractRequest::Get {
         key: instance_id,
         return_contract_code: false,
@@ -66,7 +67,9 @@ async fn recv_after_get(
     client.send(&ClientRequest::ContractOp(get))?;
     loop {
         match client.recv_response().await? {
-            HostResponse::ContractResponse(ContractResponse::GetResponse { .. }) => return Ok(()),
+            HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
+                return Ok(bincode::deserialize(state.as_ref()).unwrap_or_default());
+            }
             HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
                 return Err(Error::ContractNotFound);
             }

@@ -8,6 +8,7 @@ mod prune_members;
 mod room;
 mod run;
 mod run_config;
+mod seed_from_board;
 mod session;
 mod snapshot;
 

@@ -19,6 +19,8 @@
     alsa-lib
     udev
     libxkbcommon
+    mesa
+    vulkan-loader
     xorg.libX11
     xorg.libXext
     xorg.libXrandr
@@ -35,6 +37,20 @@
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
+  env.VK_ICD_FILENAMES = "${pkgs.mesa}/share/vulkan/icd.d/lvp_icd.x86_64.json";
+  env.LD_LIBRARY_PATH = lib.makeLibraryPath [
+    pkgs.libxkbcommon
+    pkgs.mesa
+    pkgs.wayland
+    pkgs.alsa-lib
+    pkgs.udev
+    pkgs.vulkan-loader
+    pkgs.xorg.libX11
+    pkgs.xorg.libXext
+    pkgs.xorg.libXrandr
+    pkgs.xorg.libXcursor
+    pkgs.xorg.libXi
+  ];
 
   tasks = {
     "lele:build" = { exec = "cargo build --all-targets --all-features"; showOutput = true; };
@@ -46,6 +62,8 @@
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "lobby:e2e-discovery" = { exec = "cargo nextest run --test lobby_room_discovery --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "lobby:e2e-join" = { exec = "cargo nextest run --test lobby_room_join --all-features --run-ignored all -- --nocapture"; showOutput = true; };
   };
 
   git-hooks.hooks = {

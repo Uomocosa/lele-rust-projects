@@ -13,6 +13,7 @@ pub struct Session {
     pub catalogue: RoomCatalogue,
     pub room: Option<Room>,
     pub last_republish: Option<Instant>,
+    pub last_board: Option<Instant>,
 }
 
 impl Session {
@@ -31,6 +32,7 @@ impl Session {
             catalogue: RoomCatalogue::new(),
             room: None,
             last_republish: None,
+            last_board: None,
         }
     }
 }

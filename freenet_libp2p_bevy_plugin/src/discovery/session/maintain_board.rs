@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use super::super::Event;
 use super::super::id::now_epoch;
-use super::super::lobby_rooms::{IndexClient, poll, publish_presence};
+use super::super::lobby_rooms::{IndexClient, poll, publish_presence, refresh};
 use super::super::timing::Timing;
 use super::session::Session;
 
@@ -12,15 +12,24 @@ pub async fn maintain_board(
     timing: &Timing,
     events: &tokio::sync::mpsc::UnboundedSender<Event>,
 ) {
-    if let Ok(board) = poll(index).await {
-        session.catalogue = board;
-        let _ = events.send(Event::CatalogueChanged);
-    }
+    let _ = poll(index).await;
     let now = Instant::now();
-    let due = session
+    let refresh_due = session
+        .last_board
+        .is_none_or(|last| now.duration_since(last).as_secs() >= timing.board_secs);
+    if refresh_due {
+        if let Ok(board) = refresh(index).await {
+            if board != session.catalogue {
+                let _ = events.send(Event::CatalogueChanged);
+            }
+            session.catalogue = board;
+        }
+        session.last_board = Some(now);
+    }
+    let republish_due = session
         .last_republish
         .is_none_or(|last| now.duration_since(last).as_secs() >= timing.republish_secs);
-    if due && let Some(room) = &session.room {
+    if republish_due && let Some(room) = &session.room {
         let _ = publish_presence(
             index,
             &room.name,

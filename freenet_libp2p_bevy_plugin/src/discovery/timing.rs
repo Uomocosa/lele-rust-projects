@@ -4,6 +4,7 @@ pub struct Timing {
     pub timeout_secs: u64,
     pub republish_secs: u64,
     pub presence_ttl_secs: u64,
+    pub board_secs: u64,
 }
 
 impl Default for Timing {
@@ -13,6 +14,7 @@ impl Default for Timing {
             timeout_secs: 300,
             republish_secs: 30,
             presence_ttl_secs: 120,
+            board_secs: 5,
         }
     }
 }
