@@ -1,6 +1,6 @@
 use crate::discovery;
 
-pub fn insert(store: &mut discovery::HintStore, hint: discovery::PeerHint) {
+pub fn insert(store: &mut discovery::gossip::HintStore, hint: discovery::gossip::PeerHint) {
     if hint.peer_id.is_empty() || hint.addrs.is_empty() {
         return;
     }
@@ -21,8 +21,8 @@ mod tests {
     use super::insert;
     use crate::discovery;
 
-    fn hint(peer_id: &str, updated_at: u64) -> discovery::PeerHint {
-        discovery::PeerHint {
+    fn hint(peer_id: &str, updated_at: u64) -> discovery::gossip::PeerHint {
+        discovery::gossip::PeerHint {
             peer_id: peer_id.to_string(),
             addrs: vec!["/ip4/127.0.0.1/tcp/1".to_string()],
             rooms: Vec::new(),
@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut store = discovery::HintStore::default();
+        let mut store = discovery::gossip::HintStore::default();
         insert(&mut store, hint("a", 1));
         assert_eq!(store.len(), 1);
         insert(&mut store, hint("a", 0));

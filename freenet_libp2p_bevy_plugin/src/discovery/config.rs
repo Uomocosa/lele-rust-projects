@@ -1,7 +1,7 @@
 use crate::p2p;
 
 use super::constants;
-use super::node_mode::NodeMode;
+use super::params::node_mode::NodeMode;
 
 pub struct Config {
     pub namespace: String,

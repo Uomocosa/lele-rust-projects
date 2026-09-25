@@ -3,7 +3,7 @@ pub mod client;
 pub mod commands;
 pub mod config;
 #[cfg(feature = "room_lobby")]
-pub mod directory;
+pub mod directory_client;
 pub mod event_tap;
 pub mod events;
 #[cfg(feature = "room_lobby")]
@@ -15,5 +15,5 @@ pub mod p2p_plugin;
 #[cfg(feature = "room_lobby")]
 pub mod p2p_room_discovery_plugin;
 #[cfg(feature = "room_lobby")]
-pub mod roster;
+pub mod roster_client;
 pub mod signals;

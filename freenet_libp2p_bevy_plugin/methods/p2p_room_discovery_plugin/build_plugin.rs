@@ -8,25 +8,25 @@ use crate::p2p;
 
 pub fn build_plugin(p2p_plugin: &discovery::P2PRoomDiscoveryPlugin, app: &mut App) {
     let config = &p2p_plugin.0;
-    app.init_state::<discovery::RoomState>();
-    app.add_message::<discovery::RoomRequest>();
-    app.init_resource::<discovery::RoomList>();
-    app.init_resource::<discovery::ActiveRoom>();
-    app.init_resource::<discovery::SelectedRoom>();
-    app.init_resource::<discovery::LeftRoom>();
-    app.init_resource::<discovery::JoinPending>();
-    app.init_resource::<discovery::JoinGate>();
-    app.init_resource::<discovery::JoinClock>();
-    app.init_resource::<discovery::DirectoryLive>();
+    app.init_state::<discovery::session::RoomState>();
+    app.add_message::<discovery::session::RoomRequest>();
+    app.init_resource::<discovery::directory::RoomList>();
+    app.init_resource::<discovery::session::ActiveRoom>();
+    app.init_resource::<discovery::session::SelectedRoom>();
+    app.init_resource::<discovery::session::LeftRoom>();
+    app.init_resource::<discovery::session::JoinPending>();
+    app.init_resource::<discovery::session::JoinGate>();
+    app.init_resource::<discovery::session::JoinClock>();
+    app.init_resource::<discovery::session::DirectoryLive>();
 
     let (room_tx, room_rx) = tokio::sync::watch::channel(None);
     let (req_tx, req_rx) = tokio::sync::mpsc::unbounded_channel();
     let (dir_tx, dir_rx) = tokio::sync::mpsc::unbounded_channel();
     let (exp_tx, exp_rx) = tokio::sync::mpsc::unbounded_channel();
-    app.insert_resource(discovery::RoomRx(Mutex::new(Some(room_rx))));
-    app.insert_resource(discovery::RoomRequestTx(req_tx));
-    app.insert_resource(discovery::DirectoryFeed(Mutex::new(Some(dir_rx))));
-    app.insert_resource(discovery::ExpectedRx(Mutex::new(Some(exp_rx))));
+    app.insert_resource(discovery::session::RoomRx(Mutex::new(Some(room_rx))));
+    app.insert_resource(discovery::session::RoomRequestTx(req_tx));
+    app.insert_resource(discovery::session::DirectoryFeed(Mutex::new(Some(dir_rx))));
+    app.insert_resource(discovery::session::ExpectedRx(Mutex::new(Some(exp_rx))));
 
     let tap_rx = app
         .world_mut()
@@ -47,10 +47,12 @@ pub fn build_plugin(p2p_plugin: &discovery::P2PRoomDiscoveryPlugin, app: &mut Ap
     let own = app
         .world()
         .get_resource::<net_id::NetworkId>()
-        .map_or(discovery::PlayerId(0), |id| discovery::PlayerId(**id));
+        .map_or(discovery::params::PlayerId(0), |id| {
+            discovery::params::PlayerId(**id)
+        });
 
     if let (Some(tap_rx), Some(net_tx)) = (tap_rx, net_tx) {
-        let run_config = discovery::RunConfig {
+        let run_config = discovery::link::RunConfig {
             net_tx,
             tap_rx,
             ready_rx,
@@ -67,16 +69,16 @@ pub fn build_plugin(p2p_plugin: &discovery::P2PRoomDiscoveryPlugin, app: &mut Ap
             directory_tx: dir_tx,
             expected_tx: exp_tx,
         };
-        tokio::spawn(discovery::run(run_config));
+        tokio::spawn(discovery::link::run(run_config));
     }
 
     app.add_systems(
         Update,
         (
-            discovery::bevy_systems::poll_directory,
-            discovery::bevy_systems::poll_room,
-            discovery::bevy_systems::poll_expected,
-            discovery::bevy_systems::request_room,
+            discovery::lobby_ui::bevy_systems::poll_directory,
+            discovery::lobby_ui::bevy_systems::poll_room,
+            discovery::lobby_ui::bevy_systems::poll_expected,
+            discovery::lobby_ui::bevy_systems::request_room,
         )
             .chain(),
     );

@@ -4,7 +4,7 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::discovery;
 
 pub fn send(
-    client: &discovery::Client,
+    client: &discovery::link::Client,
     request: &ClientRequest<'_>,
 ) -> Result<(), discovery::Error> {
     let bytes = bincode::serialize(request)?;
@@ -26,7 +26,7 @@ mod tests {
     fn test_usage() {
         let (write, mut write_rx) = tokio::sync::mpsc::unbounded_channel();
         let (_read_tx, read) = tokio::sync::mpsc::unbounded_channel();
-        let client = discovery::Client { write, read };
+        let client = discovery::link::Client { write, read };
         assert!(send(&client, &ClientRequest::Close).is_ok());
         assert!(write_rx.try_recv().is_ok());
     }

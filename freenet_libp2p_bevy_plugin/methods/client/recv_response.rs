@@ -3,7 +3,7 @@ use freenet_stdlib::client_api::{ContractResponse, HostResponse};
 use crate::discovery;
 
 pub async fn recv_response(
-    client: &mut discovery::Client,
+    client: &mut discovery::link::Client,
 ) -> Result<HostResponse, discovery::Error> {
     loop {
         match client.recv().await? {
@@ -23,7 +23,7 @@ mod tests {
         let (write, _write_rx) = tokio::sync::mpsc::unbounded_channel();
         let (read_tx, read) = tokio::sync::mpsc::unbounded_channel();
         drop(read_tx);
-        let mut client = discovery::Client { write, read };
+        let mut client = discovery::link::Client { write, read };
         assert!(recv_response(&mut client).await.is_err());
     }
 }
