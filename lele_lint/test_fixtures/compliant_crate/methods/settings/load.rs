@@ -1,7 +1,8 @@
 use crate::settings;
 
 pub fn load() -> settings::Settings {
-    settings::Settings::default()
+    let root = String::new();
+    settings::Settings { root, verbose: false }
 }
 
 #[cfg(test)]

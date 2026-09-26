@@ -1,8 +1,7 @@
-use crate::checkers;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::Project;
-use atomic_delegate_macros::atomic_delegates;
+use atomic_delegate_macros::atomic_delegate;
 
 pub struct NoStutteredPath;
 
@@ -15,12 +14,15 @@ impl NoStutteredPath {
 impl Checker for NoStutteredPath {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::no_stuttered_path_check::check(self, project) }
+    #[atomic_delegate(NoStutteredPath)]
+    fn check(&self, project: &Project) -> Vec<Diagnostic> {}
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl NoStutteredPath {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {
+        checkers.push(Box::new(NoStutteredPath));
+    }
 }
 
 // no test_usage necessary

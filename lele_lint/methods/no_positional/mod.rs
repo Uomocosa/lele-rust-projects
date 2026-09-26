@@ -1,2 +1,2 @@
-mod register;
-pub use register::register;
+mod check;
+pub use check::check;

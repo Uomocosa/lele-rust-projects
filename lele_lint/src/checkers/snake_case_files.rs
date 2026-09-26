@@ -1,8 +1,7 @@
-use crate::checkers;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::Project;
-use atomic_delegate_macros::atomic_delegates;
+use atomic_delegate_macros::atomic_delegate;
 
 pub struct SnakeCaseFiles;
 
@@ -15,12 +14,15 @@ impl SnakeCaseFiles {
 impl Checker for SnakeCaseFiles {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::snake_case_files_check::check(self, project) }
+    #[atomic_delegate(SnakeCaseFiles)]
+    fn check(&self, project: &Project) -> Vec<Diagnostic> {}
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl SnakeCaseFiles {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {
+        checkers.push(Box::new(SnakeCaseFiles));
+    }
 }
 
 // no test_usage necessary

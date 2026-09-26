@@ -1,8 +1,7 @@
-use crate::checkers;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::Project;
-use atomic_delegate_macros::atomic_delegates;
+use atomic_delegate_macros::atomic_delegate;
 
 pub struct MethodsLayout;
 
@@ -15,12 +14,15 @@ impl MethodsLayout {
 impl Checker for MethodsLayout {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::methods_layout_check::check(self, project) }
+    #[atomic_delegate(MethodsLayout)]
+    fn check(&self, project: &Project) -> Vec<Diagnostic> {}
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl MethodsLayout {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {
+        checkers.push(Box::new(MethodsLayout));
+    }
 }
 
 // no test_usage necessary

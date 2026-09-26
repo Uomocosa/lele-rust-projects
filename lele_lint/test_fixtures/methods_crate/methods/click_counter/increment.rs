@@ -1,7 +1,8 @@
 use crate::clicker;
 
 pub fn increment(counter: &mut clicker::ClickCounter) {
-    **counter = (**counter).wrapping_add(1);
+    let next = (**counter).wrapping_add(1);
+    **counter = next;
 }
 
 #[cfg(test)]

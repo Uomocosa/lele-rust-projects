@@ -1,8 +1,7 @@
-use crate::checkers;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::Project;
-use atomic_delegate_macros::atomic_delegates;
+use atomic_delegate_macros::atomic_delegate;
 
 pub struct ClippyConfigClippy;
 
@@ -15,12 +14,15 @@ impl ClippyConfigClippy {
 impl Checker for ClippyConfigClippy {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::clippy_config_clippy_check::check(self, project) }
+    #[atomic_delegate(ClippyConfigClippy)]
+    fn check(&self, project: &Project) -> Vec<Diagnostic> {}
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl ClippyConfigClippy {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {
+        checkers.push(Box::new(ClippyConfigClippy));
+    }
 }
 
 // no test_usage necessary

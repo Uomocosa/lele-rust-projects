@@ -1,8 +1,7 @@
-use crate::checkers;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::Project;
-use atomic_delegate_macros::atomic_delegates;
+use atomic_delegate_macros::atomic_delegate;
 
 pub struct NoCrossDomainReexport;
 
@@ -15,12 +14,15 @@ impl NoCrossDomainReexport {
 impl Checker for NoCrossDomainReexport {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::no_cross_domain_reexport_check::check(self, project) }
+    #[atomic_delegate(NoCrossDomainReexport)]
+    fn check(&self, project: &Project) -> Vec<Diagnostic> {}
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl NoCrossDomainReexport {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {
+        checkers.push(Box::new(NoCrossDomainReexport));
+    }
 }
 
 // no test_usage necessary

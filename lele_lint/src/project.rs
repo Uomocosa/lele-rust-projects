@@ -25,18 +25,20 @@ pub struct Project {
 
 #[atomic_delegates]
 impl Project {
-    pub fn get_parsed(&self, rel_path: &Path) -> Option<&syn::File> {}
     pub fn apply_layout(&mut self, config: &Config) -> Result<(), Error> {}
-}
-
-#[atomic_delegates]
-impl Project {
     pub fn discover(
         start_dir: Option<&Path>,
         scan_folders: Option<&[String]>,
     ) -> Result<Self, Error> {
     }
     pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {}
+}
+
+#[rustfmt::skip]
+impl Project {
+    pub fn get_parsed(&self, rel_path: &Path) -> Option<&syn::File> {
+        self.parsed_files.get(rel_path)
+    }
 }
 
 // no test_usage necessary

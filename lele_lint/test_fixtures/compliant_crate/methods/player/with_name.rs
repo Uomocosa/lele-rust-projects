@@ -1,7 +1,9 @@
 use crate::player;
 
 pub fn with_name(base: player::Player, name: String) -> player::Player {
-    player::Player { name, ..base }
+    let mut renamed = base;
+    renamed.name = name;
+    renamed
 }
 
 #[cfg(test)]

@@ -18,22 +18,19 @@ pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, common::De
             let syn::Item::Impl(impl_block) = item else {
                 continue;
             };
-            if impl_block.trait_.is_some() {
-                continue;
-            }
             if common::self_type_last(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
                 continue;
             }
-            if !common::has_atomic_delegates(&impl_block.attrs) {
-                continue;
-            }
-            let entry = map.entry(type_snake.clone()).or_default();
-            if entry.cfgs.is_empty() {
-                entry.cfgs = common::file_cfgs(&cfg_map, rel_path);
-            }
+            let block_annotated = common::has_atomic_delegates(&impl_block.attrs);
             for impl_item in &impl_block.items {
                 if let syn::ImplItem::Fn(method) = impl_item {
-                    entry.methods.insert(method.sig.ident.to_string());
+                    if block_annotated || common::has_atomic_fn(&method.attrs) {
+                        let entry = map.entry(type_snake.clone()).or_default();
+                        if entry.cfgs.is_empty() {
+                            entry.cfgs = common::file_cfgs(&cfg_map, rel_path);
+                        }
+                        entry.methods.insert(method.sig.ident.to_string());
+                    }
                 }
             }
         }
@@ -50,9 +47,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut project = Project {
-            ..Project::default()
-        };
+        let mut project = Project::default();
         let file: syn::File = syn::parse_str(
             "pub struct ClickCounter(pub i32);\n#[atomic_delegates]\nimpl ClickCounter { pub fn add(&mut self) {} }",
         )
@@ -64,5 +59,33 @@ mod tests {
         assert!(declared
             .get("click_counter")
             .is_some_and(|d| d.methods.contains("add")));
+    }
+
+    #[test]
+    fn test_usage_collects_fn_shell() {
+        let mut project = Project::default();
+        let file: syn::File = syn::parse_str(
+            "pub struct Foo;\nimpl Foo { #[atomic_delegate(Foo)] pub fn run(&mut self) {} }",
+        )
+        .unwrap();
+        project.parsed_files.insert(PathBuf::from("foo.rs"), file);
+        let declared = collect_declared(&project);
+        assert!(declared
+            .get("foo")
+            .is_some_and(|d| d.methods.contains("run")));
+    }
+
+    #[test]
+    fn test_usage_collects_annotated_trait_shell() {
+        let mut project = Project::default();
+        let file: syn::File = syn::parse_str(
+            "pub struct Foo;\n#[atomic_delegates]\nimpl Checker for Foo { fn check(&self) {} }",
+        )
+        .unwrap();
+        project.parsed_files.insert(PathBuf::from("foo.rs"), file);
+        let declared = collect_declared(&project);
+        assert!(declared
+            .get("foo")
+            .is_some_and(|d| d.methods.contains("check")));
     }
 }

@@ -1,0 +1,263 @@
+use std::path::Path;
+
+use crate::checkers;
+use crate::common;
+use crate::Diagnostic;
+use crate::Dunder;
+use crate::EntryKind;
+use crate::Project;
+use crate::Severity;
+
+const OPT_OUT: &str = "// no test_usage necessary";
+
+pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<Diagnostic> {
+    let mut diags = Vec::new();
+
+    for (rel_path, file) in &project.parsed_files {
+        if is_exempt(rel_path, file, &project.dunder) {
+            continue;
+        }
+
+        if has_test_usage_opt_out(project, rel_path) {
+            continue;
+        }
+
+        if !has_test_usage(file) {
+            diags.push(Diagnostic {
+                file: project.src_dir.join(rel_path),
+                line: 1,
+                col: 0,
+                code: "E006".to_string(),
+                message: format!(
+                    "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
+                    rel_path.display()
+                ),
+                severity: Severity::Error,
+            });
+        }
+    }
+
+    diags
+}
+
+// needed helper: opt-out comment lookup on disk
+fn has_test_usage_opt_out(project: &Project, rel_path: &Path) -> bool {
+    let entry = match project
+        .entries
+        .iter()
+        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)
+    {
+        Some(e) => e,
+        None => return false,
+    };
+
+    let content = match std::fs::read_to_string(&entry.absolute_path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    opt_out_at_end(&content)
+}
+
+// needed helper: end-of-file opt-out placement rule
+fn opt_out_at_end(content: &str) -> bool {
+    content
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| line.trim().starts_with(OPT_OUT))
+}
+
+// needed helper: file exemption rules
+fn is_exempt(rel_path: &Path, file: &syn::File, dunder: &Dunder) -> bool {
+    let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+    if file_name == "main.rs" {
+        return true;
+    }
+
+    if (file_name == "mod.rs" || file_name == "lib.rs") && is_pure_module_tree(file) {
+        return true;
+    }
+
+    if file_name == "constants.rs" {
+        return true;
+    }
+
+    if is_dunder_path(rel_path, dunder) {
+        return true;
+    }
+
+    if rel_path
+        .components()
+        .any(|c| c.as_os_str().to_str() == Some("tests"))
+    {
+        return true;
+    }
+
+    is_type_only(file) || is_atomic_delegate_only(file)
+}
+
+// needed helper: whitelisted dunder folder or file path check
+fn is_dunder_path(rel_path: &Path, dunder: &Dunder) -> bool {
+    let in_folder = rel_path.components().any(|c| {
+        c.as_os_str()
+            .to_str()
+            .is_some_and(|name| dunder.folders.contains_key(name))
+    });
+    if in_folder {
+        return true;
+    }
+    rel_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .is_some_and(|stem| dunder.files.iter().any(|file| file.as_str() == stem))
+}
+
+// needed helper: pure module tree detection
+fn is_pure_module_tree(file: &syn::File) -> bool {
+    if file.items.is_empty() {
+        return true;
+    }
+    file.items.iter().all(|item| {
+        matches!(
+            item,
+            syn::Item::Mod(_) | syn::Item::Use(_) | syn::Item::Macro(_)
+        )
+    })
+}
+
+// needed helper: type-only file detection (no non-default impls)
+fn is_type_only(file: &syn::File) -> bool {
+    let has_struct_or_enum = file
+        .items
+        .iter()
+        .any(|item| matches!(item, syn::Item::Struct(_) | syn::Item::Enum(_)));
+    if !has_struct_or_enum {
+        return false;
+    }
+
+    let has_non_default_impl = file.items.iter().any(|item| {
+        if let syn::Item::Impl(impl_block) = item {
+            if impl_block.trait_.is_some() {
+                return false;
+            }
+            if !is_default_only_impl(impl_block) {
+                return true;
+            }
+        }
+        false
+    });
+
+    !has_non_default_impl
+}
+
+// needed helper: default-only impl block check
+fn is_default_only_impl(impl_block: &syn::ItemImpl) -> bool {
+    for item in &impl_block.items {
+        if let syn::ImplItem::Fn(method) = item {
+            if method.sig.ident != "default" {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    true
+}
+
+// needed helper: atomic-delegate-only file detection
+fn is_atomic_delegate_only(file: &syn::File) -> bool {
+    let mut has_default = false;
+    let mut delegate_impls = false;
+
+    for item in &file.items {
+        if let syn::Item::Impl(impl_block) = item {
+            if impl_block.trait_.is_some() {
+                continue;
+            }
+            if is_default_only_impl(impl_block) {
+                has_default = true;
+            } else if is_likely_delegate_impl(impl_block) {
+                delegate_impls = true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    has_default && delegate_impls
+}
+
+// needed helper: likely delegate impl detection
+fn is_likely_delegate_impl(impl_block: &syn::ItemImpl) -> bool {
+    for item in &impl_block.items {
+        if let syn::ImplItem::Fn(method) = item {
+            if !common::is_short_body(&method.block) {
+                return false;
+            }
+        }
+    }
+    !impl_block.items.is_empty()
+}
+
+// needed helper: test_usage function presence in cfg(test) module
+fn has_test_usage(file: &syn::File) -> bool {
+    for item in &file.items {
+        if let syn::Item::Mod(module) = item {
+            if common::is_cfg_test_mod(module) {
+                if let Some((_, items)) = &module.content {
+                    for inner in items {
+                        if let syn::Item::Fn(func) = inner {
+                            if func.sig.ident == "test_usage" {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check, has_test_usage, opt_out_at_end};
+    use crate::checkers;
+    use crate::Project;
+
+    #[test]
+    fn test_usage() {
+        let checker = checkers::test_usage::TestUsage;
+        let project = Project::default();
+        assert!(check(&checker, &project).is_empty());
+    }
+
+    #[test]
+    fn test_usage_finds_test_usage() {
+        let file: syn::File =
+            syn::parse_str("#[cfg(test)] mod tests { #[test] fn test_usage() { assert!(true); } }")
+                .unwrap();
+        assert!(has_test_usage(&file));
+    }
+
+    #[test]
+    fn test_usage_missing() {
+        let file: syn::File = syn::parse_str("pub fn compute(x: u32) -> u32 { x * 2 }").unwrap();
+        assert!(!has_test_usage(&file));
+    }
+
+    #[test]
+    fn test_usage_opt_out_only_at_end() {
+        assert!(!opt_out_at_end(
+            "// no test_usage necessary\n\npub fn compute() {}\n"
+        ));
+        assert!(opt_out_at_end(
+            "pub fn compute() {}\n\n// no test_usage necessary\n"
+        ));
+        assert!(!opt_out_at_end("pub fn compute() {}\n"));
+    }
+}
+
+// no test_usage necessary
