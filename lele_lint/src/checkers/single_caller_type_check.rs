@@ -3,13 +3,16 @@ use std::path::{Path, PathBuf};
 
 use syn::visit::Visit;
 
-use super::single_caller_type::SingleCallerType;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::single_caller_type::SingleCallerType,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let defined_types = collect_defined_types(&project.parsed_files);
     let defined_names: HashSet<String> = defined_types.iter().map(|(n, _)| n.clone()).collect();
@@ -21,7 +24,7 @@ pub(crate) fn check(_self: &SingleCallerType, project: &Project) -> Vec<Diagnost
     ));
 
     for (name, rel_path) in &defined_types {
-        if is_exempt_path(rel_path) {
+        if is_exempt_path(rel_path, project) {
             continue;
         }
         if embedded.contains(name) {
@@ -79,12 +82,17 @@ fn collect_defined_types(parsed_files: &HashMap<PathBuf, syn::File>) -> Vec<(Str
     types
 }
 
-// needed helper: path exemption for mod.rs/lib.rs
-fn is_exempt_path(rel_path: &Path) -> bool {
+// needed helper: path exemption for mod.rs/lib.rs and dunder containers
+fn is_exempt_path(rel_path: &Path, project: &Project) -> bool {
     let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     file_name == "mod.rs"
         || file_name == "lib.rs"
         || file_name == "constants.rs"
+        || rel_path.components().any(|c| {
+            c.as_os_str()
+                .to_str()
+                .is_some_and(|name| project.dunder.folders.contains_key(name))
+        })
         || rel_path
             .components()
             .any(|c| c.as_os_str().to_str() == Some("tests"))

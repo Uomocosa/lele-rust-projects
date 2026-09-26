@@ -1,11 +1,14 @@
 use std::path::Path;
 
-use super::no_positional::NoPositional;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoPositional, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_positional::NoPositional,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

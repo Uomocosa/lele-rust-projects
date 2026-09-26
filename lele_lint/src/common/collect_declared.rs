@@ -1,25 +1,23 @@
 use std::collections::BTreeMap;
 
-use super::file_cfgs;
-use super::module_cfgs;
-use super::DeclaredType;
+use crate::common;
 use crate::Layout;
 use crate::Project;
 
-pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, DeclaredType> {
-    let mut map: BTreeMap<String, DeclaredType> = BTreeMap::new();
+pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, common::DeclaredType> {
+    let mut map: BTreeMap<String, common::DeclaredType> = BTreeMap::new();
     if project.layout != Layout::Methods {
         return map;
     }
-    let cfg_map = module_cfgs::build(&project.module_info);
+    let cfg_map = common::module_cfgs::build(&project.module_info);
     for (rel_path, file) in &project.parsed_files {
         let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
             continue;
         };
-        let Some(primary) = super::primary_type_name(file, stem) else {
+        let Some(primary) = common::primary_type_name(file, stem) else {
             continue;
         };
-        let type_snake = super::to_snake_case(&primary);
+        let type_snake = common::to_snake_case(&primary);
         for item in &file.items {
             let syn::Item::Impl(impl_block) = item else {
                 continue;
@@ -27,15 +25,15 @@ pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, DeclaredTy
             if impl_block.trait_.is_some() {
                 continue;
             }
-            if super::self_type_last(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
+            if common::self_type_last(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
                 continue;
             }
-            if !super::has_atomic_delegate(&impl_block.attrs) {
+            if !common::has_atomic_delegate(&impl_block.attrs) {
                 continue;
             }
             let entry = map.entry(type_snake.clone()).or_default();
             if entry.cfgs.is_empty() {
-                entry.cfgs = file_cfgs(&cfg_map, rel_path);
+                entry.cfgs = common::file_cfgs(&cfg_map, rel_path);
             }
             for impl_item in &impl_block.items {
                 if let syn::ImplItem::Fn(method) = impl_item {

@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::helper_count_check;
-use super::helper_count_register;
 
 pub struct HelperCount;
 
@@ -17,13 +15,13 @@ impl HelperCount {
 impl Checker for HelperCount {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { helper_count_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::helper_count_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl HelperCount {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        helper_count_register::register(checkers, config)
+        checkers::helper_count_register::register(checkers, config)
     }
 }
 

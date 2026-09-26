@@ -1,4 +1,4 @@
-use super::config::Config;
+use crate::config::Config;
 use crate::Layout;
 
 pub(crate) fn layout(config: &Config) -> Layout {

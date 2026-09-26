@@ -1,11 +1,14 @@
 use std::path::Path;
 
-use super::single_field_newtype::SingleFieldNewtype;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &SingleFieldNewtype, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::single_field_newtype::SingleFieldNewtype,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

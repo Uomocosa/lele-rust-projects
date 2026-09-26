@@ -1,13 +1,16 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use super::root_reexport::RootReexport;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &RootReexport, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::root_reexport::RootReexport,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let lib = match project.parsed_files.get(&PathBuf::from("lib.rs")) {
         Some(lib) => lib,
         None => return Vec::new(),
@@ -35,7 +38,7 @@ pub(crate) fn check(_self: &RootReexport, project: &Project) -> Vec<Diagnostic> 
                 file: project.src_dir.join(rel_path),
                 line: missing.line,
                 col: 0,
-                code: RootReexport::CODE.to_string(),
+                code: checkers::root_reexport::RootReexport::CODE.to_string(),
                 message: format!(
                     "public type `{}` in root module `{stem}` is not re-exported at the crate root — add `pub use {stem}::{};` to lib.rs",
                     missing.ty, missing.ty
@@ -48,7 +51,7 @@ pub(crate) fn check(_self: &RootReexport, project: &Project) -> Vec<Diagnostic> 
                 file: project.src_dir.join("lib.rs"),
                 line: 1,
                 col: 0,
-                code: RootReexport::CODE.to_string(),
+                code: checkers::root_reexport::RootReexport::CODE.to_string(),
                 message: missing,
                 severity: Severity::Error,
             });

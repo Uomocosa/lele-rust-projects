@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use super::config::Config;
+use crate::config::Config;
 use crate::Error;
 use crate::LeleLintSection;
 

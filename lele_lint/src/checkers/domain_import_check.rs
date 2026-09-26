@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::domain_import::DomainImport;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
@@ -8,7 +8,10 @@ use crate::Entry;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &DomainImport, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::domain_import::DomainImport,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

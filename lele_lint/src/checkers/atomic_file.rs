@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::atomic_file_check;
-use super::atomic_file_register;
 
 pub struct AtomicFile;
 
@@ -17,13 +15,13 @@ impl AtomicFile {
 impl Checker for AtomicFile {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { atomic_file_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::atomic_file_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl AtomicFile {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        atomic_file_register::register(checkers, config)
+        checkers::atomic_file_register::register(checkers, config)
     }
 }
 

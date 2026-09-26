@@ -1,13 +1,9 @@
 use rustc_lexer::tokenize;
 use rustc_lexer::TokenKind;
 
-pub(crate) struct CommentHit {
-    pub line: usize,
-    pub text: String,
-    pub block: bool,
-}
+use crate::common;
 
-pub(crate) fn find_comments(source: &str) -> Vec<CommentHit> {
+pub(crate) fn find_comments(source: &str) -> Vec<common::CommentHit> {
     let mut hits = Vec::new();
     let mut offset: usize = 0;
     for token in tokenize(source) {
@@ -21,14 +17,14 @@ pub(crate) fn find_comments(source: &str) -> Vec<CommentHit> {
                     .unwrap_or("")
                     .trim_end()
                     .to_string();
-                hits.push(CommentHit {
+                hits.push(common::CommentHit {
                     line: line_of(source, start),
                     text,
                     block: false,
                 });
             }
             TokenKind::BlockComment { .. } => {
-                hits.push(CommentHit {
+                hits.push(common::CommentHit {
                     line: line_of(source, start),
                     text: String::new(),
                     block: true,

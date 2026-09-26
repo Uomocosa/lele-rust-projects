@@ -1,10 +1,10 @@
-use super::methods_layout::MethodsLayout;
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 
 pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-    if config.checker_enabled(MethodsLayout::NAME) {
-        checkers.push(Box::new(MethodsLayout));
+    if config.checker_enabled(checkers::methods_layout::MethodsLayout::NAME) {
+        checkers.push(Box::new(checkers::methods_layout::MethodsLayout));
     }
 }
 

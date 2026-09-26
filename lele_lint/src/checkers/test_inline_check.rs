@@ -1,10 +1,13 @@
-use super::test_inline::TestInline;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &TestInline, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::test_inline::TestInline,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for entry in &project.entries {

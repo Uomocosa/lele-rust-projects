@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::delegate_macro_check;
-use super::delegate_macro_register;
 
 pub struct DelegateMacro;
 
@@ -17,13 +15,13 @@ impl DelegateMacro {
 impl Checker for DelegateMacro {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { delegate_macro_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::delegate_macro_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl DelegateMacro {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        delegate_macro_register::register(checkers, config)
+        checkers::delegate_macro_register::register(checkers, config)
     }
 }
 

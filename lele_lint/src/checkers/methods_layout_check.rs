@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::methods_layout::MethodsLayout;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::EntryKind;
@@ -8,7 +8,10 @@ use crate::Layout;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &MethodsLayout, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::methods_layout::MethodsLayout,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     if project.layout != Layout::Methods {
         return diags;

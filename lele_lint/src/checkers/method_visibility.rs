@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::method_visibility_check;
-use super::method_visibility_register;
 
 pub struct MethodVisibility;
 
@@ -17,13 +15,13 @@ impl MethodVisibility {
 impl Checker for MethodVisibility {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { method_visibility_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::method_visibility_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl MethodVisibility {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        method_visibility_register::register(checkers, config)
+        checkers::method_visibility_register::register(checkers, config)
     }
 }
 

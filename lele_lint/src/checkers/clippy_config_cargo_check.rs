@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::clippy_config_cargo::ClippyConfigCargo;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
@@ -21,7 +21,10 @@ const REQUIRED_LINTS: &[&str] = &[
     "as_conversions",
 ];
 
-pub(crate) fn check(_self: &ClippyConfigCargo, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::clippy_config_cargo::ClippyConfigCargo,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let cargo_path = project.root.join("Cargo.toml");
     let content = match std::fs::read_to_string(&cargo_path) {
         Ok(c) => c,
@@ -30,7 +33,7 @@ pub(crate) fn check(_self: &ClippyConfigCargo, project: &Project) -> Vec<Diagnos
                 file: cargo_path,
                 line: 1,
                 col: 0,
-                code: ClippyConfigCargo::CODE.to_string(),
+                code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
                 message: "Cargo.toml not found or unreadable — add [lints.clippy] with minimum clippy config".to_string(),
                 severity: Severity::Error,
             }];
@@ -43,7 +46,7 @@ pub(crate) fn check(_self: &ClippyConfigCargo, project: &Project) -> Vec<Diagnos
                 file: cargo_path,
                 line: 1,
                 col: 0,
-                code: ClippyConfigCargo::CODE.to_string(),
+                code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
                 message: format!("Cargo.toml parse error: {e}"),
                 severity: Severity::Error,
             }];
@@ -71,7 +74,7 @@ pub(crate) fn check(_self: &ClippyConfigCargo, project: &Project) -> Vec<Diagnos
             file: cargo_path.clone(),
             line: 1,
             col: 0,
-            code: ClippyConfigCargo::CODE.to_string(),
+            code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
             message: "missing [lints.clippy] in Cargo.toml — add minimum clippy config (pedantic/nursery + 13 deny lints)".to_string(),
             severity: Severity::Error,
         }],
@@ -179,7 +182,7 @@ fn diag_for_key(path: &PathBuf, key: &str, expected: &str) -> Diagnostic {
         file: path.clone(),
         line: 1,
         col: 0,
-        code: ClippyConfigCargo::CODE.to_string(),
+        code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
         message: format!(
             "Cargo.toml [lints.clippy].{key} {expected} — minimum clippy config requires it"
         ),

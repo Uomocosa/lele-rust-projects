@@ -1,4 +1,4 @@
-use super::config::Config;
+use crate::config::Config;
 
 pub(crate) fn checker_enabled(config: &Config, name: &str) -> bool {
     config

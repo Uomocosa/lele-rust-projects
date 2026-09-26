@@ -1,12 +1,15 @@
 use std::path::Path;
 
-use super::no_stuttered_type::NoStutteredType;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoStutteredType, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_stuttered_type::NoStutteredType,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -28,7 +31,7 @@ pub(crate) fn check(_self: &NoStutteredType, project: &Project) -> Vec<Diagnosti
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: NoStutteredType::CODE.to_string(),
+            code: checkers::no_stuttered_type::NoStutteredType::CODE.to_string(),
             message: format!(
                 "type `{name}` repeats parent module `{dir}` — rename to `{suggested}` (`{dir}::{suggested}`)"
             ),
@@ -107,6 +110,7 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
+    use super::super::no_stuttered_type::NoStutteredType;
     use super::strip_dir_prefix;
     use crate::Project;
 
@@ -136,7 +140,7 @@ mod tests {
             "freenet/freenet_client.rs",
             "pub struct FreenetClient(pub String);",
         )]);
-        let diags = super::check(&super::NoStutteredType, &project);
+        let diags = super::check(&NoStutteredType, &project);
         assert_eq!(diags.len(), 1);
         assert_eq!(diags[0].code, "E027");
         assert!(diags[0].message.contains("`Client`"));
@@ -148,7 +152,7 @@ mod tests {
             ("cli/cli.rs", "pub struct Cli;"),
             ("roster/roster.rs", "pub struct Roster;"),
         ]);
-        let diags = super::check(&super::NoStutteredType, &project);
+        let diags = super::check(&NoStutteredType, &project);
         assert!(diags.is_empty());
     }
 
@@ -159,7 +163,7 @@ mod tests {
             ("plugin/p2p_plugin.rs", "pub struct P2PPlugin;"),
             ("relay/letter_request.rs", "pub struct LetterRequest;"),
         ]);
-        let diags = super::check(&super::NoStutteredType, &project);
+        let diags = super::check(&NoStutteredType, &project);
         assert!(diags.is_empty());
     }
 
@@ -169,7 +173,7 @@ mod tests {
             "net_id/network_id.rs",
             "pub struct NetworkId(pub u64);",
         )]);
-        let diags = super::check(&super::NoStutteredType, &project);
+        let diags = super::check(&NoStutteredType, &project);
         assert!(diags.is_empty());
     }
 
@@ -179,7 +183,7 @@ mod tests {
             ("freenet_client.rs", "pub struct FreenetClient;"),
             ("freenet/hidden.rs", "struct Hidden;"),
         ]);
-        let diags = super::check(&super::NoStutteredType, &project);
+        let diags = super::check(&NoStutteredType, &project);
         assert!(diags.is_empty());
     }
 

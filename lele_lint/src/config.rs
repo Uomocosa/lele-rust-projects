@@ -4,10 +4,10 @@ use serde::Deserialize;
 
 use derive_more::Deref;
 
-use super::config_checker_enabled;
-use super::config_dunder;
-use super::config_layout;
-use super::config_load;
+use crate::config_checker_enabled;
+use crate::config_dunder;
+use crate::config_layout;
+use crate::config_load;
 use crate::Dunder;
 use crate::Error;
 use crate::Layout;

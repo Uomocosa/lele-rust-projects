@@ -1,14 +1,17 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use super::atomic_file::AtomicFile;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &AtomicFile, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::atomic_file::AtomicFile,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let known_stems = known_type_stems(project);
 

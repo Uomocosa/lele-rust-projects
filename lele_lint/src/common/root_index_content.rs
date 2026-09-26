@@ -1,9 +1,8 @@
+use crate::common;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
-use super::DeclaredType;
-
-pub(crate) fn root_index_content(types: &BTreeMap<String, DeclaredType>) -> String {
+pub(crate) fn root_index_content(types: &BTreeMap<String, common::DeclaredType>) -> String {
     let mut out = String::new();
     for (type_snake, declared) in types {
         if let Some(cfg) = combined_cfg(&declared.cfgs) {

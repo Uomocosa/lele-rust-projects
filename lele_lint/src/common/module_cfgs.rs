@@ -1,14 +1,10 @@
-use std::collections::HashMap;
-
-use super::module_path_of;
+use crate::common;
 use crate::ModuleInfoMap;
 
-pub(crate) type ModuleCfgMap = HashMap<Vec<String>, String>;
-
-pub(crate) fn build(module_info: &ModuleInfoMap) -> ModuleCfgMap {
-    let mut map = ModuleCfgMap::new();
+pub(crate) fn build(module_info: &ModuleInfoMap) -> common::ModuleCfgMap {
+    let mut map = common::ModuleCfgMap::new();
     for info in module_info.values() {
-        let base = module_path_of(&info.rel_path);
+        let base = common::module_path_of(&info.rel_path);
         for decl in &info.declarations {
             let Some(cfg) = &decl.cfg else {
                 continue;

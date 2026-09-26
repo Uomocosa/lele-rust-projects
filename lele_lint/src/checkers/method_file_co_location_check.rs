@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use super::method_file_co_location::MethodFileCoLocation;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &MethodFileCoLocation, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::method_file_co_location::MethodFileCoLocation,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     let type_dirs = build_type_map(project);

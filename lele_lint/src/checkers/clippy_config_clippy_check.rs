@@ -1,4 +1,4 @@
-use super::clippy_config_clippy::ClippyConfigClippy;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
@@ -10,7 +10,10 @@ const REQUIRED_KEYS: &[&str] = &[
     "allow-indexing-slicing-in-tests",
 ];
 
-pub(crate) fn check(_self: &ClippyConfigClippy, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::clippy_config_clippy::ClippyConfigClippy,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let path = project.root.join("clippy.toml");
     let content = match std::fs::read_to_string(&path) {
         Ok(c) => c,
@@ -19,7 +22,7 @@ pub(crate) fn check(_self: &ClippyConfigClippy, project: &Project) -> Vec<Diagno
                 file: path,
                 line: 1,
                 col: 0,
-                code: ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: "clippy.toml not found — add it with allow-unwrap-in-tests, allow-expect-in-tests, allow-panic-in-tests, allow-indexing-slicing-in-tests = true".to_string(),
                 severity: Severity::Error,
             }];
@@ -32,7 +35,7 @@ pub(crate) fn check(_self: &ClippyConfigClippy, project: &Project) -> Vec<Diagno
                 file: path,
                 line: 1,
                 col: 0,
-                code: ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: format!("clippy.toml parse error: {e}"),
                 severity: Severity::Error,
             }];
@@ -45,7 +48,7 @@ pub(crate) fn check(_self: &ClippyConfigClippy, project: &Project) -> Vec<Diagno
                 file: path,
                 line: 1,
                 col: 0,
-                code: ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: "clippy.toml must be a table with allow-* = true entries".to_string(),
                 severity: Severity::Error,
             }];
@@ -59,7 +62,7 @@ pub(crate) fn check(_self: &ClippyConfigClippy, project: &Project) -> Vec<Diagno
                 file: path.clone(),
                 line: 1,
                 col: 0,
-                code: ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: format!(
                     "clippy.toml missing {key} = true — minimum clippy config requires it"
                 ),

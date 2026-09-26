@@ -10,7 +10,6 @@ mod to_pascal_case;
 
 mod collect_declared;
 mod comment_scan;
-mod declared_type;
 mod file_cfgs;
 mod has_atomic_delegate;
 mod module_cfgs;
@@ -18,11 +17,16 @@ mod module_paths;
 mod root_index_content;
 mod type_index_content;
 
+#[path = "__basic__/mod.rs"]
+pub mod basic;
+
+pub(crate) use basic::structs::{CommentHit, DeclaredType};
+pub(crate) use basic::type_aliases::ModuleCfgMap;
+
 pub(crate) use to_pascal_case::to_pascal_case;
 
 pub(crate) use collect_declared::collect_declared;
 pub(crate) use comment_scan::find_comments;
-pub(crate) use declared_type::DeclaredType;
 pub(crate) use file_cfgs::file_cfgs;
 pub(crate) use has_atomic_delegate::has_atomic_delegate;
 pub(crate) use has_rustfmt_skip::has_rustfmt_skip;

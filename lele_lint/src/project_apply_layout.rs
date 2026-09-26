@@ -1,6 +1,6 @@
-use super::project::Project;
-use super::project_parse_source_files;
-use super::project_walk_entries;
+use crate::project::Project;
+use crate::project_parse_source_files;
+use crate::project_walk_entries;
 use crate::Config;
 use crate::Error;
 use crate::Layout;

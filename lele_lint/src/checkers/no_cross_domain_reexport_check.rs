@@ -1,11 +1,14 @@
 use std::path::Path;
 
-use super::no_cross_domain_reexport::NoCrossDomainReexport;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoCrossDomainReexport, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_cross_domain_reexport::NoCrossDomainReexport,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (mod_rs_path, info) in &project.module_info {

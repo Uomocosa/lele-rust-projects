@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::clippy_config_clippy_check;
-use super::clippy_config_clippy_register;
 
 pub struct ClippyConfigClippy;
 
@@ -17,13 +15,13 @@ impl ClippyConfigClippy {
 impl Checker for ClippyConfigClippy {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { clippy_config_clippy_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::clippy_config_clippy_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl ClippyConfigClippy {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        clippy_config_clippy_register::register(checkers, config)
+        checkers::clippy_config_clippy_register::register(checkers, config)
     }
 }
 

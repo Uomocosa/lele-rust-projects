@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use super::no_trivial_accessors::NoTrivialAccessors;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoTrivialAccessors, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_trivial_accessors::NoTrivialAccessors,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

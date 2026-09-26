@@ -1,3 +1,4 @@
+use crate::common;
 pub(crate) fn primary_type_name(file: &syn::File, file_stem: &str) -> Option<String> {
     file.items.iter().find_map(|item| {
         let ident = match item {
@@ -6,7 +7,7 @@ pub(crate) fn primary_type_name(file: &syn::File, file_stem: &str) -> Option<Str
             _ => return None,
         };
         let name = ident.to_string();
-        if super::to_snake_case(&name) == file_stem {
+        if common::to_snake_case(&name) == file_stem {
             Some(name)
         } else {
             None

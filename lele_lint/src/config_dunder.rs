@@ -1,4 +1,4 @@
-use super::config::Config;
+use crate::config::Config;
 use crate::Dunder;
 
 pub(crate) fn dunder(config: &Config) -> Dunder {

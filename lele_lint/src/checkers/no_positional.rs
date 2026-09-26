@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::no_positional_check;
-use super::no_positional_register;
 
 pub struct NoPositional;
 
@@ -17,13 +15,13 @@ impl NoPositional {
 impl Checker for NoPositional {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { no_positional_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::no_positional_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl NoPositional {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        no_positional_register::register(checkers, config)
+        checkers::no_positional_register::register(checkers, config)
     }
 }
 

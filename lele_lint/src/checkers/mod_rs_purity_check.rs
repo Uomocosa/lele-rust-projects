@@ -1,12 +1,15 @@
 use syn::spanned::Spanned;
 
-use super::mod_rs_purity::ModRsPurity;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &ModRsPurity, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::mod_rs_purity::ModRsPurity,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

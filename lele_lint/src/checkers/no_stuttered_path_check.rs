@@ -4,13 +4,16 @@ use std::path::Path;
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
-use super::no_stuttered_path::NoStutteredPath;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoStutteredPath, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_stuttered_path::NoStutteredPath,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let root_stems = root_module_stems(project);
 
@@ -28,7 +31,7 @@ pub(crate) fn check(_self: &NoStutteredPath, project: &Project) -> Vec<Diagnosti
                 file: project.src_dir.join(rel_path),
                 line: hit.line,
                 col: 0,
-                code: NoStutteredPath::CODE.to_string(),
+                code: checkers::no_stuttered_path::NoStutteredPath::CODE.to_string(),
                 message: format!(
                     "stuttered path `{}` adds no information — import `{}` once and use `{}` directly",
                     hit.path, hit.ty, hit.ty

@@ -1,10 +1,8 @@
+use crate::checkers;
 use crate::Checker;
 use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
-
-use super::root_reexport_check;
-use super::root_reexport_register;
 
 pub struct RootReexport;
 
@@ -17,13 +15,13 @@ impl RootReexport {
 impl Checker for RootReexport {
     fn name(&self) -> &'static str { Self::NAME }
     fn code(&self) -> &'static str { Self::CODE }
-    fn check(&self, project: &Project) -> Vec<Diagnostic> { root_reexport_check::check(self, project) }
+    fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::root_reexport_check::check(self, project) }
 }
 
 #[rustfmt::skip]
 impl RootReexport {
     pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        root_reexport_register::register(checkers, config)
+        checkers::root_reexport_register::register(checkers, config)
     }
 }
 

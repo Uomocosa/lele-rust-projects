@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::project::Project;
+use crate::project::Project;
 use crate::project_find_cargo_root;
 use crate::project_parse_source_files;
 use crate::project_walk_entries;

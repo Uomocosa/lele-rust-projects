@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use super::container_placement::ContainerPlacement;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
@@ -36,7 +36,10 @@ impl Role {
     }
 }
 
-pub(crate) fn check(_self: &ContainerPlacement, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::container_placement::ContainerPlacement,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     if !project.container_placement {
@@ -326,7 +329,7 @@ fn container_dir(rel_path: &Path, folder: &str) -> PathBuf {
 mod tests {
     use std::path::PathBuf;
 
-    use super::ContainerPlacement;
+    use super::super::container_placement::ContainerPlacement;
     use super::{check, container_dir};
     use crate::Project;
 

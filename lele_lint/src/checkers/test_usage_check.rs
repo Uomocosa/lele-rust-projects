@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::test_usage::TestUsage;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
@@ -10,7 +10,7 @@ use crate::Severity;
 
 const OPT_OUT: &str = "// no test_usage necessary";
 
-pub(crate) fn check(_self: &TestUsage, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

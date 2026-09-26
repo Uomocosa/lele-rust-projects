@@ -1,12 +1,15 @@
 // needed helper: parsing utilities
 
-use super::snake_case_files::SnakeCaseFiles;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &SnakeCaseFiles, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::snake_case_files::SnakeCaseFiles,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for entry in &project.entries {

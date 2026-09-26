@@ -2,13 +2,16 @@ use std::path::Path;
 
 use syn::spanned::Spanned;
 
-use super::no_dunder_tests::NoDunderTests;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoDunderTests, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_dunder_tests::NoDunderTests,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -69,8 +72,8 @@ fn has_cfg_test(attrs: &[syn::Attribute]) -> bool {
 mod tests {
     use std::path::PathBuf;
 
+    use super::super::no_dunder_tests::NoDunderTests;
     use super::check;
-    use super::NoDunderTests;
     use crate::Dunder;
     use crate::Project;
 

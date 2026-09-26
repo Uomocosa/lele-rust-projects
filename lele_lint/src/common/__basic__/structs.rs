@@ -6,4 +6,8 @@ pub struct DeclaredType {
     pub cfgs: Vec<String>,
 }
 
-// no test_usage necessary
+pub(crate) struct CommentHit {
+    pub line: usize,
+    pub text: String,
+    pub block: bool,
+}

@@ -1,10 +1,13 @@
-use super::atomic_delegates::AtomicDelegates;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &AtomicDelegates, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::atomic_delegates::AtomicDelegates,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

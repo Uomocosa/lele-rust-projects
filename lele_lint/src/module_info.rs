@@ -6,7 +6,7 @@ use crate::ModDecl;
 use crate::ModuleInfoMap;
 use crate::Reexport;
 
-use super::module_info_build;
+use crate::module_info_build;
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {

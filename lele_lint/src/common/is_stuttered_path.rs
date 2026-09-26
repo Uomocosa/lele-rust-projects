@@ -1,7 +1,8 @@
-use super::to_snake_case;
+use crate::common;
 
 pub(crate) fn is_stuttered_path(module: &str, type_name: &str) -> bool {
-    type_name.chars().next().is_some_and(|c| c.is_uppercase()) && to_snake_case(type_name) == module
+    type_name.chars().next().is_some_and(|c| c.is_uppercase())
+        && common::to_snake_case(type_name) == module
 }
 
 #[cfg(test)]

@@ -4,12 +4,15 @@ use derive_more::{Deref, DerefMut};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
-use super::no_crate_paths::NoCratePaths;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &NoCratePaths, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::no_crate_paths::NoCratePaths,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {

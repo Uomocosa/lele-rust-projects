@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use super::method_visibility::MethodVisibility;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Entry;
@@ -10,7 +10,10 @@ use crate::ModuleInfoMap;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &MethodVisibility, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::method_visibility::MethodVisibility,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     let dir_groups = group_entries_by_parent_dir(&project.entries);

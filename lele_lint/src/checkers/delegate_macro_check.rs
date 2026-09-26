@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::delegate_macro::DelegateMacro;
+use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Layout;
@@ -9,7 +9,10 @@ use crate::Severity;
 
 const RESERVED_DELEGATE_METHODS: &[&str] = &["new"];
 
-pub(crate) fn check(_self: &DelegateMacro, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::delegate_macro::DelegateMacro,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     if project.layout != Layout::Methods {
         return diags;

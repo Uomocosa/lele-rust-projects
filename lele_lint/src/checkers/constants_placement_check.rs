@@ -3,12 +3,15 @@ use std::path::{Path, PathBuf};
 
 use syn::visit::Visit;
 
-use super::constants_placement::ConstantsPlacement;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
 use crate::Severity;
 
-pub(crate) fn check(_self: &ConstantsPlacement, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::constants_placement::ConstantsPlacement,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let defined = collect_defined_consts(&project.parsed_files);
     let defined_names: HashSet<String> = defined.keys().cloned().collect();

@@ -1,10 +1,9 @@
 use std::path::Path;
 
-use super::module_cfgs::ModuleCfgMap;
-use super::module_path_of;
+use crate::common;
 
-pub(crate) fn file_cfgs(map: &ModuleCfgMap, rel_path: &Path) -> Vec<String> {
-    let module = module_path_of(rel_path);
+pub(crate) fn file_cfgs(map: &common::ModuleCfgMap, rel_path: &Path) -> Vec<String> {
+    let module = common::module_path_of(rel_path);
     let mut cfgs = Vec::new();
     let mut prefix: Vec<String> = Vec::new();
     for segment in &module {

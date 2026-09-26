@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-use super::project_apply_layout;
-use super::project_discover;
-use super::project_find_cargo_root;
-use super::project_get_parsed;
+use crate::project_apply_layout;
+use crate::project_discover;
+use crate::project_find_cargo_root;
+use crate::project_get_parsed;
 use crate::Config;
 use crate::Dunder;
 use crate::Entry;

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use syn::spanned::Spanned;
 
-use super::helper_count::HelperCount;
+use crate::checkers;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
@@ -12,7 +12,10 @@ const MAX_PRIVATE_HELPERS: usize = 2;
 
 const ANNOTATION: &str = "// needed helper:";
 
-pub(crate) fn check(_self: &HelperCount, project: &Project) -> Vec<Diagnostic> {
+pub(crate) fn check(
+    _self: &checkers::helper_count::HelperCount,
+    project: &Project,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
