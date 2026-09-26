@@ -15,7 +15,7 @@ fn run_checkers(path: &str) -> Result<Vec<Diagnostic>, Box<dyn std::error::Error
     let mut p = Project::discover(Some(&fixture_path(path)), None)?;
     let config = Config::load(&p.root).unwrap_or_default();
     p.apply_layout(&config)?;
-    let checkers = build_checkers(&config);
+    let checkers = build_checkers();
     Ok(checkers.iter().flat_map(|c| c.check(&p)).collect())
 }
 

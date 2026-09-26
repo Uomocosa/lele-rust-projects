@@ -1,8 +1,8 @@
 use crate::checkers;
 use crate::Checker;
-use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
+use atomic_delegate_macros::atomic_delegates;
 
 pub struct DomainImport;
 
@@ -18,11 +18,9 @@ impl Checker for DomainImport {
     fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::domain_import_check::check(self, project) }
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl DomainImport {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        checkers::domain_import_register::register(checkers, config)
-    }
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
 }
 
 // no test_usage necessary

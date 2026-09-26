@@ -7,11 +7,11 @@ use syn::spanned::Spanned;
 const RESERVED_DELEGATE_METHODS: &[&str] = &["new"];
 
 #[proc_macro_attribute]
-pub fn atomic_delegate(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn atomic_delegates(attr: TokenStream, item: TokenStream) -> TokenStream {
     if !attr.is_empty() {
         return syn::Error::new(
             proc_macro2::Span::call_site(),
-            "`#[atomic_delegate]` takes no arguments",
+            "`#[atomic_delegates]` takes no arguments",
         )
         .to_compile_error()
         .into();
@@ -28,7 +28,7 @@ fn expand(item: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStrea
     if let Some((_, trait_path, _)) = &impl_block.trait_ {
         return Err(syn::Error::new(
             trait_path.span(),
-            "`#[atomic_delegate]` only supports inherent impls",
+            "`#[atomic_delegates]` only supports inherent impls",
         ));
     }
 
@@ -43,13 +43,13 @@ fn expand(item: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStrea
         let syn::ImplItem::Fn(method) = item else {
             return Err(syn::Error::new(
                 item.span(),
-                "`#[atomic_delegate]` impl may only contain functions",
+                "`#[atomic_delegates]` impl may only contain functions",
             ));
         };
         if !method.block.stmts.is_empty() {
             return Err(syn::Error::new(
                 method.block.span(),
-                "`#[atomic_delegate]` method body must be an empty placeholder `{}`",
+                "`#[atomic_delegates]` method body must be an empty placeholder `{}`",
             ));
         }
         let name = &method.sig.ident;
@@ -67,13 +67,13 @@ fn expand(item: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStrea
                     let syn::Pat::Ident(pat) = &*typed.pat else {
                         return Err(syn::Error::new(
                             typed.pat.span(),
-                            "`#[atomic_delegate]` parameters must be plain identifiers",
+                            "`#[atomic_delegates]` parameters must be plain identifiers",
                         ));
                     };
                     if pat.by_ref.is_some() || pat.subpat.is_some() {
                         return Err(syn::Error::new(
                             pat.span(),
-                            "`#[atomic_delegate]` parameters must be plain identifiers",
+                            "`#[atomic_delegates]` parameters must be plain identifiers",
                         ));
                     }
                     let ident = &pat.ident;
@@ -104,7 +104,7 @@ fn last_type_ident(ty: &syn::Type) -> syn::Result<syn::Ident> {
     }
     Err(syn::Error::new(
         ty.span(),
-        "`#[atomic_delegate]` requires a named type",
+        "`#[atomic_delegates]` requires a named type",
     ))
 }
 

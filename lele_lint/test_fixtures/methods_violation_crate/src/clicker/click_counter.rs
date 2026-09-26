@@ -8,7 +8,7 @@ impl ClickCounter {
     pub fn add(&mut self, _delta: i32) {}
 }
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl ClickCounter {
     pub fn increment(&mut self) {}
     pub fn new() -> Self {}

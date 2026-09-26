@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
-use crate::Layout;
 use crate::Project;
 use crate::Severity;
 
@@ -14,9 +13,6 @@ pub(crate) fn check(
     project: &Project,
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
-    if project.layout != Layout::Methods {
-        return diags;
-    }
     for (rel_path, file) in &project.parsed_files {
         let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
             continue;
@@ -38,7 +34,7 @@ pub(crate) fn check(
                 continue;
             }
 
-            if common::has_atomic_delegate(&impl_block.attrs) {
+            if common::has_atomic_delegates(&impl_block.attrs) {
                 for ident in fn_idents(impl_block) {
                     if is_reserved(ident) {
                         diags.push(diag(
@@ -56,11 +52,17 @@ pub(crate) fn check(
             if all_methods_are_real_reserved(impl_block) {
                 continue;
             }
+            let type_snake = common::to_snake_case(&primary);
+            let mirrors = fn_idents(impl_block)
+                .iter()
+                .map(|ident| format!("methods/{type_snake}/{ident}.rs"))
+                .collect::<Vec<_>>()
+                .join(", ");
             diags.push(diag(
                 project,
                 rel_path,
                 format!(
-                    "inherent impl for `{primary}` must be annotated with `#[atomic_delegate]`"
+                    "inherent impl for `{primary}` must be annotated with `#[atomic_delegates]`; empty each body and move it to {mirrors} (one `pub fn` + `test_usage` per file)"
                 ),
             ));
         }
@@ -125,7 +127,11 @@ fn all_methods_are_real_reserved(impl_block: &syn::ItemImpl) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{all_methods_are_real_reserved, is_reserved};
+    use std::path::PathBuf;
+
+    use super::super::delegate_macro::DelegateMacro;
+    use super::{all_methods_are_real_reserved, check, is_reserved};
+    use crate::Project;
 
     #[test]
     fn test_usage() {
@@ -148,6 +154,22 @@ mod tests {
             impl Foo { pub fn new() -> Self { Self } pub fn other(&self) {} }
         };
         assert!(!all_methods_are_real_reserved(&mixed));
+    }
+
+    #[test]
+    fn test_usage_message_names_mirror_files() {
+        let mut project = Project::default();
+        project.parsed_files.insert(
+            PathBuf::from("foo.rs"),
+            syn::parse_str(
+                "pub struct Foo;\nimpl Foo { pub fn run(&self) {} pub fn stop(&self) {} }\n",
+            )
+            .unwrap(),
+        );
+        let diags = check(&DelegateMacro, &project);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("methods/foo/run.rs"));
+        assert!(diags[0].message.contains("methods/foo/stop.rs"));
     }
 }
 

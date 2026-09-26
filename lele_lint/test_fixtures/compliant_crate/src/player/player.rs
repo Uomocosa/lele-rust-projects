@@ -1,3 +1,5 @@
+use atomic_delegate_macros::atomic_delegates;
+
 use crate::player;
 
 pub struct Player {
@@ -14,11 +16,13 @@ impl Default for Player {
     }
 }
 
-#[rustfmt::skip]
 impl Player {
-    pub fn new() -> Self { player::player_new::new() }
+    pub fn new() -> Self { Self::default() }
+}
 
-    pub fn with_name(self, name: String) -> Self { player::player_with_name::with_name(self, name) }
+#[atomic_delegates]
+impl Player {
+    pub fn with_name(self, name: String) -> Self {}
 }
 
 #[cfg(test)]

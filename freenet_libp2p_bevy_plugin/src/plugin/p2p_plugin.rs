@@ -1,4 +1,4 @@
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::App;
 use derive_more::Deref;
 
@@ -8,7 +8,7 @@ use crate::plugin;
 #[derive(Deref)]
 pub struct P2PPlugin<T: p2p::Message>(pub plugin::Config<T>);
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl<T: p2p::Message> P2PPlugin<T> {
     pub fn build_plugin(&self, app: &mut App) {}
 }

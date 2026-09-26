@@ -182,10 +182,8 @@ fn dunder_folder(project: &Project) -> Option<String> {
 
 // needed helper: constants.rs target path for a domain directory
 fn constants_target(project: &Project, dir: &Path) -> PathBuf {
-    if project.container_placement {
-        if let Some(folder) = dunder_folder(project) {
-            return dir.join(folder).join("constants.rs");
-        }
+    if let Some(folder) = dunder_folder(project) {
+        return dir.join(folder).join("constants.rs");
     }
     if dir.as_os_str().is_empty() {
         PathBuf::from("constants.rs")
@@ -259,11 +257,11 @@ mod tests {
         let project = Project::default();
         assert_eq!(
             sibling_constants(&PathBuf::from("discover.rs"), &project),
-            PathBuf::from("constants.rs")
+            PathBuf::from("__basic__/constants.rs")
         );
         assert_eq!(
             sibling_constants(&PathBuf::from("checkers/foo.rs"), &project),
-            PathBuf::from("checkers/constants.rs")
+            PathBuf::from("checkers/__basic__/constants.rs")
         );
     }
 

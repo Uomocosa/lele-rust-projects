@@ -3,7 +3,7 @@ use derive_more::{Deref, DerefMut};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deref, DerefMut)]
 pub struct ClickCounter(pub i32);
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl ClickCounter {
     pub fn increment(&mut self) {}
     pub fn add(&mut self, delta: i32) {}

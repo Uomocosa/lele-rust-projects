@@ -1,3 +1,5 @@
+use atomic_delegate_macros::atomic_delegates;
+
 use crate::settings;
 
 pub struct Settings {
@@ -14,9 +16,9 @@ impl Default for Settings {
     }
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl Settings {
-    pub fn load() -> Self { settings::settings_load::load() }
+    pub fn load() -> Self {}
 }
 
 #[cfg(test)]

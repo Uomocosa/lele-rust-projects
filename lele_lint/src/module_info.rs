@@ -1,12 +1,12 @@
 // needed helper: syn parsing utilities for mod.rs declarations
 use std::path::{Path, PathBuf};
 
+use atomic_delegate_macros::atomic_delegates;
+
 use crate::Entry;
 use crate::ModDecl;
 use crate::ModuleInfoMap;
 use crate::Reexport;
-
-use crate::module_info_build;
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
@@ -15,11 +15,9 @@ pub struct ModuleInfo {
     pub reexports: Vec<Reexport>,
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl ModuleInfo {
-    pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
-        module_info_build::build(_src_dir, entries)
-    }
+    pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {}
 }
 
 #[cfg(test)]

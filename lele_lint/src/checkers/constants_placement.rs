@@ -1,8 +1,8 @@
 use crate::checkers;
 use crate::Checker;
-use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
+use atomic_delegate_macros::atomic_delegates;
 
 pub struct ConstantsPlacement;
 
@@ -18,11 +18,9 @@ impl Checker for ConstantsPlacement {
     fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::constants_placement_check::check(self, project) }
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl ConstantsPlacement {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        checkers::constants_placement_register::register(checkers, config)
-    }
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
 }
 
 // no test_usage necessary

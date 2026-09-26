@@ -1,4 +1,4 @@
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::App;
 use derive_more::Deref;
 
@@ -15,7 +15,7 @@ impl Plugin {
     }
 }
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl Plugin {
     pub fn build_plugin(&self, app: &mut App) {}
 }

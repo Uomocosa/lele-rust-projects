@@ -107,8 +107,6 @@ fn collection_name(ty: &syn::Type) -> Option<&'static str> {
                 None
             }
         }
-        // Rc<[T]> and Arc<[T]> are currently accepted; needs further investigation
-        // whether shared-ownership slices follow the same singular-newtype rule.
         _ => None,
     }
 }

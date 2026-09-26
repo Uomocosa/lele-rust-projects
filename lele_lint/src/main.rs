@@ -39,8 +39,7 @@ fn main() {
     let args = Args::parse();
 
     if args.checker_list {
-        let config = Config::default();
-        let checkers = build_checkers(&config);
+        let checkers = build_checkers();
         print_checker_list(&checkers);
         return;
     }
@@ -73,7 +72,7 @@ fn main() {
         return;
     }
 
-    let checkers = build_checkers(&config);
+    let checkers = build_checkers();
 
     let mut all_diags = Vec::new();
     for checker in &checkers {

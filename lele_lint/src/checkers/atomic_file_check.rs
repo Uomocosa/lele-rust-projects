@@ -62,8 +62,7 @@ pub(crate) fn check(
     diags
 }
 
-// needed helper: SHAPE-F fn-file purity — a file whose primary item is a fn
-// may hold private helpers but no exposed (`pub`/`pub(crate)`) types or consts
+// needed helper: SHAPE-F fn-file purity
 fn check_fn_file_purity(
     file: &syn::File,
     file_stem: &str,

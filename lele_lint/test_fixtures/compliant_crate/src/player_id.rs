@@ -1,11 +1,12 @@
+use atomic_delegate_macros::atomic_delegates;
 use derive_more::Deref;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deref)]
 pub struct PlayerId(pub u64);
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl PlayerId {
-    pub fn as_u64(self) -> u64 { *self }
+    pub fn as_u64(self) -> u64 {}
 }
 
 #[cfg(test)]

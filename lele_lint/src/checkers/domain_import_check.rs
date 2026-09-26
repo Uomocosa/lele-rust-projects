@@ -1,10 +1,9 @@
-use std::path::Path;
+use syn::spanned::Spanned;
 
 use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
-use crate::Entry;
 use crate::Project;
 use crate::Severity;
 
@@ -18,16 +17,14 @@ pub(crate) fn check(
         for item in &file.items {
             if let syn::Item::Use(item_use) = item {
                 if let Some(msg) = check_import(item_use, &project.dunder) {
-                    if let Some(line) = find_use_line(&project.entries, rel_path, item_use) {
-                        diags.push(Diagnostic {
-                            file: project.src_dir.join(rel_path),
-                            line,
-                            col: 0,
-                            code: "E011".to_string(),
-                            message: msg,
-                            severity: Severity::Error,
-                        });
-                    }
+                    diags.push(Diagnostic {
+                        file: project.src_dir.join(rel_path),
+                        line: find_use_line(item_use),
+                        col: 0,
+                        code: "E011".to_string(),
+                        message: msg,
+                        severity: Severity::Error,
+                    });
                 }
             }
         }
@@ -87,25 +84,21 @@ fn collect_use_segments(tree: &syn::UseTree) -> Vec<String> {
     }
 }
 
-// needed helper: source line lookup for use statements
-// Known limitation: reports the first `use crate::` line in the file, not the line
-// of the specific import — diagnostics on multi-import files point at the wrong line.
-fn find_use_line(entries: &[Entry], rel_path: &Path, _item_use: &syn::ItemUse) -> Option<usize> {
-    let entry = entries.iter().find(|e| e.relative_path == rel_path)?;
-    let content = std::fs::read_to_string(&entry.absolute_path).ok()?;
-
-    for (i, line) in content.lines().enumerate() {
-        if line.trim().starts_with("use crate::") && line.contains(";") {
-            return Some(i.saturating_add(1));
-        }
-    }
-    None
+// needed helper: 1-based source line of a use statement via its span
+fn find_use_line(item_use: &syn::ItemUse) -> usize {
+    item_use.span().start().line
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{check_import, is_pub_use};
+    use std::path::PathBuf;
+
+    use super::super::domain_import::DomainImport;
+    use super::{check, check_import, is_pub_use};
     use crate::Dunder;
+    use crate::Entry;
+    use crate::EntryKind;
+    use crate::Project;
     use syn::parse_quote;
 
     #[test]
@@ -148,6 +141,27 @@ mod tests {
     fn test_usage_still_flags_direct_non_stutter_import() {
         let u: syn::ItemUse = parse_quote! { use crate::module_info::ModuleInfoMap; };
         assert!(check_import(&u, &Dunder::default()).is_some());
+    }
+
+    #[test]
+    fn test_usage_reports_offending_line() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = "use crate::player;\nuse crate::player::PlayerId;\n";
+        let absolute_path = dir.path().join("probe.rs");
+        std::fs::write(&absolute_path, source).unwrap();
+        let mut project = Project::default();
+        project.src_dir = dir.path().to_path_buf();
+        project.entries.push(Entry {
+            relative_path: PathBuf::from("probe.rs"),
+            absolute_path,
+            kind: EntryKind::File,
+        });
+        project
+            .parsed_files
+            .insert(PathBuf::from("probe.rs"), syn::parse_str(source).unwrap());
+        let diags = check(&DomainImport, &project);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].line, 2);
     }
 }
 

@@ -1,14 +1,10 @@
 use std::collections::BTreeMap;
 
 use crate::common;
-use crate::Layout;
 use crate::Project;
 
 pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, common::DeclaredType> {
     let mut map: BTreeMap<String, common::DeclaredType> = BTreeMap::new();
-    if project.layout != Layout::Methods {
-        return map;
-    }
     let cfg_map = common::module_cfgs::build(&project.module_info);
     for (rel_path, file) in &project.parsed_files {
         let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
@@ -28,7 +24,7 @@ pub(crate) fn collect_declared(project: &Project) -> BTreeMap<String, common::De
             if common::self_type_last(&impl_block.self_ty).as_deref() != Some(primary.as_str()) {
                 continue;
             }
-            if !common::has_atomic_delegate(&impl_block.attrs) {
+            if !common::has_atomic_delegates(&impl_block.attrs) {
                 continue;
             }
             let entry = map.entry(type_snake.clone()).or_default();
@@ -50,17 +46,15 @@ mod tests {
     use std::path::PathBuf;
 
     use super::collect_declared;
-    use crate::Layout;
     use crate::Project;
 
     #[test]
     fn test_usage() {
         let mut project = Project {
-            layout: Layout::Methods,
             ..Project::default()
         };
         let file: syn::File = syn::parse_str(
-            "pub struct ClickCounter(pub i32);\n#[atomic_delegate]\nimpl ClickCounter { pub fn add(&mut self) {} }",
+            "pub struct ClickCounter(pub i32);\n#[atomic_delegates]\nimpl ClickCounter { pub fn add(&mut self) {} }",
         )
         .unwrap();
         project

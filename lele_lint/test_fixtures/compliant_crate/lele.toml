@@ -1,2 +1,1 @@
-[lele.lint.checkers]
-container_placement = false
+[lele.lint]

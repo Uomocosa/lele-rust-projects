@@ -2,15 +2,12 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::project_apply_layout;
-use crate::project_discover;
-use crate::project_find_cargo_root;
-use crate::project_get_parsed;
+use atomic_delegate_macros::atomic_delegates;
+
 use crate::Config;
 use crate::Dunder;
 use crate::Entry;
 use crate::Error;
-use crate::Layout;
 use crate::ModuleInfoMap;
 
 #[derive(Default)]
@@ -20,32 +17,26 @@ pub struct Project {
     pub entries: Vec<Entry>,
     pub module_info: ModuleInfoMap,
     pub parsed_files: HashMap<PathBuf, syn::File>,
-    pub layout: Layout,
     pub dunder: Dunder,
-    pub container_placement: bool,
     pub methods_dir: Option<PathBuf>,
     pub methods_entries: Vec<Entry>,
     pub methods_parsed_files: HashMap<PathBuf, syn::File>,
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl Project {
-    pub fn get_parsed(&self, rel_path: &Path) -> Option<&syn::File> {
-        project_get_parsed::get_parsed(self, rel_path)
-    }
-    pub fn apply_layout(&mut self, config: &Config) -> Result<(), Error> {
-        project_apply_layout::apply_layout(self, config)
-    }
+    pub fn get_parsed(&self, rel_path: &Path) -> Option<&syn::File> {}
+    pub fn apply_layout(&mut self, config: &Config) -> Result<(), Error> {}
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl Project {
-    pub fn discover(start_dir: Option<&Path>, scan_folders: Option<&[String]>) -> Result<Self, Error> {
-        project_discover::discover(start_dir, scan_folders)
+    pub fn discover(
+        start_dir: Option<&Path>,
+        scan_folders: Option<&[String]>,
+    ) -> Result<Self, Error> {
     }
-    pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {
-        project_find_cargo_root::find_cargo_root(start)
-    }
+    pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {}
 }
 
 // no test_usage necessary

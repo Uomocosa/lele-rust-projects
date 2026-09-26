@@ -21,7 +21,7 @@ pub(crate) fn check(
                     continue;
                 }
 
-                if is_atomic_delegate(impl_block) {
+                if is_atomic_delegates(impl_block) {
                     continue;
                 }
 
@@ -64,7 +64,7 @@ fn type_name_string(ty: &syn::Type) -> String {
 }
 
 // needed helper: atomic delegate body detection
-fn is_atomic_delegate(impl_block: &syn::ItemImpl) -> bool {
+fn is_atomic_delegates(impl_block: &syn::ItemImpl) -> bool {
     if impl_block.items.is_empty() {
         return false;
     }
@@ -103,7 +103,7 @@ fn has_any_real_constructor(impl_block: &syn::ItemImpl) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{has_any_real_constructor, is_atomic_delegate};
+    use super::{has_any_real_constructor, is_atomic_delegates};
     use syn::ItemImpl;
 
     #[test]
@@ -111,7 +111,7 @@ mod tests {
         let code =
             "#[rustfmt::skip] impl Default for Bar { fn default() -> Self { Bar { x: 1 } } }";
         let parsed: ItemImpl = syn::parse_str(code).unwrap();
-        assert!(!is_atomic_delegate(&parsed));
+        assert!(!is_atomic_delegates(&parsed));
     }
 
     #[test]
@@ -121,7 +121,7 @@ mod tests {
         )
         .unwrap();
         assert!(has_any_real_constructor(&parsed));
-        assert!(!is_atomic_delegate(&parsed));
+        assert!(!is_atomic_delegates(&parsed));
     }
 
     #[test]
@@ -129,7 +129,7 @@ mod tests {
         let parsed: ItemImpl =
             syn::parse_str("impl Foo { pub fn new() -> Self { config_new::new() } }").unwrap();
         assert!(!has_any_real_constructor(&parsed));
-        assert!(is_atomic_delegate(&parsed));
+        assert!(is_atomic_delegates(&parsed));
     }
 
     #[test]
@@ -137,7 +137,7 @@ mod tests {
         let parsed: ItemImpl =
             syn::parse_str("impl Foo { pub fn new(x: i32) -> Self { Self { x } } }").unwrap();
         assert!(has_any_real_constructor(&parsed));
-        assert!(!is_atomic_delegate(&parsed));
+        assert!(!is_atomic_delegates(&parsed));
     }
 
     #[test]
@@ -145,7 +145,7 @@ mod tests {
         let parsed: ItemImpl =
             syn::parse_str("impl Foo { pub fn coop() -> Self { Self::new() } }").unwrap();
         assert!(has_any_real_constructor(&parsed));
-        assert!(!is_atomic_delegate(&parsed));
+        assert!(!is_atomic_delegates(&parsed));
     }
 }
 

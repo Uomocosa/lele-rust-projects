@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use derive_more::{Deref, DerefMut};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
@@ -20,13 +22,14 @@ pub(crate) fn check(
             visitor.visit_file(file);
         }
         for hit in hits {
+            let (import, replacement) = suggestion(rel_path, &hit.path);
             diags.push(Diagnostic {
                 file: project.src_dir.join(rel_path),
                 line: hit.line,
                 col: 0,
                 code: "E033".to_string(),
                 message: format!(
-                    "`{}` used outside `#[cfg(test)]` — add `use crate::<domain>;` at the top of the file and reference `<domain>::…` instead",
+                    "`{}` used outside `#[cfg(test)]` — write `{replacement}` instead and add `{import}` at the top of the file",
                     hit.path
                 ),
                 severity: Severity::Error,
@@ -94,6 +97,34 @@ impl<'ast> Visit<'ast> for SuperPathVisitor<'_> {
     }
 }
 
+// needed helper: concrete import + replacement for a super-path hit
+fn suggestion(rel_path: &Path, hit: &str) -> (String, String) {
+    let Some(rest) = hit.strip_prefix("super::") else {
+        return generic_suggestion();
+    };
+    if rest.starts_with("super::") {
+        return generic_suggestion();
+    }
+    let mut parts = rel_path.components();
+    let first = parts.next().and_then(|c| c.as_os_str().to_str());
+    match first {
+        Some(domain) if parts.next().is_some() => {
+            (format!("use crate::{domain};"), format!("{domain}::{rest}"))
+        }
+        _ => {
+            let head = rest.split("::").next().unwrap_or(rest);
+            (format!("use crate::{head};"), rest.to_string())
+        }
+    }
+}
+
+// needed helper: fallback suggestion when no concrete fix applies
+fn generic_suggestion() -> (String, String) {
+    (
+        "use crate::<domain>;".to_string(),
+        "<domain>::…".to_string(),
+    )
+}
 // needed helper: cfg(test) attribute detection on any item
 fn has_cfg_test(attrs: &[syn::Attribute]) -> bool {
     attrs.iter().any(|attr| {
@@ -120,7 +151,11 @@ fn use_tree_string(tree: &syn::UseTree) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::SuperPathVisitor;
+    use std::path::PathBuf;
+
+    use super::super::no_super_imports::NoSuperImports;
+    use super::{check, SuperPathVisitor};
+    use crate::Project;
     use syn::visit::Visit;
 
     fn hit_lines(src: &str) -> Vec<usize> {
@@ -154,6 +189,31 @@ mod tests {
             hit_lines("#[cfg(test)]\nfn helper() { super::a::b(); }\n"),
             Vec::<usize>::new()
         );
+    }
+
+    #[test]
+    fn test_usage_message_names_domain_fix() {
+        let mut project = Project::default();
+        project.parsed_files.insert(
+            PathBuf::from("checkers/probe.rs"),
+            syn::parse_str("use super::probe_check;\n").unwrap(),
+        );
+        let diags = check(&NoSuperImports, &project);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("use crate::checkers;"));
+        assert!(diags[0].message.contains("checkers::probe_check"));
+    }
+
+    #[test]
+    fn test_usage_message_names_root_fix() {
+        let mut project = Project::default();
+        project.parsed_files.insert(
+            PathBuf::from("probe.rs"),
+            syn::parse_str("use super::sibling;\n").unwrap(),
+        );
+        let diags = check(&NoSuperImports, &project);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("use crate::sibling;"));
     }
 }
 

@@ -96,8 +96,6 @@ fn count_unannotated_private_helpers(file: &syn::File, source: &str) -> usize {
             _ => None,
         })
         .filter(|func| {
-            // `line` is 1-based; step back over blank lines and attributes to reach
-            // the nearest line that could carry the annotation.
             let line = func.sig.fn_token.span().start().line;
             let mut idx = line.saturating_sub(1);
 

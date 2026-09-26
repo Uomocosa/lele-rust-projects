@@ -1,18 +1,12 @@
-use std::collections::HashMap;
-
 use serde::Deserialize;
 
 use crate::basic;
 use crate::Dunder;
 
 #[derive(Deserialize, Debug, Default)]
-pub struct LeleLintSection {
+pub struct LeleTomlLintSections {
     #[serde(default)]
-    pub checkers: HashMap<String, bool>,
-    #[serde(default)]
-    pub layout: Option<String>,
-    #[serde(default)]
-    pub dunder: Dunder,
+    pub dunder_whitelist: Dunder,
 }
 
 #[derive(Debug)]

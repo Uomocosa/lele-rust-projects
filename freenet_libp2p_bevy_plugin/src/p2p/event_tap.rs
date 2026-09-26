@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::Resource;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
@@ -13,7 +13,7 @@ pub struct EventTap {
     pub rx: Mutex<Option<UnboundedReceiver<TapEvent>>>,
 }
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl EventTap {
     pub fn take_rx(&self) -> Option<UnboundedReceiver<TapEvent>> {}
 }

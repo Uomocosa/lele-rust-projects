@@ -42,9 +42,6 @@ pub(crate) fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    if !project.container_placement {
-        return diags;
-    }
     let Some(folder) = canonical_folder(project) else {
         return diags;
     };
@@ -308,7 +305,7 @@ fn has_behavior(file: &syn::File, type_name: &str) -> bool {
         let syn::Item::Impl(impl_block) = item else {
             return false;
         };
-        if common::has_atomic_delegate(&impl_block.attrs) {
+        if common::has_atomic_delegates(&impl_block.attrs) {
             return true;
         }
         common::self_type_last(&impl_block.self_ty).as_deref() == Some(type_name)
@@ -334,10 +331,7 @@ mod tests {
     use crate::Project;
 
     fn project(files: &[(&str, &str)]) -> Project {
-        let mut project = Project {
-            container_placement: true,
-            ..Project::default()
-        };
+        let mut project = Project::default();
         for (path, source) in files {
             let file: syn::File = syn::parse_str(source).unwrap();
             project.parsed_files.insert(PathBuf::from(path), file);

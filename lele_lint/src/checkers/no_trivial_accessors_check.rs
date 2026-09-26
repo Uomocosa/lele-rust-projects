@@ -108,15 +108,12 @@ fn is_builder(method: &syn::ImplItemFn) -> bool {
     let Some(receiver) = method.sig.receiver() else {
         return false;
     };
-    // receiver is `self` by value (no reference, no mut)
     if receiver.reference.is_some() {
         return false;
     }
-    // must have exactly one extra param and return Self
     if method.sig.inputs.len() != 2 {
         return false;
     }
-    // return type contains Self
     match &method.sig.output {
         syn::ReturnType::Type(_, ty) => {
             let s = quote::quote!(#ty).to_string();
@@ -165,7 +162,6 @@ fn is_trivial_accessor(method: &syn::ImplItemFn, pub_fields: &HashSet<String>) -
     let sig = &method.sig;
 
     let receiver = sig.receiver()?;
-    // &self (not &mut, not self by value)
     if receiver.reference.is_none() || receiver.mutability.is_some() {
         return None;
     }
@@ -222,7 +218,6 @@ fn extract_assign_field(
     sig: &syn::Signature,
     pub_fields: &HashSet<String>,
 ) -> Option<String> {
-    // left must be self.field
     let field_name = match &*assign.left {
         syn::Expr::Field(field) => {
             if let syn::Member::Named(named) = &field.member {
@@ -255,14 +250,12 @@ fn extract_assign_field(
     let right = &*assign.right;
     let right_str = quote::quote!(#right).to_string().replace(' ', "");
     let param_str = param_ident.replace(' ', "");
-    // allow `v`, `v.clone()`, `v.to_owned()` as trivial RHS
     if right_str == param_str
         || right_str == format!("{param_str}.clone()")
         || right_str == format!("{param_str}.to_owned()")
     {
         return Some(field_name);
     }
-    // clone_from pattern: not assign, handled separately — keep simple
     None
 }
 

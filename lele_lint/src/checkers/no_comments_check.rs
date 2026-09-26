@@ -5,7 +5,6 @@ use crate::common;
 use crate::Diagnostic;
 use crate::Entry;
 use crate::EntryKind;
-use crate::Layout;
 use crate::Project;
 use crate::Severity;
 
@@ -14,9 +13,6 @@ pub(crate) fn check(
     project: &Project,
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
-    if project.layout != Layout::Methods {
-        return diags;
-    }
     scan_entries(&project.entries, &project.src_dir, &mut diags);
     if let Some(methods_dir) = &project.methods_dir {
         scan_entries(&project.methods_entries, methods_dir, &mut diags);

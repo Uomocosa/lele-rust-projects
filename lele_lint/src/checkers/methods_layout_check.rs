@@ -4,7 +4,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::EntryKind;
-use crate::Layout;
 use crate::Project;
 use crate::Severity;
 
@@ -13,9 +12,6 @@ pub(crate) fn check(
     project: &Project,
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
-    if project.layout != Layout::Methods {
-        return diags;
-    }
     let declared = common::collect_declared(project);
 
     for (type_snake, declared_type) in &declared {
@@ -46,7 +42,7 @@ pub(crate) fn check(
                     project,
                     &rel,
                     format!(
-                        "missing `methods/{type_snake}/{method}.rs` for `{type_snake}::{method}`"
+                        "missing `methods/{type_snake}/{method}.rs` for `{type_snake}::{method}` — create it with `pub fn {method}` and a `test_usage` test"
                     ),
                 )),
             }
@@ -195,6 +191,34 @@ fn file_stem(rel: &Path) -> Option<String> {
     rel.file_stem()
         .and_then(|stem| stem.to_str())
         .map(str::to_string)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::super::methods_layout::MethodsLayout;
+    use super::check;
+    use crate::Project;
+
+    #[test]
+    fn test_usage_missing_body_names_remediation() {
+        let mut project = Project::default();
+        project.parsed_files.insert(
+            PathBuf::from("widget.rs"),
+            syn::parse_str(
+                "pub struct Widget;\n#[atomic_delegates]\nimpl Widget { pub fn spin(&self) {} }\n",
+            )
+            .unwrap(),
+        );
+        let diags = check(&MethodsLayout, &project);
+        let body = diags
+            .iter()
+            .find(|d| d.message.contains("methods/widget/spin.rs"))
+            .expect("missing-body diagnostic");
+        assert!(body.message.contains("pub fn spin"));
+        assert!(body.message.contains("test_usage"));
+    }
 }
 
 // no test_usage necessary

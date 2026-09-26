@@ -1,8 +1,8 @@
 mod player;
-mod player_new;
-mod player_with_name;
 pub mod bevy_systems;
-mod event;
 
+#[path = "__basic__/mod.rs"]
+pub mod basic;
+
+pub use basic::enums::Event;
 pub use player::Player;
-pub use event::Event;

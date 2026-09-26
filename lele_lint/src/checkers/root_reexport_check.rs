@@ -61,8 +61,7 @@ pub(crate) fn check(
     diags
 }
 
-// needed helper: SHAPE-F fn flatten — stutter fn-file `stem.rs` holding `pub fn stem`
-// requires private `mod stem;` plus `pub use stem::stem;` in lib.rs
+// needed helper: SHAPE-F fn flatten
 fn missing_fn_flatten(stem: &str, file: &syn::File, lib: &syn::File) -> Vec<String> {
     let mut fns = Vec::new();
     for item in &file.items {

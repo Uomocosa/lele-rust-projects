@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::net_id;
@@ -12,7 +12,7 @@ pub struct Config<T: p2p::Message> {
     pub event_rx: Mutex<Option<UnboundedReceiver<p2p::Event<T>>>>,
 }
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl<T: p2p::Message> Config<T> {
     pub fn take_event_rx(&self) -> Option<UnboundedReceiver<p2p::Event<T>>> {}
 }

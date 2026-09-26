@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use freenet_stdlib::client_api::ClientError;
 use freenet_stdlib::client_api::ClientRequest;
 use freenet_stdlib::client_api::HostResponse;
@@ -13,7 +13,7 @@ pub struct Client {
     pub(crate) read: tokio::sync::mpsc::UnboundedReceiver<Result<HostResponse, ClientError>>,
 }
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl Client {
     pub async fn connect(host: &str, port: u16) -> Result<Self, discovery::Error> {}
     pub fn send(&self, request: &ClientRequest<'_>) -> Result<(), discovery::Error> {}

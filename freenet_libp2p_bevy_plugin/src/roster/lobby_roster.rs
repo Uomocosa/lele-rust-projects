@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::Resource;
 use derive_more::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Resource, Deref, DerefMut, Serialize, Deserialize)]
 pub struct LobbyRoster(pub BTreeMap<String, BTreeMap<[u8; 32], String>>);
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl LobbyRoster {
     pub fn add_entry(&mut self, lobby: String, id: [u8; 32], addr: String) {}
     pub fn remove_entry(&mut self, lobby: &str, id: [u8; 32]) -> bool {}

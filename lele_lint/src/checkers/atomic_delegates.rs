@@ -1,8 +1,8 @@
 use crate::checkers;
 use crate::Checker;
-use crate::Config;
 use crate::Diagnostic;
 use crate::Project;
+use atomic_delegate_macros::atomic_delegates;
 
 pub struct AtomicDelegates;
 
@@ -18,11 +18,9 @@ impl Checker for AtomicDelegates {
     fn check(&self, project: &Project) -> Vec<Diagnostic> { checkers::atomic_delegates_check::check(self, project) }
 }
 
-#[rustfmt::skip]
+#[atomic_delegates]
 impl AtomicDelegates {
-    pub fn register(checkers: &mut Vec<Box<dyn Checker>>, config: &Config) {
-        checkers::atomic_delegates_register::register(checkers, config)
-    }
+    pub fn register(checkers: &mut Vec<Box<dyn Checker>>) {}
 }
 
 // no test_usage necessary

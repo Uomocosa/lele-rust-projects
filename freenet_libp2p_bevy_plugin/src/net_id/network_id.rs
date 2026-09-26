@@ -1,4 +1,4 @@
-use atomic_delegate_macros::atomic_delegate;
+use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::Resource;
 use derive_more::Deref;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct NetworkId(pub u64);
 
-#[atomic_delegate]
+#[atomic_delegates]
 impl NetworkId {
     pub fn from_peer(peer: &str) -> Self {}
 }

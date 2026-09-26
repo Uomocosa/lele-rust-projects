@@ -33,7 +33,7 @@ pub(crate) fn check(
         let Some(file) = project.parsed_files.get(rel_path) else {
             continue;
         };
-        if has_atomic_delegate(file, name) {
+        if has_atomic_delegates(file, name) {
             continue;
         }
         if has_real_inherent_method(file, name) {
@@ -138,7 +138,7 @@ fn collect_type_paths(ty: &syn::Type, names: &mut HashSet<String>) {
 }
 
 // needed helper: atomic delegate method presence check
-fn has_atomic_delegate(file: &syn::File, type_name: &str) -> bool {
+fn has_atomic_delegates(file: &syn::File, type_name: &str) -> bool {
     file.items.iter().any(|item| {
         let syn::Item::Impl(impl_block) = item else {
             return false;
@@ -146,7 +146,7 @@ fn has_atomic_delegate(file: &syn::File, type_name: &str) -> bool {
         if common::self_type_last(&impl_block.self_ty).as_deref() != Some(type_name) {
             return false;
         }
-        common::has_atomic_delegate(&impl_block.attrs) || impl_is_all_delegate(impl_block)
+        common::has_atomic_delegates(&impl_block.attrs) || impl_is_all_delegate(impl_block)
     })
 }
 
@@ -263,7 +263,7 @@ fn collect_refs_from_items(
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_defined_types, collect_embedded_type_names, has_atomic_delegate};
+    use super::{collect_defined_types, collect_embedded_type_names, has_atomic_delegates};
     use std::collections::HashMap;
 
     #[test]
@@ -295,27 +295,28 @@ mod tests {
         let mut map = HashMap::new();
         map.insert(
             std::path::PathBuf::from("config.rs"),
-            syn::parse_str("pub struct Config { pub sec: Option<LeleLintSection> }\n").unwrap(),
+            syn::parse_str("pub struct Config { pub sec: Option<LeleTomlLintSections> }\n")
+                .unwrap(),
         );
         let embedded = collect_embedded_type_names(&map);
         assert!(embedded.contains("Option"));
-        assert!(embedded.contains("LeleLintSection"));
+        assert!(embedded.contains("LeleTomlLintSections"));
     }
 
     #[test]
-    fn test_usage_has_atomic_delegate() {
+    fn test_usage_has_atomic_delegates() {
         let file: syn::File = syn::parse_str(
             "#[rustfmt::skip] impl Foo { pub fn new() -> Self { config_new::new() } }",
         )
         .unwrap();
-        assert!(has_atomic_delegate(&file, "Foo"));
+        assert!(has_atomic_delegates(&file, "Foo"));
     }
 
     #[test]
     fn test_usage_no_atomic_delegate() {
         let file: syn::File =
             syn::parse_str("impl Foo { pub fn new() -> Self { Self { x: 1 } } }").unwrap();
-        assert!(!has_atomic_delegate(&file, "Foo"));
+        assert!(!has_atomic_delegates(&file, "Foo"));
     }
 
     #[test]

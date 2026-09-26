@@ -8,6 +8,7 @@ name = "lele-lint"
 path = "src/main.rs"
 
 [dependencies]
+atomic_delegate_macros = { path = "../atomic_delegate_macros" }
 clap = { version = "=4.6.6", features = ["derive"] }
 lele_snake_case = { path = "../lele_snake_case" }
 walkdir = "=2.5.0"

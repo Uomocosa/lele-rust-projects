@@ -4,11 +4,6 @@ use crate::common;
 use crate::Error;
 use crate::Project;
 
-/// # Errors
-///
-/// Returns [`Error::NoMethodsDir`] when the project is not in the methods
-/// layout or has no `methods/` directory, and [`Error::Io`] when a generated
-/// index file cannot be written.
 pub fn sync_methods(project: &Project) -> Result<(), Error> {
     let Some(methods_dir) = &project.methods_dir else {
         return Err(Error::NoMethodsDir);
