@@ -20,6 +20,7 @@ impl Plugin {
     pub fn build_plugin(&self, app: &mut App) {}
 }
 
+#[rustfmt::skip]
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         self.build_plugin(app);

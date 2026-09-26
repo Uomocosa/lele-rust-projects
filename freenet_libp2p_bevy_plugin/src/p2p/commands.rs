@@ -1,4 +1,3 @@
-use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::Resource;
 use derive_more::{Deref, DerefMut};
 use serde::Serialize;
@@ -14,9 +13,11 @@ impl<T: p2p::Message> Default for Commands<T> {
     }
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl<T: p2p::Message> Commands<T> {
-    pub fn take_all(&mut self) -> Vec<p2p::Command<T>> {}
+    pub fn take_all(&mut self) -> Vec<p2p::Command<T>> {
+        self.split_off(0)
+    }
 }
 
 #[cfg(test)]

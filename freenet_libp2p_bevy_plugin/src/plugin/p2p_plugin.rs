@@ -13,6 +13,7 @@ impl<T: p2p::Message> P2PPlugin<T> {
     pub fn build_plugin(&self, app: &mut App) {}
 }
 
+#[rustfmt::skip]
 impl<T: p2p::Message> bevy::prelude::Plugin for P2PPlugin<T> {
     fn build(&self, app: &mut App) {
         self.build_plugin(app);

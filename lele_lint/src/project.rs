@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use atomic_delegate_macros::atomic_delegates;
 
+use crate::AllowWhitelistEntry;
 use crate::Config;
 use crate::Dunder;
 use crate::Entry;
@@ -18,6 +19,7 @@ pub struct Project {
     pub module_info: ModuleInfoMap,
     pub parsed_files: HashMap<PathBuf, syn::File>,
     pub dunder: Dunder,
+    pub clippy_allow_whitelist: Vec<AllowWhitelistEntry>,
     pub methods_dir: Option<PathBuf>,
     pub methods_entries: Vec<Entry>,
     pub methods_parsed_files: HashMap<PathBuf, syn::File>,

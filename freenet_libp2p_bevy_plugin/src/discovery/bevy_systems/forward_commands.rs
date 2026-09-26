@@ -1,10 +1,10 @@
-#![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
 
 use crate::discovery;
 use discovery::{Command, CommandSender};
 
 pub fn forward_commands(mut commands: MessageReader<Command>, sender: Res<CommandSender>) {
+    let sender = sender.into_inner();
     for command in commands.read() {
         sender.send(command.clone()).ok();
     }

@@ -1,4 +1,3 @@
-use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::Resource;
 use derive_more::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
@@ -9,9 +8,11 @@ use p2p::NetCommand;
 #[derive(Resource, Debug, Default, Deref, DerefMut, Serialize, Deserialize)]
 pub struct Outbox(pub Vec<NetCommand>);
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl Outbox {
-    pub fn take_all(&mut self) -> Vec<NetCommand> {}
+    pub fn take_all(&mut self) -> Vec<NetCommand> {
+        self.split_off(0)
+    }
 }
 
 #[cfg(test)]

@@ -7,6 +7,15 @@ use crate::Dunder;
 pub struct LeleTomlLintSections {
     #[serde(default)]
     pub dunder_whitelist: Dunder,
+    #[serde(default)]
+    pub clippy_allow_whitelist: Vec<AllowWhitelistEntry>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct AllowWhitelistEntry {
+    pub allow: String,
+    pub file: String,
+    pub reason: String,
 }
 
 #[derive(Debug)]

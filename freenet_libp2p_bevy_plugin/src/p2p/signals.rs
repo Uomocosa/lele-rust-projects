@@ -1,4 +1,3 @@
-use atomic_delegate_macros::atomic_delegates;
 use bevy::prelude::Resource;
 use tokio::sync::watch::{self, Receiver, Sender};
 
@@ -13,9 +12,12 @@ pub struct Signals {
     pub observed_rx: Receiver<Option<Vec<String>>>,
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl Signals {
-    pub fn subscribe(&self) -> (Receiver<Option<Ready>>, Receiver<Option<Vec<String>>>) {}
+    #[must_use]
+    pub fn subscribe(&self) -> (Receiver<Option<Ready>>, Receiver<Option<Vec<String>>>) {
+        (self.ready_rx.clone(), self.observed_rx.clone())
+    }
 }
 
 impl Signals {

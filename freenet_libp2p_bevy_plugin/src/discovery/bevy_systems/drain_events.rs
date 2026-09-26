@@ -1,10 +1,10 @@
-#![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
 
 use crate::discovery;
 use discovery::{Event, EventFeed};
 
 pub fn drain_events(feed: Res<EventFeed>, mut events: MessageWriter<Event>) {
+    let feed = feed.into_inner();
     let Ok(mut guard) = feed.lock() else {
         return;
     };

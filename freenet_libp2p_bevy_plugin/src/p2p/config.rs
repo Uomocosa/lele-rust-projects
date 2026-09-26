@@ -1,6 +1,5 @@
 use std::sync::Mutex;
 
-use atomic_delegate_macros::atomic_delegates;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::net_id;
@@ -12,9 +11,11 @@ pub struct Config<T: p2p::Message> {
     pub event_rx: Mutex<Option<UnboundedReceiver<p2p::Event<T>>>>,
 }
 
-#[atomic_delegates]
+#[rustfmt::skip]
 impl<T: p2p::Message> Config<T> {
-    pub fn take_event_rx(&self) -> Option<UnboundedReceiver<p2p::Event<T>>> {}
+    pub fn take_event_rx(&self) -> Option<UnboundedReceiver<p2p::Event<T>>> {
+        self.event_rx.lock().ok()?.take()
+    }
 }
 
 impl<T: p2p::Message> Config<T> {
@@ -31,4 +32,26 @@ impl<T: p2p::Message> Config<T> {
         }
     }
 }
-// no test_usage necessary
+
+#[cfg(test)]
+mod tests {
+    use derive_more::Deref;
+    use serde::{Deserialize, Serialize};
+    use tokio::sync::mpsc;
+
+    use super::Config;
+    use crate::net_id;
+    use crate::p2p;
+
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
+    struct Dummy(u32);
+
+    #[test]
+    fn test_usage() {
+        let (cmd_tx, _) = mpsc::unbounded_channel();
+        let (_, event_rx) = mpsc::unbounded_channel::<p2p::Event<Dummy>>();
+        let cfg = Config::new(net_id::NetworkId(1), cmd_tx, event_rx);
+        assert!(cfg.take_event_rx().is_some());
+        assert!(cfg.take_event_rx().is_none());
+    }
+}

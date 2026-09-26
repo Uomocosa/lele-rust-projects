@@ -7,7 +7,9 @@ pub use config::Config;
 #[path = "__basic__/mod.rs"]
 pub mod basic;
 pub use basic::enums::{EntryKind, Severity};
-pub use basic::structs::{Diagnostic, Entry, LeleTomlLintSections, ModDecl, Reexport};
+pub use basic::structs::{
+    AllowWhitelistEntry, Diagnostic, Entry, LeleTomlLintSections, ModDecl, Reexport,
+};
 pub use basic::type_aliases::ModuleInfoMap;
 pub mod dunder;
 pub use dunder::Dunder;

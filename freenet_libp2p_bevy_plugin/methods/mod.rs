@@ -1,13 +1,6 @@
 #[cfg(feature = "room_lobby")]
 pub mod client;
-pub mod commands;
-pub mod config;
-pub mod event_tap;
-pub mod events;
-pub mod lobby_roster;
 pub mod network_id;
-pub mod outbox;
 pub mod p2p_plugin;
 #[cfg(feature = "room_lobby")]
 pub mod plugin;
-pub mod signals;

@@ -6,6 +6,11 @@ use crate::Project;
 
 pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error> {
     project.dunder = config.dunder();
+    if let Some(section) = config.as_ref() {
+        project
+            .clippy_allow_whitelist
+            .clone_from(&section.clippy_allow_whitelist);
+    }
 
     let methods_dir = project.root.join("methods");
     if !methods_dir.is_dir() {
