@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,6 +20,18 @@ pub fn log_matches(path: &Path, needle: &str) -> usize {
         .lines()
         .filter(|line| line.contains(needle))
         .count()
+}
+
+/// Reads at most `max_bytes` from the head of a log (ANSI stripped), so huge
+/// run logs can be inspected for early bootstrap markers without loading GBs.
+#[must_use]
+pub fn read_head(path: &Path, max_bytes: u64) -> String {
+    let Ok(file) = std::fs::File::open(path) else {
+        return String::new();
+    };
+    let mut buf = Vec::new();
+    let _ = file.take(max_bytes).read_to_end(&mut buf);
+    strip_ansi(&String::from_utf8_lossy(&buf))
 }
 
 #[must_use]

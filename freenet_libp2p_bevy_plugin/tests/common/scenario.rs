@@ -6,7 +6,7 @@ use telegram_bot::send_video_best_effort;
 
 use super::{
     TerminalGuard, build_game, cleanup_stale, finish_record, last_tick, log_contains, poke,
-    require_xterm, spawn_xterm, speed_clip, start_record, tile, wakeup_screen,
+    read_head, require_x11, speed_clip, start_record, tile, wakeup_screen,
 };
 
 pub const DISCOVERY_BUDGET_SECS: u64 = 120;
@@ -79,6 +79,7 @@ struct Env {
     bin: PathBuf,
     dir: PathBuf,
     room: String,
+    token: String,
     transport: String,
     raw: PathBuf,
     clip: PathBuf,
@@ -117,7 +118,7 @@ pub async fn run_scenario(scenario: Scenario) -> Report {
 
 fn prepare(scenario: &Scenario) -> Result<Env, String> {
     wakeup_screen();
-    require_xterm()?;
+    require_x11()?;
     cleanup_stale();
     let build_start = Instant::now();
     let bin = build_game()?;
@@ -134,6 +135,7 @@ fn prepare(scenario: &Scenario) -> Result<Env, String> {
         bin,
         dir,
         room: format!("room-{stamp}"),
+        token: format!("lobby-e2e/{stamp}"),
         transport: std::env::var("LOBBY_TRANSPORT").unwrap_or_else(|_| "both".to_string()),
         raw,
         clip,
@@ -194,6 +196,7 @@ fn push_peer(
         &env.dir,
         username,
         action,
+        &env.token,
         &env.transport,
         windows,
     )?;
@@ -276,6 +279,7 @@ fn release(windows: Vec<TerminalGuard>) {
 
 fn build_caption(scenario: &Scenario, env: &Env, peers: &Peers, checks: &[Check]) -> String {
     let mut lines = vec![
+        freenet_status(env, &peers.logs),
         format!(
             "{} room={} transport={} peers={} · build {:.1}s",
             scenario.name, env.room, env.transport, scenario.peers, env.build_secs
@@ -296,6 +300,37 @@ fn build_caption(scenario: &Scenario, env: &Env, peers: &Peers, checks: &[Check]
             .to_string(),
     );
     lines.join("\n")
+}
+
+// needed helper: informational freenet network status line (no pass/fail)
+fn freenet_status(env: &Env, logs: &[PathBuf]) -> String {
+    let text = logs
+        .first()
+        .map_or_else(String::new, |log| read_head(log, 262_144));
+    let network = if text.contains("Replacing local gateways with gateways from remote index") {
+        "mainnet"
+    } else {
+        "local/isolated"
+    };
+    format!(
+        "running on: {network} gateway={} mdns=off transport={} token={}",
+        gateway_addr(&text),
+        env.transport,
+        env.token
+    )
+}
+
+// needed helper: extracts the first gateway ip:port advertised in the log head
+fn gateway_addr(text: &str) -> String {
+    const MARKER: &str = "gateway gateway=";
+    text.lines()
+        .find_map(|line| {
+            let index = line.find(MARKER)?;
+            let rest = line.get(index.checked_add(MARKER.len())?..)?;
+            let entry = rest.split_whitespace().next()?;
+            entry.split('@').next_back().map(str::to_string)
+        })
+        .unwrap_or_else(|| "none".to_string())
 }
 
 async fn send_clip(clip: Option<&Path>, caption: &str) {
@@ -319,12 +354,13 @@ fn early_report(scenario: &Scenario, detail: String) -> Report {
     }
 }
 
-// needed helper: spawns one xterm instance with its action arg
+// needed helper: spawns one app instance with its action/token args
 fn spawn_peer(
     bin: &Path,
     dir: &Path,
     username: &str,
     action: Option<&str>,
+    token: &str,
     transport: &str,
     windows: &mut Vec<TerminalGuard>,
 ) -> Result<PathBuf, String> {
@@ -332,6 +368,8 @@ fn spawn_peer(
     let mut args = vec![
         "--username".to_string(),
         username.to_string(),
+        "--token".to_string(),
+        token.to_string(),
         "--transport".to_string(),
         transport.to_string(),
     ];
@@ -339,7 +377,7 @@ fn spawn_peer(
         args.push("--action".to_string());
         args.push(action.to_string());
     }
-    let guard = spawn_xterm(bin, &args, username, &log)?;
+    let guard = super::spawn_app::spawn_app(bin, &args, username, &log)?;
     windows.push(guard);
     Ok(log)
 }

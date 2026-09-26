@@ -11,13 +11,13 @@ mod finish_record;
 pub use finish_record::finish_record;
 
 mod log_parse;
-pub use log_parse::{Tick, last_tick, log_contains, log_matches};
+pub use log_parse::{Tick, last_tick, log_contains, log_matches, read_head};
 
 mod poke;
 pub use poke::poke;
 
-mod require_xterm;
-pub use require_xterm::require_xterm;
+mod require_x11;
+pub use require_x11::require_x11;
 
 mod scenario;
 pub use scenario::{Report, Scenario, run_scenario};
@@ -25,8 +25,8 @@ pub use scenario::{Report, Scenario, run_scenario};
 mod shell_escape;
 pub use shell_escape::shell_escape;
 
-mod spawn_xterm;
-pub use spawn_xterm::spawn_xterm;
+mod spawn_app;
+pub use spawn_app::spawn_app;
 
 mod speed_clip;
 pub use speed_clip::speed_clip;

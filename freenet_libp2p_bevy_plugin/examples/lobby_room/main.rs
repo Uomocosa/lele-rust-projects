@@ -39,7 +39,10 @@ async fn main() {
     )));
     app.add_plugins(discovery::Plugin::new(discovery::Config {
         game_name: discovery::id::GameName("lobby_room_example".to_string()),
-        token: freenet_libp2p_bevy_plugin::game_token!(),
+        token: args.token.clone().map_or_else(
+            || freenet_libp2p_bevy_plugin::game_token!(),
+            discovery::id::GameToken,
+        ),
         timing: discovery::Timing::default(),
         transport,
         capacity: 8,
@@ -52,9 +55,12 @@ async fn main() {
     app.run();
 }
 
-// needed helper: stdout tracing so xterm captures every marker line
+// needed helper: stdout tracing so the run log captures every marker line
 fn init_tracing() {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_ansi(false)
+        .init();
 }

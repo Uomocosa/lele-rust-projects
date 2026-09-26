@@ -43,6 +43,8 @@ pub struct Args {
     pub username: String,
     #[arg(long)]
     pub action: Option<Action>,
+    #[arg(long)]
+    pub token: Option<String>,
     #[arg(long, value_enum, default_value = "both")]
     pub transport: TransportArg,
 }

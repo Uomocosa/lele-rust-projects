@@ -41,7 +41,7 @@ fn layout(count: usize) -> Vec<(u32, u32, i32, i32)> {
 
 // needed helper: positions one window by title, failing if it never appears
 fn place(title: &str, w: u32, h: u32, x: i32, y: i32) -> Result<(), String> {
-    for _ in 0..20 {
+    for _ in 0..30 {
         if let Some(id) = find_window_id(title) {
             let _ = Command::new("xdotool")
                 .args(["windowsize", &id, &w.to_string(), &h.to_string()])
@@ -52,11 +52,15 @@ fn place(title: &str, w: u32, h: u32, x: i32, y: i32) -> Result<(), String> {
             let _ = Command::new("wmctrl")
                 .args(["-r", title, "-e", &format!("0,{x},{y},{w},{h}")])
                 .output();
+            let _ = Command::new("xdotool")
+                .args(["windowactivate", &id])
+                .output();
+            let _ = Command::new("wmctrl").args(["-a", title]).output();
             return Ok(());
         }
         std::thread::sleep(Duration::from_millis(200));
     }
-    Err(format!("xterm window not found for title {title:?}"))
+    Err(format!("x11 window not found for title {title:?}"))
 }
 
 // needed helper: resolves an x11 window id by title via xdotool then wmctrl
