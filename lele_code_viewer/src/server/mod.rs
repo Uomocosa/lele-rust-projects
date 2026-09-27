@@ -1,3 +1,5 @@
+mod events_stream;
+pub use events_stream::events_stream;
 mod router;
 pub use router::router;
 mod serve;

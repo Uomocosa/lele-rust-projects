@@ -8,8 +8,13 @@ use crate::source;
 pub async fn serve(registry: project::Registry, bind: &str) -> Result<(), Error> {
     let projects = project::discover_projects(&registry.roots);
     println!("lele_code_viewer: {} projects discovered", projects.len());
+    let registry = Arc::new(registry);
+    if registry.watch {
+        project::start_watcher(&registry)?;
+        println!("lele_code_viewer: live reload on (watching opened projects)");
+    }
     let state = Arc::new(server::AppState {
-        registry: Arc::new(registry),
+        registry,
         projects: Arc::new(projects),
         hl: Arc::new(source::highlighter_new()),
     });

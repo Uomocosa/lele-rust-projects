@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::render::basic::enums;
 
 pub struct LinkConfig {
@@ -13,6 +15,14 @@ pub struct Nav {
     pub root: String,
     pub projects: Vec<NavProject>,
     pub view: enums::ViewKind,
+    pub live: Option<Live>,
+}
+
+pub struct Live {
+    pub events: String,
+    pub version: u64,
+    pub watch: String,
+    pub recent: HashMap<String, Vec<usize>>,
 }
 
 pub struct NavProject {

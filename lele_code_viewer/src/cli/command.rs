@@ -14,6 +14,8 @@ pub enum Command {
         bind: String,
         #[arg(long = "roots")]
         roots: Vec<PathBuf>,
+        #[arg(long)]
+        watch: bool,
     },
 }
 

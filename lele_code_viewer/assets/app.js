@@ -100,10 +100,135 @@
     }
   }
 
+  var LIVE_KEY = "lcv-live:";
+
+  function storageGet(key) {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function storageSet(key, value) {
+    try {
+      if (value === null) {
+        window.sessionStorage.removeItem(key);
+      } else {
+        window.sessionStorage.setItem(key, value);
+      }
+    } catch (err) {
+      return;
+    }
+  }
+
+  function liveReload() {
+    var open = [];
+    var nodes = document.querySelectorAll("details[data-key]");
+    for (var i = 0; i < nodes.length; i++) {
+      open.push([nodes[i].getAttribute("data-key"), nodes[i].open]);
+    }
+    storageSet(
+      LIVE_KEY + window.location.pathname,
+      JSON.stringify({ y: window.scrollY, open: open })
+    );
+    window.location.reload();
+  }
+
+  function restoreLiveState() {
+    var key = LIVE_KEY + window.location.pathname;
+    var raw = storageGet(key);
+    if (!raw) {
+      return;
+    }
+    storageSet(key, null);
+    var saved;
+    try {
+      saved = JSON.parse(raw);
+    } catch (err) {
+      return;
+    }
+    var states = {};
+    for (var i = 0; i < (saved.open || []).length; i++) {
+      states[saved.open[i][0]] = saved.open[i][1];
+    }
+    var nodes = document.querySelectorAll("details[data-key]");
+    for (var j = 0; j < nodes.length; j++) {
+      var name = nodes[j].getAttribute("data-key");
+      if (states[name] === true) {
+        nodes[j].open = true;
+      } else if (states[name] === false && !nodes[j].querySelector(".dot")) {
+        nodes[j].open = false;
+      }
+    }
+    window.scrollTo(0, saved.y || 0);
+  }
+
+  function relevant(feed, watch) {
+    if (feed.reset) {
+      return true;
+    }
+    var paths = feed.paths || [];
+    for (var i = 0; i < paths.length; i++) {
+      if (watch === "*" || paths[i] === watch) {
+        return true;
+      }
+      if (watch === "*.rs" && /\.rs$/.test(paths[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function setupLive() {
+    var url = document.body.getAttribute("data-events");
+    var watch = document.body.getAttribute("data-watch");
+    if (!url || !watch || typeof window.EventSource === "undefined") {
+      return;
+    }
+    var source = null;
+    function connect() {
+      if (source) {
+        return;
+      }
+      source = new window.EventSource(url);
+      source.addEventListener("change", function (event) {
+        var feed;
+        try {
+          feed = JSON.parse(event.data);
+        } catch (err) {
+          return;
+        }
+        if (relevant(feed, watch)) {
+          disconnect();
+          liveReload();
+        }
+      });
+    }
+    function disconnect() {
+      if (source) {
+        source.close();
+        source = null;
+      }
+    }
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        disconnect();
+      } else {
+        connect();
+      }
+    });
+    if (!document.hidden) {
+      connect();
+    }
+  }
+
   window.addEventListener("hashchange", highlightHash);
   window.addEventListener("load", function () {
     setupDrawer();
     setupProjectFilter();
     highlightHash();
+    restoreLiveState();
+    setupLive();
   });
 })();

@@ -2,6 +2,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::index;
+use crate::project;
 use crate::render;
 
 pub fn render_file_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig) -> String {
@@ -19,13 +20,23 @@ pub fn render_file_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig)
         "<div class=\"tree\"><details class=\"dir\" open><summary>{}/</summary>",
         render::escape(&root_name)
     ));
-    render_dir(&idx.root, &idx.root, cfg, 0, &mut body);
+    let recent = recent_of(cfg);
+    render_dir(&idx.root, &idx.root, cfg, &recent, &mut body);
     body.push_str("</details></div>");
     render::page_shell(cfg, "Files", &body)
 }
 
 // needed helper: recursive filesystem listing as nested collapsible lists
-fn render_dir(root: &Path, dir: &Path, cfg: &render::LinkConfig, depth: usize, out: &mut String) {
+fn render_dir(
+    root: &Path,
+    dir: &Path,
+    cfg: &render::LinkConfig,
+    recent: &[&str],
+    out: &mut String,
+) {
+    let depth = dir
+        .strip_prefix(root)
+        .map_or(0, |rel| rel.components().count());
     if depth > 12 {
         return;
     }
@@ -39,7 +50,7 @@ fn render_dir(root: &Path, dir: &Path, cfg: &render::LinkConfig, depth: usize, o
         };
         let name = entry.file_name().to_string_lossy().to_string();
         if file_type.is_dir() {
-            if skip_dir(&name) {
+            if project::is_hidden_dir(&name) {
                 continue;
             }
             items.push((true, name, entry.path()));
@@ -50,17 +61,28 @@ fn render_dir(root: &Path, dir: &Path, cfg: &render::LinkConfig, depth: usize, o
     items.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
     out.push_str("<ul class=\"tree-list\">");
     for (is_dir, name, path) in items {
+        let rel = path
+            .strip_prefix(root)
+            .map_or_else(|_| name.clone(), |p| p.to_string_lossy().to_string());
         if is_dir {
+            let prefix = format!("{rel}/");
+            let hot = recent.iter().any(|r| r.starts_with(&prefix));
             out.push_str(&format!(
-                "<li><details class=\"dir\"><summary>{}/</summary>",
-                render::escape(&name)
+                "<li><details class=\"dir\" data-key=\"{key}\"{open}><summary>{name}/{dot}</summary>",
+                key = render::escape(&rel),
+                open = if hot { " open" } else { "" },
+                name = render::escape(&name),
+                dot = dot(hot)
             ));
-            render_dir(root, &path, cfg, depth.saturating_add(1), out);
+            render_dir(root, &path, cfg, recent, out);
             out.push_str("</details></li>");
         } else {
+            let hot = recent.contains(&rel.as_str());
             out.push_str(&format!(
-                "<li class=\"file\">{}</li>",
-                file_link(root, &path, &name, cfg)
+                "<li class=\"file{}\">{}{}</li>",
+                if hot { " recent" } else { "" },
+                file_link(root, &path, &name, cfg),
+                dot(hot)
             ));
         }
     }
@@ -86,12 +108,22 @@ fn file_link(root: &Path, path: &Path, name: &str, cfg: &render::LinkConfig) -> 
     }
 }
 
-// needed helper: dirs never shown in the tree
-fn skip_dir(name: &str) -> bool {
-    matches!(
-        name,
-        "target" | ".git" | ".devenv" | "node_modules" | "__OLD__"
-    )
+// needed helper: recently changed paths from live mode (empty otherwise)
+fn recent_of(cfg: &render::LinkConfig) -> Vec<&str> {
+    cfg.nav
+        .as_ref()
+        .and_then(|nav| nav.live.as_ref())
+        .map(|live| live.recent.keys().map(String::as_str).collect())
+        .unwrap_or_default()
+}
+
+// needed helper: small marker for a recently changed file or a dir containing one
+fn dot(recent: bool) -> &'static str {
+    if recent {
+        "<span class=\"dot\"></span>"
+    } else {
+        ""
+    }
 }
 
 #[cfg(test)]
@@ -118,9 +150,31 @@ mod tests {
             nav: None,
         };
         let html = render_file_tree_page(&idx, &cfg);
+        assert!(!html.contains("class=\"dot\""));
+        let live_cfg = render::LinkConfig {
+            nav: Some(render::Nav {
+                current: "demo".to_string(),
+                name: "demo".to_string(),
+                root: String::new(),
+                projects: Vec::new(),
+                view: render::ViewKind::Files,
+                live: Some(render::Live {
+                    events: "/p/demo/events".to_string(),
+                    version: 1,
+                    watch: "*".to_string(),
+                    recent: std::collections::HashMap::from([("src/lib.rs".to_string(), vec![1])]),
+                }),
+            }),
+            ..cfg
+        };
+        let live_html = render_file_tree_page(&idx, &live_cfg);
+        assert!(live_html.contains(
+            "<details class=\"dir\" data-key=\"src\" open><summary>src/<span class=\"dot\">"
+        ));
+        assert!(live_html.contains("<li class=\"file recent\">"));
         assert!(html.contains("Files"));
         assert!(html.contains("href=\"/p/demo/file/src/lib.rs\""));
         assert!(html.contains("<details class=\"dir\" open>"));
-        assert!(html.contains("<details class=\"dir\"><summary>src/</summary>"));
+        assert!(html.contains("<details class=\"dir\" data-key=\"src\"><summary>src/</summary>"));
     }
 }

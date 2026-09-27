@@ -29,7 +29,7 @@ pub fn run() -> Result<(), Error> {
             println!("lele_code_viewer: exported to {}", out.display());
             Ok(())
         }
-        cli::Command::Serve { bind, roots } => {
+        cli::Command::Serve { bind, roots, watch } => {
             let roots = if roots.is_empty() {
                 default_roots()
             } else {
@@ -37,6 +37,7 @@ pub fn run() -> Result<(), Error> {
             };
             let registry = project::Registry {
                 roots,
+                watch,
                 ..project::Registry::default()
             };
             let runtime = tokio::runtime::Runtime::new()?;

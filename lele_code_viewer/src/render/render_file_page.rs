@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::path::Path;
 
 use crate::index;
@@ -20,6 +21,13 @@ pub fn render_file_page(
     let occurrences = idx.occurrences.get(file).unwrap_or(&empty);
     let rel = file.to_string_lossy();
     let mut body = format!("<h1 class=\"path\">{}</h1>", render::escape(&rel));
+    let changed = recent_lines(cfg, &rel);
+    if let Some(first) = changed.iter().min() {
+        body.push_str(&format!(
+            "<p class=\"changed-note\"><a href=\"#L{first}\">{} line(s) changed recently</a></p>",
+            changed.len()
+        ));
+    }
     if let Some(list) = idx.items_by_file.get(file) {
         body.push_str("<div class=\"chips\">");
         for &i in list {
@@ -34,8 +42,18 @@ pub fn render_file_page(
         }
         body.push_str("</div>");
     }
-    body.push_str(&source::render_html(&text, occurrences, hl, cfg));
+    body.push_str(&source::render_html(&text, occurrences, hl, cfg, &changed));
     Some(render::page_shell(cfg, &rel, &body))
+}
+
+// needed helper: lines changed by the latest live edit of this file
+fn recent_lines(cfg: &render::LinkConfig, rel: &str) -> HashSet<usize> {
+    cfg.nav
+        .as_ref()
+        .and_then(|nav| nav.live.as_ref())
+        .and_then(|live| live.recent.get(rel))
+        .map(|lines| lines.iter().copied().collect())
+        .unwrap_or_default()
 }
 
 // needed helper: plain-highlight fallback for .rs files outside the index (build.rs, tests/)

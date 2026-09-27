@@ -71,11 +71,13 @@ syn = { version = "=2.0.119", features = ["full", "extra-traits", "visit"] }
 proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
 derive_more = { version = "=1.0.0", features = ["deref", "deref_mut"] }
 axum = "=0.8.9"
-tokio = { version = "=1.53.1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tokio = { version = "=1.53.1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 syntect = { version = "=5.3.0", default-features = false, features = ["default-fancy"] }
 pulldown-cmark = "=0.13.4"
 percent-encoding = "=2.3.2"
 walkdir = "=2.5.0"
+notify = "=8.2.0"
+futures-util = "=0.3.34"
 
 [dev-dependencies]
 tempfile = "=3.27.0"

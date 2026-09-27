@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::hash::BuildHasher;
 
 use syntect::easy::HighlightLines;
 use syntect::highlighting::FontStyle;
@@ -8,11 +10,12 @@ use crate::index;
 use crate::render;
 use crate::source;
 
-pub fn render_html(
+pub fn render_html<S: BuildHasher>(
     text: &str,
     occurrences: &[index::Occurrence],
     hl: &source::Highlighter,
     cfg: &render::LinkConfig,
+    changed: &HashSet<usize, S>,
 ) -> String {
     let mut occ_by_line: HashMap<usize, Vec<&index::Occurrence>> = HashMap::new();
     for occ in occurrences {
@@ -27,7 +30,13 @@ pub fn render_html(
         let lineno = idx0.saturating_add(1);
         let chars = styled_chars(line, &mut highlighter, hl);
         let occs = occ_by_line.get(&lineno);
-        out.push_str(&render_line(lineno, &chars, occs, cfg));
+        out.push_str(&render_line(
+            lineno,
+            &chars,
+            occs,
+            cfg,
+            changed.contains(&lineno),
+        ));
     }
     out.push_str("</div>");
     out
@@ -59,6 +68,7 @@ fn render_line(
     chars: &[(char, Option<Style>)],
     occs: Option<&Vec<&index::Occurrence>>,
     cfg: &render::LinkConfig,
+    changed: bool,
 ) -> String {
     let mut opens: HashMap<usize, String> = HashMap::new();
     let mut closes: HashMap<usize, usize> = HashMap::new();
@@ -78,8 +88,9 @@ fn render_line(
             *entry = entry.saturating_add(1);
         }
     }
+    let class = if changed { "line changed" } else { "line" };
     let mut out = format!(
-        "<div class=\"line\" id=\"L{lineno}\"><span class=\"ln\">{lineno}</span><span class=\"cl\">"
+        "<div class=\"{class}\" id=\"L{lineno}\"><span class=\"ln\">{lineno}</span><span class=\"cl\">"
     );
     let mut span_open = false;
     let mut current = String::new();
@@ -151,8 +162,14 @@ mod tests {
             html: false,
             nav: None,
         };
-        let html = render_html("fn main() {}\n", &[], &hl, &cfg);
-        assert!(html.contains("id=\"L1\""));
+        let html = render_html(
+            "fn main() {}\n",
+            &[],
+            &hl,
+            &cfg,
+            &std::collections::HashSet::from([1]),
+        );
+        assert!(html.contains("<div class=\"line changed\" id=\"L1\">"));
         assert!(html.contains("fn"));
     }
 }

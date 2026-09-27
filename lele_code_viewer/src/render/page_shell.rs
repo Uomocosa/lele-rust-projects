@@ -15,11 +15,12 @@ aria-controls=\"drawer\" aria-expanded=\"false\">&#9776;</button>",
         None => ("", "Lele Code Viewer", title.to_string()),
     };
     let drawer = drawer_html(cfg);
+    let live = live_attrs(cfg);
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
 <title>{tab_title}</title><link rel=\"stylesheet\" href=\"{css}\">\
-<script defer src=\"{js}\"></script></head><body>\
+<script defer src=\"{js}\"></script></head><body{live}>\
 <header class=\"top\">{menu}\
 <a class=\"home\" href=\"{home}\">{label}</a>\
 <form class=\"search\" action=\"{search}\"><input name=\"q\" type=\"search\" placeholder=\"search\"></form>\
@@ -72,6 +73,22 @@ fn drawer_html(cfg: &render::LinkConfig) -> String {
     out
 }
 
+// needed helper: body data attributes that switch on live reload for this page
+fn live_attrs(cfg: &render::LinkConfig) -> String {
+    let Some(live) = cfg.nav.as_ref().and_then(|nav| nav.live.as_ref()) else {
+        return String::new();
+    };
+    if live.watch.is_empty() {
+        return String::new();
+    }
+    format!(
+        " data-events=\"{}?since={}\" data-watch=\"{}\"",
+        render::escape(&live.events),
+        live.version,
+        render::escape(&live.watch)
+    )
+}
+
 // needed helper: css class string for an active/inactive view icon
 fn view_class(active: bool) -> &'static str {
     if active { "view active" } else { "view" }
@@ -109,6 +126,12 @@ mod tests {
                     name: "demo_crate".to_string(),
                 }],
                 view: render::ViewKind::Files,
+                live: Some(render::Live {
+                    events: "/p/demo/events".to_string(),
+                    version: 7,
+                    watch: "*".to_string(),
+                    recent: std::collections::HashMap::new(),
+                }),
             }),
         };
         let html = page_shell(&with_nav, "Files", "<p>x</p>");
@@ -118,5 +141,7 @@ mod tests {
         assert!(html.contains("<a class=\"view active\" href=\"/p/demo/tree/file\">"));
         assert!(html.contains("Dependencies</a>"));
         assert!(html.contains("/home/u/demo"));
+        assert!(html.contains("<body data-events=\"/p/demo/events?since=7\" data-watch=\"*\">"));
+        assert!(!page_shell(&cfg, "x", "").contains("data-events"));
     }
 }

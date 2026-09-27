@@ -5,6 +5,7 @@
   --muted: #7d8590;
   --accent: #58a6ff;
   --border: #21262d;
+  --changed: #d29922;
   --mono: ui-monospace, Menlo, "SF Mono", monospace;
   --radius: 10px;
 }
@@ -227,4 +228,27 @@ body.drawer-open { overflow: hidden; }
   font-family: var(--mono); font-size: 12px;
   padding: 4px 10px; border-radius: 999px;
   background: rgba(88, 166, 255, .12); color: var(--accent);
+}
+
+.dot {
+  display: inline-block; flex: 0 0 auto;
+  width: 7px; height: 7px; margin-left: 6px; border-radius: 50%;
+  background: var(--changed);
+  vertical-align: middle;
+}
+.tree .file.recent > a { color: var(--changed); }
+.changed-note { margin: 4px 0 10px; font-size: 13px; }
+.changed-note a { color: var(--changed); }
+.code .line.changed {
+  background: rgba(210, 153, 34, .10);
+  box-shadow: inset 3px 0 0 var(--changed);
+  animation: changed-flash 2.4s ease-out;
+}
+.code .line.changed .ln { background: #1d1a12; color: var(--changed); }
+@keyframes changed-flash {
+  from { background: rgba(210, 153, 34, .38); }
+  to { background: rgba(210, 153, 34, .10); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .code .line.changed { animation: none; }
 }

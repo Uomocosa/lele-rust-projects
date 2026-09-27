@@ -13,13 +13,27 @@ pub fn index_for(
     {
         return Ok(hit.clone());
     }
+    let before = live_version(registry, &item.id);
     let built = Arc::new(index::build_index(&item.root)?);
-    if let Ok(mut cache) = registry.cache.write() {
-        cache.insert(item.id.clone(), built.clone());
+    if let Ok(live) = registry.live.lock() {
+        let after = live.projects.get(&item.id).map(|entry| entry.version);
+        if after == before
+            && let Ok(mut cache) = registry.cache.write()
+        {
+            cache.insert(item.id.clone(), built.clone());
+        }
     }
     Ok(built)
 }
 
+// needed helper: watch version of a project (None when not watched)
+fn live_version(registry: &project::Registry, id: &str) -> Option<u64> {
+    registry
+        .live
+        .lock()
+        .ok()
+        .and_then(|live| live.projects.get(id).map(|entry| entry.version))
+}
 #[cfg(test)]
 mod tests {
     use std::fs;

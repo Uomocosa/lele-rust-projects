@@ -25,4 +25,4 @@ pub use resolve_in_root::resolve_in_root;
 pub mod basic;
 pub use basic::enums::LinkKind;
 pub use basic::enums::ViewKind;
-pub use basic::structs::{LinkConfig, Nav, NavProject};
+pub use basic::structs::{LinkConfig, Live, Nav, NavProject};

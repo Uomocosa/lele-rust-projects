@@ -82,12 +82,12 @@ fn node_html(
     let out_links = uses.get(i).unwrap_or(&empty);
     let in_links = used_by.get(i).unwrap_or(&empty);
     let mut out = format!(
-        "<details class=\"dep-node\" id=\"m-{}\"><summary><span class=\"dep-name\">{}</span>\
-<span class=\"dep-count\">&rarr;{} &larr;{}</span></summary><div class=\"dep-body\">",
-        anchor(&node.module),
-        render::escape(&module_label(&node.module)),
-        out_links.len(),
-        in_links.len()
+        "<details class=\"dep-node\" id=\"m-{key}\" data-key=\"m-{key}\"><summary><span class=\"dep-name\">{name}</span>\
+<span class=\"dep-count\">&rarr;{uses} &larr;{used}</span></summary><div class=\"dep-body\">",
+        key = anchor(&node.module),
+        name = render::escape(&module_label(&node.module)),
+        uses = out_links.len(),
+        used = in_links.len()
     );
     push_links(idx, out_links, "&rarr;", "uses", &mut out);
     push_links(idx, in_links, "&larr;", "used by", &mut out);
@@ -189,7 +189,7 @@ mod tests {
         assert!(html.contains("base"));
         assert!(html.contains("app"));
         assert!(html.contains("std"));
-        assert!(html.contains("<details class=\"dep-node\" id=\"m-app\">"));
+        assert!(html.contains("<details class=\"dep-node\" id=\"m-app\" data-key=\"m-app\">"));
         assert!(html.contains("href=\"#m-base\">&rarr; base</a>"));
         assert!(html.contains("href=\"#m-app\">&larr; app</a>"));
         assert!(html.contains("L0 &middot; base"));

@@ -6,6 +6,8 @@ pub enum Error {
     Lint(#[from] lele_lint::Error),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("watch error: {0}")]
+    Watch(#[from] notify::Error),
     #[error("server error: {0}")]
     Server(String),
     #[error("not found: {0}")]
