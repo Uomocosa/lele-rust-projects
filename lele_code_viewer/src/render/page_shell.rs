@@ -5,18 +5,28 @@ pub fn page_shell(cfg: &render::LinkConfig, title: &str, body: &str) -> String {
     let js = render::href(cfg, render::LinkKind::Asset, "app.js");
     let home = render::href(cfg, render::LinkKind::Index, "");
     let search = render::href(cfg, render::LinkKind::Search, "");
+    let (menu, label, tab_title) = match &cfg.nav {
+        Some(nav) => (
+            "<button class=\"btn menu\" id=\"menu-toggle\" aria-label=\"menu\" \
+aria-controls=\"drawer\" aria-expanded=\"false\">&#9776;</button>",
+            nav.name.as_str(),
+            format!("{title} \u{b7} {}", nav.name),
+        ),
+        None => ("", "Lele Code Viewer", title.to_string()),
+    };
     let drawer = drawer_html(cfg);
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-<title>{title}</title><link rel=\"stylesheet\" href=\"{css}\">\
+<title>{tab_title}</title><link rel=\"stylesheet\" href=\"{css}\">\
 <script defer src=\"{js}\"></script></head><body>\
-<header class=\"top\"><button class=\"btn menu\" id=\"menu-toggle\" aria-label=\"menu\">&#9776;</button>\
-<a class=\"home\" href=\"{home}\">{title}</a>\
+<header class=\"top\">{menu}\
+<a class=\"home\" href=\"{home}\">{label}</a>\
 <form class=\"search\" action=\"{search}\"><input name=\"q\" type=\"search\" placeholder=\"search\"></form>\
 </header><div class=\"scrim\" id=\"scrim\"></div>{drawer}\
 <main>{body}</main></body></html>",
-        title = render::escape(title)
+        tab_title = render::escape(&tab_title),
+        label = render::escape(label)
     )
 }
 
@@ -43,20 +53,21 @@ fn drawer_html(cfg: &render::LinkConfig) -> String {
             name = render::escape(&project.name)
         ));
     }
-    out.push_str("</ul><div class=\"views\">");
+    out.push_str("</ul><nav class=\"views\">");
     out.push_str(&format!(
-        "<a class=\"{}\" href=\"{}tree/file\"><span class=\"ico\">&#128193;</span>Files</a>",
+        "<a class=\"{}\" href=\"{}tree/file\"><span class=\"ico\">&#128450;</span>Files</a>",
         view_class(nav.view == render::ViewKind::Files),
         cfg.prefix
     ));
     out.push_str(&format!(
-        "<a class=\"{}\" href=\"{}tree/deps\"><span class=\"ico\">&#128376;</span>Deps</a>",
+        "<a class=\"{}\" href=\"{}tree/deps\"><span class=\"ico\">&#128376;</span>Dependencies</a>",
         view_class(nav.view == render::ViewKind::Deps),
         cfg.prefix
     ));
     out.push_str(&format!(
-        "</div><div class=\"drawer-foot\">{}</div></aside>",
-        render::escape(&nav.current)
+        "</nav><div class=\"drawer-foot\"><div class=\"foot-name\">{}</div><div>{}</div></div></aside>",
+        render::escape(&nav.name),
+        render::escape(&nav.root)
     ));
     out
 }
@@ -82,6 +93,8 @@ mod tests {
         let html = page_shell(&cfg, "crate", "<p>x</p>");
         assert!(html.contains("<!doctype html>"));
         assert!(html.contains("assets/style.css"));
+        assert!(html.contains(">Lele Code Viewer</a>"));
+        assert!(!html.contains("menu-toggle"));
 
         let with_nav = render::LinkConfig {
             prefix: "/p/demo/".to_string(),
@@ -89,15 +102,21 @@ mod tests {
             html: false,
             nav: Some(render::Nav {
                 current: "demo".to_string(),
+                name: "demo_crate".to_string(),
+                root: "/home/u/demo".to_string(),
                 projects: vec![render::NavProject {
                     id: "demo".to_string(),
-                    name: "demo".to_string(),
+                    name: "demo_crate".to_string(),
                 }],
                 view: render::ViewKind::Files,
             }),
         };
-        let html = page_shell(&with_nav, "crate", "<p>x</p>");
+        let html = page_shell(&with_nav, "Files", "<p>x</p>");
         assert!(html.contains("menu-toggle"));
-        assert!(html.contains("href=\"/p/demo/tree/file\""));
+        assert!(html.contains("<a class=\"home\" href=\"/p/demo/\">demo_crate</a>"));
+        assert!(html.contains("<title>Files \u{b7} demo_crate</title>"));
+        assert!(html.contains("<a class=\"view active\" href=\"/p/demo/tree/file\">"));
+        assert!(html.contains("Dependencies</a>"));
+        assert!(html.contains("/home/u/demo"));
     }
 }

@@ -9,6 +9,8 @@ pub struct LinkConfig {
 
 pub struct Nav {
     pub current: String,
+    pub name: String,
+    pub root: String,
     pub projects: Vec<NavProject>,
     pub view: enums::ViewKind,
 }

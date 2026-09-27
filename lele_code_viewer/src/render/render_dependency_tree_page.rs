@@ -7,15 +7,20 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
     let graph = &idx.module_graph;
     let mut body = String::from("<h1>Dependencies</h1>");
     body.push_str(&format!(
-        "<p class=\"muted\">{} modules &middot; {} links</p>",
+        "<p class=\"muted\">{} modules &middot; {} links &middot; \
+<span class=\"arrow\">&rarr;</span> uses &middot; <span class=\"arrow\">&larr;</span> used by</p>",
         graph.nodes.len(),
         graph.edges.len()
     ));
 
-    let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
+    let mut uses: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
+    let mut used_by: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
     for edge in &graph.edges {
-        if let Some(list) = adjacency.get_mut(edge.from) {
+        if let Some(list) = uses.get_mut(edge.from) {
             list.push(edge.to);
+        }
+        if let Some(list) = used_by.get_mut(edge.to) {
+            list.push(edge.from);
         }
     }
 
@@ -23,20 +28,22 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
     for (i, node) in graph.nodes.iter().enumerate() {
         by_layer.entry(node.layer).or_default().push(i);
     }
+    let top = by_layer.keys().next_back().copied().unwrap_or(0);
 
     for (layer, nodes) in by_layer.iter().rev() {
         body.push_str(&format!(
-            "<section class=\"layer\"><div class=\"layer-tag\">L{layer}</div><div class=\"layer-nodes\">"
+            "<section class=\"layer\"><div class=\"layer-tag\">{}</div><div class=\"layer-nodes\">",
+            layer_tag(*layer, top)
         ));
         for &i in nodes {
-            body.push_str(&node_html(idx, i, &adjacency));
+            body.push_str(&node_html(idx, i, &uses, &used_by));
         }
         body.push_str("</div></section>");
     }
 
     if !graph.externals.is_empty() {
         body.push_str(
-            "<section class=\"layer externals\"><div class=\"layer-tag\">crates</div><div class=\"chips\">",
+            "<section class=\"layer externals\"><div class=\"layer-tag\">external crates</div><div class=\"chips\">",
         );
         for ext in &graph.externals {
             body.push_str(&format!(
@@ -50,44 +57,83 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
     render::page_shell(cfg, "Dependencies", &body)
 }
 
-// needed helper: one module node with its outgoing dependency links
-fn node_html(idx: &index::SymbolIndex, i: usize, adjacency: &[Vec<usize>]) -> String {
+// needed helper: layer heading, naming the base and the top layer
+fn layer_tag(layer: usize, top: usize) -> String {
+    if layer == 0 {
+        "L0 &middot; base".to_string()
+    } else if layer == top {
+        format!("L{layer} &middot; top")
+    } else {
+        format!("L{layer}")
+    }
+}
+
+// needed helper: one collapsible module node with its dependency links both ways
+fn node_html(
+    idx: &index::SymbolIndex,
+    i: usize,
+    uses: &[Vec<usize>],
+    used_by: &[Vec<usize>],
+) -> String {
     let Some(node) = idx.module_graph.nodes.get(i) else {
         return String::new();
     };
-    let label = module_label(&node.module);
-    let mut out = format!(
-        "<div class=\"dep-node\" id=\"m-{}\"><div class=\"dep-name\">{}</div>",
-        anchor(&node.module),
-        render::escape(&label)
-    );
     let empty: Vec<usize> = Vec::new();
-    let deps = adjacency.get(i).unwrap_or(&empty);
-    if !deps.is_empty() {
-        out.push_str("<div class=\"dep-uses\">");
-        for &d in deps {
-            if let Some(target) = idx.module_graph.nodes.get(d) {
-                out.push_str(&format!(
-                    "<a class=\"dep-link\" href=\"#m-{}\">{}</a>",
-                    anchor(&target.module),
-                    render::escape(&module_label(&target.module))
-                ));
-            }
-        }
-        out.push_str("</div>");
-    }
+    let out_links = uses.get(i).unwrap_or(&empty);
+    let in_links = used_by.get(i).unwrap_or(&empty);
+    let mut out = format!(
+        "<details class=\"dep-node\" id=\"m-{}\"><summary><span class=\"dep-name\">{}</span>\
+<span class=\"dep-count\">&rarr;{} &larr;{}</span></summary><div class=\"dep-body\">",
+        anchor(&node.module),
+        render::escape(&module_label(&node.module)),
+        out_links.len(),
+        in_links.len()
+    );
+    push_links(idx, out_links, "&rarr;", "uses", &mut out);
+    push_links(idx, in_links, "&larr;", "used by", &mut out);
     if !node.external.is_empty() {
-        out.push_str("<div class=\"chips\">");
+        out.push_str(
+            "<div class=\"dep-row\"><span class=\"dep-label\">crates</span><div class=\"chips\">",
+        );
         for ext in &node.external {
             out.push_str(&format!(
                 "<span class=\"chip\">{}</span>",
                 render::escape(ext)
             ));
         }
-        out.push_str("</div>");
+        out.push_str("</div></div>");
     }
-    out.push_str("</div>");
+    if out_links.is_empty() && in_links.is_empty() && node.external.is_empty() {
+        out.push_str("<p class=\"muted dep-row\">no dependencies</p>");
+    }
+    out.push_str("</div></details>");
     out
+}
+
+// needed helper: one labelled row of links to other module nodes
+fn push_links(
+    idx: &index::SymbolIndex,
+    targets: &[usize],
+    arrow: &str,
+    label: &str,
+    out: &mut String,
+) {
+    if targets.is_empty() {
+        return;
+    }
+    out.push_str(&format!(
+        "<div class=\"dep-row\"><span class=\"dep-label\">{label}</span><div class=\"dep-uses\">"
+    ));
+    for &t in targets {
+        if let Some(target) = idx.module_graph.nodes.get(t) {
+            out.push_str(&format!(
+                "<a class=\"dep-link\" href=\"#m-{}\">{arrow} {}</a>",
+                anchor(&target.module),
+                render::escape(&module_label(&target.module))
+            ));
+        }
+    }
+    out.push_str("</div></div>");
 }
 
 // needed helper: human label for a module path
@@ -143,5 +189,13 @@ mod tests {
         assert!(html.contains("base"));
         assert!(html.contains("app"));
         assert!(html.contains("std"));
+        assert!(html.contains("<details class=\"dep-node\" id=\"m-app\">"));
+        assert!(html.contains("href=\"#m-base\">&rarr; base</a>"));
+        assert!(html.contains("href=\"#m-app\">&larr; app</a>"));
+        assert!(html.contains("L0 &middot; base"));
+        let top = html.find("L1 &middot; top").unwrap();
+        let base = html.find("L0 &middot; base").unwrap();
+        let crates = html.find("external crates").unwrap();
+        assert!(top < base && base < crates);
     }
 }

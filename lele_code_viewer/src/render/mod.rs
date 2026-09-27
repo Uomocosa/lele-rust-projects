@@ -18,6 +18,8 @@ mod render_md_page;
 pub use render_md_page::render_md_page;
 mod render_search_page;
 pub use render_search_page::render_search_page;
+mod resolve_in_root;
+pub use resolve_in_root::resolve_in_root;
 
 #[path = "__basic__/mod.rs"]
 pub mod basic;

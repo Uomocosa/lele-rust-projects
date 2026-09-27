@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 
 use crate::index;
@@ -10,7 +11,11 @@ pub fn render_file_page(
     hl: &source::Highlighter,
     cfg: &render::LinkConfig,
 ) -> Option<String> {
-    let text = idx.files.get(file)?;
+    let text: Cow<'_, str> = idx
+        .files
+        .get(file)
+        .map(|indexed| Cow::Borrowed(indexed.as_str()))
+        .or_else(|| read_unindexed(idx, file).map(Cow::Owned))?;
     let empty: Vec<index::Occurrence> = Vec::new();
     let occurrences = idx.occurrences.get(file).unwrap_or(&empty);
     let rel = file.to_string_lossy();
@@ -29,8 +34,17 @@ pub fn render_file_page(
         }
         body.push_str("</div>");
     }
-    body.push_str(&source::render_html(text, occurrences, hl, cfg));
+    body.push_str(&source::render_html(&text, occurrences, hl, cfg));
     Some(render::page_shell(cfg, &rel, &body))
+}
+
+// needed helper: plain-highlight fallback for .rs files outside the index (build.rs, tests/)
+fn read_unindexed(idx: &index::SymbolIndex, file: &Path) -> Option<String> {
+    if file.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+        return None;
+    }
+    let full = render::resolve_in_root(&idx.root, file)?;
+    std::fs::read_to_string(full).ok()
 }
 
 #[cfg(test)]
@@ -55,5 +69,23 @@ mod tests {
         };
         let page = render_file_page(&idx, &file, &hl, &cfg).unwrap();
         assert!(page.contains("pub"));
+
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("build.rs"), "fn main() {}\n").unwrap();
+        std::fs::write(dir.path().join("notes.txt"), "x\n").unwrap();
+        let disk = index::SymbolIndex {
+            root: dir.path().to_path_buf(),
+            ..index::SymbolIndex::default()
+        };
+        let build = std::path::Path::new("build.rs");
+        assert!(
+            render_file_page(&disk, build, &hl, &cfg)
+                .unwrap()
+                .contains("main")
+        );
+        let txt = std::path::Path::new("notes.txt");
+        assert!(render_file_page(&disk, txt, &hl, &cfg).is_none());
+        let escape = std::path::Path::new("../build.rs");
+        assert!(render_file_page(&disk, escape, &hl, &cfg).is_none());
     }
 }

@@ -9,7 +9,11 @@ pub fn render_md_page(
     rel: &Path,
     cfg: &render::LinkConfig,
 ) -> Option<String> {
-    let text = std::fs::read_to_string(idx.root.join(rel)).ok()?;
+    if rel.extension().and_then(|ext| ext.to_str()) != Some("md") {
+        return None;
+    }
+    let full = render::resolve_in_root(&idx.root, rel)?;
+    let text = std::fs::read_to_string(full).ok()?;
     let body = format!(
         "<article class=\"md\">{}</article>",
         markdown::render_md(&text)
@@ -42,5 +46,8 @@ mod tests {
         };
         let page = render_md_page(&idx, Path::new("README.md"), &cfg).unwrap();
         assert!(page.contains("<h1>Hi</h1>"));
+        assert!(render_md_page(&idx, Path::new("../README.md"), &cfg).is_none());
+        fs::write(dir.path().join("notes.txt"), "x\n").unwrap();
+        assert!(render_md_page(&idx, Path::new("notes.txt"), &cfg).is_none());
     }
 }

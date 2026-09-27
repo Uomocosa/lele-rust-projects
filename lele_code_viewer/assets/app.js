@@ -11,9 +11,16 @@
     function setOpen(open) {
       if (open) {
         drawer.classList.add("open");
+        document.body.classList.add("drawer-open");
+        var active = drawer.querySelector(".projects a.active");
+        if (active) {
+          active.scrollIntoView({ block: "center" });
+        }
       } else {
         drawer.classList.remove("open");
+        document.body.classList.remove("drawer-open");
       }
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
       if (scrim) {
         if (open) {
           scrim.classList.add("show");
@@ -60,12 +67,21 @@
     }
   }
 
+  function openTargetNode(hash) {
+    var node = document.getElementById(hash.slice(1));
+    if (node && node.tagName === "DETAILS") {
+      node.open = true;
+      node.scrollIntoView({ block: "center" });
+    }
+  }
+
   function highlightHash() {
     clearTargets();
     var hash = window.location.hash;
     if (!hash || hash.charAt(0) !== "#") {
       return;
     }
+    openTargetNode(hash);
     var match = hash.slice(1).match(/^L(\d+)(?:-L(\d+))?$/);
     if (!match) {
       return;

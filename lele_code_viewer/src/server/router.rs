@@ -55,7 +55,7 @@ async fn home(State(state): State<Arc<server::AppState>>) -> Response {
     }
 }
 
-// needed helper: project landing page
+// needed helper: project landing page (the file tree view)
 async fn project_index(
     State(state): State<Arc<server::AppState>>,
     Path(id): Path<String>,
@@ -66,8 +66,8 @@ async fn project_index(
     let Ok(idx) = index_of(&state, &item) else {
         return not_found();
     };
-    let cfg = server_cfg(&state, &item, render::ViewKind::None);
-    Html(render::render_index_page(&idx, &cfg)).into_response()
+    let cfg = server_cfg(&state, &item, render::ViewKind::Files);
+    Html(render::render_file_tree_page(&idx, &cfg)).into_response()
 }
 
 // needed helper: source file page
@@ -228,6 +228,8 @@ fn server_cfg(
         html: false,
         nav: Some(render::Nav {
             current: item.id.clone(),
+            name: item.name.clone(),
+            root: item.root.to_string_lossy().to_string(),
             projects,
             view,
         }),

@@ -5,14 +5,22 @@ use crate::index;
 use crate::render;
 
 pub fn render_file_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig) -> String {
-    let mut body = String::from("<h1>Files</h1>");
+    let mut body = format!("<h1>{}</h1>", render::escape(&idx.crate_name));
     body.push_str(&format!(
-        "<p class=\"path muted\">{}</p>",
-        render::escape(&idx.root.to_string_lossy())
+        "<p class=\"muted\">{} items &middot; {} indexed files</p>",
+        idx.items.len(),
+        idx.rust_files.len()
     ));
-    body.push_str("<div class=\"tree\">");
+    let root_name = idx
+        .root
+        .file_name()
+        .map_or_else(|| ".".to_string(), |n| n.to_string_lossy().to_string());
+    body.push_str(&format!(
+        "<div class=\"tree\"><details class=\"dir\" open><summary>{}/</summary>",
+        render::escape(&root_name)
+    ));
     render_dir(&idx.root, &idx.root, cfg, 0, &mut body);
-    body.push_str("</div>");
+    body.push_str("</details></div>");
     render::page_shell(cfg, "Files", &body)
 }
 
@@ -44,7 +52,7 @@ fn render_dir(root: &Path, dir: &Path, cfg: &render::LinkConfig, depth: usize, o
     for (is_dir, name, path) in items {
         if is_dir {
             out.push_str(&format!(
-                "<li class=\"dir\"><details open><summary>{}/</summary>",
+                "<li><details class=\"dir\"><summary>{}/</summary>",
                 render::escape(&name)
             ));
             render_dir(root, &path, cfg, depth.saturating_add(1), out);
@@ -111,6 +119,8 @@ mod tests {
         };
         let html = render_file_tree_page(&idx, &cfg);
         assert!(html.contains("Files"));
-        assert!(html.contains("lib.rs"));
+        assert!(html.contains("href=\"/p/demo/file/src/lib.rs\""));
+        assert!(html.contains("<details class=\"dir\" open>"));
+        assert!(html.contains("<details class=\"dir\"><summary>src/</summary>"));
     }
 }
