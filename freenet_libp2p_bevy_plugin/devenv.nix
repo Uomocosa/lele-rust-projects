@@ -64,9 +64,9 @@
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "lobby:e2e-discovery" = { exec = "cargo nextest run --test lobby_room_discovery --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "lobby:e2e-join" = { exec = "cargo nextest run --test lobby_room_join --all-features --run-ignored all -- --nocapture"; showOutput = true; };
-    "lele:docs:check" = { exec = "cargo run --manifest-path ../lele_docs/Cargo.toml -- check"; showOutput = true; };
-    "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_docs/Cargo.toml -- serve"; showOutput = true; };
-    "lele:docs:export" = { exec = "cargo run --manifest-path ../lele_docs/Cargo.toml -- export --out target/docs-site"; showOutput = true; };
+    "lele:docs:check" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- check"; showOutput = true; };
+    "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- serve"; showOutput = true; };
+    "lele:docs:export" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- export --out target/docs-site"; showOutput = true; };
   };
 
   git-hooks.hooks = {
@@ -107,7 +107,7 @@
     };
     lele-docs = {
       enable = true;
-      name = "lele_docs (freenet_libp2p_bevy_plugin)";
+      name = "lele_code_viewer (freenet_libp2p_bevy_plugin)";
       entry = "bash -c 'cd freenet_libp2p_bevy_plugin && devenv tasks run lele:docs:check 2>&1'";
       pass_filenames = false;
       always_run = true;
