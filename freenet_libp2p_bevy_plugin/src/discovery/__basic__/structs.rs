@@ -1,3 +1,4 @@
+use bevy::prelude::Reflect;
 use std::collections::BTreeMap;
 
 use freenet_stdlib::prelude::ContractKey;
@@ -12,25 +13,25 @@ use discovery::basic::resources::{FreenetEndpoint, Multiplayer};
 use discovery::basic::type_aliases::{Members, RoomCatalogue};
 use discovery::config::Config;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub struct Presence {
     pub addrs: Vec<String>,
     pub updated_at: EpochSecs,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub struct RoomRecord {
     pub capacity: u16,
     pub members: BTreeMap<RemotePeerId, Presence>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Reflect)]
 pub struct Member {
     pub presence: Presence,
     pub status: DiscoveryStatus,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Reflect)]
 pub struct Room {
     pub name: RoomName,
     pub members: Members,

@@ -1,1 +1,17 @@
 [lele.lint]
+
+# lele-ui-preview (../lele_ui_preview): crawls the viewer in headless Chrome into ./ui_preview/.
+# The fixture is a frozen copy of clicker; files end in `.fixture` so cargo, lele_lint and a live
+# viewer never treat it as a crate. It is copied (suffix stripped) into a temp dir for each run.
+[ui_preview.web]
+command = ["devenv", "shell", "--", "cargo", "run", "--release", "--quiet", "--", "serve", "--bind", "127.0.0.1:{port}", "--roots", "{fixture}"]
+fixture = "ui_preview_fixture"
+routes_from = ["src/server/router.rs"]
+keys_from = ["assets/app.js"]
+skip_paths = ["/assets/"]
+viewports = [
+  { name = "mobile", width = 390, height = 844 },
+  { name = "desktop", width = 1280, height = 800 },
+]
+max_states = 40
+max_depth = 3

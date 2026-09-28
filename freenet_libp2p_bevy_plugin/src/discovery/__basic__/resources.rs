@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use bevy::prelude::Resource;
+use bevy::prelude::{ReflectDefault, ReflectResource, Reflect, Resource};
 use derive_more::Deref;
 
 use crate::discovery::basic::messages::{Command, Event};
@@ -20,7 +20,8 @@ pub struct MultiplayerFeed(pub Mutex<Option<tokio::sync::mpsc::UnboundedReceiver
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deref)]
 pub struct FreenetEndpoint(pub u16);
 
-#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq, Reflect)]
+#[reflect(Resource, Default)]
 pub struct Multiplayer {
     pub catalogue: BTreeMap<RoomName, RoomRecord>,
     pub room: Option<Room>,

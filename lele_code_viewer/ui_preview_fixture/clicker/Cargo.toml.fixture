@@ -1,0 +1,39 @@
+[package]
+name = "clicker"
+version = "0.1.0"
+edition = "2024"
+description = "Clicker game on freenet_libp2p_bevy_plugin"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "clicker_lib"
+crate-type = ["lib", "cdylib"]
+
+[[bin]]
+name = "clicker"
+path = "src/main.rs"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+unchecked_time_subtraction = "deny"
+todo = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+panic = "deny"
+exit = "deny"
+as_conversions = "deny"
+
+[dependencies]
+atomic_delegate_macros = { path = "../atomic_delegate_macros" }
+bevy = { version = "=0.19.0" }
+derive_more = { version = "=2.1.1", features = ["deref", "deref_mut", "from"] }
+
+[profile.dev.package."*"]
+opt-level = 3
