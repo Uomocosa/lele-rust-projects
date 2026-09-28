@@ -8,17 +8,20 @@ pub struct GameToken(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deref)]
 pub struct GameName(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect)]
-#[reflect(Hash, PartialEq)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
+)]
+#[reflect(Hash)]
 pub struct RoomName(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect)]
-#[reflect(Hash, PartialEq)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
+)]
+#[reflect(Hash)]
 pub struct RemotePeerId(pub String);
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref,
-    Reflect,
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
 )]
 pub struct EpochSecs(pub u64);
 

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use bevy::prelude::{ReflectDefault, ReflectResource, Reflect, Resource};
+use bevy::prelude::{Reflect, ReflectDefault, ReflectResource, Resource};
 use derive_more::Deref;
 
 use crate::discovery::basic::messages::{Command, Event};

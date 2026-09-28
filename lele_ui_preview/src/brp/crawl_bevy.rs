@@ -14,7 +14,10 @@ pub fn crawl_bevy(
     cfg: &config::BevyConfig,
     out_dir: &Path,
 ) -> Result<report::Capture, Error> {
-    let work = std::env::temp_dir().join(format!("lele-ui-preview-bevy-{}", std::process::id()));
+    let work = std::env::temp_dir().join("lele-ui-preview").join("bevy");
+    if work.exists() {
+        std::fs::remove_dir_all(&work)?;
+    }
     std::fs::create_dir_all(&work)?;
     let port = process::free_port()?;
     let command = process::substitute(&cfg.command, &[("port", port.to_string())]);
@@ -83,14 +86,7 @@ fn drive(
             "world.insert_resources",
             Some(json!({ "resource": resource, "value": fixture.value })),
         )?;
-        std::thread::sleep(settle);
-        let shot = work.join(format!("shot-{position}.png"));
-        brp::call_brp(
-            port,
-            "brp_extras/screenshot",
-            Some(json!({ "path": shot.display().to_string() })),
-        )?;
-        let bytes = std::fs::read(&shot)?;
+        let bytes = stable_capture(port, work, position, settle)?;
         let pixel_hash: String = blake3::hash(&bytes).to_hex().chars().take(16).collect();
         let id = format!("{}-s{position:03}", brp::GROUP);
         if let Some(twin) = capture.states.iter().find(|s| s.pixel_hash == pixel_hash) {
@@ -126,6 +122,43 @@ fn drive(
         }
     }
     Ok(capture)
+}
+
+// needed helper: capture until two consecutive screenshots match, i.e. the UI finished reacting
+fn stable_capture(
+    port: u16,
+    work: &Path,
+    position: usize,
+    settle: Duration,
+) -> Result<Vec<u8>, Error> {
+    let mut previous: Option<Vec<u8>> = None;
+    for attempt in 0..brp::STABLE_CAPTURE_ATTEMPTS {
+        std::thread::sleep(settle);
+        let shot = work.join(format!("shot-{position}-{attempt}.png"));
+        let bytes = capture(port, &shot)?;
+        if previous.as_ref() == Some(&bytes) {
+            return Ok(bytes);
+        }
+        previous = Some(bytes);
+    }
+    previous.ok_or_else(|| Error::Brp("no screenshot captured".to_string()))
+}
+
+// needed helper: one screenshot, waiting out a capture that is still being finalized
+fn capture(port: u16, shot: &Path) -> Result<Vec<u8>, Error> {
+    let params = json!({ "path": shot.display().to_string() });
+    let mut last_error = None;
+    for _ in 0..brp::BUSY_RETRIES {
+        match brp::call_brp(port, "brp_extras/screenshot", Some(params.clone())) {
+            Ok(_) => return Ok(std::fs::read(shot)?),
+            Err(Error::Brp(message)) if message.contains("already in progress") => {
+                last_error = Some(Error::Brp(message));
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            Err(other) => return Err(other),
+        }
+    }
+    Err(last_error.unwrap_or_else(|| Error::Brp("screenshot never started".to_string())))
 }
 
 // needed helper: map a short resource name (e.g. "Multiplayer") to its full type path

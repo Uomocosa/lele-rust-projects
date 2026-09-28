@@ -36,7 +36,7 @@ pub const PROBE_JS: &str = r##"(() => {
     if (cs.visibility === "hidden" || cs.display === "none" || parseFloat(cs.opacity) === 0) return;
     if (r.right <= 0 || r.left >= innerWidth) return;
     if (el.disabled || el.closest("[inert]")) return;
-    const label = (el.getAttribute("aria-label") || el.innerText || el.value || el.getAttribute("placeholder") || el.id || el.tagName)
+    const label = (el.getAttribute("aria-label") || el.innerText || el.textContent || el.value || el.getAttribute("placeholder") || el.getAttribute("title") || el.id || el.tagName.toLowerCase())
       .trim().replace(/\s+/g, " ").slice(0, 40);
     elements.push({
       index,

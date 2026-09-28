@@ -284,7 +284,7 @@ fn server_cfg(
     });
     render::LinkConfig {
         prefix: format!("/p/{}/", item.id),
-        assets: "/assets/".to_string(),
+        assets: "/".to_string(),
         html: false,
         nav: Some(render::Nav {
             current: item.id.clone(),
@@ -301,7 +301,7 @@ fn server_cfg(
 fn bare_cfg() -> render::LinkConfig {
     render::LinkConfig {
         prefix: "/".to_string(),
-        assets: "/assets/".to_string(),
+        assets: "/".to_string(),
         html: false,
         nav: None,
     }
@@ -311,8 +311,9 @@ fn bare_cfg() -> render::LinkConfig {
 mod tests {
     use std::sync::Arc;
 
-    use super::router;
+    use super::{bare_cfg, router};
     use crate::project;
+    use crate::render;
     use crate::server;
     use crate::source;
 
@@ -324,5 +325,13 @@ mod tests {
             hl: Arc::new(source::highlighter_new()),
         });
         let _ = router(state);
+    }
+
+    #[test]
+    fn test_asset_links_resolve_to_served_route() {
+        assert_eq!(
+            render::href(&bare_cfg(), render::LinkKind::Asset, "style.css"),
+            "/assets/style.css"
+        );
     }
 }

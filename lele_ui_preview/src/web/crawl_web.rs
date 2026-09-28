@@ -14,7 +14,10 @@ pub fn crawl_web(
     cfg: &config::WebConfig,
     out_dir: &Path,
 ) -> Result<report::Capture, Error> {
-    let work = std::env::temp_dir().join(format!("lele-ui-preview-web-{}", std::process::id()));
+    let work = std::env::temp_dir().join("lele-ui-preview").join("web");
+    if work.exists() {
+        std::fs::remove_dir_all(&work)?;
+    }
     std::fs::create_dir_all(&work)?;
     let fixture = match &cfg.fixture {
         Some(relative) => {
