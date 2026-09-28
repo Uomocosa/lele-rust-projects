@@ -1,14 +1,17 @@
 [lele.lint]
 
 # lele-ui-preview (../lele_ui_preview): crawls the viewer in headless Chrome into ./ui_preview/.
-# The fixture is a frozen copy of clicker; files end in `.fixture` so cargo, lele_lint and a live
-# viewer never treat it as a crate. It is copied (suffix stripped) into a temp dir for each run.
+# The fixture is frozen copies of clicker and lele_snake_case plus an __OLD__ crate that must stay
+# hidden. Files end in `.fixture` so cargo, lele_lint and a live viewer never treat it as a crate;
+# it is copied (suffix stripped) into a temp dir for each run, together with its settings.toml.
 [ui_preview.web]
-command = ["devenv", "shell", "--", "cargo", "run", "--release", "--quiet", "--", "serve", "--bind", "127.0.0.1:{port}", "--roots", "{fixture}"]
+command = ["devenv", "shell", "--", "cargo", "run", "--release", "--quiet", "--", "serve", "--bind", "127.0.0.1:{port}", "--roots", "{fixture}", "--settings", "{fixture}/settings.toml", "--no-self-update"]
 fixture = "ui_preview_fixture"
 routes_from = ["src/server/router.rs"]
 keys_from = ["assets/app.js"]
 skip_paths = ["/assets/"]
+# Buttons that would change server state mid-crawl (the settings page itself is still captured).
+skip_actions = ["Save & rescan", "Reset to defaults", "Refresh project list", "Update & restart"]
 viewports = [
   { name = "mobile", width = 390, height = 844 },
   { name = "desktop", width = 1280, height = 800 },

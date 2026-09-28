@@ -5,6 +5,8 @@ use std::sync::Mutex;
 use std::sync::RwLock;
 use std::time::Instant;
 
+use serde::{Deserialize, Serialize};
+
 use crate::index;
 
 #[derive(Debug, Clone)]
@@ -12,6 +14,11 @@ pub struct ProjectRef {
     pub id: String,
     pub name: String,
     pub root: PathBuf,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Settings {
+    pub ignore: Vec<String>,
 }
 
 #[derive(Default)]

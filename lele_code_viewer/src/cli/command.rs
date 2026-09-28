@@ -16,6 +16,10 @@ pub enum Command {
         roots: Vec<PathBuf>,
         #[arg(long)]
         watch: bool,
+        #[arg(long)]
+        settings: Option<PathBuf>,
+        #[arg(long)]
+        no_self_update: bool,
     },
 }
 

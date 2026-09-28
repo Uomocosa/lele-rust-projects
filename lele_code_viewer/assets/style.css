@@ -120,7 +120,16 @@ a.ref.def { text-decoration-style: solid; font-weight: 600; }
   transition: transform .22s ease;
 }
 .drawer.open { transform: translateX(0); }
-.drawer-head { font-weight: 700; font-size: 16px; padding: 4px 2px 0; }
+.drawer-head {
+  font-weight: 700; font-size: 16px; padding: 4px 2px 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.settings-link {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 9px;
+  color: var(--muted); border: 1px solid var(--border); background: var(--bg);
+}
+.settings-link:hover, .settings-link:focus-visible { color: var(--accent); border-color: var(--accent); }
 .proj-filter {
   flex: 0 0 auto;
   width: 100%; height: 40px; padding: 0 10px;
@@ -138,6 +147,12 @@ a.ref.def { text-decoration-style: solid; font-weight: 600; }
 .projects a {
   display: block; padding: 11px 12px; font-size: 14.5px; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.projects a .proj-name { display: block; overflow: hidden; text-overflow: ellipsis; }
+.projects a .proj-path {
+  display: block; margin-top: 2px;
+  font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--muted);
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.35;
 }
 .projects a.active {
   color: var(--accent); font-weight: 700;
@@ -252,3 +267,32 @@ body.drawer-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .code .line.changed { animation: none; }
 }
+
+.settings { max-width: 760px; }
+.settings h1 { font-size: 22px; margin: 4px 0 12px; }
+.settings .panel {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px; margin: 8px 0;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.settings textarea {
+  width: 100%; min-height: 170px; resize: vertical; padding: 10px;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 8px;
+  font: 13px/1.5 var(--mono);
+}
+.settings .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.settings .panel.actions { flex-direction: row; }
+.settings button {
+  min-height: 40px; padding: 0 14px; cursor: pointer;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 9px; font-size: 14px;
+}
+.settings button:hover { border-color: var(--accent); }
+.settings button.primary { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+.settings .notice {
+  padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--panel);
+}
+.settings .notice.error { border-left-color: #f85149; color: #ffa198; }
+.settings code { font-family: var(--mono); font-size: .92em; overflow-wrap: anywhere; }

@@ -72,6 +72,7 @@ fn with_browser(
         patterns: web::route_patterns(crate_dir, &cfg.routes_from),
         keys: web::scan_keys(crate_dir, &cfg.keys_from),
         skip_paths: cfg.skip_paths.clone(),
+        skip_actions: cfg.skip_actions.clone(),
         fill_text: cfg
             .fill_text
             .clone()

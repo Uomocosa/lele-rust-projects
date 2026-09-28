@@ -33,6 +33,8 @@ pub struct WebConfig {
     pub keys_from: Vec<String>,
     #[serde(default)]
     pub skip_paths: Vec<String>,
+    #[serde(default)]
+    pub skip_actions: Vec<String>,
     pub fill_text: Option<String>,
     pub viewports: Vec<Viewport>,
     pub max_states: Option<usize>,

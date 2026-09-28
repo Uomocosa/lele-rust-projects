@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use axum::Form;
 use axum::Router;
 use axum::extract::Path;
 use axum::extract::Query;
@@ -15,6 +17,7 @@ use axum::response::Response;
 use axum::response::sse::KeepAlive;
 use axum::response::sse::Sse;
 use axum::routing::get;
+use axum::routing::post;
 use serde::Deserialize;
 
 use crate::Error;
@@ -36,6 +39,9 @@ pub fn router(state: Arc<server::AppState>) -> Router {
         .route("/p/{id}/tree/file", get(file_tree))
         .route("/p/{id}/tree/deps", get(dep_tree))
         .route("/p/{id}/events", get(events))
+        .route("/settings", get(settings_page).post(save_settings))
+        .route("/settings/rescan", post(rescan_now))
+        .route("/settings/update", post(self_update))
         .route("/assets/style.css", get(style_css))
         .route("/assets/app.js", get(app_js))
         .with_state(state)
@@ -44,6 +50,17 @@ pub fn router(state: Arc<server::AppState>) -> Router {
 #[derive(Deserialize)]
 struct SearchParams {
     q: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SettingsForm {
+    ignore: String,
+    action: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct NoticeParams {
+    notice: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -59,7 +76,7 @@ struct Loaded {
 
 // needed helper: redirect to the first discovered project
 async fn home(State(state): State<Arc<server::AppState>>) -> Response {
-    match state.projects.first() {
+    match server::project_list(&state).first() {
         Some(first) => Redirect::to(&format!("/p/{}/", first.id)).into_response(),
         None => Html(render::page_shell(
             &bare_cfg(),
@@ -235,9 +252,143 @@ fn not_found() -> Response {
         .into_response()
 }
 
+// needed helper: settings page (ignore rules + maintenance actions)
+async fn settings_page(
+    State(state): State<Arc<server::AppState>>,
+    Query(params): Query<NoticeParams>,
+) -> Response {
+    let notice = match params.notice.as_deref() {
+        Some("saved") => Some("Saved. Rescanning with the new rules\u{2026}"),
+        Some("rescan") => Some("Rescanning the project list\u{2026}"),
+        Some("busy") => Some("A rescan is already running."),
+        Some("update") => {
+            Some("Update started: the viewer rebuilds and restarts in about a minute.")
+        }
+        _ => None,
+    };
+    let rules = settings_of(&state).ignore.join("\n");
+    settings_response(
+        &state,
+        rules,
+        notice.map(str::to_string),
+        None,
+        StatusCode::OK,
+    )
+}
+
+// needed helper: validate, persist and apply new ignore rules
+async fn save_settings(
+    State(state): State<Arc<server::AppState>>,
+    Form(form): Form<SettingsForm>,
+) -> Response {
+    let settings = if form.action.as_deref() == Some("defaults") {
+        project::default_settings()
+    } else {
+        project::Settings {
+            ignore: form
+                .ignore
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .map(str::to_string)
+                .collect(),
+        }
+    };
+    if let Err(message) = project::compile_rules(&settings.ignore) {
+        return settings_response(
+            &state,
+            form.ignore,
+            None,
+            Some(message),
+            StatusCode::BAD_REQUEST,
+        );
+    }
+    if let Err(err) = project::save_settings(&state.settings_path, &settings) {
+        let message = format!("could not save settings: {err}");
+        return settings_response(
+            &state,
+            form.ignore,
+            None,
+            Some(message),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        );
+    }
+    match state.settings.write() {
+        Ok(mut current) => *current = settings,
+        Err(poisoned) => *poisoned.into_inner() = settings,
+    }
+    server::rescan(&state);
+    Redirect::to("/settings?notice=saved").into_response()
+}
+
+// needed helper: rescan the project list with the current rules
+async fn rescan_now(State(state): State<Arc<server::AppState>>) -> Response {
+    let notice = if server::rescan(&state) {
+        "rescan"
+    } else {
+        "busy"
+    };
+    Redirect::to(&format!("/settings?notice={notice}")).into_response()
+}
+
+// needed helper: rebuild + restart the viewer service through systemd
+async fn self_update(State(state): State<Arc<server::AppState>>) -> Response {
+    if !state.self_update {
+        return not_found();
+    }
+    match server::start_self_update() {
+        Ok(()) => Redirect::to("/settings?notice=update").into_response(),
+        Err(message) => {
+            let rules = settings_of(&state).ignore.join("\n");
+            settings_response(
+                &state,
+                rules,
+                None,
+                Some(message),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        }
+    }
+}
+
+// needed helper: current settings snapshot
+fn settings_of(state: &server::AppState) -> project::Settings {
+    match state.settings.read() {
+        Ok(settings) => settings.clone(),
+        Err(poisoned) => poisoned.into_inner().clone(),
+    }
+}
+
+// needed helper: render the settings page with the given text box content and messages
+fn settings_response(
+    state: &server::AppState,
+    rules: String,
+    notice: Option<String>,
+    error: Option<String>,
+    status: StatusCode,
+) -> Response {
+    let view = render::SettingsView {
+        rules,
+        error,
+        notice,
+        project_count: server::project_list(state).len(),
+        scanning: state.scanning.load(Ordering::SeqCst),
+        self_update: state.self_update,
+        settings_path: project::display_path(&state.settings_path),
+    };
+    (
+        status,
+        Html(render::render_settings_page(&bare_cfg(), &view)),
+    )
+        .into_response()
+}
+
 // needed helper: find a project by id
 fn resolve(state: &server::AppState, id: &str) -> Option<project::ProjectRef> {
-    state.projects.iter().find(|item| item.id == id).cloned()
+    server::project_list(state)
+        .iter()
+        .find(|item| item.id == id)
+        .cloned()
 }
 
 // needed helper: resolve a project, start watching it (live mode) and get its index off the runtime
@@ -268,12 +419,12 @@ fn server_cfg(
     watch: &str,
 ) -> render::LinkConfig {
     let item = &page.item;
-    let projects = state
-        .projects
+    let projects = server::project_list(state)
         .iter()
         .map(|p| render::NavProject {
             id: p.id.clone(),
             name: p.name.clone(),
+            path: project::display_path(&p.root),
         })
         .collect();
     let live = state.registry.watch.then(|| render::Live {
@@ -321,8 +472,12 @@ mod tests {
     fn test_usage() {
         let state = Arc::new(server::AppState {
             registry: Arc::new(project::Registry::default()),
-            projects: Arc::new(Vec::new()),
+            projects: std::sync::RwLock::new(Arc::new(Vec::new())),
             hl: Arc::new(source::highlighter_new()),
+            settings: std::sync::RwLock::new(project::default_settings()),
+            settings_path: std::path::PathBuf::from("settings.toml"),
+            self_update: false,
+            scanning: std::sync::atomic::AtomicBool::new(false),
         });
         let _ = router(state);
     }

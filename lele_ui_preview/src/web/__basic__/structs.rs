@@ -39,6 +39,7 @@ pub struct Target {
     pub patterns: Vec<String>,
     pub keys: Vec<String>,
     pub skip_paths: Vec<String>,
+    pub skip_actions: Vec<String>,
     pub fill_text: String,
     pub settle_ms: u64,
     pub max_states: usize,

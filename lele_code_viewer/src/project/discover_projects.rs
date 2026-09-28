@@ -2,25 +2,32 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use regex::Regex;
+
 use crate::index;
 use crate::project;
 
-pub fn discover_projects(roots: &[PathBuf]) -> Vec<project::ProjectRef> {
+pub fn discover_projects(roots: &[PathBuf], ignore: &[Regex]) -> Vec<project::ProjectRef> {
     let mut found: Vec<project::ProjectRef> = Vec::new();
     let mut seen: HashSet<PathBuf> = HashSet::new();
     for root in roots {
-        walk_root(root, &mut found, &mut seen);
+        walk_root(root, ignore, &mut found, &mut seen);
     }
     found.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.root.cmp(&b.root)));
     dedupe_ids(found)
 }
 
-// needed helper: find every Cargo.toml directory under a root, skipping build/VCS dirs
-fn walk_root(root: &PathBuf, found: &mut Vec<project::ProjectRef>, seen: &mut HashSet<PathBuf>) {
+// needed helper: find every Cargo.toml directory under a root, skipping ignored and system dirs
+fn walk_root(
+    root: &PathBuf,
+    ignore: &[Regex],
+    found: &mut Vec<project::ProjectRef>,
+    seen: &mut HashSet<PathBuf>,
+) {
     let walker = walkdir::WalkDir::new(root)
         .max_depth(8)
         .into_iter()
-        .filter_entry(|entry| !is_skipped(entry));
+        .filter_entry(|entry| !is_skipped(entry) && !is_ignored(entry, ignore));
     for entry in walker.flatten() {
         if entry.file_type().is_file() && entry.file_name().to_str() == Some("Cargo.toml") {
             let Some(dir) = entry.path().parent() else {
@@ -40,7 +47,16 @@ fn walk_root(root: &PathBuf, found: &mut Vec<project::ProjectRef>, seen: &mut Ha
     }
 }
 
-// needed helper: directories that should never be descended into
+// needed helper: directories matching a user ignore rule (settings page) are pruned
+fn is_ignored(entry: &walkdir::DirEntry, ignore: &[Regex]) -> bool {
+    if !entry.file_type().is_dir() {
+        return false;
+    }
+    let path = entry.path().to_string_lossy();
+    ignore.iter().any(|rule| rule.is_match(&path))
+}
+
+// needed helper: system directories that should never be descended into
 fn is_skipped(entry: &walkdir::DirEntry) -> bool {
     if !entry.file_type().is_dir() {
         return false;
@@ -48,15 +64,11 @@ fn is_skipped(entry: &walkdir::DirEntry) -> bool {
     matches!(
         entry.file_name().to_str(),
         Some(
-            "target"
-                | ".git"
-                | ".devenv"
-                | "node_modules"
+            ".devenv"
                 | ".rustup"
                 | ".cargo"
                 | ".cache"
                 | ".local"
-                | "__OLD__"
                 | ".nix-defexpr"
                 | ".nix-profile"
         )
@@ -113,6 +125,7 @@ mod tests {
     use std::fs;
 
     use super::discover_projects;
+    use crate::project;
 
     #[test]
     fn test_usage() {
@@ -131,8 +144,28 @@ mod tests {
             "[package]\nname = \"alpha\"\nversion = \"0.0.0\"\n",
         )
         .unwrap();
-        let projects = discover_projects(&[dir.path().to_path_buf()]);
+        let projects = discover_projects(&[dir.path().to_path_buf()], &[]);
         assert_eq!(projects.len(), 2);
         assert_ne!(projects[0].id, projects[1].id);
+    }
+
+    #[test]
+    fn test_ignore_rules_prune_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        for folder in ["keep", "__OLD__/old", "keep/target/built"] {
+            let crate_dir = dir.path().join(folder);
+            fs::create_dir_all(&crate_dir).unwrap();
+            fs::write(
+                crate_dir.join("Cargo.toml"),
+                "[package]\nname = \"demo\"\nversion = \"0.0.0\"\n",
+            )
+            .unwrap();
+        }
+        let rules = project::compile_rules(&project::default_settings().ignore).unwrap();
+        let projects = discover_projects(&[dir.path().to_path_buf()], &rules);
+        assert_eq!(projects.len(), 1);
+        assert!(projects[0].root.ends_with("keep"));
+        let everything = discover_projects(&[dir.path().to_path_buf()], &[]);
+        assert_eq!(everything.len(), 3);
     }
 }

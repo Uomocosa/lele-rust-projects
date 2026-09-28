@@ -37,7 +37,17 @@ fn drawer_html(cfg: &render::LinkConfig) -> String {
         return String::new();
     };
     let mut out = String::from("<aside class=\"drawer\" id=\"drawer\">");
-    out.push_str("<div class=\"drawer-head\">Lele Code Viewer</div>");
+    out.push_str(
+        "<div class=\"drawer-head\"><span>Lele Code Viewer</span>\
+<a class=\"settings-link\" href=\"/settings\" aria-label=\"settings\" title=\"settings\">\
+<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" aria-hidden=\"true\" fill=\"none\" \
+stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\">\
+<line x1=\"4\" y1=\"21\" x2=\"4\" y2=\"14\"/><line x1=\"4\" y1=\"10\" x2=\"4\" y2=\"3\"/>\
+<line x1=\"12\" y1=\"21\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"3\"/>\
+<line x1=\"20\" y1=\"21\" x2=\"20\" y2=\"16\"/><line x1=\"20\" y1=\"12\" x2=\"20\" y2=\"3\"/>\
+<line x1=\"1\" y1=\"14\" x2=\"7\" y2=\"14\"/><line x1=\"9\" y1=\"8\" x2=\"15\" y2=\"8\"/>\
+<line x1=\"17\" y1=\"16\" x2=\"23\" y2=\"16\"/></svg></a></div>",
+    );
     out.push_str(
         "<input class=\"proj-filter\" id=\"proj-filter\" type=\"search\" placeholder=\"filter projects\">",
     );
@@ -49,9 +59,11 @@ fn drawer_html(cfg: &render::LinkConfig) -> String {
             ""
         };
         out.push_str(&format!(
-            "<li><a class=\"{class}\" href=\"/p/{id}/\">{name}</a></li>",
+            "<li><a class=\"{class}\" href=\"/p/{id}/\"><span class=\"proj-name\">{name}</span>\
+<span class=\"proj-path\">{path}</span></a></li>",
             id = render::escape(&project.id),
-            name = render::escape(&project.name)
+            name = render::escape(&project.name),
+            path = render::escape(&project.path)
         ));
     }
     out.push_str("</ul><nav class=\"views\">");
@@ -124,6 +136,7 @@ mod tests {
                 projects: vec![render::NavProject {
                     id: "demo".to_string(),
                     name: "demo_crate".to_string(),
+                    path: "~/code/demo".to_string(),
                 }],
                 view: render::ViewKind::Files,
                 live: Some(render::Live {
@@ -141,6 +154,8 @@ mod tests {
         assert!(html.contains("<a class=\"view active\" href=\"/p/demo/tree/file\">"));
         assert!(html.contains("Dependencies</a>"));
         assert!(html.contains("/home/u/demo"));
+        assert!(html.contains("<span class=\"proj-path\">~/code/demo</span>"));
+        assert!(html.contains("href=\"/settings\""));
         assert!(html.contains("<body data-events=\"/p/demo/events?since=7\" data-watch=\"*\">"));
         assert!(!page_shell(&cfg, "x", "").contains("data-events"));
     }

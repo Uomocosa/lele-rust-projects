@@ -28,6 +28,17 @@ pub struct Live {
 pub struct NavProject {
     pub id: String,
     pub name: String,
+    pub path: String,
+}
+
+pub struct SettingsView {
+    pub rules: String,
+    pub error: Option<String>,
+    pub notice: Option<String>,
+    pub project_count: usize,
+    pub scanning: bool,
+    pub self_update: bool,
+    pub settings_path: String,
 }
 
 // no test_usage necessary

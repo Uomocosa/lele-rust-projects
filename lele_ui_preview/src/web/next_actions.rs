@@ -7,6 +7,13 @@ pub fn next_actions(probe: &web::Probe, target: &web::Target) -> Vec<web::Action
     let mut groups = BTreeSet::new();
     let mut actions = Vec::new();
     for element in &probe.elements {
+        if target
+            .skip_actions
+            .iter()
+            .any(|skip| element.label.contains(skip.as_str()))
+        {
+            continue;
+        }
         if !groups.insert(web::element_group(element, &target.patterns)) {
             continue;
         }
@@ -109,6 +116,7 @@ mod tests {
                 element(2, "ul>li>a", "a", Some("/p/b")),
                 element(3, "input#proj-filter", "input", None),
                 element(4, "link", "a", Some("/assets/app.js")),
+                element(5, "form>button", "button", None),
             ],
         };
         let target = web::Target {
@@ -116,6 +124,7 @@ mod tests {
             patterns: vec!["/".to_string(), "/p/{id}".to_string()],
             keys: vec!["Escape".to_string()],
             skip_paths: Vec::new(),
+            skip_actions: vec!["el5".to_string()],
             fill_text: "src".to_string(),
             settle_ms: 0,
             max_states: 10,

@@ -29,7 +29,13 @@ pub fn run() -> Result<(), Error> {
             println!("lele_code_viewer: exported to {}", out.display());
             Ok(())
         }
-        cli::Command::Serve { bind, roots, watch } => {
+        cli::Command::Serve {
+            bind,
+            roots,
+            watch,
+            settings,
+            no_self_update,
+        } => {
             let roots = if roots.is_empty() {
                 default_roots()
             } else {
@@ -41,7 +47,11 @@ pub fn run() -> Result<(), Error> {
                 ..project::Registry::default()
             };
             let runtime = tokio::runtime::Runtime::new()?;
-            runtime.block_on(server::serve(registry, &bind))
+            let options = server::ServeOptions {
+                settings_path: settings.unwrap_or_else(project::settings_path),
+                self_update: !no_self_update,
+            };
+            runtime.block_on(server::serve(registry, &bind, options))
         }
     }
 }

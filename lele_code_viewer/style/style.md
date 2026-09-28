@@ -48,6 +48,10 @@ Clicking the hamburger opens a left drawer containing, top to bottom:
    The currently active view is highlighted.
 3. A muted footer with the crate name / path of the active project.
 
+Each project in the switcher shows its name with the folder path underneath in
+small grey monospace text (home shortened to `~`), so duplicate crate names can
+be told apart. The drawer header has a small settings (sliders) icon.
+
 The drawer is the *only* place project switching and view switching happen. The
 main content area never grows a second navigation metaphor.
 
@@ -98,3 +102,15 @@ A flawed-but-pretty rendering is acceptable; correctness of the *layers*
   active state.
 - Everything must be usable one-handed on a narrow phone screen: no horizontal
   scrolling for navigation, big hit areas, the drawer full-height.
+
+## 7. Settings Page (`/settings`)
+
+- Reached from the sliders icon in the drawer header.
+- **Ignored folders**: one regular expression per line, matched against each
+  folder's full path; matching folders are skipped when looking for crates.
+  Defaults: `target`, `.git`, `__OLD__`, `node_modules` (each as a whole path
+  segment), all removable. Save validates every rule and rescans.
+- Rules are stored per PC in `~/.config/lele-code-viewer/settings.toml`.
+- **Maintenance**: *Refresh project list* (rescan) and *Update & restart
+  viewer* (runs `lele:service:update`).
+- Settings change only the viewer's own config; projects stay read-only.
