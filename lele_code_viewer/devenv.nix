@@ -21,6 +21,27 @@
     "lele:docs:check" = { exec = "cargo run -- check"; showOutput = true; };
     "lele:docs:serve" = { exec = "cargo run -- serve"; showOutput = true; };
     "lele:docs:export" = { exec = "cargo run -- export --out target/docs-site"; showOutput = true; };
+
+    # Systemd user service `lele-code-viewer` (unit: ~/.config/systemd/user/lele-code-viewer.service,
+    # created once by hand; runs ~/.local/bin/lele-code-viewer serve --watch on :8787).
+
+    # Rebuild in release mode, replace the installed binary, restart the service so it serves the new code.
+    "lele:service:update" = {
+      exec = ''
+        set -e
+        cargo build --release
+        install -Dm755 "$CARGO_TARGET_DIR/release/lele-code-viewer" "$HOME/.local/bin/lele-code-viewer"
+        systemctl --user restart lele-code-viewer.service
+        echo "lele-code-viewer.service: $(systemctl --user is-active lele-code-viewer.service)"
+      '';
+      showOutput = true;
+    };
+    # Show whether the service is running, since when, its pid and the last few log lines.
+    "lele:service:status" = { exec = "systemctl --user status lele-code-viewer.service --no-pager"; showOutput = true; };
+    # Print the last 200 log lines of the service and exit (safe for agents and scripts).
+    "lele:service:logs" = { exec = "journalctl --user -u lele-code-viewer.service -n 200 --no-pager"; showOutput = true; };
+    # Stream the service logs live until Ctrl+C (interactive, user-only: never returns on its own).
+    "lele:service:logs-follow" = { exec = "journalctl --user -u lele-code-viewer.service -f"; showOutput = true; };
   };
 
   git-hooks.hooks = {
