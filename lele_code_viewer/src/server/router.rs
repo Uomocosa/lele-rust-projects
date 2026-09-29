@@ -33,8 +33,8 @@ pub fn router(state: Arc<server::AppState>) -> Router {
         .route("/p/{id}", get(project_index))
         .route("/p/{id}/", get(project_index))
         .route("/p/{id}/file/{*path}", get(file))
-        .route("/p/{id}/item/{*item_id}", get(item))
         .route("/p/{id}/md/{*path}", get(md))
+        .route("/p/{id}/raw/{*path}", get(raw))
         .route("/p/{id}/search", get(search))
         .route("/p/{id}/tree/file", get(file_tree))
         .route("/p/{id}/tree/deps", get(dep_tree))
@@ -115,29 +115,6 @@ async fn file(
     }
 }
 
-// needed helper: item page
-async fn item(
-    State(state): State<Arc<server::AppState>>,
-    Path((id, item_id)): Path<(String, String)>,
-) -> Response {
-    let Some(page) = load(&state, &id).await else {
-        return not_found();
-    };
-    let target = item_id.replace('/', "::");
-    let watch = page
-        .idx
-        .by_id
-        .get(&target)
-        .and_then(|&i| page.idx.items.get(i))
-        .map(|found| found.file.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let cfg = server_cfg(&state, &page, render::ViewKind::None, &watch);
-    match render::render_item_page(&page.idx, &target, &cfg) {
-        Some(html) => Html(html).into_response(),
-        None => not_found(),
-    }
-}
-
 // needed helper: markdown page
 async fn md(
     State(state): State<Arc<server::AppState>>,
@@ -151,6 +128,62 @@ async fn md(
     match render::render_md_page(&page.idx, &rel, &cfg) {
         Some(html) => Html(html).into_response(),
         None => not_found(),
+    }
+}
+
+// needed helper: raw file bytes with a mime type for embeds and downloads
+async fn raw(
+    State(state): State<Arc<server::AppState>>,
+    Path((id, path)): Path<(String, String)>,
+) -> Response {
+    let Some(page) = load(&state, &id).await else {
+        return not_found();
+    };
+    let rel = PathBuf::from(&path);
+    let Some(full) = render::resolve_in_root(&page.idx.root, &rel) else {
+        return not_found();
+    };
+    let bytes = match std::fs::read(&full) {
+        Ok(bytes) => bytes,
+        Err(_) => return not_found(),
+    };
+    if bytes.len() > 67_108_864 {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Html("<h1>413</h1><p class=\"muted\">file too large</p>"),
+        )
+            .into_response();
+    }
+    ([(CONTENT_TYPE, raw_content_type(&rel))], bytes).into_response()
+}
+
+// needed helper: mime type for a raw file by extension
+fn raw_content_type(rel: &PathBuf) -> &'static str {
+    match rel.extension().and_then(|ext| ext.to_str()) {
+        Some("png") => "image/png",
+        Some("jpg" | "jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("svg") => "image/svg+xml",
+        Some("ico") => "image/x-icon",
+        Some("bmp") => "image/bmp",
+        Some("avif") => "image/avif",
+        Some("mp4") => "video/mp4",
+        Some("webm") => "video/webm",
+        Some("ogv") => "video/ogg",
+        Some("mov") => "video/quicktime",
+        Some("mp3") => "audio/mpeg",
+        Some("wav") => "audio/wav",
+        Some("ogg" | "oga") => "audio/ogg",
+        Some("flac") => "audio/flac",
+        Some("m4a") => "audio/mp4",
+        Some("json") => "application/json",
+        Some("pdf") => "application/pdf",
+        Some("css") => "text/css; charset=utf-8",
+        Some("js" | "mjs" | "cjs") => "text/javascript; charset=utf-8",
+        Some("html" | "htm") => "text/html; charset=utf-8",
+        Some("xml") => "text/xml; charset=utf-8",
+        _ => "application/octet-stream",
     }
 }
 

@@ -76,6 +76,7 @@ pub fn build_index(crate_dir: &Path) -> Result<index::SymbolIndex, Error> {
     idx.rust_files = idx.files.keys().cloned().collect();
     idx.rust_files.sort();
     idx.markdown_files = find_markdown(&project.root);
+    idx.extra_files = find_extra_files(&project.root);
     Ok(idx)
 }
 
@@ -160,6 +161,36 @@ fn find_markdown(root: &Path) -> Vec<PathBuf> {
     out
 }
 
+// needed helper: collect non-rust, non-markdown files under the crate root (skipping build dirs)
+fn find_extra_files(root: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let walker = walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_entry(|entry| {
+            let name = entry.file_name().to_string_lossy();
+            !(entry.file_type().is_dir()
+                && matches!(
+                    name.as_ref(),
+                    "target" | ".git" | ".devenv" | "node_modules" | "__OLD__" | ".freenet"
+                ))
+        });
+    for entry in walker.flatten() {
+        if entry.file_type().is_file()
+            && let Ok(rel) = entry.path().strip_prefix(root)
+        {
+            let is_code = entry
+                .path()
+                .extension()
+                .is_some_and(|e| e == "rs" || e == "md");
+            if !is_code {
+                out.push(rel.to_path_buf());
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -190,6 +221,15 @@ mod tests {
         assert!(
             idx.markdown_files
                 .contains(&std::path::PathBuf::from("README.md"))
+        );
+        assert!(
+            idx.extra_files
+                .contains(&std::path::PathBuf::from("Cargo.toml"))
+        );
+        assert!(
+            !idx.extra_files
+                .iter()
+                .any(|f| f.extension().is_some_and(|e| e == "rs" || e == "md"))
         );
     }
 }

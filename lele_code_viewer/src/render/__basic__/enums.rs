@@ -2,8 +2,8 @@
 pub enum LinkKind {
     Index,
     File,
-    Item,
     Md,
+    Raw,
     Search,
     Asset,
 }
@@ -14,6 +14,16 @@ pub enum ViewKind {
     None,
     Files,
     Deps,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileKind {
+    Rust,
+    Text,
+    Image,
+    Video,
+    Audio,
+    Other,
 }
 
 // no test_usage necessary

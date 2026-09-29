@@ -71,6 +71,7 @@ pub struct SymbolIndex {
     pub module_graph: ModuleGraph,
     pub markdown_files: Vec<PathBuf>,
     pub rust_files: Vec<PathBuf>,
+    pub extra_files: Vec<PathBuf>,
 }
 
 // no test_usage necessary

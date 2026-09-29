@@ -10,7 +10,7 @@ pub fn render_index_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig) -> 
     body.push_str(&format!(
         "<p class=\"muted\">{} items &middot; {} files</p>",
         idx.items.len(),
-        idx.rust_files.len()
+        idx.rust_files.len().saturating_add(idx.extra_files.len())
     ));
     if !idx.markdown_files.is_empty() {
         body.push_str("<h2>Docs</h2><ul class=\"list\">");
@@ -26,7 +26,7 @@ pub fn render_index_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig) -> 
     }
     body.push_str("<h2>Source</h2>");
     let mut by_dir: BTreeMap<String, Vec<PathBuf>> = BTreeMap::new();
-    for file in &idx.rust_files {
+    for file in idx.rust_files.iter().chain(idx.extra_files.iter()) {
         let dir = file
             .parent()
             .map_or_else(|| ".".to_string(), |p| p.to_string_lossy().to_string());

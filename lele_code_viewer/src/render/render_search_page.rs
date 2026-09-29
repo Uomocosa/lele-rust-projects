@@ -18,7 +18,7 @@ pub fn render_search_page(
     ));
     body.push_str("<ul class=\"list\">");
     let mut shown = 0_usize;
-    for file in &idx.rust_files {
+    for file in idx.rust_files.iter().chain(idx.extra_files.iter()) {
         if shown >= 300 {
             break;
         }
@@ -37,7 +37,9 @@ pub fn render_search_page(
             break;
         }
         if item.name.to_lowercase().contains(&needle) || item.id.to_lowercase().contains(&needle) {
-            let url = render::href(cfg, render::LinkKind::Item, &item.id);
+            let rel = item.file.to_string_lossy();
+            let base = render::href(cfg, render::LinkKind::File, &rel);
+            let url = format!("{base}#L{}", item.name_line);
             body.push_str(&format!(
                 "<li><a href=\"{url}\">{}</a> <span class=\"muted\">{}</span></li>",
                 render::escape(&item.name),

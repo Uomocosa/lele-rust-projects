@@ -11,6 +11,7 @@ use crate::render;
 use crate::source;
 
 pub fn render_html<S: BuildHasher>(
+    idx: &index::SymbolIndex,
     text: &str,
     occurrences: &[index::Occurrence],
     hl: &source::Highlighter,
@@ -31,6 +32,7 @@ pub fn render_html<S: BuildHasher>(
         let chars = styled_chars(line, &mut highlighter, hl);
         let occs = occ_by_line.get(&lineno);
         out.push_str(&render_line(
+            idx,
             lineno,
             &chars,
             occs,
@@ -62,8 +64,18 @@ fn styled_chars(
     line.chars().map(|c| (c, None)).collect()
 }
 
+// needed helper: file anchor for a symbol id, pointing at its definition line
+fn file_href(idx: &index::SymbolIndex, cfg: &render::LinkConfig, target: &str) -> Option<String> {
+    let &i = idx.by_id.get(target)?;
+    let item = idx.items.get(i)?;
+    let rel = item.file.to_string_lossy();
+    let base = render::href(cfg, render::LinkKind::File, &rel);
+    Some(format!("{base}#L{}", item.name_line))
+}
+
 // needed helper: emit one line with clickable anchors kept inside style spans
 fn render_line(
+    idx: &index::SymbolIndex,
     lineno: usize,
     chars: &[(char, Option<Style>)],
     occs: Option<&Vec<&index::Occurrence>>,
@@ -77,8 +89,9 @@ fn render_line(
         if occ.start_col >= occ.end_col {
             continue;
         }
-        if let Some(target) = &occ.target {
-            let href = render::href(cfg, render::LinkKind::Item, target);
+        if let Some(target) = &occ.target
+            && let Some(href) = file_href(idx, cfg, target)
+        {
             let class = if occ.is_self { "ref def" } else { "ref" };
             opens.insert(
                 occ.start_col,
@@ -150,6 +163,7 @@ fn style_css(style: &Style) -> String {
 #[cfg(test)]
 mod tests {
     use super::render_html;
+    use crate::index;
     use crate::render;
     use crate::source;
 
@@ -162,7 +176,9 @@ mod tests {
             html: false,
             nav: None,
         };
+        let idx = index::SymbolIndex::default();
         let html = render_html(
+            &idx,
             "fn main() {}\n",
             &[],
             &hl,
@@ -171,5 +187,50 @@ mod tests {
         );
         assert!(html.contains("<div class=\"line changed\" id=\"L1\">"));
         assert!(html.contains("fn"));
+    }
+
+    #[test]
+    fn test_symbol_links_to_file_anchor() {
+        let hl = source::highlighter_new();
+        let cfg = render::LinkConfig {
+            prefix: "/p/demo/".to_string(),
+            assets: "/".to_string(),
+            html: false,
+            nav: None,
+        };
+        let mut idx = index::SymbolIndex::default();
+        idx.items.push(index::IndexItem {
+            id: "a::f".to_string(),
+            name: "f".to_string(),
+            module: "a".to_string(),
+            kind: index::ItemKind::Fn,
+            file: std::path::PathBuf::from("src/a.rs"),
+            start_line: 3,
+            end_line: 5,
+            name_line: 3,
+            name_col_start: 7,
+            name_col_end: 8,
+            signature: "pub fn f".to_string(),
+            doc: None,
+            delegates_to: None,
+        });
+        idx.by_id.insert("a::f".to_string(), 0);
+        let occs = vec![index::Occurrence {
+            line: 1,
+            start_col: 0,
+            end_col: 1,
+            target: Some("a::f".to_string()),
+            is_self: false,
+        }];
+        let html = render_html(
+            &idx,
+            "f\n",
+            &occs,
+            &hl,
+            &cfg,
+            &std::collections::HashSet::new(),
+        );
+        assert!(html.contains("/p/demo/file/src/a.rs#L3"));
+        assert!(!html.contains("/item/"));
     }
 }

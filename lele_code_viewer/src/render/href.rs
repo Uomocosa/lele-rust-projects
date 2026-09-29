@@ -14,7 +14,7 @@ pub fn href(cfg: &render::LinkConfig, kind: render::LinkKind, value: &str) -> St
         render::LinkKind::Asset => format!("{}assets/{value}", cfg.assets),
         render::LinkKind::File => format!("{}file/{value}{ext}", cfg.prefix),
         render::LinkKind::Md => format!("{}md/{value}{ext}", cfg.prefix),
-        render::LinkKind::Item => format!("{}item/{}{ext}", cfg.prefix, value.replace("::", "/")),
+        render::LinkKind::Raw => format!("{}raw/{value}", cfg.prefix),
     }
 }
 
@@ -33,8 +33,8 @@ mod tests {
             nav: None,
         };
         assert_eq!(
-            href(&server, render::LinkKind::Item, "clicker::Config"),
-            "/item/clicker/Config"
+            href(&server, render::LinkKind::File, "src/clicker.rs"),
+            "/file/src/clicker.rs"
         );
         let exported = render::LinkConfig {
             prefix: "../../".to_string(),
@@ -45,6 +45,10 @@ mod tests {
         assert_eq!(
             href(&exported, render::LinkKind::File, "src/lib.rs"),
             "../../file/src/lib.rs.html"
+        );
+        assert_eq!(
+            href(&exported, render::LinkKind::Raw, "shot.png"),
+            "../../raw/shot.png"
         );
         assert_eq!(
             href(&exported, render::LinkKind::Index, ""),

@@ -10,7 +10,7 @@ pub fn render_file_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig)
     body.push_str(&format!(
         "<p class=\"muted\">{} items &middot; {} indexed files</p>",
         idx.items.len(),
-        idx.rust_files.len()
+        idx.rust_files.len().saturating_add(idx.extra_files.len())
     ));
     let root_name = idx
         .root
@@ -95,16 +95,13 @@ fn file_link(root: &Path, path: &Path, name: &str, cfg: &render::LinkConfig) -> 
         |_| path.to_string_lossy().to_string(),
         |p| p.to_string_lossy().to_string(),
     );
-    match path.extension().and_then(|e| e.to_str()) {
-        Some("rs") => {
-            let url = render::href(cfg, render::LinkKind::File, &rel);
-            format!("<a href=\"{url}\">{}</a>", render::escape(name))
-        }
-        Some("md") => {
-            let url = render::href(cfg, render::LinkKind::Md, &rel);
-            format!("<a href=\"{url}\">{}</a>", render::escape(name))
-        }
-        _ => format!("<span class=\"muted\">{}</span>", render::escape(name)),
+    let is_md = path.extension().and_then(|e| e.to_str()) == Some("md");
+    if is_md {
+        let url = render::href(cfg, render::LinkKind::Md, &rel);
+        format!("<a href=\"{url}\">{}</a>", render::escape(name))
+    } else {
+        let url = render::href(cfg, render::LinkKind::File, &rel);
+        format!("<a href=\"{url}\">{}</a>", render::escape(name))
     }
 }
 

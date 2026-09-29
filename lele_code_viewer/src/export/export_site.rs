@@ -29,10 +29,18 @@ pub fn export_site(idx: &index::SymbolIndex, out: &Path) -> Result<(), Error> {
             write_page(out, &page_rel, &html)?;
         }
     }
-    for item in &idx.items {
-        let page_rel = PathBuf::from(format!("item/{}.html", item.id.replace("::", "/")));
+    for file in &idx.extra_files {
+        if !matches!(
+            render::file_kind(file),
+            render::FileKind::Text | render::FileKind::Rust
+        ) {
+            copy_raw(idx, out, file)?;
+        }
+        let rel = file.to_string_lossy();
+        let page_rel = PathBuf::from(format!("file/{rel}.html"));
         let cfg = export_cfg(&page_rel);
-        if let Some(html) = render::render_item_page(idx, &item.id, &cfg) {
+        let html = render::render_file_page(idx, file, &hl, &cfg);
+        if let Some(html) = html {
             write_page(out, &page_rel, &html)?;
         }
     }
@@ -65,6 +73,18 @@ fn export_cfg(page_rel: &Path) -> render::LinkConfig {
         html: true,
         nav: None,
     }
+}
+
+// needed helper: copy a binary file into the exported raw/ tree
+fn copy_raw(idx: &index::SymbolIndex, out: &Path, file: &PathBuf) -> Result<(), Error> {
+    let full = render::resolve_in_root(&idx.root, file)
+        .ok_or_else(|| Error::NotFound(format!("missing file {}", file.to_string_lossy())))?;
+    let dest = out.join("raw").join(file);
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::copy(full, dest)?;
+    Ok(())
 }
 
 // needed helper: write a page creating parent directories
