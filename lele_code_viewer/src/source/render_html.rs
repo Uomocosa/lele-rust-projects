@@ -26,7 +26,10 @@ pub fn render_html<S: BuildHasher>(
         .theme
         .as_ref()
         .map(|theme| HighlightLines::new(&hl.syntax, theme));
-    let mut out = String::from("<div class=\"code\">");
+    let total = text.split('\n').count().max(1);
+    let digits = total.ilog10().saturating_add(1);
+    let gutter = digits.saturating_add(2);
+    let mut out = format!("<div class=\"code\" style=\"--ln-w:{gutter}ch\">");
     for (idx0, line) in text.split('\n').enumerate() {
         let lineno = idx0.saturating_add(1);
         let chars = styled_chars(line, &mut highlighter, hl);
@@ -64,13 +67,13 @@ fn styled_chars(
     line.chars().map(|c| (c, None)).collect()
 }
 
-// needed helper: file anchor for a symbol id, pointing at its definition line
+// needed helper: file anchor for a symbol id, pointing at its definition block
 fn file_href(idx: &index::SymbolIndex, cfg: &render::LinkConfig, target: &str) -> Option<String> {
     let &i = idx.by_id.get(target)?;
     let item = idx.items.get(i)?;
     let rel = item.file.to_string_lossy();
     let base = render::href(cfg, render::LinkKind::File, &rel);
-    Some(format!("{base}#L{}", item.name_line))
+    Some(format!("{base}#L{}-L{}", item.start_line, item.end_line))
 }
 
 // needed helper: emit one line with clickable anchors kept inside style spans
@@ -83,21 +86,24 @@ fn render_line(
     changed: bool,
 ) -> String {
     let mut opens: HashMap<usize, String> = HashMap::new();
-    let mut closes: HashMap<usize, usize> = HashMap::new();
+    let mut link_closes: HashMap<usize, usize> = HashMap::new();
+    let mut span_closes: HashMap<usize, usize> = HashMap::new();
     let empty: Vec<&index::Occurrence> = Vec::new();
     for occ in occs.unwrap_or(&empty) {
         if occ.start_col >= occ.end_col {
             continue;
         }
+        if occ.is_self {
+            opens.insert(occ.start_col, String::from("<span class=\"def\">"));
+            let entry = span_closes.entry(occ.end_col).or_insert(0);
+            *entry = entry.saturating_add(1);
+            continue;
+        }
         if let Some(target) = &occ.target
             && let Some(href) = file_href(idx, cfg, target)
         {
-            let class = if occ.is_self { "ref def" } else { "ref" };
-            opens.insert(
-                occ.start_col,
-                format!("<a class=\"{class}\" href=\"{href}\">"),
-            );
-            let entry = closes.entry(occ.end_col).or_insert(0);
+            opens.insert(occ.start_col, format!("<a class=\"ref\" href=\"{href}\">"));
+            let entry = link_closes.entry(occ.end_col).or_insert(0);
             *entry = entry.saturating_add(1);
         }
     }
@@ -109,15 +115,21 @@ fn render_line(
     let mut current = String::new();
     for (i, (ch, style)) in chars.iter().enumerate() {
         let css = style.as_ref().map_or_else(String::new, style_css);
-        let closing = closes.get(&i);
-        if span_open && (closing.is_some() || css != current) {
+        let link_closing = link_closes.get(&i);
+        let span_closing = span_closes.get(&i);
+        if span_open && (link_closing.is_some() || span_closing.is_some() || css != current) {
             out.push_str("</span>");
             span_open = false;
             current.clear();
         }
-        if let Some(count) = closing {
+        if let Some(count) = link_closing {
             for _ in 0..*count {
                 out.push_str("</a>");
+            }
+        }
+        if let Some(count) = span_closing {
+            for _ in 0..*count {
+                out.push_str("</span>");
             }
         }
         if let Some(open) = opens.get(&i) {
@@ -135,9 +147,14 @@ fn render_line(
     if span_open {
         out.push_str("</span>");
     }
-    if let Some(count) = closes.get(&chars.len()) {
+    if let Some(count) = link_closes.get(&chars.len()) {
         for _ in 0..*count {
             out.push_str("</a>");
+        }
+    }
+    if let Some(count) = span_closes.get(&chars.len()) {
+        for _ in 0..*count {
+            out.push_str("</span>");
         }
     }
     out.push_str("</span></div>");
@@ -186,6 +203,7 @@ mod tests {
             &std::collections::HashSet::from([1]),
         );
         assert!(html.contains("<div class=\"line changed\" id=\"L1\">"));
+        assert!(html.contains("--ln-w:"));
         assert!(html.contains("fn"));
     }
 
@@ -230,7 +248,53 @@ mod tests {
             &cfg,
             &std::collections::HashSet::new(),
         );
-        assert!(html.contains("/p/demo/file/src/a.rs#L3"));
+        assert!(html.contains("/p/demo/file/src/a.rs#L3-L5"));
         assert!(!html.contains("/item/"));
+    }
+
+    #[test]
+    fn test_self_renders_span_not_link() {
+        let hl = source::highlighter_new();
+        let cfg = render::LinkConfig {
+            prefix: "/p/demo/".to_string(),
+            assets: "/".to_string(),
+            html: false,
+            nav: None,
+        };
+        let mut idx = index::SymbolIndex::default();
+        idx.items.push(index::IndexItem {
+            id: "a::call".to_string(),
+            name: "call".to_string(),
+            module: "a".to_string(),
+            kind: index::ItemKind::Fn,
+            file: std::path::PathBuf::from("src/a.rs"),
+            start_line: 1,
+            end_line: 3,
+            name_line: 1,
+            name_col_start: 7,
+            name_col_end: 11,
+            signature: "pub fn call".to_string(),
+            doc: None,
+            delegates_to: None,
+        });
+        idx.by_id.insert("a::call".to_string(), 0);
+        let occs = vec![index::Occurrence {
+            line: 1,
+            start_col: 7,
+            end_col: 11,
+            target: Some("a::call".to_string()),
+            is_self: true,
+        }];
+        let html = render_html(
+            &idx,
+            "pub fn call() {}\n",
+            &occs,
+            &hl,
+            &cfg,
+            &std::collections::HashSet::new(),
+        );
+        assert!(html.contains("class=\"def\""));
+        assert!(html.contains("call</span>"));
+        assert!(!html.contains("<a "));
     }
 }

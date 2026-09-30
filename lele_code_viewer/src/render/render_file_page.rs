@@ -39,7 +39,7 @@ fn render_rust(
     let empty: Vec<index::Occurrence> = Vec::new();
     let occurrences = idx.occurrences.get(file).unwrap_or(&empty);
     let rel = file.to_string_lossy();
-    let mut body = format!("<h1 class=\"path\">{}</h1>", render::escape(&rel));
+    let mut body = render::breadcrumb(&rel, cfg);
     let changed = recent_lines(cfg, &rel);
     if let Some(first) = changed.iter().min() {
         body.push_str(&format!(
@@ -66,7 +66,7 @@ fn render_text(idx: &index::SymbolIndex, file: &Path, cfg: &render::LinkConfig) 
         .map(|indexed| Cow::Borrowed(indexed.as_str()))
         .or_else(|| read_text_file(idx, file).map(Cow::Owned))?;
     let rel = file.to_string_lossy();
-    let mut body = format!("<h1 class=\"path\">{}</h1>", render::escape(&rel));
+    let mut body = render::breadcrumb(&rel, cfg);
     let changed = recent_lines(cfg, &rel);
     if let Some(first) = changed.iter().min() {
         body.push_str(&format!(
@@ -109,7 +109,7 @@ fn render_embed(idx: &index::SymbolIndex, file: &Path, cfg: &render::LinkConfig)
             format!("<p><audio controls preload=\"metadata\" src=\"{raw}\"></audio></p>")
         }
     };
-    let mut body = format!("<h1 class=\"path\">{}</h1>", render::escape(&rel));
+    let mut body = render::breadcrumb(&rel, cfg);
     body.push_str(&tag);
     if let Ok(meta) = std::fs::metadata(&full)
         && let Some(size) = file_size(&meta)
@@ -129,7 +129,7 @@ fn render_download(
     let rel = file.to_string_lossy();
     let full = render::resolve_in_root(&idx.root, file)?;
     let raw = render::href(cfg, render::LinkKind::Raw, &rel);
-    let mut body = format!("<h1 class=\"path\">{}</h1>", render::escape(&rel));
+    let mut body = render::breadcrumb(&rel, cfg);
     if let Ok(meta) = std::fs::metadata(&full)
         && let Some(size) = file_size(&meta)
     {

@@ -68,7 +68,7 @@ fn render_dir(
             let prefix = format!("{rel}/");
             let hot = recent.iter().any(|r| r.starts_with(&prefix));
             out.push_str(&format!(
-                "<li><details class=\"dir\" data-key=\"{key}\"{open}><summary>{name}/{dot}</summary>",
+                "<li><details class=\"dir\" id=\"{key}\" data-key=\"{key}\"{open}><summary>{name}/{dot}</summary>",
                 key = render::escape(&rel),
                 open = if hot { " open" } else { "" },
                 name = render::escape(&name),
@@ -166,12 +166,14 @@ mod tests {
         };
         let live_html = render_file_tree_page(&idx, &live_cfg);
         assert!(live_html.contains(
-            "<details class=\"dir\" data-key=\"src\" open><summary>src/<span class=\"dot\">"
+            "<details class=\"dir\" id=\"src\" data-key=\"src\" open><summary>src/<span class=\"dot\">"
         ));
         assert!(live_html.contains("<li class=\"file recent\">"));
         assert!(html.contains("Files"));
         assert!(html.contains("href=\"/p/demo/file/src/lib.rs\""));
         assert!(html.contains("<details class=\"dir\" open>"));
-        assert!(html.contains("<details class=\"dir\" data-key=\"src\"><summary>src/</summary>"));
+        assert!(html.contains(
+            "<details class=\"dir\" id=\"src\" data-key=\"src\"><summary>src/</summary>"
+        ));
     }
 }

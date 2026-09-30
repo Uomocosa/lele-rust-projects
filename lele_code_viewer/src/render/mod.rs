@@ -1,5 +1,7 @@
 mod escape;
 pub use escape::escape;
+mod breadcrumb;
+pub use breadcrumb::breadcrumb;
 mod file_kind;
 pub use file_kind::file_kind;
 mod href;

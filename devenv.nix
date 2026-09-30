@@ -7,9 +7,15 @@
 
   packages = with pkgs; [
     cargo-nextest
+    tombi
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
+
+  tasks."lele:toml" = {
+    exec = "tombi lint";
+    showOutput = true;
+  };
 
   tasks."lele:enforce-config" = {
     exec = "cargo run --manifest-path lele_enforce_config/Cargo.toml 2>&1";
@@ -25,6 +31,14 @@
     enable = true;
     name = "lele_enforce_config";
     entry = "bash -c 'devenv tasks run lele:enforce-config 2>&1'";
+    pass_filenames = false;
+    always_run = true;
+  };
+
+  git-hooks.hooks.lele-toml = {
+    enable = true;
+    name = "tombi lint";
+    entry = "bash -c 'devenv tasks run lele:toml 2>&1'";
     pass_filenames = false;
     always_run = true;
   };
