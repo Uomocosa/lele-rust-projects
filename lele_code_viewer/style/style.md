@@ -72,24 +72,23 @@ shape a file manager would show:
 
 ## 5. View: Dependency Tree
 
-The **Dependencies** icon shows an internal **module dependency graph**, layered
+The **Dependencies** icon shows an internal **code-block dependency graph**, layered
 **bottom = base, top = most important / most code**:
 
-- Nodes are the crate's own modules (e.g. `index`, `server::router`).
-- Base layer (bottom): modules that depend on **nothing internal** — or only on
-  **outside crates** (std, axum, serde, …). External crates appear as a muted
-  foundation strip beneath the base modules.
-- Higher layers: modules that depend on more internal modules — the "more
-  important / more code" aggregating layers.
-- Edges link a module to the modules it depends on (`A → B` means *A uses B*),
-  drawn so the direction of dependency reads clearly.
-- Layering rule: a module with no internal dependencies sits at level 0; every
-  other module sits one level above the highest level among its internal
-  dependencies.
-- Nodes expand/collapse so a large graph stays navigable on a phone.
-
-A flawed-but-pretty rendering is acceptable; correctness of the *layers*
-(base at bottom, aggregators at top) matters more than pixel perfection.
+- Nodes are the crate's own code blocks: each `fn` (including each impl method as
+  its own function node), `struct`, `enum` and `trait` — rendered as a pill with
+  the bare name plus a kind dot. No folders, no modules, no `mod.rs`; `const`,
+  `static` and type aliases are not nodes (no braces, no code inside).
+- An impl method depends on its parent type, so it always layers above it.
+- Base layer (bottom): code blocks that depend on **nothing internal** — or only on
+  **outside crates** (std, axum, serde, …).
+- Higher layers: code blocks that depend on lower layers — `Ln = 1 + max(dep layers)`.
+- Edges point from a dependency to its consumer (`dep ──is used by──▶ user`), drawn
+  as SVG lines plus an expandable link list per pill.
+- Outside crates stay hidden until hover/focus/tap on a pill, when they dissolve in
+  with a dither fade; tap pins the reveal on touch screens.
+- Layers are separated by a transparent gray dashed line labelled `Layer N` (left,
+  above the line); `Layer 0 · base` sits at the bottom.
 
 ## 6. Visual Language
 

@@ -78,7 +78,7 @@ pub fn collect_occurrences(
             });
         }
     }
-    out.sort_by_key(|o| (o.line, o.start_col));
+    out.sort_by_key(|o| (o.line, o.start_col, !o.is_self));
     out.dedup_by_key(|o| (o.line, o.start_col));
     out
 }

@@ -72,6 +72,7 @@ pub fn build_index(crate_dir: &Path) -> Result<index::SymbolIndex, Error> {
         );
     }
     index::build_module_graph(&mut idx, &file_deps);
+    index::build_item_graph(&mut idx, &file_deps);
 
     idx.rust_files = idx.files.keys().cloned().collect();
     idx.rust_files.sort();

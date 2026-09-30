@@ -60,7 +60,8 @@ pub fn build_module_graph<S: BuildHasher>(
         .map(|&(from, to)| index::ModuleEdge { from, to })
         .collect();
 
-    let layers = compute_layers(nodes.len(), &edges);
+    let pairs: Vec<(usize, usize)> = edges.iter().map(|e| (e.from, e.to)).collect();
+    let layers = index::compute_layers(nodes.len(), &pairs);
     for (i, node) in nodes.iter_mut().enumerate() {
         node.layer = layers.get(i).copied().unwrap_or(0);
     }
@@ -89,49 +90,6 @@ fn match_module(candidate: &str, known: &BTreeSet<String>) -> Option<String> {
         }
     }
     None
-}
-
-// needed helper: longest-path layering, base (no internal deps) at level 0
-fn compute_layers(node_count: usize, edges: &[index::ModuleEdge]) -> Vec<usize> {
-    let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); node_count];
-    for edge in edges {
-        if let Some(list) = adjacency.get_mut(edge.from) {
-            list.push(edge.to);
-        }
-    }
-    let mut levels = vec![0usize; node_count];
-    let mut state = vec![0u8; node_count];
-    for node in 0..node_count {
-        visit(node, &adjacency, &mut levels, &mut state);
-    }
-    levels
-}
-
-// needed helper: depth-first longest path with cycle guard
-fn visit(node: usize, adjacency: &[Vec<usize>], levels: &mut [usize], state: &mut [u8]) {
-    if state.get(node).copied().unwrap_or(2) != 0 {
-        return;
-    }
-    if let Some(slot) = state.get_mut(node) {
-        *slot = 1;
-    }
-    let mut best = 0usize;
-    if let Some(deps) = adjacency.get(node).cloned() {
-        for dep in deps {
-            if state.get(dep).copied().unwrap_or(2) == 1 {
-                continue;
-            }
-            visit(dep, adjacency, levels, state);
-            let candidate = levels.get(dep).copied().unwrap_or(0).saturating_add(1);
-            best = best.max(candidate);
-        }
-    }
-    if let Some(slot) = levels.get_mut(node) {
-        *slot = best;
-    }
-    if let Some(slot) = state.get_mut(node) {
-        *slot = 2;
-    }
 }
 
 #[cfg(test)]

@@ -2,6 +2,10 @@ mod build_call_graph;
 pub use build_call_graph::build_call_graph;
 mod build_index;
 pub use build_index::build_index;
+mod build_item_graph;
+pub use build_item_graph::build_item_graph;
+mod compute_layers;
+pub use compute_layers::compute_layers;
 mod build_module_graph;
 pub use build_module_graph::build_module_graph;
 mod collect_deps;
@@ -27,8 +31,10 @@ pub use resolve::resolve;
 
 #[path = "__basic__/mod.rs"]
 pub mod basic;
+pub use basic::enums::CodeBlock;
 pub use basic::enums::ItemKind;
 pub use basic::structs::{
-    FileDeps, IndexItem, ModuleEdge, ModuleGraph, ModuleNode, Occurrence, SymbolIndex,
+    FileDeps, IndexItem, ItemEdge, ItemGraph, ItemNode, ModuleEdge, ModuleGraph, ModuleNode,
+    Occurrence, SymbolIndex,
 };
 pub use basic::type_aliases::Imports;

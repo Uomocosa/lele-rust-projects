@@ -4,23 +4,24 @@ use crate::index;
 use crate::render;
 
 pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkConfig) -> String {
-    let graph = &idx.module_graph;
+    let graph = &idx.item_graph;
     let mut body = String::from("<h1>Dependencies</h1>");
     body.push_str(&format!(
-        "<p class=\"muted\">{} modules &middot; {} links &middot; \
-<span class=\"arrow\">&rarr;</span> uses &middot; <span class=\"arrow\">&larr;</span> used by</p>",
+        "<p class=\"muted\">{} code blocks &middot; {} links &middot; \
+<span class=\"arrow\">&#9472;&#9472;is used by&#9472;&#9472;&#9654;</span></p>",
         graph.nodes.len(),
         graph.edges.len()
     ));
+    body.push_str("<div class=\"cb-graph\"><svg class=\"cb-edges\" aria-hidden=\"true\"></svg>");
 
-    let mut uses: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
-    let mut used_by: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
+    let mut deps_of: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
+    let mut users_of: Vec<Vec<usize>> = vec![Vec::new(); graph.nodes.len()];
     for edge in &graph.edges {
-        if let Some(list) = uses.get_mut(edge.from) {
-            list.push(edge.to);
-        }
-        if let Some(list) = used_by.get_mut(edge.to) {
+        if let Some(list) = deps_of.get_mut(edge.to) {
             list.push(edge.from);
+        }
+        if let Some(list) = users_of.get_mut(edge.from) {
+            list.push(edge.to);
         }
     }
 
@@ -32,14 +33,17 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
 
     for (layer, nodes) in by_layer.iter().rev() {
         body.push_str(&format!(
-            "<section class=\"layer\"><div class=\"layer-tag\">{}</div><div class=\"layer-nodes\">",
+            "<div class=\"layer-sep\"><span>{}</span></div>",
             layer_tag(*layer, top)
         ));
+        body.push_str("<section class=\"layer\"><div class=\"layer-nodes\">");
         for &i in nodes {
-            body.push_str(&node_html(idx, i, &uses, &used_by));
+            body.push_str(&pill_html(idx, i, &deps_of, &users_of));
         }
         body.push_str("</div></section>");
     }
+    body.push_str("</div>");
+    body.push_str(&edges_json(graph));
 
     if !graph.externals.is_empty() {
         body.push_str(
@@ -57,67 +61,79 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
     render::page_shell(cfg, "Dependencies", &body)
 }
 
-// needed helper: layer heading, naming the base and the top layer
+// needed helper: layer divider label, naming the base and the top layer
 fn layer_tag(layer: usize, top: usize) -> String {
     if layer == 0 {
-        "L0 &middot; base".to_string()
+        "Layer 0 &middot; base".to_string()
     } else if layer == top {
-        format!("L{layer} &middot; top")
+        format!("Layer {layer} &middot; top")
     } else {
-        format!("L{layer}")
+        format!("Layer {layer}")
     }
 }
 
-// needed helper: one collapsible module node with its dependency links both ways
-fn node_html(
+// needed helper: css class suffix for a code block kind
+fn kind_class(kind: index::CodeBlock) -> &'static str {
+    match kind {
+        index::CodeBlock::Function => "kind-function",
+        index::CodeBlock::Struct => "kind-struct",
+        index::CodeBlock::Enum => "kind-enum",
+        index::CodeBlock::Trait => "kind-trait",
+    }
+}
+
+// needed helper: one pill node with magical externals and its is-used-by links
+fn pill_html(
     idx: &index::SymbolIndex,
     i: usize,
-    uses: &[Vec<usize>],
-    used_by: &[Vec<usize>],
+    deps_of: &[Vec<usize>],
+    users_of: &[Vec<usize>],
 ) -> String {
-    let Some(node) = idx.module_graph.nodes.get(i) else {
+    let Some(node) = idx.item_graph.nodes.get(i) else {
         return String::new();
     };
     let empty: Vec<usize> = Vec::new();
-    let out_links = uses.get(i).unwrap_or(&empty);
-    let in_links = used_by.get(i).unwrap_or(&empty);
+    let deps = deps_of.get(i).unwrap_or(&empty);
+    let users = users_of.get(i).unwrap_or(&empty);
+    let has_ext = if node.external.is_empty() {
+        ""
+    } else {
+        " has-ext"
+    };
     let mut out = format!(
-        "<details class=\"dep-node\" id=\"m-{key}\" data-key=\"m-{key}\"><summary><span class=\"dep-name\">{name}</span>\
-<span class=\"dep-count\">&rarr;{uses} &larr;{used}</span></summary><div class=\"dep-body\">",
-        key = anchor(&node.module),
-        name = render::escape(&module_label(&node.module)),
-        uses = out_links.len(),
-        used = in_links.len()
+        "<div class=\"cb-wrap\" data-node=\"{id}\"><button class=\"cb-pill {kind}{has_ext}\" data-node=\"{id}\" aria-expanded=\"false\" title=\"{id}\">\
+<span class=\"cb-dot\" aria-hidden=\"true\"></span><span class=\"cb-name\">{name}</span></button>",
+        id = render::escape(&node.id),
+        kind = kind_class(node.kind),
+        has_ext = has_ext,
+        name = render::escape(&node.name),
     );
-    push_links(idx, out_links, "&rarr;", "uses", &mut out);
-    push_links(idx, in_links, "&larr;", "used by", &mut out);
     if !node.external.is_empty() {
-        out.push_str(
-            "<div class=\"dep-row\"><span class=\"dep-label\">crates</span><div class=\"chips\">",
-        );
+        out.push_str("<div class=\"cb-ext\" aria-hidden=\"true\">");
         for ext in &node.external {
             out.push_str(&format!(
-                "<span class=\"chip\">{}</span>",
+                "<span class=\"chip ext-chip\">{}</span>",
                 render::escape(ext)
             ));
         }
-        out.push_str("</div></div>");
+        out.push_str("</div>");
     }
-    if out_links.is_empty() && in_links.is_empty() && node.external.is_empty() {
+    out.push_str(&format!(
+        "<details class=\"cb-detail\" id=\"cb-{key}\" data-key=\"cb-{key}\"><summary><span class=\"dep-count\">&#9472;&#9472;is used by&#9472;&#9472;&#9654;{uses}</span></summary><div class=\"dep-body\">",
+        key = anchor(&node.id),
+        uses = users.len(),
+    ));
+    push_links(idx, deps, "depends on", &mut out);
+    push_links(idx, users, "is used by", &mut out);
+    if deps.is_empty() && users.is_empty() && node.external.is_empty() {
         out.push_str("<p class=\"muted dep-row\">no dependencies</p>");
     }
-    out.push_str("</div></details>");
+    out.push_str("</div></details></div>");
     out
 }
 
-// needed helper: one labelled row of links to other module nodes
-fn push_links(
-    idx: &index::SymbolIndex,
-    targets: &[usize],
-    arrow: &str,
-    label: &str,
-    out: &mut String,
-) {
+// needed helper: one labelled row of links to other code block pills
+fn push_links(idx: &index::SymbolIndex, targets: &[usize], label: &str, out: &mut String) {
     if targets.is_empty() {
         return;
     }
@@ -125,33 +141,48 @@ fn push_links(
         "<div class=\"dep-row\"><span class=\"dep-label\">{label}</span><div class=\"dep-uses\">"
     ));
     for &t in targets {
-        if let Some(target) = idx.module_graph.nodes.get(t) {
+        if let Some(target) = idx.item_graph.nodes.get(t) {
             out.push_str(&format!(
-                "<a class=\"dep-link\" href=\"#m-{}\">{arrow} {}</a>",
-                anchor(&target.module),
-                render::escape(&module_label(&target.module))
+                "<a class=\"dep-link\" href=\"#cb-{}\">{}</a>",
+                anchor(&target.id),
+                render::escape(&target.name)
             ));
         }
     }
     out.push_str("</div></div>");
 }
 
-// needed helper: human label for a module path
-fn module_label(module: &str) -> String {
-    if module.is_empty() {
-        "(crate root)".to_string()
-    } else {
-        module.to_string()
+// needed helper: edge list as json for the svg overlay
+fn edges_json(graph: &index::ItemGraph) -> String {
+    let mut out = String::from("<script type=\"application/json\" id=\"cb-edges\">[");
+    let mut first = true;
+    for edge in &graph.edges {
+        let Some(from) = graph.nodes.get(edge.from) else {
+            continue;
+        };
+        let Some(to) = graph.nodes.get(edge.to) else {
+            continue;
+        };
+        if !first {
+            out.push(',');
+        }
+        first = false;
+        out.push_str(&format!(
+            "{{\"from\":\"{}\",\"to\":\"{}\"}}",
+            render::escape(&from.id),
+            render::escape(&to.id),
+        ));
     }
+    out.push_str("]</script>");
+    out
 }
 
-// needed helper: html anchor id for a module path
-fn anchor(module: &str) -> String {
-    if module.is_empty() {
+// needed helper: html anchor id for a code block id
+fn anchor(id: &str) -> String {
+    if id.is_empty() {
         return "crate-root".to_string();
     }
-    module
-        .chars()
+    id.chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect()
 }
@@ -165,20 +196,24 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut idx = index::SymbolIndex::default();
-        idx.module_graph.nodes.push(index::ModuleNode {
-            module: "base".to_string(),
+        idx.item_graph.nodes.push(index::ItemNode {
+            id: "a::Cfg".to_string(),
+            name: "Cfg".to_string(),
+            kind: index::CodeBlock::Struct,
             external: vec!["std".to_string()],
             layer: 0,
         });
-        idx.module_graph.nodes.push(index::ModuleNode {
-            module: "app".to_string(),
+        idx.item_graph.nodes.push(index::ItemNode {
+            id: "a::run".to_string(),
+            name: "run".to_string(),
+            kind: index::CodeBlock::Function,
             external: Vec::new(),
             layer: 1,
         });
-        idx.module_graph
+        idx.item_graph
             .edges
-            .push(index::ModuleEdge { from: 1, to: 0 });
-        idx.module_graph.externals.push("std".to_string());
+            .push(index::ItemEdge { from: 0, to: 1 });
+        idx.item_graph.externals.push("std".to_string());
         let cfg = render::LinkConfig {
             prefix: "/p/demo/".to_string(),
             assets: "/assets/".to_string(),
@@ -186,16 +221,16 @@ mod tests {
             nav: None,
         };
         let html = render_dependency_tree_page(&idx, &cfg);
-        assert!(html.contains("base"));
-        assert!(html.contains("app"));
+        assert!(html.contains("Cfg"));
+        assert!(html.contains("run"));
         assert!(html.contains("std"));
-        assert!(html.contains("<details class=\"dep-node\" id=\"m-app\" data-key=\"m-app\">"));
-        assert!(html.contains("href=\"#m-base\">&rarr; base</a>"));
-        assert!(html.contains("href=\"#m-app\">&larr; app</a>"));
-        assert!(html.contains("L0 &middot; base"));
-        let top = html.find("L1 &middot; top").unwrap();
-        let base = html.find("L0 &middot; base").unwrap();
-        let crates = html.find("external crates").unwrap();
-        assert!(top < base && base < crates);
+        assert!(html.contains("cb-pill kind-struct"));
+        assert!(html.contains("cb-pill kind-function"));
+        assert!(html.contains("Layer 0 &middot; base"));
+        assert!(html.contains("is used by"));
+        assert!(html.contains("id=\"cb-edges\""));
+        let base = html.find("Layer 1 &middot; top").unwrap();
+        let top = html.find("Layer 0 &middot; base").unwrap();
+        assert!(base < top);
     }
 }

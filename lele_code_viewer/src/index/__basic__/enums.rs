@@ -11,4 +11,12 @@ pub enum ItemKind {
     Mod,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CodeBlock {
+    Function,
+    Struct,
+    Enum,
+    Trait,
+}
+
 // no test_usage necessary

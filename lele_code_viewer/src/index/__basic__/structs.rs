@@ -39,6 +39,28 @@ pub struct ModuleEdge {
     pub to: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct ItemNode {
+    pub id: String,
+    pub name: String,
+    pub kind: basic::enums::CodeBlock,
+    pub external: Vec<String>,
+    pub layer: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct ItemEdge {
+    pub from: usize,
+    pub to: usize,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ItemGraph {
+    pub nodes: Vec<ItemNode>,
+    pub edges: Vec<ItemEdge>,
+    pub externals: Vec<String>,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct ModuleGraph {
     pub nodes: Vec<ModuleNode>,
@@ -69,6 +91,7 @@ pub struct SymbolIndex {
     pub callers: HashMap<String, Vec<String>>,
     pub callees: HashMap<String, Vec<String>>,
     pub module_graph: ModuleGraph,
+    pub item_graph: ItemGraph,
     pub markdown_files: Vec<PathBuf>,
     pub rust_files: Vec<PathBuf>,
     pub extra_files: Vec<PathBuf>,

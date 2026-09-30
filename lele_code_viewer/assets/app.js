@@ -77,6 +77,10 @@
 
   function highlightHash() {
     clearTargets();
+    if (window.__lcvTargetTimer) {
+      clearTimeout(window.__lcvTargetTimer);
+      window.__lcvTargetTimer = null;
+    }
     var hash = window.location.hash;
     if (!hash || hash.charAt(0) !== "#") {
       return;
@@ -98,6 +102,7 @@
         node.classList.add("target");
       }
     }
+    window.__lcvTargetTimer = setTimeout(clearTargets, 1000);
   }
 
   var LIVE_KEY = "lcv-live:";
@@ -223,10 +228,105 @@
     }
   }
 
+  function setupCodeBlocks() {
+    var graph = document.querySelector(".cb-graph");
+    if (!graph) {
+      return;
+    }
+    var pills = graph.querySelectorAll(".cb-pill[data-node]");
+    for (var p = 0; p < pills.length; p++) {
+      pills[p].addEventListener("click", function (event) {
+        var pinned = this.classList.contains("pinned");
+        var all = graph.querySelectorAll(".cb-pill.pinned");
+        for (var q = 0; q < all.length; q++) {
+          all[q].classList.remove("pinned");
+          all[q].setAttribute("aria-expanded", "false");
+        }
+        if (!pinned) {
+          this.classList.add("pinned");
+          this.setAttribute("aria-expanded", "true");
+        }
+        event.stopPropagation();
+      });
+    }
+    document.addEventListener("click", function () {
+      var all = graph.querySelectorAll(".cb-pill.pinned");
+      for (var q = 0; q < all.length; q++) {
+        all[q].classList.remove("pinned");
+        all[q].setAttribute("aria-expanded", "false");
+      }
+    });
+    drawCodeEdges(graph);
+    var timer = null;
+    window.addEventListener("resize", function () {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(function () {
+        drawCodeEdges(graph);
+      }, 150);
+    });
+  }
+
+  function drawCodeEdges(graph) {
+    var svg = graph.querySelector("svg.cb-edges");
+    var raw = document.getElementById("cb-edges");
+    if (!svg || !raw) {
+      return;
+    }
+    var edges = [];
+    try {
+      edges = JSON.parse(raw.textContent || "[]");
+    } catch (err) {
+      return;
+    }
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+    if (edges.length > 600) {
+      return;
+    }
+    var ns = "http://www.w3.org/2000/svg";
+    var defs = document.createElementNS(ns, "defs");
+    defs.innerHTML =
+      '<marker id="cb-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#58a6ff"></path></marker>';
+    svg.appendChild(defs);
+    var box = graph.getBoundingClientRect();
+    for (var i = 0; i < edges.length; i++) {
+      var from = graph.querySelector('[data-node="' + edges[i].from + '"]');
+      var to = graph.querySelector('[data-node="' + edges[i].to + '"]');
+      if (!from || !to) {
+        continue;
+      }
+      var a = from.getBoundingClientRect();
+      var b = to.getBoundingClientRect();
+      var x1 = a.left + a.width / 2 - box.left;
+      var y1 = a.top - box.top;
+      var x2 = b.left + b.width / 2 - box.left;
+      var y2 = b.top + b.height - box.top;
+      if (y1 > y2) {
+        var tmpX = x1;
+        x1 = x2;
+        x2 = tmpX;
+        var tmpY = y1;
+        y1 = y2;
+        y2 = tmpY;
+      }
+      var mid = (y1 + y2) / 2;
+      var path = document.createElementNS(ns, "path");
+      path.setAttribute(
+        "d",
+        "M " + x1 + " " + y1 + " C " + x1 + " " + mid + ", " + x2 + " " + mid + ", " + x2 + " " + y2
+      );
+      svg.appendChild(path);
+    }
+  }
+
   window.addEventListener("hashchange", highlightHash);
   window.addEventListener("load", function () {
     setupDrawer();
     setupProjectFilter();
+    setupCodeBlocks();
     highlightHash();
     restoreLiveState();
     setupLive();
