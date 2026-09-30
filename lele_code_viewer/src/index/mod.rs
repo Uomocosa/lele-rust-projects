@@ -6,6 +6,8 @@ mod build_item_graph;
 pub use build_item_graph::build_item_graph;
 mod detect_groups;
 pub use detect_groups::detect_groups;
+mod exclusive_groups;
+pub use exclusive_groups::exclusive_groups;
 mod compute_layers;
 pub use compute_layers::compute_layers;
 mod build_module_graph;

@@ -12,7 +12,9 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
         graph.edges.len()
     ));
     body.push_str(
-        "<label class=\"cb-toggle\"><input type=\"checkbox\" id=\"cb-show-layers\" checked> show layers</label>",
+        "<div class=\"cb-controls\"><label class=\"cb-toggle\"><input type=\"checkbox\" id=\"cb-show-layers\" checked> show layers</label>\
+<label class=\"cb-toggle\"><input type=\"checkbox\" id=\"cb-multi-groups\" checked> a code block can belong to multiple groups</label>\
+<button type=\"button\" class=\"cb-fit\" id=\"cb-fit\">fit</button></div>",
     );
     body.push_str("<div class=\"cb-scroll\"><div class=\"cb-graph\"><svg class=\"cb-groups\" aria-hidden=\"true\"></svg><svg class=\"cb-edges\" aria-hidden=\"true\"></svg>");
 
@@ -35,7 +37,12 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
     }
     body.push_str("</div></div>");
     body.push_str(&edges_json(graph));
-    body.push_str(&groups_json(graph));
+    body.push_str(&groups_json(graph, &graph.groups, "cb-groups"));
+    body.push_str(&groups_json(
+        graph,
+        &graph.exclusive_groups,
+        "cb-groups-single",
+    ));
     body.push_str(&ext_edges_json(graph));
     body.push_str(&render::adjacency_json(graph));
 
@@ -144,9 +151,9 @@ fn edges_json(graph: &index::ItemGraph) -> String {
 }
 
 // needed helper: detected domain groups as json arrays of node ids
-fn groups_json(graph: &index::ItemGraph) -> String {
-    let mut out = String::from("<script type=\"application/json\" id=\"cb-groups\">[");
-    for (n, group) in graph.groups.iter().enumerate() {
+fn groups_json(graph: &index::ItemGraph, groups: &[index::ItemGroup], id: &str) -> String {
+    let mut out = format!("<script type=\"application/json\" id=\"{id}\">[");
+    for (n, group) in groups.iter().enumerate() {
         if n > 0 {
             out.push(',');
         }
@@ -260,6 +267,8 @@ mod tests {
         assert!(html.contains("id=\"cb-ext-edges\""));
         assert!(html.contains("id=\"cb-adj\""));
         assert!(html.contains("id=\"cb-groups\">[]"));
+        assert!(html.contains("id=\"cb-groups-single\">[]"));
+        assert!(html.contains("id=\"cb-multi-groups\""));
         assert!(html.contains("data-layer=\"1\""));
         assert!(html.contains("id=\"cb-show-layers\""));
         assert!(html.contains("data-ext=\"std\""));

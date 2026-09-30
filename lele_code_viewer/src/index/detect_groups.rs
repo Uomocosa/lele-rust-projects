@@ -326,9 +326,11 @@ fn collect_groups(
             members.entry(c).or_default().push(node);
         }
     }
-    let mut groups: Vec<Vec<usize>> = members
-        .into_values()
+    let merged = merge_overlapping(members.into_values().map(BTreeSet::from_iter).collect());
+    let mut groups: Vec<Vec<usize>> = merged
+        .into_iter()
         .filter(|m| m.len() >= MIN_GROUP_SIZE)
+        .map(|m| m.into_iter().collect())
         .collect();
     groups.sort_by(|a, b| {
         b.len()
@@ -336,6 +338,30 @@ fn collect_groups(
             .then_with(|| a.first().cmp(&b.first()))
     });
     groups.into_iter().map(index::ItemGroup).collect()
+}
+
+// needed helper: fold together groups whose member sets mostly coincide (jaccard >= 1/2)
+fn merge_overlapping(mut groups: Vec<BTreeSet<usize>>) -> Vec<BTreeSet<usize>> {
+    loop {
+        let mut pair = None;
+        'search: for (i, a) in groups.iter().enumerate() {
+            for (j, b) in groups.iter().enumerate().skip(i.saturating_add(1)) {
+                let inter = a.intersection(b).count();
+                let union = a.len().saturating_add(b.len()).saturating_sub(inter);
+                if inter > 0 && inter.saturating_mul(2) >= union {
+                    pair = Some((i, j));
+                    break 'search;
+                }
+            }
+        }
+        let Some((i, j)) = pair else {
+            return groups;
+        };
+        let taken = groups.remove(j);
+        if let Some(target) = groups.get_mut(i) {
+            target.extend(taken);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -361,6 +387,17 @@ mod tests {
         let with_zero = groups.iter().find(|g| g.contains(&0)).unwrap();
         assert!(!with_zero.contains(&4));
         assert!(groups.iter().all(|g| !g.contains(&9)));
+    }
+
+    #[test]
+    fn test_detect_groups_merges_near_duplicates() {
+        let merged = super::merge_overlapping(vec![
+            [1, 2, 3, 4].into_iter().collect(),
+            [1, 2, 3, 5].into_iter().collect(),
+            [7, 8, 9].into_iter().collect(),
+        ]);
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged.first().map(|g| g.len()), Some(5));
     }
 
     #[test]

@@ -472,21 +472,38 @@
       cacheChips();
     }
     var toggle = document.getElementById("cb-show-layers");
-    var layered = readLayersPref(toggle ? toggle.checked : true);
+    var multi = document.getElementById("cb-multi-groups");
+    var layered = readPref("lcv-show-layers", toggle ? toggle.checked : true);
+    var shared = readPref("lcv-multi-groups", multi ? multi.checked : true);
+    function relayout() {
+      graph.classList.add("animating");
+      forceLayout(graph, toggle ? toggle.checked : true, multi ? multi.checked : true);
+      window.setTimeout(function () {
+        graph.classList.remove("animating");
+        var fitButton = document.getElementById("cb-fit");
+        if (fitButton) {
+          fitButton.click();
+        }
+        redraw();
+      }, 560);
+    }
     if (toggle) {
       toggle.checked = layered;
       toggle.addEventListener("change", function () {
-        writeLayersPref(toggle.checked);
-        graph.classList.add("animating");
-        forceLayout(graph, toggle.checked);
-        window.setTimeout(function () {
-          graph.classList.remove("animating");
-          redraw();
-        }, 560);
+        writePref("lcv-show-layers", toggle.checked);
+        relayout();
       });
     }
-    forceLayout(graph, layered);
+    if (multi) {
+      multi.checked = shared;
+      multi.addEventListener("change", function () {
+        writePref("lcv-multi-groups", multi.checked);
+        relayout();
+      });
+    }
+    forceLayout(graph, layered, shared);
     redraw();
+    setupPanZoom(graph, redraw);
     var timer = null;
     window.addEventListener("resize", function () {
       if (timer) {
@@ -496,18 +513,18 @@
     });
   }
 
-  function readLayersPref(fallback) {
+  function readPref(key, fallback) {
     try {
-      var v = window.localStorage.getItem("lcv-show-layers");
+      var v = window.localStorage.getItem(key);
       return v === null ? fallback : v === "1";
     } catch (err) {
       return fallback;
     }
   }
 
-  function writeLayersPref(on) {
+  function writePref(key, on) {
     try {
-      window.localStorage.setItem("lcv-show-layers", on ? "1" : "0");
+      window.localStorage.setItem(key, on ? "1" : "0");
     } catch (err) {
       return;
     }
@@ -538,18 +555,24 @@
   // Force-directed layout: edges are springs, nodes repel (harder across groups),
   // every group pulls its members to its centroid (shared nodes settle in between).
   // With layers on, each node's y is pinned to its layer row.
-  function forceLayout(graph, layered) {
+  function forceLayout(graph, layered, shared) {
     var nodes = graph.__lcvNodes;
     if (!nodes) {
       nodes = initNodes(graph);
       graph.__lcvNodes = nodes;
-      graph.classList.add("forced");
     }
     if (nodes.list.length === 0) {
       return;
     }
+    assignGroups(nodes, readJson(shared ? "cb-groups" : "cb-groups-single", []));
     graph.classList.toggle("layered", layered);
-    simulate(nodes, layered);
+    assignPrimary(nodes);
+    if (layered) {
+      laneLayout(nodes);
+    } else {
+      nodes.bands = null;
+      simulate(nodes, false);
+    }
     var minX = Infinity;
     var minY = Infinity;
     var maxX = -Infinity;
@@ -570,9 +593,7 @@
       m.el.style.left = Math.round(m.x - m.w / 2) + "px";
       m.el.style.top = Math.round(m.y - m.h / 2) + "px";
     }
-    var scroll = graph.parentElement;
-    var avail = scroll ? scroll.clientWidth : 0;
-    graph.style.width = Math.max(avail, Math.ceil(maxX + offX + PAD)) + "px";
+    graph.style.width = Math.ceil(maxX + offX + PAD) + "px";
     graph.style.height = Math.ceil(maxY + offY + PAD) + "px";
     nodes.offY = offY;
     nodes.layered = layered;
@@ -581,6 +602,11 @@
   function initNodes(graph) {
     var box = graph.getBoundingClientRect();
     var wraps = graph.querySelectorAll(".cb-wrap[data-node]");
+    var starts = [];
+    for (var s0 = 0; s0 < wraps.length; s0++) {
+      starts.push(wraps[s0].getBoundingClientRect());
+    }
+    graph.classList.add("forced");
     var list = [];
     var byId = {};
     var top = 0;
@@ -590,12 +616,13 @@
       if (!id || byId[id]) {
         continue;
       }
-      var r = el.getBoundingClientRect();
+      var r = starts[i];
+      var size = el.getBoundingClientRect();
       var node = {
         id: id,
         el: el,
-        w: r.width,
-        h: r.height,
+        w: size.width,
+        h: size.height,
         x: r.left - box.left + r.width / 2,
         y: r.top - box.top + r.height / 2,
         vx: 0,
@@ -607,19 +634,6 @@
       byId[id] = node;
       list.push(node);
     }
-    var groups = readJson("cb-groups", []);
-    var members = [];
-    for (var g = 0; g < groups.length; g++) {
-      var ms = [];
-      for (var k = 0; k < groups[g].length; k++) {
-        var n = byId[groups[g][k]];
-        if (n) {
-          n.groups.push(g);
-          ms.push(n);
-        }
-      }
-      members.push(ms);
-    }
     var edges = readJson("cb-edges", []);
     var links = [];
     for (var e = 0; e < edges.length; e++) {
@@ -629,7 +643,158 @@
         links.push([a, b]);
       }
     }
-    return { list: list, byId: byId, members: members, links: links, top: top };
+    return { list: list, byId: byId, members: [], links: links, top: top };
+  }
+
+  function assignGroups(nodes, groups) {
+    for (var i = 0; i < nodes.list.length; i++) {
+      nodes.list[i].groups = [];
+    }
+    nodes.members = [];
+    for (var g = 0; g < groups.length; g++) {
+      var ms = [];
+      for (var k = 0; k < groups[g].length; k++) {
+        var n = nodes.byId[groups[g][k]];
+        if (n) {
+          n.groups.push(g);
+          ms.push(n);
+        }
+      }
+      nodes.members.push(ms);
+    }
+  }
+
+  // Each node's main group: the one it has the most links into (ties: lower index).
+  function assignPrimary(nodes) {
+    for (var i = 0; i < nodes.list.length; i++) {
+      nodes.list[i].primary = -1;
+      nodes.list[i].linkCount = {};
+    }
+    for (var l = 0; l < nodes.links.length; l++) {
+      var a = nodes.links[l][0];
+      var b = nodes.links[l][1];
+      for (var x = 0; x < b.groups.length; x++) {
+        a.linkCount[b.groups[x]] = (a.linkCount[b.groups[x]] || 0) + 1;
+      }
+      for (var y = 0; y < a.groups.length; y++) {
+        b.linkCount[a.groups[y]] = (b.linkCount[a.groups[y]] || 0) + 1;
+      }
+    }
+    for (var n = 0; n < nodes.list.length; n++) {
+      var node = nodes.list[n];
+      var best = -1;
+      for (var g = 0; g < node.groups.length; g++) {
+        var cand = node.groups[g];
+        if (best === -1 || (node.linkCount[cand] || 0) > (node.linkCount[best] || 0)) {
+          best = cand;
+        }
+      }
+      node.primary = best;
+    }
+  }
+
+  // Layered mode: one column per group (ordered so linked groups are adjacent), pills of a
+  // layer wrap into rows inside their column, and each layer band is as tall as its
+  // fullest column. Overlap-free by construction.
+  function laneLayout(nodes) {
+    var anchors = groupAnchors(nodes, {});
+    var order = anchors.order.slice();
+    order.push(-1);
+    var cells = {};
+    for (var i = 0; i < nodes.list.length; i++) {
+      var n = nodes.list[i];
+      var key = n.primary + "|" + n.layer;
+      (cells[key] = cells[key] || []).push(n);
+    }
+    var GAP_X = 16;
+    var LANE_GAP = 44;
+    var laneX = {};
+    var laneW = {};
+    var rowsOf = {};
+    var cursor = 0;
+    for (var o = 0; o < order.length; o++) {
+      var g = order[o];
+      var total = 0;
+      var widest = 0;
+      for (var layer = 0; layer <= nodes.top; layer++) {
+        var cell = cells[g + "|" + layer] || [];
+        var sum = 0;
+        for (var c = 0; c < cell.length; c++) {
+          sum += cell[c].w + GAP_X;
+          widest = Math.max(widest, cell[c].w + GAP_X);
+        }
+        total = Math.max(total, sum);
+      }
+      if (total === 0) {
+        continue;
+      }
+      var width = Math.max(widest, Math.min(total, Math.sqrt(total * 110)));
+      var used = 0;
+      for (var layer2 = 0; layer2 <= nodes.top; layer2++) {
+        var list = cells[g + "|" + layer2] || [];
+        list.sort(function (a, b) {
+          return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+        });
+        var rows = [];
+        var row = [];
+        var rowW = 0;
+        for (var m = 0; m < list.length; m++) {
+          var w = list[m].w + GAP_X;
+          if (row.length > 0 && rowW + w > width) {
+            rows.push(row);
+            row = [];
+            rowW = 0;
+          }
+          row.push(list[m]);
+          rowW += w;
+          used = Math.max(used, rowW);
+        }
+        if (row.length > 0) {
+          rows.push(row);
+        }
+        rowsOf[g + "|" + layer2] = rows;
+      }
+      laneX[g] = cursor;
+      laneW[g] = used;
+      cursor += used + LANE_GAP;
+    }
+    var bands = {};
+    var y = 0;
+    for (var layer3 = nodes.top; layer3 >= 0; layer3--) {
+      var maxRows = 1;
+      for (var o2 = 0; o2 < order.length; o2++) {
+        var r = rowsOf[order[o2] + "|" + layer3];
+        if (r) {
+          maxRows = Math.max(maxRows, r.length);
+        }
+      }
+      bands[layer3] = [y, y + maxRows * ROW_H, maxRows];
+      y += maxRows * ROW_H + LAYER_GAP - ROW_H;
+    }
+    for (var o3 = 0; o3 < order.length; o3++) {
+      var lane = order[o3];
+      if (laneX[lane] === undefined) {
+        continue;
+      }
+      for (var layer4 = 0; layer4 <= nodes.top; layer4++) {
+        var rows2 = rowsOf[lane + "|" + layer4] || [];
+        var top = bands[layer4][0] + (bands[layer4][2] - rows2.length) * ROW_H / 2;
+        for (var ri = 0; ri < rows2.length; ri++) {
+          var rw = 0;
+          for (var k = 0; k < rows2[ri].length; k++) {
+            rw += rows2[ri][k].w + GAP_X;
+          }
+          var x = laneX[lane] + (laneW[lane] - rw) / 2;
+          for (var k2 = 0; k2 < rows2[ri].length; k2++) {
+            var node = rows2[ri][k2];
+            node.x = x + node.w / 2;
+            node.y = top + ri * ROW_H + ROW_H / 2;
+            x += node.w + GAP_X;
+          }
+        }
+      }
+    }
+    nodes.bands = bands;
   }
 
   function sharesGroup(a, b) {
@@ -670,15 +835,19 @@
           if (layered && a.layer !== b.layer && Math.abs(dy) > ROW_H * 1.5) {
             continue;
           }
-          var d2 = dx * dx + dy * dy;
-          if (d2 > 90000) {
+          var ex = (a.w + b.w) / 2 + 14;
+          var ey = (a.h + b.h) / 2 + 12;
+          var nx = dx / ex;
+          var ny = dy / ey;
+          var d2 = nx * nx + ny * ny;
+          if (d2 > 25) {
             continue;
           }
-          var k = (sharesGroup(a, b) ? 900 : 2400) * alpha / (d2 + 900);
-          a.vx -= dx * k;
-          a.vy -= dy * k;
-          b.vx += dx * k;
-          b.vy += dy * k;
+          var k = (sharesGroup(a, b) ? 1.2 : 3.2) * alpha / (d2 + 0.35);
+          a.vx -= nx * ex * k * 0.06;
+          a.vy -= ny * ey * k * 0.06;
+          b.vx += nx * ex * k * 0.06;
+          b.vy += ny * ey * k * 0.06;
         }
       }
       for (var l = 0; l < nodes.links.length; l++) {
@@ -741,9 +910,12 @@
       }
       clampToBands(list, bands);
     }
-    for (var r = 0; r < 12; r++) {
-      resolveOverlaps(list, bands);
+    for (var r = 0; r < 200; r++) {
+      var moved = resolveOverlaps(list, bands);
       clampToBands(list, bands);
+      if (!moved) {
+        break;
+      }
     }
   }
 
@@ -804,6 +976,7 @@
       sizes.push([lane, Math.sqrt(area) * 1.3]);
     }
     var anchors = new Array(count);
+    anchors.order = order;
     if (bands) {
       var cursor = 0;
       for (var o = 0; o < order.length; o++) {
@@ -861,6 +1034,7 @@
   }
 
   function resolveOverlaps(list, bands) {
+    var moved = false;
     for (var p = 0; p < list.length; p++) {
       var a = list[p];
       for (var q = p + 1; q < list.length; q++) {
@@ -869,11 +1043,20 @@
         var dy = b.y - a.y;
         var ox = (a.w + b.w) / 2 + 14 - Math.abs(dx);
         var oy = (a.h + b.h) / 2 + 12 - Math.abs(dy);
-        if (ox <= 0 || oy <= 0) {
+        if (ox <= 0.5 || oy <= 0.5) {
           continue;
         }
-        var flat = bands && a.layer === b.layer && bands[a.layer] && bands[a.layer][2] === 1;
-        if (flat || (bands && a.layer !== b.layer) || ox < oy) {
+        moved = true;
+        var vertical = ox >= oy;
+        if (bands && vertical) {
+          var band = a.layer === b.layer ? bands[a.layer] : null;
+          var lo = band ? band[0] + ROW_H / 2 : 0;
+          var hi = band ? band[1] - ROW_H / 2 : 0;
+          var up = Math.min(a.y, b.y) - oy / 2;
+          var down = Math.max(a.y, b.y) + oy / 2;
+          vertical = band !== null && band[2] > 1 && up >= lo - 0.5 && down <= hi + 0.5;
+        }
+        if (!vertical) {
           var sx = (dx < 0 || (dx === 0 && p % 2 === 1) ? -1 : 1) * ox / 2;
           a.x -= sx;
           b.x += sx;
@@ -884,6 +1067,7 @@
         }
       }
     }
+    return moved;
   }
 
   // Dashed rounded convex hull per group, plus layer guides when layered.
@@ -920,19 +1104,18 @@
       }
     }
     for (var g = 0; g < nodes.members.length; g++) {
-      var split = splitOutliers(nodes.members[g]);
+      var split = nodes.layered ? splitByPrimary(nodes.members[g], g) : splitOutliers(nodes.members[g]);
       var ms = split[0];
       for (var o = 0; o < split[1].length; o++) {
         var out = split[1][o];
-        var ring = document.createElementNS(ns, "rect");
-        ring.setAttribute("class", "cb-hull cb-ring");
-        ring.setAttribute("x", String(out.x - out.w / 2 - 5 - o % 3));
-        ring.setAttribute("y", String(out.y - out.h / 2 - 5 - o % 3));
-        ring.setAttribute("width", String(out.w + 10));
-        ring.setAttribute("height", String(out.h + 10));
-        ring.setAttribute("rx", String(out.h / 2 + 5));
-        ring.style.setProperty("--g", groupColor(g));
-        svg.appendChild(ring);
+        var slot = out.groups.indexOf(g);
+        var dot = document.createElementNS(ns, "circle");
+        dot.setAttribute("class", "cb-member-dot");
+        dot.setAttribute("cx", String(out.x - out.w / 2 + 10 + slot * 9));
+        dot.setAttribute("cy", String(out.y - out.h / 2 - 3));
+        dot.setAttribute("r", "4");
+        dot.style.setProperty("--g", groupColor(g));
+        svg.appendChild(dot);
       }
       var pts = [];
       for (var m = 0; m < ms.length; m++) {
@@ -958,6 +1141,15 @@
     }
   }
 
+  function splitByPrimary(ms, g) {
+    var inside = [];
+    var outside = [];
+    for (var i = 0; i < ms.length; i++) {
+      (ms[i].primary === g ? inside : outside).push(ms[i]);
+    }
+    return [inside, outside];
+  }
+
   // Members far from the group's median centre get a ring instead of stretching the hull.
   function splitOutliers(ms) {
     if (ms.length < 4) {
@@ -977,6 +1169,103 @@
       (dist[i] <= limit ? inside : outside).push(ms[i]);
     }
     return [inside, outside];
+  }
+
+  function graphScale(graph) {
+    return graph.__lcvView ? graph.__lcvView.k : 1;
+  }
+
+  // Pan (drag the background) and zoom (wheel / pinch) the graph viewport; "fit" frames it.
+  function setupPanZoom(graph, redraw) {
+    var port = graph.parentElement;
+    if (!port) {
+      return;
+    }
+    var view = { x: 0, y: 0, k: 1 };
+    graph.__lcvView = view;
+    function apply() {
+      graph.style.transform = "translate(" + view.x + "px, " + view.y + "px) scale(" + view.k + ")";
+    }
+    function zoomAt(px, py, factor) {
+      var k = Math.max(0.15, Math.min(2.5, view.k * factor));
+      view.x = px - (px - view.x) * (k / view.k);
+      view.y = py - (py - view.y) * (k / view.k);
+      view.k = k;
+      apply();
+    }
+    function fit() {
+      var w = graph.offsetWidth;
+      var h = graph.offsetHeight;
+      var k = Math.min(1, port.clientWidth / w, port.clientHeight / h);
+      view.k = Math.max(0.15, k);
+      view.x = (port.clientWidth - w * view.k) / 2;
+      view.y = Math.max(0, (port.clientHeight - h * view.k) / 2);
+      apply();
+    }
+    port.addEventListener("wheel", function (event) {
+      event.preventDefault();
+      var r = port.getBoundingClientRect();
+      zoomAt(event.clientX - r.left, event.clientY - r.top, Math.exp(-event.deltaY * 0.0015));
+    }, { passive: false });
+    var pointers = {};
+    var last = null;
+    var dragged = false;
+    port.addEventListener("pointerdown", function (event) {
+      if (event.target.closest && event.target.closest(".cb-wrap")) {
+        return;
+      }
+      pointers[event.pointerId] = [event.clientX, event.clientY];
+      port.setPointerCapture(event.pointerId);
+      dragged = false;
+      last = null;
+    });
+    port.addEventListener("pointermove", function (event) {
+      if (!pointers[event.pointerId]) {
+        return;
+      }
+      var prev = pointers[event.pointerId];
+      pointers[event.pointerId] = [event.clientX, event.clientY];
+      var ids = Object.keys(pointers);
+      if (ids.length === 2) {
+        var a = pointers[ids[0]];
+        var b = pointers[ids[1]];
+        var dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (last) {
+          var r = port.getBoundingClientRect();
+          zoomAt((a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top, dist / last);
+        }
+        last = dist;
+        dragged = true;
+        return;
+      }
+      view.x += event.clientX - prev[0];
+      view.y += event.clientY - prev[1];
+      if (Math.abs(event.clientX - prev[0]) + Math.abs(event.clientY - prev[1]) > 0) {
+        dragged = true;
+      }
+      apply();
+    });
+    function release(event) {
+      delete pointers[event.pointerId];
+      last = null;
+    }
+    port.addEventListener("pointerup", release);
+    port.addEventListener("pointercancel", release);
+    port.addEventListener("click", function (event) {
+      if (dragged) {
+        event.stopPropagation();
+        dragged = false;
+      }
+    }, true);
+    var button = document.getElementById("cb-fit");
+    if (button) {
+      button.addEventListener("click", function (event) {
+        event.stopPropagation();
+        fit();
+      });
+    }
+    fit();
+    redraw();
   }
 
   function convexHull(points) {
@@ -1058,10 +1347,11 @@
       }
       var a = pair[0];
       var b = pair[1];
-      var x1 = a.left + a.width / 2 - box.left;
-      var y1 = a.top - box.top;
-      var x2 = b.left + b.width / 2 - box.left;
-      var y2 = b.top + b.height - box.top;
+      var sc = graphScale(graph);
+      var x1 = (a.left + a.width / 2 - box.left) / sc;
+      var y1 = (a.top - box.top) / sc;
+      var x2 = (b.left + b.width / 2 - box.left) / sc;
+      var y2 = (b.top + b.height - box.top) / sc;
       var mid = (y1 + y2) / 2;
       var path = document.createElementNS(ns, "path");
       path.setAttribute("class", "int-line");
@@ -1085,7 +1375,8 @@
         continue;
       }
       var r = nodeEls[id].getBoundingClientRect();
-      cbNodeCenter[id] = [r.left + r.width / 2 - box.left, r.top + r.height - box.top];
+      var sc = graphScale(graph);
+      cbNodeCenter[id] = [(r.left + r.width / 2 - box.left) / sc, (r.top + r.height - box.top) / sc];
     }
     cbChipCenter = {};
     var chips = document.querySelectorAll(".externals .chip[data-ext]");
@@ -1093,7 +1384,8 @@
       var ext = chips[c].getAttribute("data-ext");
       if (ext && !cbChipCenter[ext]) {
         var b = chips[c].getBoundingClientRect();
-        cbChipCenter[ext] = [b.left + b.width / 2 - box.left, b.top - box.top];
+        var sk = graphScale(graph);
+        cbChipCenter[ext] = [(b.left + b.width / 2 - box.left) / sk, (b.top - box.top) / sk];
       }
     }
   }

@@ -45,9 +45,19 @@ fn tree_value(graph: &index::ItemGraph) -> serde_json::Value {
 
 // needed helper: groups with member ids, layer span and internal/external edge counts
 fn groups_value(graph: &index::ItemGraph) -> serde_json::Value {
-    let groups: Vec<serde_json::Value> = graph
-        .groups
-        .iter()
+    serde_json::json!({
+        "format": "lele_code_viewer/groups@2",
+        "algorithm": "ego-splitting + louvain (connected refinement), undirected, hub-damped, near-duplicates merged",
+        "max_groups_per_node": 3,
+        "min_group_size": 3,
+        "groups": groups_list(graph, &graph.groups),
+        "exclusive_groups": groups_list(graph, &graph.exclusive_groups),
+    })
+}
+
+// needed helper: one json entry per group with ids, layer span and edge counts
+fn groups_list(graph: &index::ItemGraph, list: &[index::ItemGroup]) -> Vec<serde_json::Value> {
+    list.iter()
         .enumerate()
         .map(|(n, group)| {
             let ids: Vec<&str> = group
@@ -77,14 +87,7 @@ fn groups_value(graph: &index::ItemGraph) -> serde_json::Value {
                 "boundary_edges": boundary,
             })
         })
-        .collect();
-    serde_json::json!({
-        "format": "lele_code_viewer/groups@1",
-        "algorithm": "ego-splitting + louvain (connected refinement), undirected, hub-damped",
-        "max_groups_per_node": 3,
-        "min_group_size": 3,
-        "groups": groups,
-    })
+        .collect()
 }
 
 // needed helper: pretty json with a trailing newline
