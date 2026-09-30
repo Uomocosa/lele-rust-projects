@@ -26,13 +26,14 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
         ));
         body.push_str("<section class=\"layer\"><div class=\"layer-nodes\">");
         for &i in nodes {
-            body.push_str(&pill_html(idx, i));
+            body.push_str(&pill_html(idx, i, cfg));
         }
         body.push_str("</div></section>");
     }
     body.push_str("</div>");
     body.push_str(&edges_json(graph));
     body.push_str(&ext_edges_json(graph));
+    body.push_str(&render::adjacency_json(graph));
 
     if !graph.externals.is_empty() {
         body.push_str(
@@ -73,7 +74,7 @@ fn kind_class(kind: index::CodeBlock) -> &'static str {
 }
 
 // needed helper: one pill node carrying its external crate names for hover lines
-fn pill_html(idx: &index::SymbolIndex, i: usize) -> String {
+fn pill_html(idx: &index::SymbolIndex, i: usize, cfg: &render::LinkConfig) -> String {
     let Some(node) = idx.item_graph.nodes.get(i) else {
         return String::new();
     };
@@ -89,15 +90,27 @@ fn pill_html(idx: &index::SymbolIndex, i: usize) -> String {
         }
         ext_attr.push_str(&render::escape(ext));
     }
+    let href_attr = pill_href(idx, cfg, &node.id)
+        .map_or_else(String::new, |href| format!(" data-href=\"{href}\""));
     format!(
-        "<div class=\"cb-wrap\" data-node=\"{id}\" data-exts=\"{exts}\"><button class=\"cb-pill {kind}{has_ext}\" data-node=\"{id}\" title=\"{id}\">\
+        "<div class=\"cb-wrap\" data-node=\"{id}\" data-exts=\"{exts}\"{href}><button class=\"cb-pill {kind}{has_ext}\" data-node=\"{id}\" title=\"{id}\">\
 <span class=\"cb-dot\" aria-hidden=\"true\"></span><span class=\"cb-name\">{name}</span></button></div>",
         id = render::escape(&node.id),
         exts = ext_attr,
+        href = href_attr,
         kind = kind_class(node.kind),
         has_ext = has_ext,
         name = render::escape(&node.name),
     )
+}
+
+// needed helper: file anchor for a dependency pill, pointing at its definition block
+fn pill_href(idx: &index::SymbolIndex, cfg: &render::LinkConfig, id: &str) -> Option<String> {
+    let &i = idx.by_id.get(id)?;
+    let item = idx.items.get(i)?;
+    let rel = item.file.to_string_lossy();
+    let base = render::href(cfg, render::LinkKind::File, &rel);
+    Some(format!("{base}#L{}-L{}", item.start_line, item.end_line))
 }
 
 // needed helper: edge list as json for the svg overlay
@@ -148,6 +161,8 @@ fn ext_edges_json(graph: &index::ItemGraph) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::render_dependency_tree_page;
     use crate::index;
     use crate::render;
@@ -155,6 +170,30 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut idx = index::SymbolIndex::default();
+        for (id, name, kind, start, end) in [
+            ("a::Cfg", "Cfg", index::ItemKind::Struct, 3, 7),
+            ("a::run", "run", index::ItemKind::Fn, 10, 14),
+        ] {
+            idx.items.push(index::IndexItem {
+                id: id.to_string(),
+                name: name.to_string(),
+                module: "a".to_string(),
+                kind,
+                file: PathBuf::from("src/a.rs"),
+                start_line: start,
+                end_line: end,
+                name_line: start,
+                name_col_start: 0,
+                name_col_end: 1,
+                signature: name.to_string(),
+                doc: None,
+                delegates_to: None,
+                is_test: false,
+                external: Vec::new(),
+            });
+        }
+        idx.by_id.insert("a::Cfg".to_string(), 0);
+        idx.by_id.insert("a::run".to_string(), 1);
         idx.item_graph.nodes.push(index::ItemNode {
             id: "a::Cfg".to_string(),
             name: "Cfg".to_string(),
@@ -189,7 +228,10 @@ mod tests {
         assert!(!html.contains("is used by"));
         assert!(html.contains("id=\"cb-edges\""));
         assert!(html.contains("id=\"cb-ext-edges\""));
+        assert!(html.contains("id=\"cb-adj\""));
         assert!(html.contains("data-ext=\"std\""));
+        assert!(html.contains("data-href=\"/p/demo/file/src/a.rs#L3-L7\""));
+        assert!(html.contains("data-href=\"/p/demo/file/src/a.rs#L10-L14\""));
         let base = html.find("Layer 1 &middot; top").unwrap();
         let top = html.find("Layer 0 &middot; base").unwrap();
         assert!(base < top);

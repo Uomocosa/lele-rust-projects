@@ -1,3 +1,4 @@
+use crate::assets;
 use crate::render;
 
 pub fn href(cfg: &render::LinkConfig, kind: render::LinkKind, value: &str) -> String {
@@ -11,7 +12,11 @@ pub fn href(cfg: &render::LinkConfig, kind: render::LinkKind, value: &str) -> St
             }
         }
         render::LinkKind::Search => format!("{}search{ext}", cfg.prefix),
-        render::LinkKind::Asset => format!("{}assets/{value}", cfg.assets),
+        render::LinkKind::Asset => format!(
+            "{}assets/{value}?v={}",
+            cfg.assets,
+            assets::asset_fingerprint(value)
+        ),
         render::LinkKind::File => format!("{}file/{value}{ext}", cfg.prefix),
         render::LinkKind::Md => format!("{}md/{value}{ext}", cfg.prefix),
         render::LinkKind::Raw => format!("{}raw/{value}", cfg.prefix),

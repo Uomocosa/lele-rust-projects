@@ -9,5 +9,10 @@ mod tests {
     #[test]
     fn test_usage() {
         assert!(app_js().contains("highlightHash"));
+        assert!(app_js().contains("data-href"));
+        assert!(app_js().contains("cb-adj"));
+        assert!(app_js().contains("has-active"));
+        assert!(app_js().contains("createDocumentFragment"));
+        assert!(app_js().contains("chipByExt"));
     }
 }

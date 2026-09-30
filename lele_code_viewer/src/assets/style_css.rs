@@ -9,5 +9,8 @@ mod tests {
     #[test]
     fn test_usage() {
         assert!(style_css().contains(".code"));
+        assert!(style_css().contains("--hold-p"));
+        assert!(style_css().contains("has-active"));
+        assert!(style_css().contains("marker-end: none"));
     }
 }

@@ -1,3 +1,5 @@
+mod adjacency_json;
+pub use adjacency_json::adjacency_json;
 mod escape;
 pub use escape::escape;
 mod breadcrumb;

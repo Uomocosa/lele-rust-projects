@@ -83,3 +83,8 @@ futures-util = "=0.3.34"
 
 [dev-dependencies]
 tempfile = "=3.27.0"
+criterion = "=0.8.2"
+
+[[bench]]
+name = "hover_lookup"
+harness = false

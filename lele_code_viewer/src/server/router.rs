@@ -517,9 +517,10 @@ mod tests {
 
     #[test]
     fn test_asset_links_resolve_to_served_route() {
-        assert_eq!(
-            render::href(&bare_cfg(), render::LinkKind::Asset, "style.css"),
-            "/assets/style.css"
-        );
+        let css = render::href(&bare_cfg(), render::LinkKind::Asset, "style.css");
+        let js = render::href(&bare_cfg(), render::LinkKind::Asset, "app.js");
+        assert!(css.starts_with("/assets/style.css?v="));
+        assert!(js.starts_with("/assets/app.js?v="));
+        assert_ne!(css, js);
     }
 }
