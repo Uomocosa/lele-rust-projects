@@ -29,6 +29,16 @@ pub fn run() -> Result<(), Error> {
             println!("lele_code_viewer: exported to {}", out.display());
             Ok(())
         }
+        cli::Command::Graph { out } => {
+            let idx = index::build_index(&dir)?;
+            export::export_graph(&idx, &out)?;
+            println!(
+                "lele_code_viewer: wrote tree.json + groups.json ({} groups) to {}",
+                idx.item_graph.groups.len(),
+                out.display()
+            );
+            Ok(())
+        }
         cli::Command::Serve {
             bind,
             roots,

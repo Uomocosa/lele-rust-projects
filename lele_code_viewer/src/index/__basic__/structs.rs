@@ -62,6 +62,7 @@ pub struct ItemGraph {
     pub nodes: Vec<ItemNode>,
     pub edges: Vec<ItemEdge>,
     pub externals: Vec<String>,
+    pub groups: Vec<basic::newtypes::ItemGroup>,
 }
 
 #[derive(Debug, Default, Clone)]

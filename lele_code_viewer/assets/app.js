@@ -465,19 +465,547 @@
       }
       clearHover();
     });
-    drawCodeEdges(graph);
-    rebuildAdjacency();
-    cacheChips();
+    function redraw() {
+      drawCodeEdges(graph);
+      drawGroupHulls(graph);
+      rebuildAdjacency();
+      cacheChips();
+    }
+    var toggle = document.getElementById("cb-show-layers");
+    var layered = readLayersPref(toggle ? toggle.checked : true);
+    if (toggle) {
+      toggle.checked = layered;
+      toggle.addEventListener("change", function () {
+        writeLayersPref(toggle.checked);
+        graph.classList.add("animating");
+        forceLayout(graph, toggle.checked);
+        window.setTimeout(function () {
+          graph.classList.remove("animating");
+          redraw();
+        }, 560);
+      });
+    }
+    forceLayout(graph, layered);
+    redraw();
     var timer = null;
     window.addEventListener("resize", function () {
       if (timer) {
         clearTimeout(timer);
       }
-      timer = setTimeout(function () {
-        drawCodeEdges(graph);
-        rebuildAdjacency();
-      }, 150);
+      timer = setTimeout(redraw, 150);
     });
+  }
+
+  function readLayersPref(fallback) {
+    try {
+      var v = window.localStorage.getItem("lcv-show-layers");
+      return v === null ? fallback : v === "1";
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  function writeLayersPref(on) {
+    try {
+      window.localStorage.setItem("lcv-show-layers", on ? "1" : "0");
+    } catch (err) {
+      return;
+    }
+  }
+
+  function readJson(id, fallback) {
+    var raw = document.getElementById(id);
+    if (!raw) {
+      return fallback;
+    }
+    try {
+      return JSON.parse(raw.textContent || "");
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  function groupColor(g) {
+    return "hsl(" + Math.round((g * 137.508 + 200) % 360) + ", 70%, 62%)";
+  }
+
+  var LAYER_GAP = 96;
+  var LINK_LEN = 90;
+  var PAD = 48;
+  var ROW_H = 44;
+  var BAND_WIDTH = 1500;
+
+  // Force-directed layout: edges are springs, nodes repel (harder across groups),
+  // every group pulls its members to its centroid (shared nodes settle in between).
+  // With layers on, each node's y is pinned to its layer row.
+  function forceLayout(graph, layered) {
+    var nodes = graph.__lcvNodes;
+    if (!nodes) {
+      nodes = initNodes(graph);
+      graph.__lcvNodes = nodes;
+      graph.classList.add("forced");
+    }
+    if (nodes.list.length === 0) {
+      return;
+    }
+    graph.classList.toggle("layered", layered);
+    simulate(nodes, layered);
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    for (var i = 0; i < nodes.list.length; i++) {
+      var n = nodes.list[i];
+      minX = Math.min(minX, n.x - n.w / 2);
+      minY = Math.min(minY, n.y - n.h / 2);
+      maxX = Math.max(maxX, n.x + n.w / 2);
+      maxY = Math.max(maxY, n.y + n.h / 2);
+    }
+    var offX = PAD + (layered ? 40 : 0) - minX;
+    var offY = PAD - minY;
+    for (var j = 0; j < nodes.list.length; j++) {
+      var m = nodes.list[j];
+      m.x += offX;
+      m.y += offY;
+      m.el.style.left = Math.round(m.x - m.w / 2) + "px";
+      m.el.style.top = Math.round(m.y - m.h / 2) + "px";
+    }
+    var scroll = graph.parentElement;
+    var avail = scroll ? scroll.clientWidth : 0;
+    graph.style.width = Math.max(avail, Math.ceil(maxX + offX + PAD)) + "px";
+    graph.style.height = Math.ceil(maxY + offY + PAD) + "px";
+    nodes.offY = offY;
+    nodes.layered = layered;
+  }
+
+  function initNodes(graph) {
+    var box = graph.getBoundingClientRect();
+    var wraps = graph.querySelectorAll(".cb-wrap[data-node]");
+    var list = [];
+    var byId = {};
+    var top = 0;
+    for (var i = 0; i < wraps.length; i++) {
+      var el = wraps[i];
+      var id = el.getAttribute("data-node");
+      if (!id || byId[id]) {
+        continue;
+      }
+      var r = el.getBoundingClientRect();
+      var node = {
+        id: id,
+        el: el,
+        w: r.width,
+        h: r.height,
+        x: r.left - box.left + r.width / 2,
+        y: r.top - box.top + r.height / 2,
+        vx: 0,
+        vy: 0,
+        layer: parseInt(el.getAttribute("data-layer") || "0", 10),
+        groups: []
+      };
+      top = Math.max(top, node.layer);
+      byId[id] = node;
+      list.push(node);
+    }
+    var groups = readJson("cb-groups", []);
+    var members = [];
+    for (var g = 0; g < groups.length; g++) {
+      var ms = [];
+      for (var k = 0; k < groups[g].length; k++) {
+        var n = byId[groups[g][k]];
+        if (n) {
+          n.groups.push(g);
+          ms.push(n);
+        }
+      }
+      members.push(ms);
+    }
+    var edges = readJson("cb-edges", []);
+    var links = [];
+    for (var e = 0; e < edges.length; e++) {
+      var a = byId[edges[e].from];
+      var b = byId[edges[e].to];
+      if (a && b && a !== b) {
+        links.push([a, b]);
+      }
+    }
+    return { list: list, byId: byId, members: members, links: links, top: top };
+  }
+
+  function sharesGroup(a, b) {
+    for (var i = 0; i < a.groups.length; i++) {
+      if (b.groups.indexOf(a.groups[i]) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function simulate(nodes, layered) {
+    var list = nodes.list;
+    var count = list.length;
+    var ticks = 320;
+    var bands = layered ? layerBands(nodes) : null;
+    var seen = {};
+    for (var i = 0; i < count; i++) {
+      list[i].vx = 0;
+      list[i].vy = 0;
+      if (bands) {
+        var band = bands[list[i].layer];
+        var slot = seen[list[i].layer] || 0;
+        seen[list[i].layer] = slot + 1;
+        list[i].y = band[0] + ROW_H / 2 + (slot % band[2]) * ROW_H;
+      }
+    }
+    nodes.bands = bands;
+    var anchors = groupAnchors(nodes, bands);
+    for (var t = 0; t < ticks; t++) {
+      var alpha = 1 - t / ticks;
+      for (var p = 0; p < count; p++) {
+        var a = list[p];
+        for (var q = p + 1; q < count; q++) {
+          var b = list[q];
+          var dx = b.x - a.x;
+          var dy = b.y - a.y;
+          if (layered && a.layer !== b.layer && Math.abs(dy) > ROW_H * 1.5) {
+            continue;
+          }
+          var d2 = dx * dx + dy * dy;
+          if (d2 > 90000) {
+            continue;
+          }
+          var k = (sharesGroup(a, b) ? 900 : 2400) * alpha / (d2 + 900);
+          a.vx -= dx * k;
+          a.vy -= dy * k;
+          b.vx += dx * k;
+          b.vy += dy * k;
+        }
+      }
+      for (var l = 0; l < nodes.links.length; l++) {
+        var s = nodes.links[l][0];
+        var u = nodes.links[l][1];
+        var lx = u.x - s.x;
+        var ly = u.y - s.y;
+        var d = Math.sqrt(lx * lx + ly * ly) + 0.01;
+        var f = ((d - LINK_LEN) / d) * 0.04 * alpha;
+        s.vx += lx * f;
+        s.vy += ly * f;
+        u.vx -= lx * f;
+        u.vy -= ly * f;
+      }
+      for (var g = 0; g < nodes.members.length; g++) {
+        var ms = nodes.members[g];
+        if (ms.length === 0) {
+          continue;
+        }
+        var cx = 0;
+        var cy = 0;
+        for (var m = 0; m < ms.length; m++) {
+          cx += ms[m].x;
+          cy += ms[m].y;
+        }
+        cx /= ms.length;
+        cy /= ms.length;
+        var anchor = anchors[g];
+        for (var n = 0; n < ms.length; n++) {
+          var share = ms[n].groups.length;
+          var pull = 0.05 * alpha / share;
+          ms[n].vx += (cx - ms[n].x) * pull + (anchor[0] - ms[n].x) * 0.12 / share;
+          ms[n].vy += (cy - ms[n].y) * pull;
+          if (!bands) {
+            ms[n].vy += (anchor[1] - ms[n].y) * 0.12 / share;
+          }
+        }
+      }
+      var meanX = 0;
+      var meanY = 0;
+      for (var z = 0; z < count; z++) {
+        meanX += list[z].x / count;
+        meanY += list[z].y / count;
+      }
+      for (var c = 0; c < count; c++) {
+        var node = list[c];
+        if (node.groups.length === 0) {
+          node.vx += (meanX - node.x) * 0.004 * alpha;
+          node.vy += (meanY - node.y) * 0.004 * alpha;
+        }
+        node.vx = Math.max(-24, Math.min(24, node.vx));
+        node.vy = Math.max(-24, Math.min(24, node.vy));
+        node.x += node.vx;
+        node.vx *= 0.55;
+        node.y += node.vy;
+        node.vy *= 0.55;
+      }
+      if (t > ticks / 3) {
+        resolveOverlaps(list, bands);
+      }
+      clampToBands(list, bands);
+    }
+    for (var r = 0; r < 12; r++) {
+      resolveOverlaps(list, bands);
+      clampToBands(list, bands);
+    }
+  }
+
+  // Order groups so strongly linked ones are neighbours (greedy chain), then give
+  // each an anchor: a lane x when layered, a grid cell otherwise.
+  function groupAnchors(nodes, bands) {
+    var count = nodes.members.length;
+    var link = [];
+    for (var i = 0; i < count; i++) {
+      link.push(new Array(count).fill(0));
+    }
+    for (var l = 0; l < nodes.links.length; l++) {
+      var ga = nodes.links[l][0].groups;
+      var gb = nodes.links[l][1].groups;
+      for (var x = 0; x < ga.length; x++) {
+        for (var y = 0; y < gb.length; y++) {
+          if (ga[x] !== gb[y]) {
+            link[ga[x]][gb[y]] += 1;
+            link[gb[y]][ga[x]] += 1;
+          }
+        }
+      }
+    }
+    var order = [];
+    var placed = new Array(count).fill(false);
+    for (var step = 0; step < count; step++) {
+      var best = -1;
+      var bestScore = -1;
+      for (var c = 0; c < count; c++) {
+        if (placed[c]) {
+          continue;
+        }
+        var score = order.length === 0 ? nodes.members[c].length : link[order[order.length - 1]][c] * 1000 + nodes.members[c].length;
+        if (score > bestScore) {
+          best = c;
+          bestScore = score;
+        }
+      }
+      placed[best] = true;
+      order.push(best);
+    }
+    var sizes = [];
+    for (var g = 0; g < count; g++) {
+      var perLayer = {};
+      var area = 0;
+      var ms = nodes.members[g];
+      for (var m = 0; m < ms.length; m++) {
+        perLayer[ms[m].layer] = (perLayer[ms[m].layer] || 0) + (ms[m].w + 24) / ms[m].groups.length;
+        area += (ms[m].w + 24) * (ms[m].h + 20);
+      }
+      var lane = 160;
+      for (var key in perLayer) {
+        if (Object.prototype.hasOwnProperty.call(perLayer, key)) {
+          var rows = bands && bands[key] ? bands[key][2] : 1;
+          lane = Math.max(lane, perLayer[key] / Math.min(rows, 2));
+        }
+      }
+      sizes.push([lane, Math.sqrt(area) * 1.3]);
+    }
+    var anchors = new Array(count);
+    if (bands) {
+      var cursor = 0;
+      for (var o = 0; o < order.length; o++) {
+        var w = sizes[order[o]][0];
+        anchors[order[o]] = [cursor + w / 2, 0];
+        cursor += w + 60;
+      }
+      return anchors;
+    }
+    var cols = Math.max(1, Math.ceil(Math.sqrt(count)));
+    var rowY = 0;
+    var rowH = 0;
+    var colX = 0;
+    for (var p = 0; p < order.length; p++) {
+      if (p > 0 && p % cols === 0) {
+        rowY += rowH + 80;
+        rowH = 0;
+        colX = 0;
+      }
+      var cell = sizes[order[p]][1];
+      anchors[order[p]] = [colX + cell / 2, rowY + cell / 2];
+      colX += cell + 80;
+      rowH = Math.max(rowH, cell);
+    }
+    return anchors;
+  }
+
+  // Each layer is a horizontal band tall enough to hold its pills in a few rows.
+  function layerBands(nodes) {
+    var widths = {};
+    for (var i = 0; i < nodes.list.length; i++) {
+      var n = nodes.list[i];
+      widths[n.layer] = (widths[n.layer] || 0) + n.w + 24;
+    }
+    var bands = {};
+    var y = 0;
+    for (var layer = nodes.top; layer >= 0; layer--) {
+      var rows = Math.max(1, Math.ceil((widths[layer] || 0) / BAND_WIDTH));
+      bands[layer] = [y, y + rows * ROW_H, rows];
+      y += rows * ROW_H + LAYER_GAP - ROW_H;
+    }
+    return bands;
+  }
+
+  function clampToBands(list, bands) {
+    if (!bands) {
+      return;
+    }
+    for (var i = 0; i < list.length; i++) {
+      var band = bands[list[i].layer];
+      if (band) {
+        list[i].y = Math.max(band[0] + ROW_H / 2, Math.min(band[1] - ROW_H / 2, list[i].y));
+      }
+    }
+  }
+
+  function resolveOverlaps(list, bands) {
+    for (var p = 0; p < list.length; p++) {
+      var a = list[p];
+      for (var q = p + 1; q < list.length; q++) {
+        var b = list[q];
+        var dx = b.x - a.x;
+        var dy = b.y - a.y;
+        var ox = (a.w + b.w) / 2 + 14 - Math.abs(dx);
+        var oy = (a.h + b.h) / 2 + 12 - Math.abs(dy);
+        if (ox <= 0 || oy <= 0) {
+          continue;
+        }
+        var flat = bands && a.layer === b.layer && bands[a.layer] && bands[a.layer][2] === 1;
+        if (flat || (bands && a.layer !== b.layer) || ox < oy) {
+          var sx = (dx < 0 || (dx === 0 && p % 2 === 1) ? -1 : 1) * ox / 2;
+          a.x -= sx;
+          b.x += sx;
+        } else {
+          var sy = (dy < 0 ? -1 : 1) * oy / 2;
+          a.y -= sy;
+          b.y += sy;
+        }
+      }
+    }
+  }
+
+  // Dashed rounded convex hull per group, plus layer guides when layered.
+  function drawGroupHulls(graph) {
+    var svg = graph.querySelector("svg.cb-groups");
+    var nodes = graph.__lcvNodes;
+    if (!svg || !nodes) {
+      return;
+    }
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+    var ns = "http://www.w3.org/2000/svg";
+    var width = graph.clientWidth;
+    if (nodes.layered) {
+      for (var layer in nodes.bands) {
+        if (!Object.prototype.hasOwnProperty.call(nodes.bands, layer)) {
+          continue;
+        }
+        var y = nodes.bands[layer][0] + nodes.offY - (LAYER_GAP - ROW_H) / 2;
+        var line = document.createElementNS(ns, "line");
+        line.setAttribute("class", "cb-layer-line");
+        line.setAttribute("x1", "0");
+        line.setAttribute("x2", String(width));
+        line.setAttribute("y1", String(y));
+        line.setAttribute("y2", String(y));
+        svg.appendChild(line);
+        var label = document.createElementNS(ns, "text");
+        label.setAttribute("class", "cb-layer-label");
+        label.setAttribute("x", "4");
+        label.setAttribute("y", String(y + 14));
+        label.textContent = "L" + layer;
+        svg.appendChild(label);
+      }
+    }
+    for (var g = 0; g < nodes.members.length; g++) {
+      var split = splitOutliers(nodes.members[g]);
+      var ms = split[0];
+      for (var o = 0; o < split[1].length; o++) {
+        var out = split[1][o];
+        var ring = document.createElementNS(ns, "rect");
+        ring.setAttribute("class", "cb-hull cb-ring");
+        ring.setAttribute("x", String(out.x - out.w / 2 - 5 - o % 3));
+        ring.setAttribute("y", String(out.y - out.h / 2 - 5 - o % 3));
+        ring.setAttribute("width", String(out.w + 10));
+        ring.setAttribute("height", String(out.h + 10));
+        ring.setAttribute("rx", String(out.h / 2 + 5));
+        ring.style.setProperty("--g", groupColor(g));
+        svg.appendChild(ring);
+      }
+      var pts = [];
+      for (var m = 0; m < ms.length; m++) {
+        var n = ms[m];
+        var hw = n.w / 2 + 12;
+        var hh = n.h / 2 + 10;
+        pts.push([n.x - hw, n.y - hh], [n.x + hw, n.y - hh], [n.x - hw, n.y + hh], [n.x + hw, n.y + hh]);
+      }
+      var hull = convexHull(pts);
+      if (hull.length < 3) {
+        continue;
+      }
+      var d = "M " + hull[0][0] + " " + hull[0][1];
+      for (var h = 1; h < hull.length; h++) {
+        d += " L " + hull[h][0] + " " + hull[h][1];
+      }
+      var path = document.createElementNS(ns, "path");
+      path.setAttribute("class", "cb-hull");
+      path.setAttribute("d", d + " Z");
+      path.setAttribute("data-group", String(g));
+      path.style.setProperty("--g", groupColor(g));
+      svg.appendChild(path);
+    }
+  }
+
+  // Members far from the group's median centre get a ring instead of stretching the hull.
+  function splitOutliers(ms) {
+    if (ms.length < 4) {
+      return [ms, []];
+    }
+    var xs = ms.map(function (n) { return n.x; }).sort(function (a, b) { return a - b; });
+    var ys = ms.map(function (n) { return n.y; }).sort(function (a, b) { return a - b; });
+    var mid = Math.floor(ms.length / 2);
+    var cx = xs[mid];
+    var cy = ys[mid];
+    var dist = ms.map(function (n) { return Math.hypot(n.x - cx, n.y - cy); });
+    var sorted = dist.slice().sort(function (a, b) { return a - b; });
+    var limit = Math.max(sorted[mid] * 2.2, 160);
+    var inside = [];
+    var outside = [];
+    for (var i = 0; i < ms.length; i++) {
+      (dist[i] <= limit ? inside : outside).push(ms[i]);
+    }
+    return [inside, outside];
+  }
+
+  function convexHull(points) {
+    var pts = points.slice().sort(function (a, b) {
+      return a[0] - b[0] || a[1] - b[1];
+    });
+    if (pts.length < 3) {
+      return pts;
+    }
+    function cross(o, a, b) {
+      return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    }
+    var lower = [];
+    for (var i = 0; i < pts.length; i++) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) {
+        lower.pop();
+      }
+      lower.push(pts[i]);
+    }
+    var upper = [];
+    for (var j = pts.length - 1; j >= 0; j--) {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[j]) <= 0) {
+        upper.pop();
+      }
+      upper.push(pts[j]);
+    }
+    lower.pop();
+    upper.pop();
+    return lower.concat(upper);
   }
 
   function drawCodeEdges(graph) {
@@ -495,7 +1023,7 @@
     while (svg.firstChild) {
       svg.removeChild(svg.firstChild);
     }
-    if (edges.length > 600) {
+    if (edges.length > 4000) {
       return;
     }
     var ns = "http://www.w3.org/2000/svg";

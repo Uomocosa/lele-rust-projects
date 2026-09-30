@@ -4,6 +4,8 @@ mod build_index;
 pub use build_index::build_index;
 mod build_item_graph;
 pub use build_item_graph::build_item_graph;
+mod detect_groups;
+pub use detect_groups::detect_groups;
 mod compute_layers;
 pub use compute_layers::compute_layers;
 mod build_module_graph;
@@ -39,6 +41,7 @@ pub use resolve::resolve;
 pub mod basic;
 pub use basic::enums::CodeBlock;
 pub use basic::enums::ItemKind;
+pub use basic::newtypes::ItemGroup;
 pub use basic::structs::{
     ExternalAliases, FileDeps, IndexItem, ItemEdge, ItemGraph, ItemNode, ModuleEdge, ModuleGraph,
     ModuleNode, Occurrence, SymbolIndex,

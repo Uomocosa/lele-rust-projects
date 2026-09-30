@@ -70,10 +70,13 @@ pub fn build_item_graph(idx: &mut index::SymbolIndex) {
         .map(|&(from, to)| index::ItemEdge { from, to })
         .collect();
     edges.sort_by_key(|edge| (edge.from, edge.to));
+    let links: Vec<(usize, usize)> = edges.iter().map(|edge| (edge.from, edge.to)).collect();
+    let groups = index::detect_groups(nodes.len(), &links);
     idx.item_graph = index::ItemGraph {
         nodes,
         edges,
         externals: externals.into_iter().collect(),
+        groups,
     };
 }
 

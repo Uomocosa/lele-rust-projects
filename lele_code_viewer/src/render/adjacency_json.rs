@@ -77,6 +77,7 @@ mod tests {
                 index::ItemEdge { from: 9, to: 1 },
             ],
             externals: Vec::new(),
+            groups: Vec::new(),
         };
         let html = adjacency_json(&graph);
         assert!(html.contains("id=\"cb-adj\""));

@@ -11,7 +11,10 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
         graph.nodes.len(),
         graph.edges.len()
     ));
-    body.push_str("<div class=\"cb-graph\"><svg class=\"cb-edges\" aria-hidden=\"true\"></svg>");
+    body.push_str(
+        "<label class=\"cb-toggle\"><input type=\"checkbox\" id=\"cb-show-layers\" checked> show layers</label>",
+    );
+    body.push_str("<div class=\"cb-scroll\"><div class=\"cb-graph\"><svg class=\"cb-groups\" aria-hidden=\"true\"></svg><svg class=\"cb-edges\" aria-hidden=\"true\"></svg>");
 
     let mut by_layer: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
     for (i, node) in graph.nodes.iter().enumerate() {
@@ -30,8 +33,9 @@ pub fn render_dependency_tree_page(idx: &index::SymbolIndex, cfg: &render::LinkC
         }
         body.push_str("</div></section>");
     }
-    body.push_str("</div>");
+    body.push_str("</div></div>");
     body.push_str(&edges_json(graph));
+    body.push_str(&groups_json(graph));
     body.push_str(&ext_edges_json(graph));
     body.push_str(&render::adjacency_json(graph));
 
@@ -93,9 +97,10 @@ fn pill_html(idx: &index::SymbolIndex, i: usize, cfg: &render::LinkConfig) -> St
     let href_attr = pill_href(idx, cfg, &node.id)
         .map_or_else(String::new, |href| format!(" data-href=\"{href}\""));
     format!(
-        "<div class=\"cb-wrap\" data-node=\"{id}\" data-exts=\"{exts}\"{href}><button class=\"cb-pill {kind}{has_ext}\" data-node=\"{id}\" title=\"{id}\">\
+        "<div class=\"cb-wrap\" data-node=\"{id}\" data-layer=\"{layer}\" data-exts=\"{exts}\"{href}><button class=\"cb-pill {kind}{has_ext}\" data-node=\"{id}\" title=\"{id}\">\
 <span class=\"cb-dot\" aria-hidden=\"true\"></span><span class=\"cb-name\">{name}</span></button></div>",
         id = render::escape(&node.id),
+        layer = node.layer,
         exts = ext_attr,
         href = href_attr,
         kind = kind_class(node.kind),
@@ -133,6 +138,31 @@ fn edges_json(graph: &index::ItemGraph) -> String {
             render::escape(&from.id),
             render::escape(&to.id),
         ));
+    }
+    out.push_str("]</script>");
+    out
+}
+
+// needed helper: detected domain groups as json arrays of node ids
+fn groups_json(graph: &index::ItemGraph) -> String {
+    let mut out = String::from("<script type=\"application/json\" id=\"cb-groups\">[");
+    for (n, group) in graph.groups.iter().enumerate() {
+        if n > 0 {
+            out.push(',');
+        }
+        out.push('[');
+        let mut first = true;
+        for &i in group.iter() {
+            let Some(node) = graph.nodes.get(i) else {
+                continue;
+            };
+            if !first {
+                out.push(',');
+            }
+            first = false;
+            out.push_str(&format!("\"{}\"", render::escape(&node.id)));
+        }
+        out.push(']');
     }
     out.push_str("]</script>");
     out
@@ -229,6 +259,9 @@ mod tests {
         assert!(html.contains("id=\"cb-edges\""));
         assert!(html.contains("id=\"cb-ext-edges\""));
         assert!(html.contains("id=\"cb-adj\""));
+        assert!(html.contains("id=\"cb-groups\">[]"));
+        assert!(html.contains("data-layer=\"1\""));
+        assert!(html.contains("id=\"cb-show-layers\""));
         assert!(html.contains("data-ext=\"std\""));
         assert!(html.contains("data-href=\"/p/demo/file/src/a.rs#L3-L7\""));
         assert!(html.contains("data-href=\"/p/demo/file/src/a.rs#L10-L14\""));
