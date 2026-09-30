@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -18,6 +19,8 @@ pub struct IndexItem {
     pub signature: String,
     pub doc: Option<String>,
     pub delegates_to: Option<String>,
+    pub is_test: bool,
+    pub external: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +80,13 @@ pub struct Occurrence {
     pub is_self: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
+pub struct ExternalAliases {
+    pub local_to_crate: HashMap<String, String>,
+    pub glob_crates: BTreeSet<String>,
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct SymbolIndex {
     pub crate_name: String,
     pub root: PathBuf,

@@ -231,6 +231,8 @@ mod tests {
             signature: "pub fn f".to_string(),
             doc: None,
             delegates_to: None,
+            is_test: false,
+            external: Vec::new(),
         });
         idx.by_id.insert("a::f".to_string(), 0);
         let occs = vec![index::Occurrence {
@@ -276,6 +278,8 @@ mod tests {
             signature: "pub fn call".to_string(),
             doc: None,
             delegates_to: None,
+            is_test: false,
+            external: Vec::new(),
         });
         idx.by_id.insert("a::call".to_string(), 0);
         let occs = vec![index::Occurrence {

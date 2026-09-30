@@ -234,27 +234,114 @@
       return;
     }
     var pills = graph.querySelectorAll(".cb-pill[data-node]");
+    function clearHover() {
+      var svg = graph.querySelector("svg.cb-edges");
+      if (svg) {
+        var tmp = svg.querySelectorAll("path.ext-line");
+        for (var t = tmp.length - 1; t >= 0; t--) {
+          tmp[t].remove();
+        }
+        var paths = svg.querySelectorAll("path.int-line");
+        for (var c = 0; c < paths.length; c++) {
+          paths[c].classList.remove("highlight");
+          paths[c].classList.remove("dim");
+        }
+      }
+      var chips = document.querySelectorAll(".externals .chip.ext-active");
+      for (var h = 0; h < chips.length; h++) {
+        chips[h].classList.remove("ext-active");
+      }
+    }
+    function showHover(pill) {
+      var svg = graph.querySelector("svg.cb-edges");
+      if (!svg) {
+        return;
+      }
+      clearHover();
+      var id = pill.getAttribute("data-node");
+      var paths = svg.querySelectorAll("path.int-line");
+      for (var k = 0; k < paths.length; k++) {
+        var f = paths[k].getAttribute("data-from");
+        var tt = paths[k].getAttribute("data-to");
+        if (f === id || tt === id) {
+          paths[k].classList.add("highlight");
+        } else {
+          paths[k].classList.add("dim");
+        }
+      }
+      var wrap = pill.closest(".cb-wrap");
+      var exts = wrap ? (wrap.getAttribute("data-exts") || "") : "";
+      if (!exts) {
+        return;
+      }
+      var names = exts.split(",");
+      var ns = "http://www.w3.org/2000/svg";
+      var box = graph.getBoundingClientRect();
+      var pillBox = pill.getBoundingClientRect();
+      for (var e = 0; e < names.length; e++) {
+        var name = names[e];
+        if (!name) {
+          continue;
+        }
+        var chip = document.querySelector('.externals .chip[data-ext="' + name + '"]');
+        if (!chip) {
+          continue;
+        }
+        chip.classList.add("ext-active");
+        var chipBox = chip.getBoundingClientRect();
+        var x1 = chipBox.left + chipBox.width / 2 - box.left;
+        var y1 = chipBox.top - box.top;
+        var x2 = pillBox.left + pillBox.width / 2 - box.left;
+        var y2 = pillBox.top + pillBox.height - box.top;
+        var mid = (y1 + y2) / 2;
+        var line = document.createElementNS(ns, "path");
+        line.setAttribute("class", "ext-line");
+        line.setAttribute(
+          "d",
+          "M " + x1 + " " + y1 + " C " + x1 + " " + mid + ", " + x2 + " " + mid + ", " + x2 + " " + y2
+        );
+        svg.appendChild(line);
+      }
+    }
     for (var p = 0; p < pills.length; p++) {
-      pills[p].addEventListener("click", function (event) {
-        var pinned = this.classList.contains("pinned");
-        var all = graph.querySelectorAll(".cb-pill.pinned");
-        for (var q = 0; q < all.length; q++) {
-          all[q].classList.remove("pinned");
-          all[q].setAttribute("aria-expanded", "false");
-        }
-        if (!pinned) {
-          this.classList.add("pinned");
-          this.setAttribute("aria-expanded", "true");
-        }
-        event.stopPropagation();
-      });
+      (function (pill) {
+        pill.addEventListener("mouseenter", function () {
+          showHover(pill);
+        });
+        pill.addEventListener("focus", function () {
+          showHover(pill);
+        });
+        pill.addEventListener("mouseleave", function () {
+          if (!pill.classList.contains("pinned")) {
+            clearHover();
+          }
+        });
+        pill.addEventListener("blur", function () {
+          if (!pill.classList.contains("pinned")) {
+            clearHover();
+          }
+        });
+        pill.addEventListener("click", function (event) {
+          var pinned = pill.classList.contains("pinned");
+          var all = graph.querySelectorAll(".cb-pill.pinned");
+          for (var q = 0; q < all.length; q++) {
+            all[q].classList.remove("pinned");
+          }
+          clearHover();
+          if (!pinned) {
+            pill.classList.add("pinned");
+            showHover(pill);
+          }
+          event.stopPropagation();
+        });
+      })(pills[p]);
     }
     document.addEventListener("click", function () {
       var all = graph.querySelectorAll(".cb-pill.pinned");
       for (var q = 0; q < all.length; q++) {
         all[q].classList.remove("pinned");
-        all[q].setAttribute("aria-expanded", "false");
       }
+      clearHover();
     });
     drawCodeEdges(graph);
     var timer = null;
@@ -289,31 +376,26 @@
     var ns = "http://www.w3.org/2000/svg";
     var defs = document.createElementNS(ns, "defs");
     defs.innerHTML =
-      '<marker id="cb-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="#58a6ff"></path></marker>';
+      '<marker id="cb-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#58a6ff"></path></marker>';
     svg.appendChild(defs);
     var box = graph.getBoundingClientRect();
     for (var i = 0; i < edges.length; i++) {
-      var from = graph.querySelector('[data-node="' + edges[i].from + '"]');
-      var to = graph.querySelector('[data-node="' + edges[i].to + '"]');
-      if (!from || !to) {
+      var dep = graph.querySelector('[data-node="' + edges[i].from + '"]');
+      var user = graph.querySelector('[data-node="' + edges[i].to + '"]');
+      if (!dep || !user) {
         continue;
       }
-      var a = from.getBoundingClientRect();
-      var b = to.getBoundingClientRect();
+      var a = dep.getBoundingClientRect();
+      var b = user.getBoundingClientRect();
       var x1 = a.left + a.width / 2 - box.left;
       var y1 = a.top - box.top;
       var x2 = b.left + b.width / 2 - box.left;
       var y2 = b.top + b.height - box.top;
-      if (y1 > y2) {
-        var tmpX = x1;
-        x1 = x2;
-        x2 = tmpX;
-        var tmpY = y1;
-        y1 = y2;
-        y2 = tmpY;
-      }
       var mid = (y1 + y2) / 2;
       var path = document.createElementNS(ns, "path");
+      path.setAttribute("class", "int-line");
+      path.setAttribute("data-from", edges[i].from);
+      path.setAttribute("data-to", edges[i].to);
       path.setAttribute(
         "d",
         "M " + x1 + " " + y1 + " C " + x1 + " " + mid + ", " + x2 + " " + mid + ", " + x2 + " " + y2

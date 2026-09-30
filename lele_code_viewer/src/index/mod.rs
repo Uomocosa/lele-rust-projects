@@ -10,6 +10,8 @@ mod build_module_graph;
 pub use build_module_graph::build_module_graph;
 mod collect_deps;
 pub use collect_deps::collect_deps;
+mod collect_external_aliases;
+pub use collect_external_aliases::collect_external_aliases;
 mod collect_file_items;
 pub use collect_file_items::collect_file_items;
 mod collect_imports;
@@ -18,10 +20,14 @@ mod collect_occurrences;
 pub use collect_occurrences::collect_occurrences;
 mod crate_name_of;
 pub use crate_name_of::crate_name_of;
+mod crate_externs;
+pub use crate_externs::crate_externs;
 mod derive_signature;
 pub use derive_signature::derive_signature;
 mod extract_doc;
 pub use extract_doc::extract_doc;
+mod item_externals;
+pub use item_externals::item_externals;
 mod module_of;
 pub use module_of::module_of;
 mod name_span;
@@ -34,7 +40,7 @@ pub mod basic;
 pub use basic::enums::CodeBlock;
 pub use basic::enums::ItemKind;
 pub use basic::structs::{
-    FileDeps, IndexItem, ItemEdge, ItemGraph, ItemNode, ModuleEdge, ModuleGraph, ModuleNode,
-    Occurrence, SymbolIndex,
+    ExternalAliases, FileDeps, IndexItem, ItemEdge, ItemGraph, ItemNode, ModuleEdge, ModuleGraph,
+    ModuleNode, Occurrence, SymbolIndex,
 };
 pub use basic::type_aliases::Imports;

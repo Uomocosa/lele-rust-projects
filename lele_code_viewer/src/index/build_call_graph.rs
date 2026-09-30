@@ -81,6 +81,8 @@ mod tests {
             signature: "pub fn f".to_string(),
             doc: None,
             delegates_to: None,
+            is_test: false,
+            external: Vec::new(),
         });
         idx.items.push(index::IndexItem {
             id: "a::g".to_string(),
@@ -96,6 +98,8 @@ mod tests {
             signature: "pub fn g".to_string(),
             doc: None,
             delegates_to: None,
+            is_test: false,
+            external: Vec::new(),
         });
         idx.items_by_file.insert(file.clone(), vec![0, 1]);
         idx.occurrences.insert(

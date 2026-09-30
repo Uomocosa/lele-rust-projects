@@ -94,6 +94,8 @@ mod tests {
             signature: "pub struct Config".to_string(),
             doc: None,
             delegates_to: None,
+            is_test: false,
+            external: Vec::new(),
         });
         idx.by_id.insert("clicker::config::Config".to_string(), 0);
         idx.by_name.insert("Config".to_string(), vec![0]);

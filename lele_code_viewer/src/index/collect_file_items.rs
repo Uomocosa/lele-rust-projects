@@ -1,15 +1,34 @@
+use std::collections::BTreeSet;
 use std::path::Path;
 
-use proc_macro2::Span;
+use proc_macro2::TokenStream;
+use proc_macro2::TokenTree::Group;
+use proc_macro2::TokenTree::Ident;
 use syn::spanned::Spanned;
 
 use crate::index;
 
-pub fn collect_file_items(rel: &Path, text: &str, file: &syn::File) -> Vec<index::IndexItem> {
+pub fn collect_file_items(
+    rel: &Path,
+    text: &str,
+    file: &syn::File,
+    crate_externs: &BTreeSet<String>,
+) -> Vec<index::IndexItem> {
     let module = index::module_of(rel);
+    let aliases = index::collect_external_aliases(file);
     let mut out = Vec::new();
     for item in &file.items {
-        collect_item(item, rel, text, &module, None, &mut out);
+        collect_item(
+            item,
+            rel,
+            text,
+            &module,
+            None,
+            false,
+            &aliases,
+            crate_externs,
+            &mut out,
+        );
     }
     out
 }
@@ -21,6 +40,9 @@ fn collect_item(
     text: &str,
     module: &str,
     container: Option<&str>,
+    parent_test: bool,
+    aliases: &index::ExternalAliases,
+    crate_externs: &BTreeSet<String>,
     out: &mut Vec<index::IndexItem>,
 ) {
     match item {
@@ -33,6 +55,8 @@ fn collect_item(
             index::ItemKind::Fn,
             &f.attrs,
             f.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Struct(s) => push_item(
@@ -44,6 +68,8 @@ fn collect_item(
             index::ItemKind::Struct,
             &s.attrs,
             s.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Enum(e) => push_item(
@@ -55,6 +81,8 @@ fn collect_item(
             index::ItemKind::Enum,
             &e.attrs,
             e.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Const(c) => push_item(
@@ -66,6 +94,8 @@ fn collect_item(
             index::ItemKind::Const,
             &c.attrs,
             c.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Static(s) => push_item(
@@ -77,6 +107,8 @@ fn collect_item(
             index::ItemKind::Static,
             &s.attrs,
             s.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Type(t) => push_item(
@@ -88,6 +120,8 @@ fn collect_item(
             index::ItemKind::TypeAlias,
             &t.attrs,
             t.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Trait(t) => push_item(
@@ -99,6 +133,8 @@ fn collect_item(
             index::ItemKind::Trait,
             &t.attrs,
             t.span(),
+            parent_test,
+            index::item_externals(item, aliases, crate_externs),
             out,
         ),
         syn::Item::Mod(m) => {
@@ -108,15 +144,35 @@ fn collect_item(
                 } else {
                     format!("{module}::{}", m.ident)
                 };
+                let nested_test = parent_test || is_test_attr(&m.attrs);
                 for inner in items {
-                    collect_item(inner, rel, text, &nested, None, out);
+                    collect_item(
+                        inner,
+                        rel,
+                        text,
+                        &nested,
+                        None,
+                        nested_test,
+                        aliases,
+                        crate_externs,
+                        out,
+                    );
                 }
             }
         }
         syn::Item::Impl(im) => {
             let ty = type_name(&im.self_ty);
+            let impl_test = parent_test || is_test_attr(&im.attrs);
             for impl_item in &im.items {
                 if let syn::ImplItem::Fn(m) = impl_item {
+                    let mut probe_attrs = im.attrs.clone();
+                    probe_attrs.extend(m.attrs.clone());
+                    let probe = syn::Item::Fn(syn::ItemFn {
+                        attrs: probe_attrs,
+                        vis: m.vis.clone(),
+                        sig: m.sig.clone(),
+                        block: Box::new(m.block.clone()),
+                    });
                     push_item(
                         rel,
                         text,
@@ -126,6 +182,8 @@ fn collect_item(
                         index::ItemKind::Fn,
                         &m.attrs,
                         m.span(),
+                        impl_test,
+                        index::item_externals(&probe, aliases, crate_externs),
                         out,
                     );
                 }
@@ -133,6 +191,30 @@ fn collect_item(
         }
         _ => {}
     }
+}
+
+// needed helper: true for #[test] or #[cfg(test)] attribute lists
+fn is_test_attr(attrs: &[syn::Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        attr.path().is_ident("test") || (attr.path().is_ident("cfg") && cfg_mentions_test(attr))
+    })
+}
+
+// needed helper: true when a #[cfg(...)] list enables the test configuration
+fn cfg_mentions_test(attr: &syn::Attribute) -> bool {
+    let Ok(list) = attr.meta.require_list() else {
+        return false;
+    };
+    tokens_mention_test(&list.tokens)
+}
+
+// needed helper: true when a token stream contains the test identifier
+fn tokens_mention_test(tokens: &TokenStream) -> bool {
+    tokens.clone().into_iter().any(|token| match token {
+        Ident(ident) => ident == "test",
+        Group(group) => tokens_mention_test(&group.stream()),
+        _ => false,
+    })
 }
 
 // needed helper: build one IndexItem from its ident/kind/span
@@ -144,7 +226,9 @@ fn push_item(
     ident: &syn::Ident,
     kind: index::ItemKind,
     attrs: &[syn::Attribute],
-    span: Span,
+    span: proc_macro2::Span,
+    parent_test: bool,
+    external: Vec<String>,
     out: &mut Vec<index::IndexItem>,
 ) {
     let name = ident.to_string();
@@ -169,6 +253,8 @@ fn push_item(
         signature: index::derive_signature(text, name_line),
         doc: index::extract_doc(attrs),
         delegates_to: None,
+        is_test: parent_test || is_test_attr(attrs),
+        external,
     });
 }
 
@@ -183,6 +269,7 @@ fn type_name(ty: &syn::Type) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
     use std::path::Path;
 
     use super::collect_file_items;
@@ -191,10 +278,57 @@ mod tests {
     fn test_usage() {
         let text = "pub struct Bar;\npub fn top() {}\nimpl Bar { pub fn new() -> Self { Self } }\n";
         let file: syn::File = syn::parse_str(text).unwrap();
-        let items = collect_file_items(Path::new("src/foo.rs"), text, &file);
+        let items = collect_file_items(Path::new("src/foo.rs"), text, &file, &BTreeSet::new());
         let ids: Vec<&str> = items.iter().map(|i| i.id.as_str()).collect();
         assert!(ids.contains(&"foo::Bar"));
         assert!(ids.contains(&"foo::top"));
         assert!(ids.contains(&"foo::Bar::new"));
+        assert!(items.iter().all(|i| !i.is_test));
+
+        let flagged = "use serde::Serialize;\n#[derive(Serialize)]\npub struct Cfg;\n#[test]\nfn wobble() {}\n#[cfg(test)]\nmod extra {\nfn hidden() {}\n}\n";
+        let parsed: syn::File = syn::parse_str(flagged).unwrap();
+        let flagged_items = collect_file_items(
+            Path::new("src/flagged.rs"),
+            flagged,
+            &parsed,
+            &BTreeSet::new(),
+        );
+        let cfg = flagged_items
+            .iter()
+            .find(|i| i.id == "flagged::Cfg")
+            .unwrap();
+        assert!(!cfg.is_test);
+        assert!(cfg.external.contains(&"serde".to_string()));
+        assert!(
+            flagged_items
+                .iter()
+                .find(|i| i.id == "flagged::wobble")
+                .unwrap()
+                .is_test
+        );
+        assert!(
+            flagged_items
+                .iter()
+                .find(|i| i.id == "flagged::extra::hidden")
+                .unwrap()
+                .is_test
+        );
+
+        let probed = "use atomic_delegate_macros::atomic_delegates;\npub struct Counter;\n#[atomic_delegates]\nimpl Counter {\nfn bump(&mut self) {}\n}\n";
+        let probed_file: syn::File = syn::parse_str(probed).unwrap();
+        let probed_items = collect_file_items(
+            Path::new("src/probed.rs"),
+            probed,
+            &probed_file,
+            &BTreeSet::new(),
+        );
+        assert!(
+            probed_items
+                .iter()
+                .find(|i| i.id == "probed::Counter::bump")
+                .unwrap()
+                .external
+                .contains(&"atomic_delegate_macros".to_string())
+        );
     }
 }

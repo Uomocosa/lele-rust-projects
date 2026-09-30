@@ -19,18 +19,19 @@ pub fn build_index(crate_dir: &Path) -> Result<index::SymbolIndex, Error> {
         ..index::SymbolIndex::default()
     };
     idx.files = read_sources(&project);
+    let crate_deps = index::crate_externs(&project.root);
 
     for (rel, file) in &project.parsed_files {
         let key = PathBuf::from("src").join(rel);
         let text = idx.files.get(&key).map_or("", String::as_str);
         idx.items
-            .extend(index::collect_file_items(&key, text, file));
+            .extend(index::collect_file_items(&key, text, file, &crate_deps));
     }
     for (rel, file) in &project.methods_parsed_files {
         let key = PathBuf::from("methods").join(rel);
         let text = idx.files.get(&key).map_or("", String::as_str);
         idx.items
-            .extend(index::collect_file_items(&key, text, file));
+            .extend(index::collect_file_items(&key, text, file, &crate_deps));
     }
 
     index_lookups(&mut idx);
@@ -72,7 +73,7 @@ pub fn build_index(crate_dir: &Path) -> Result<index::SymbolIndex, Error> {
         );
     }
     index::build_module_graph(&mut idx, &file_deps);
-    index::build_item_graph(&mut idx, &file_deps);
+    index::build_item_graph(&mut idx);
 
     idx.rust_files = idx.files.keys().cloned().collect();
     idx.rust_files.sort();

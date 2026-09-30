@@ -1,17 +1,15 @@
 use std::collections::BTreeSet;
 use std::collections::HashMap;
-use std::hash::BuildHasher;
-use std::path::PathBuf;
 
 use crate::index;
 
-pub fn build_item_graph<S: BuildHasher>(
-    idx: &mut index::SymbolIndex,
-    file_deps: &HashMap<PathBuf, index::FileDeps, S>,
-) {
+pub fn build_item_graph(idx: &mut index::SymbolIndex) {
     let mut node_of: HashMap<String, usize> = HashMap::new();
     let mut nodes: Vec<index::ItemNode> = Vec::new();
     for item in &idx.items {
+        if item.kind == index::ItemKind::Fn && item.is_test {
+            continue;
+        }
         let Some(kind) = kind_of(item.kind) else {
             continue;
         };
@@ -23,7 +21,7 @@ pub fn build_item_graph<S: BuildHasher>(
             id: item.id.clone(),
             name: item.name.clone(),
             kind,
-            external: Vec::new(),
+            external: item.external.clone(),
             layer: 0,
         });
     }
@@ -54,26 +52,9 @@ pub fn build_item_graph<S: BuildHasher>(
     }
 
     let mut externals: BTreeSet<String> = BTreeSet::new();
-    for (path, deps) in file_deps {
-        let Some(members) = idx.items_by_file.get(path) else {
-            continue;
-        };
-        for &item_idx in members {
-            let Some(item) = idx.items.get(item_idx) else {
-                continue;
-            };
-            let Some(&node) = node_of.get(&item.id) else {
-                continue;
-            };
-            let Some(slot) = nodes.get_mut(node) else {
-                continue;
-            };
-            for ext in &deps.external {
-                externals.insert(ext.clone());
-                if !slot.external.contains(ext) {
-                    slot.external.push(ext.clone());
-                }
-            }
+    for node in &nodes {
+        for ext in &node.external {
+            externals.insert(ext.clone());
         }
     }
 
@@ -121,7 +102,6 @@ fn parent_of(id: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     use super::build_item_graph;
@@ -131,12 +111,37 @@ mod tests {
     fn test_usage() {
         let mut idx = index::SymbolIndex::default();
         let file = PathBuf::from("src/a.rs");
-        for (id, name, kind) in [
-            ("a::Cfg", "Cfg", index::ItemKind::Struct),
-            ("a::Cfg::new", "new", index::ItemKind::Fn),
-            ("a::run", "run", index::ItemKind::Fn),
-            ("a::LIMIT", "LIMIT", index::ItemKind::Const),
-            ("a::Alias", "Alias", index::ItemKind::TypeAlias),
+        for (id, name, kind, is_test, external) in [
+            ("a::Cfg", "Cfg", index::ItemKind::Struct, false, vec![]),
+            (
+                "a::Cfg::new",
+                "new",
+                index::ItemKind::Fn,
+                false,
+                vec!["serde".to_string()],
+            ),
+            (
+                "a::run",
+                "run",
+                index::ItemKind::Fn,
+                false,
+                vec!["serde".to_string()],
+            ),
+            (
+                "a::wobble",
+                "wobble",
+                index::ItemKind::Fn,
+                true,
+                vec!["serde".to_string()],
+            ),
+            ("a::LIMIT", "LIMIT", index::ItemKind::Const, false, vec![]),
+            (
+                "a::Alias",
+                "Alias",
+                index::ItemKind::TypeAlias,
+                false,
+                vec![],
+            ),
         ] {
             idx.items.push(index::IndexItem {
                 id: id.to_string(),
@@ -152,32 +157,23 @@ mod tests {
                 signature: name.to_string(),
                 doc: None,
                 delegates_to: None,
+                is_test,
+                external,
             });
         }
-        idx.items_by_file.insert(file.clone(), vec![0, 1, 2, 3, 4]);
+        idx.items_by_file
+            .insert(file.clone(), vec![0, 1, 2, 3, 4, 5]);
         idx.callees
             .insert("a::run".to_string(), vec!["a::Cfg".to_string()]);
-        let mut deps = HashMap::new();
-        deps.insert(
-            file,
-            index::FileDeps {
-                internal: Vec::new(),
-                external: vec!["serde".to_string()],
-            },
-        );
-        build_item_graph(&mut idx, &deps);
+        build_item_graph(&mut idx);
         let graph = &idx.item_graph;
         assert_eq!(graph.nodes.len(), 3);
-        assert!(
-            graph
-                .nodes
-                .iter()
-                .all(|n| n.external == vec!["serde".to_string()])
-        );
+        assert!(graph.nodes.iter().all(|n| n.name != "wobble"));
         let cfg = graph.nodes.iter().find(|n| n.id == "a::Cfg").unwrap();
+        assert_eq!(cfg.external, Vec::<String>::new());
         let new = graph.nodes.iter().find(|n| n.id == "a::Cfg::new").unwrap();
+        assert!(new.external.contains(&"serde".to_string()));
         let run = graph.nodes.iter().find(|n| n.id == "a::run").unwrap();
-        assert!(new.layer > cfg.layer);
         assert!(run.layer > cfg.layer);
         assert!(graph.edges.iter().any(|e| {
             let dep = graph.nodes.get(e.from).map(|n| n.id.as_str()).unwrap_or("");
