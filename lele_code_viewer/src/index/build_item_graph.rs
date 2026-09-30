@@ -6,6 +6,7 @@ use crate::index;
 pub fn build_item_graph(idx: &mut index::SymbolIndex) {
     let mut node_of: HashMap<String, usize> = HashMap::new();
     let mut nodes: Vec<index::ItemNode> = Vec::new();
+    let mut node_files: Vec<&std::path::Path> = Vec::new();
     for item in &idx.items {
         if item.kind == index::ItemKind::Fn && item.is_test {
             continue;
@@ -17,6 +18,7 @@ pub fn build_item_graph(idx: &mut index::SymbolIndex) {
             continue;
         }
         node_of.insert(item.id.clone(), nodes.len());
+        node_files.push(item.file.as_path());
         nodes.push(index::ItemNode {
             id: item.id.clone(),
             name: item.name.clone(),
@@ -70,10 +72,12 @@ pub fn build_item_graph(idx: &mut index::SymbolIndex) {
         .map(|&(from, to)| index::ItemEdge { from, to })
         .collect();
     edges.sort_by_key(|edge| (edge.from, edge.to));
+    let groups = index::folder_groups(&node_files);
     idx.item_graph = index::ItemGraph {
         nodes,
         edges,
         externals: externals.into_iter().collect(),
+        groups,
     };
 }
 

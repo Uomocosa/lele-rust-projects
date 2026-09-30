@@ -57,11 +57,18 @@ pub struct ItemEdge {
     pub to: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct ItemGroup {
+    pub folder: String,
+    pub members: Vec<usize>,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct ItemGraph {
     pub nodes: Vec<ItemNode>,
     pub edges: Vec<ItemEdge>,
     pub externals: Vec<String>,
+    pub groups: Vec<ItemGroup>,
 }
 
 #[derive(Debug, Default, Clone)]

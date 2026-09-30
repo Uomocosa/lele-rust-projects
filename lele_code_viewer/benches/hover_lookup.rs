@@ -10,6 +10,7 @@ fn fixture(nodes: usize) -> ItemGraph {
         nodes: Vec::new(),
         edges: Vec::new(),
         externals: Vec::new(),
+        groups: Vec::new(),
     };
     for i in 0..nodes {
         graph.nodes.push(ItemNode {

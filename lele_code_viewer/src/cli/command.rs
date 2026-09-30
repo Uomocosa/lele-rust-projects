@@ -9,6 +9,10 @@ pub enum Command {
         #[arg(long)]
         out: PathBuf,
     },
+    Graph {
+        #[arg(long)]
+        out: PathBuf,
+    },
     Serve {
         #[arg(long, default_value = "0.0.0.0:8787")]
         bind: String,
