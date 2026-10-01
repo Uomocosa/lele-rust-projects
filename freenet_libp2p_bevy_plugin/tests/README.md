@@ -41,6 +41,14 @@ Adding any such shortcut invalidates the test even if it makes it pass.
 ## How it works (harness = `common/`)
 
 - `scenario.rs`: shared code both tests use. `Scenario::discover_only(3)` / `Scenario::join(5)`.
+- UI: every action goes through the on-screen buttons. `--action create` / `--action join:<r>`
+  is a scripted press (`examples/lobby_room/intent.rs::press_once`) that marks the button
+  `Interaction::Pressed`; the UI's own click handler sends the `discovery::Command`.
+  A join press waits until the room's button appears in the list. The UI picks the room
+  name, and the harness reads it back from `lobby created room=<r>`.
+  - discovery test: `--ui custom`, which disables `discovery::ui::DefaultUiPlugin` and adds
+    the example's replacement `examples/lobby_room/ui.rs::LobbyUi`.
+  - join test: `--ui default`, the plugin's default UI.
 - Log markers are the oracle (keep them stable, or update `common/log_parse.rs`):
   - `lobby created room=<r>`
   - `lobby joined room=<r>`

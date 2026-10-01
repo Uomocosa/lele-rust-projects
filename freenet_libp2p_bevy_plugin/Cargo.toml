@@ -73,13 +73,14 @@ tokio-tungstenite = { version = "=0.27.0", optional = true }
 http = { version = "=1.4.1", optional = true }
 
 [features]
-default = ["room_lobby"]
+default = ["room_lobby", "default_ui"]
 room_lobby = [
     "dep:freenet-stdlib",
     "dep:tokio-tungstenite",
     "dep:http",
 ]
-e2e = ["room_lobby"]
+default_ui = ["room_lobby"]
+e2e = ["room_lobby", "default_ui"]
 ui_preview = ["dep:bevy_brp_extras", "bevy/bevy_remote", "bevy/serialize"]
 
 [dev-dependencies]

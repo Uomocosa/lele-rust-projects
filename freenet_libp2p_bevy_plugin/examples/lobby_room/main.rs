@@ -3,8 +3,10 @@ mod dummy;
 mod intent;
 mod node;
 mod status;
+mod ui;
 
 use bevy::prelude::*;
+use bevy::ui::UiSystems;
 use clap::Parser;
 use freenet_libp2p_bevy_plugin::{discovery, net_id, plugin};
 
@@ -37,7 +39,7 @@ async fn main() {
         transport,
         false,
     )));
-    app.add_plugins(discovery::Plugin::new(discovery::Config {
+    let discovery_plugins = discovery::Plugins(discovery::Config {
         game_name: discovery::id::GameName("lobby_room_example".to_string()),
         token: args.token.clone().map_or_else(
             || freenet_libp2p_bevy_plugin::game_token!(),
@@ -46,12 +48,32 @@ async fn main() {
         timing: discovery::Timing::default(),
         transport,
         capacity: 8,
-    }));
+    });
+    // the scripted press runs after bevy's focus pass so it is not reset that frame
+    match args.ui {
+        args::UiArg::Default => {
+            app.add_plugins(discovery_plugins);
+            app.add_systems(
+                PreUpdate,
+                intent::press_once::<discovery::ui::CreateRoomButton, discovery::ui::RoomButton>
+                    .after(UiSystems::Focus),
+            );
+        }
+        args::UiArg::Custom => {
+            app.add_plugins(
+                discovery_plugins
+                    .build()
+                    .disable::<discovery::ui::DefaultUiPlugin>(),
+            );
+            app.add_plugins(ui::LobbyUi);
+            app.add_systems(
+                PreUpdate,
+                intent::press_once::<ui::NewRoomButton, ui::JoinButton>.after(UiSystems::Focus),
+            );
+        }
+    }
     app.add_systems(Startup, status::setup_ui);
-    app.add_systems(
-        Update,
-        (intent::send_once, intent::log_joined, status::log_tick),
-    );
+    app.add_systems(Update, (intent::log_joined, status::log_tick));
     app.run();
 }
 

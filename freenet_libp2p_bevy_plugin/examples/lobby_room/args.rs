@@ -4,29 +4,36 @@ use clap::{Parser, ValueEnum};
 use freenet_libp2p_bevy_plugin::discovery::id::RoomName;
 use freenet_libp2p_bevy_plugin::p2p::TransportMode;
 
+/// Scripted button press: `create` presses "Create room", `join:<room>`
+/// presses that room's button once it shows up in the list.
 #[derive(Debug, Clone)]
 pub enum Action {
-    CreateRoom(RoomName),
-    JoinRoom(RoomName),
+    Create,
+    Join(RoomName),
 }
 
 impl FromStr for Action {
     type Err = String;
 
     fn from_str(raw: &str) -> Result<Self, Self::Err> {
-        let (kind, room) = raw
-            .split_once(':')
-            .ok_or_else(|| format!("expected create:<room> or join:<room>, got {raw}"))?;
+        if raw == "create" {
+            return Ok(Self::Create);
+        }
+        let room = raw
+            .strip_prefix("join:")
+            .ok_or_else(|| format!("expected create or join:<room>, got {raw}"))?;
         if room.is_empty() {
             return Err("room name is empty".to_string());
         }
-        let room = RoomName(room.to_string());
-        match kind {
-            "create" => Ok(Self::CreateRoom(room)),
-            "join" => Ok(Self::JoinRoom(room)),
-            other => Err(format!("unknown action {other}, expected create or join")),
-        }
+        Ok(Self::Join(RoomName(room.to_string())))
     }
+}
+
+/// Which lobby UI to run: the plugin's default one or the example's replacement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum UiArg {
+    Default,
+    Custom,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -47,6 +54,8 @@ pub struct Args {
     pub token: Option<String>,
     #[arg(long, value_enum, default_value = "both")]
     pub transport: TransportArg,
+    #[arg(long, value_enum, default_value = "default")]
+    pub ui: UiArg,
 }
 
 #[must_use]

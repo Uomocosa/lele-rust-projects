@@ -16,11 +16,13 @@ const SPAWN_TIMEOUT_SECS: u64 = 180;
 const RECORD_SECS: u64 = 600;
 const POLL_MS: u64 = 500;
 const SPAWN_GAP_MS: u64 = 300;
+const CREATED_MARKER: &str = "lobby created room=";
 
 pub struct Scenario {
     pub name: String,
     pub peers: usize,
     pub join: bool,
+    pub ui: String,
     pub discovery_budget_secs: u64,
     pub join_budget_secs: u64,
 }
@@ -32,6 +34,7 @@ impl Scenario {
             name: "lobby_room_discovery".to_string(),
             peers,
             join: false,
+            ui: "custom".to_string(),
             discovery_budget_secs: DISCOVERY_BUDGET_SECS,
             join_budget_secs: JOIN_BUDGET_SECS,
         }
@@ -43,6 +46,7 @@ impl Scenario {
             name: "lobby_room_join".to_string(),
             peers,
             join: true,
+            ui: "default".to_string(),
             discovery_budget_secs: DISCOVERY_BUDGET_SECS,
             join_budget_secs: JOIN_BUDGET_SECS,
         }
@@ -78,7 +82,6 @@ impl Report {
 struct Env {
     bin: PathBuf,
     dir: PathBuf,
-    room: String,
     token: String,
     transport: String,
     raw: PathBuf,
@@ -90,6 +93,7 @@ struct Env {
 struct Peers {
     windows: Vec<TerminalGuard>,
     logs: Vec<PathBuf>,
+    room: String,
     created: bool,
     spawn_ok: bool,
     t_create: Instant,
@@ -102,7 +106,7 @@ pub async fn run_scenario(scenario: Scenario) -> Report {
         Err(detail) => return early_report(&scenario, detail),
     };
     let mut peers = spawn(&scenario, &env);
-    let checks = evaluate(&scenario, &env, &peers).await;
+    let checks = evaluate(&scenario, &peers).await;
     let clip = stop_recording(env.recording.take(), &env.raw, &env.clip);
     let windows = std::mem::take(&mut peers.windows);
     release(windows);
@@ -134,7 +138,6 @@ fn prepare(scenario: &Scenario) -> Result<Env, String> {
     Ok(Env {
         bin,
         dir,
-        room: format!("room-{stamp}"),
         token: format!("lobby-e2e/{stamp}"),
         transport: std::env::var("LOBBY_TRANSPORT").unwrap_or_else(|_| "both".to_string()),
         raw,
@@ -147,24 +150,30 @@ fn prepare(scenario: &Scenario) -> Result<Env, String> {
 fn spawn(scenario: &Scenario, env: &Env) -> Peers {
     let mut windows = Vec::new();
     let mut logs = Vec::new();
-    let mut spawn_ok = true;
-    let create = format!("create:{}", env.room);
-    if let Err(e) = push_peer(env, "p1", Some(&create), &mut windows, &mut logs) {
+    let first = push_peer(scenario, env, "p1", Some("create"), &mut windows, &mut logs);
+    if let Err(e) = &first {
         eprintln!("{e}");
-        spawn_ok = false;
     }
-    let created = logs.first().is_some_and(|log| {
-        wait_log(
-            log,
-            &format!("lobby created room={}", env.room),
-            SPAWN_TIMEOUT_SECS,
-        )
-    });
+    let mut spawn_ok = first.is_ok();
+    // the UI picks the room name; read it back from the creator's log
+    let room = logs
+        .first()
+        .filter(|log| wait_log(log, CREATED_MARKER, SPAWN_TIMEOUT_SECS))
+        .and_then(|log| created_room(log))
+        .unwrap_or_default();
+    let created = !room.is_empty();
     let t_create = Instant::now();
     for index in 2..=scenario.peers {
         let username = format!("p{index}");
-        let action = scenario.join.then(|| format!("join:{}", env.room));
-        if let Err(e) = push_peer(env, &username, action.as_deref(), &mut windows, &mut logs) {
+        let action = scenario.join.then(|| format!("join:{room}"));
+        if let Err(e) = push_peer(
+            scenario,
+            env,
+            &username,
+            action.as_deref(),
+            &mut windows,
+            &mut logs,
+        ) {
             eprintln!("{e}");
             spawn_ok = false;
         }
@@ -177,6 +186,7 @@ fn spawn(scenario: &Scenario, env: &Env) -> Peers {
     Peers {
         windows,
         logs,
+        room,
         created,
         spawn_ok,
         t_create,
@@ -185,6 +195,7 @@ fn spawn(scenario: &Scenario, env: &Env) -> Peers {
 }
 
 fn push_peer(
+    scenario: &Scenario,
     env: &Env,
     username: &str,
     action: Option<&str>,
@@ -198,15 +209,16 @@ fn push_peer(
         action,
         &env.token,
         &env.transport,
+        &scenario.ui,
         windows,
     )?;
     logs.push(log);
     Ok(())
 }
 
-async fn evaluate(scenario: &Scenario, env: &Env, peers: &Peers) -> Vec<Check> {
+async fn evaluate(scenario: &Scenario, peers: &Peers) -> Vec<Check> {
     let seen = wait_until(Duration::from_secs(scenario.discovery_budget_secs), || {
-        all_see_room(&peers.logs, &env.room)
+        all_see_room(&peers.logs, &peers.room)
     })
     .await;
     let discovery_ms = peers.t_create.elapsed().as_millis();
@@ -214,7 +226,7 @@ async fn evaluate(scenario: &Scenario, env: &Env, peers: &Peers) -> Vec<Check> {
         && peers.spawn_ok
         && seen
         && peers.t_create.elapsed().as_secs() <= scenario.discovery_budget_secs;
-    let (join_ok, join_ms, join_detail) = evaluate_join(scenario, env, peers).await;
+    let (join_ok, join_ms, join_detail) = evaluate_join(scenario, peers).await;
     let spawn_check = Check {
         name: "spawn".to_string(),
         ok: peers.spawn_ok && peers.logs.len() == scenario.peers,
@@ -239,12 +251,12 @@ async fn evaluate(scenario: &Scenario, env: &Env, peers: &Peers) -> Vec<Check> {
     vec![spawn_check, discovery_check, join_check]
 }
 
-async fn evaluate_join(scenario: &Scenario, env: &Env, peers: &Peers) -> (bool, u128, String) {
+async fn evaluate_join(scenario: &Scenario, peers: &Peers) -> (bool, u128, String) {
     if !scenario.join {
         return (true, 0, "n/a".to_string());
     }
     let mesh = wait_until(Duration::from_secs(scenario.join_budget_secs), || {
-        all_in_room(&peers.logs, &env.room, scenario.peers)
+        all_in_room(&peers.logs, &peers.room, scenario.peers)
     })
     .await;
     let budget_ok = peers.t_join.elapsed().as_secs() <= scenario.join_budget_secs;
@@ -281,8 +293,8 @@ fn build_caption(scenario: &Scenario, env: &Env, peers: &Peers, checks: &[Check]
     let mut lines = vec![
         freenet_status(env, &peers.logs),
         format!(
-            "{} room={} transport={} peers={} · build {:.1}s",
-            scenario.name, env.room, env.transport, scenario.peers, env.build_secs
+            "{} ui={} room={} transport={} peers={} · build {:.1}s",
+            scenario.name, scenario.ui, peers.room, env.transport, scenario.peers, env.build_secs
         ),
         format!("created={} spawn_ok={}", peers.created, peers.spawn_ok),
     ];
@@ -362,6 +374,7 @@ fn spawn_peer(
     action: Option<&str>,
     token: &str,
     transport: &str,
+    ui: &str,
     windows: &mut Vec<TerminalGuard>,
 ) -> Result<PathBuf, String> {
     let log = dir.join(format!("instance-{username}.log"));
@@ -372,6 +385,8 @@ fn spawn_peer(
         token.to_string(),
         "--transport".to_string(),
         transport.to_string(),
+        "--ui".to_string(),
+        ui.to_string(),
     ];
     if let Some(action) = action {
         args.push("--action".to_string());
@@ -450,4 +465,14 @@ fn epoch_secs() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or_default()
+}
+
+// needed helper: room name from the creator's `lobby created room=<r>` marker
+fn created_room(log: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(log).ok()?;
+    text.lines().find_map(|line| {
+        let index = line.find(CREATED_MARKER)?;
+        let rest = line.get(index.checked_add(CREATED_MARKER.len())?..)?;
+        rest.split_whitespace().next().map(str::to_string)
+    })
 }

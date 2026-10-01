@@ -4,6 +4,8 @@ pub mod link;
 pub mod lobby_rooms;
 pub mod room_peers;
 pub mod session;
+#[cfg(feature = "default_ui")]
+pub mod ui;
 
 #[path = "__basic__/mod.rs"]
 pub mod basic;
@@ -28,3 +30,6 @@ mod game_token;
 
 mod plugin;
 pub use plugin::Plugin;
+
+mod plugins;
+pub use plugins::Plugins;

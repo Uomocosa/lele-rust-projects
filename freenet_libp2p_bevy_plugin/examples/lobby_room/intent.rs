@@ -1,4 +1,6 @@
 #![allow(clippy::needless_pass_by_value)]
+use std::ops::Deref;
+
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::discovery;
 
@@ -10,33 +12,50 @@ pub struct Intent {
     pub sent: bool,
 }
 
-pub fn send_once(mut intent: ResMut<Intent>, mut commands: MessageWriter<discovery::Command>) {
+/// Scripted click: marks the matching button `Interaction::Pressed` so the
+/// active UI's own click handler sends the command. Retries every frame until
+/// the button exists (a `join:<room>` waits for the room to be discovered).
+/// `C` is the UI's create button marker, `J` its per-room button.
+pub fn press_once<C, J>(
+    mut intent: ResMut<Intent>,
+    mut create: Query<&mut Interaction, With<C>>,
+    mut join: Query<(&mut Interaction, &J), Without<C>>,
+) where
+    C: Component,
+    J: Component + Deref<Target = discovery::id::RoomName>,
+{
     if intent.sent {
         return;
     }
-    if let Some(action) = &intent.action {
-        match action {
-            args::Action::CreateRoom(room) => {
-                commands.write(discovery::Command::Create(room.clone()));
-                tracing::info!("lobby intent create room={}", room.as_str());
-            }
-            args::Action::JoinRoom(room) => {
-                commands.write(discovery::Command::Join(room.clone()));
-                tracing::info!("lobby intent join room={}", room.as_str());
-            }
+    let pressed = match &intent.action {
+        Some(args::Action::Create) => create
+            .iter_mut()
+            .next()
+            .map(|mut interaction| *interaction = Interaction::Pressed)
+            .is_some(),
+        Some(args::Action::Join(room)) => join
+            .iter_mut()
+            .find(|(_, button)| ***button == *room)
+            .map(|(mut interaction, _)| *interaction = Interaction::Pressed)
+            .is_some(),
+        None => true,
+    };
+    if pressed {
+        if let Some(action) = &intent.action {
+            tracing::info!("lobby intent pressed {action:?}");
         }
+        intent.sent = true;
     }
-    intent.sent = true;
 }
 
 pub fn log_joined(intent: Res<Intent>, mut events: MessageReader<discovery::Event>) {
     for event in events.read() {
         if let discovery::Event::Joined(room) = event {
             match intent.action {
-                Some(args::Action::CreateRoom(_)) => {
+                Some(args::Action::Create) => {
                     tracing::info!("lobby created room={}", room.as_str());
                 }
-                Some(args::Action::JoinRoom(_)) => {
+                Some(args::Action::Join(_)) => {
                     tracing::info!("lobby joined room={}", room.as_str());
                 }
                 None => {}
