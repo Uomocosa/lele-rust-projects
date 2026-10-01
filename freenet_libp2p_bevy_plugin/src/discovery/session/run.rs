@@ -35,7 +35,7 @@ pub async fn run(run: RunConfig) {
     let (boards_tx, mut boards) = tokio::sync::mpsc::unbounded_channel();
     let me = session.me.clone();
     tokio::spawn(async move {
-        let index = connect_retry("127.0.0.1", *endpoint, &id).await;
+        let index = connect_retry("127.0.0.1", *endpoint, &id, &target_rx).await;
         run_board(index, me, config.capacity, timing, target_rx, boards_tx).await;
     });
     let mut mesh_tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));

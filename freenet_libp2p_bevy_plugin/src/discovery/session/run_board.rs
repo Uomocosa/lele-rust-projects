@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::discovery;
 use discovery::Timing;
+use discovery::basic::constants;
 use discovery::id::{RemotePeerId, now_epoch};
 use discovery::lobby_rooms::{IndexClient, RoomCatalogue, poll, publish_presence, refresh};
 use discovery::session::BoardTarget;
@@ -33,7 +34,8 @@ pub async fn run_board(
         let refresh_due =
             last_refresh.is_none_or(|last| now.duration_since(last).as_secs() >= timing.board_secs);
         if refresh_due {
-            if let Ok(fresh) = refresh(&mut index).await {
+            let timeout = Duration::from_secs(constants::BOARD_REQUEST_TIMEOUT_SECS);
+            if let Ok(Ok(fresh)) = tokio::time::timeout(timeout, refresh(&mut index)).await {
                 board = Some(fresh);
             }
             last_refresh = Some(now);

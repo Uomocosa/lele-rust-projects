@@ -13,6 +13,7 @@ pub async fn connect(
     port: u16,
     contract_wasm: &[u8],
     params: &[u8],
+    deploy: bool,
 ) -> Result<IndexClient, Error> {
     let mut client = discovery::link::Client::connect(host, port).await?;
     let code = Arc::new(ContractCode::from(contract_wasm.to_vec()));
@@ -22,7 +23,7 @@ pub async fn connect(
     let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
     let slots = match recv_board(&mut client, instance_id).await {
         Ok(board) => board,
-        Err(Error::ContractNotFound) => {
+        Err(Error::ContractNotFound) if deploy => {
             let put = ContractRequest::Put {
                 contract: container,
                 state: WrappedState::new(bincode::serialize(&RoomCatalogue::new())?),
@@ -84,6 +85,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_usage() {
-        assert!(connect("127.0.0.1", 1, &[], &[]).await.is_err());
+        assert!(connect("127.0.0.1", 1, &[], &[], true).await.is_err());
     }
 }
