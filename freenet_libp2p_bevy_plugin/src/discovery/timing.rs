@@ -5,6 +5,9 @@ pub struct Timing {
     pub republish_secs: u64,
     pub presence_ttl_secs: u64,
     pub board_secs: u64,
+    pub redial_secs: u64,
+    pub hello_secs: u64,
+    pub member_grace_secs: u64,
 }
 
 impl Default for Timing {
@@ -15,6 +18,9 @@ impl Default for Timing {
             republish_secs: 30,
             presence_ttl_secs: 120,
             board_secs: 5,
+            redial_secs: 2,
+            hello_secs: 5,
+            member_grace_secs: 10,
         }
     }
 }

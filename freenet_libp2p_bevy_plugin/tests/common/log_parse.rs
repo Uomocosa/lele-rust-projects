@@ -40,6 +40,35 @@ pub fn last_tick(path: &Path) -> Option<Tick> {
     content.lines().filter_map(parse_tick_line).next_back()
 }
 
+/// Milliseconds-of-day timestamps of every line containing `needle`.
+#[must_use]
+pub fn marker_times(path: &Path, needle: &str) -> Vec<(u64, String)> {
+    strip_ansi(&std::fs::read_to_string(path).unwrap_or_default())
+        .lines()
+        .filter(|line| line.contains(needle))
+        .filter_map(|line| line_millis(line).map(|ms| (ms, line.to_string())))
+        .collect()
+}
+
+// needed helper: `2026-10-01T17:04:19.867931Z ...` -> milliseconds since midnight
+fn line_millis(line: &str) -> Option<u64> {
+    let time = line.split_whitespace().next()?.split('T').nth(1)?;
+    let time = time.trim_end_matches('Z');
+    let (hms, frac) = time.split_once('.')?;
+    let mut parts = hms.split(':').map(|part| part.parse::<u64>().ok());
+    let hours = parts.next()??;
+    let minutes = parts.next()??;
+    let seconds = parts.next()??;
+    let millis = frac.get(..3)?.parse::<u64>().ok()?;
+    hours
+        .checked_mul(60)?
+        .checked_add(minutes)?
+        .checked_mul(60)?
+        .checked_add(seconds)?
+        .checked_mul(1000)?
+        .checked_add(millis)
+}
+
 // needed helper: parses one `lobby tick ...` marker line
 fn parse_tick_line(line: &str) -> Option<Tick> {
     let start = line.find("lobby tick ")?;

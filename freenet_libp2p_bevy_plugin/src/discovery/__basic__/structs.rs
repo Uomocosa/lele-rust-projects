@@ -25,6 +25,19 @@ pub struct RoomRecord {
     pub members: BTreeMap<RemotePeerId, Presence>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Hello {
+    pub room: Option<RoomName>,
+    pub addrs: Vec<String>,
+    pub peers: Vec<(RemotePeerId, Vec<String>)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoardTarget {
+    pub room: RoomName,
+    pub addrs: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Reflect)]
 pub struct Member {
     pub presence: Presence,

@@ -11,7 +11,7 @@ mod finish_record;
 pub use finish_record::finish_record;
 
 mod log_parse;
-pub use log_parse::{Tick, last_tick, log_contains, log_matches, read_head};
+pub use log_parse::{Tick, last_tick, log_contains, log_matches, marker_times, read_head};
 
 mod poke;
 pub use poke::poke;

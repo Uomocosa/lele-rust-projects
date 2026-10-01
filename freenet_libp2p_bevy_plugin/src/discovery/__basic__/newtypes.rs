@@ -24,6 +24,3 @@ pub struct RemotePeerId(pub String);
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
 )]
 pub struct EpochSecs(pub u64);
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Deref)]
-pub struct MeshMessage(pub Vec<(RemotePeerId, Vec<String>)>);

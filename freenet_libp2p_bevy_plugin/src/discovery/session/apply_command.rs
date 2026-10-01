@@ -1,57 +1,67 @@
+use std::time::Instant;
+
 use crate::discovery;
 use crate::p2p;
-use discovery::id::now_epoch;
+use discovery::id::RoomName;
 use discovery::link::NetLink;
-use discovery::room_peers::{Members, merge_peers, peer_topic};
-use discovery::session::announce::announce;
-use discovery::session::dial_known::dial_known;
-use discovery::session::{Room, Session};
-use discovery::{Command, Event};
+use discovery::room_peers::{Members, peer_topic};
+use discovery::session::{Room, Session, broadcast_hello, dial_candidates, seed_from_catalogue};
+use discovery::{Command, Event, Timing};
 
 pub fn apply_command(
     session: &mut Session,
     link: &NetLink,
     command: Command,
+    timing: &Timing,
     events: &tokio::sync::mpsc::UnboundedSender<Event>,
 ) {
     match command {
-        Command::Create(room) | Command::Join(room) => join(session, link, room, events),
-        Command::Leave => {
-            if let Some(room) = session.room.take() {
-                let _ = events.send(Event::Left(room.name));
-            }
+        Command::Create(room) | Command::Join(room) => {
+            join(session, link, room, timing, events);
         }
+        Command::Leave => leave(session, link, events),
     }
 }
 
-// needed helper: seeds members from the catalogue, subscribes, announces and dials
+// needed helper: enters a room, says hello to every live link and dials the board seeds
 fn join(
     session: &mut Session,
     link: &NetLink,
-    room: discovery::id::RoomName,
+    room: RoomName,
+    timing: &Timing,
     events: &tokio::sync::mpsc::UnboundedSender<Event>,
 ) {
-    let mut members = Members::new();
-    if let Some(record) = session.catalogue.get(&room) {
-        let peers = record
-            .members
-            .iter()
-            .map(|(peer, presence)| (peer.clone(), presence.addrs.clone()))
-            .collect();
-        merge_peers(&mut members, peers, now_epoch(), &session.me);
-    }
+    leave(session, link, events);
     session.room = Some(Room {
         name: room.clone(),
-        members,
+        members: Members::new(),
     });
+    seed_from_catalogue(session);
     link.tx
         .send(p2p::NetCommand::Subscribe {
             topic: peer_topic(&session.id, &room),
         })
         .ok();
-    announce(session, link);
-    dial_known(session, link);
+    broadcast_hello(session, link);
+    let redial = std::time::Duration::from_secs(timing.redial_secs);
+    dial_candidates(session, link, redial, Instant::now());
+    tracing::info!(target: "room_lobby", room = %room.as_str(), "discovery joined room");
     let _ = events.send(Event::Joined(room));
+}
+
+// needed helper: leaves the current room and tells every live link
+fn leave(
+    session: &mut Session,
+    link: &NetLink,
+    events: &tokio::sync::mpsc::UnboundedSender<Event>,
+) {
+    let Some(room) = session.room.take() else {
+        return;
+    };
+    session.candidates.clear();
+    session.last_dial.clear();
+    broadcast_hello(session, link);
+    let _ = events.send(Event::Left(room.name));
 }
 
 // no test_usage necessary

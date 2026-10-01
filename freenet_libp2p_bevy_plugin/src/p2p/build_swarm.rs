@@ -46,6 +46,14 @@ pub fn build_swarm<T: p2p::Message>(
                     )],
                     request_response::Config::default(),
                 );
+                let exchange = request_response::Behaviour::with_codec(
+                    p2p::MessageCodec::<Vec<u8>>::default(),
+                    [(
+                        StreamProtocol::new("/blackboard/pex/1.0.0"),
+                        request_response::ProtocolSupport::Full,
+                    )],
+                    request_response::Config::default(),
+                );
                 let gossipsub = gossipsub::Behaviour::new(
                     gossipsub::MessageAuthenticity::Signed(kp.clone()),
                     gossipsub::Config::default(),
@@ -53,6 +61,7 @@ pub fn build_swarm<T: p2p::Message>(
                 .map_err(|e| format!("gossipsub: {e}"))?;
                 Ok(p2p::Behaviour {
                     request_response: rr,
+                    exchange,
                     kademlia,
                     identify: identify::Behaviour::new(identify::Config::new(
                         "/blackboard/id/1.0.0".to_string(),

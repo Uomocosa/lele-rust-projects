@@ -1,18 +1,35 @@
-use crate::discovery;
-use discovery::Timing;
-use discovery::link::{NetLink, dialable};
-use discovery::session::Session;
-use discovery::session::announce::announce;
-use discovery::session::dial_known::dial_known;
-use discovery::session::prune_members::prune_members;
-use discovery::session::seed_from_board::seed_from_board;
+use std::time::{Duration, Instant};
 
-pub fn maintain(session: &mut Session, link: &mut NetLink, timing: &Timing) {
+use crate::discovery;
+use discovery::id::now_epoch;
+use discovery::link::{NetLink, dialable};
+use discovery::session::prune_members::prune_members;
+use discovery::session::{Session, broadcast_hello, dial_candidates};
+use discovery::{Event, Timing};
+
+pub fn maintain(
+    session: &mut Session,
+    link: &mut NetLink,
+    timing: &Timing,
+    events: &tokio::sync::mpsc::UnboundedSender<Event>,
+) {
     refresh_observed(session, link);
-    seed_from_board(session);
-    dial_known(session, link);
-    announce(session, link);
-    prune_members(session, timing.presence_ttl_secs);
+    let now = Instant::now();
+    dial_candidates(session, link, Duration::from_secs(timing.redial_secs), now);
+    let hello_due = session.last_hello.is_none_or(|last| {
+        now.saturating_duration_since(last) >= Duration::from_secs(timing.hello_secs)
+    });
+    if hello_due && session.room.is_some() {
+        broadcast_hello(session, link);
+        session.last_hello = Some(now);
+    }
+    prune_members(
+        session,
+        now_epoch(),
+        timing.member_grace_secs,
+        timing.presence_ttl_secs,
+        events,
+    );
 }
 
 // needed helper: adopts libp2p-observed addresses so peers can dial us back

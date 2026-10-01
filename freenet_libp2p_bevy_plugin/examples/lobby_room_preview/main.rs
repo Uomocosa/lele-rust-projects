@@ -30,6 +30,6 @@ fn main() {
     app.add_plugins(discovery::ui::DefaultUiPlugin);
     app.insert_resource(status::Username("preview".to_string()));
     app.add_systems(Startup, status::setup_ui);
-    app.add_systems(Update, status::log_tick);
+    app.add_systems(Update, (status::log_tick, status::log_mesh));
     app.run();
 }

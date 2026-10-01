@@ -4,6 +4,5 @@ use bevy::prelude::Reflect;
 pub enum DiscoveryStatus {
     #[default]
     Known,
-    Connecting,
     Connected,
 }

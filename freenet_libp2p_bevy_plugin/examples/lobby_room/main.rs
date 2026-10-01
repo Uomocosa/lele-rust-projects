@@ -73,7 +73,10 @@ async fn main() {
         }
     }
     app.add_systems(Startup, status::setup_ui);
-    app.add_systems(Update, (intent::log_joined, status::log_tick));
+    app.add_systems(
+        Update,
+        (intent::log_joined, status::log_tick, status::log_mesh),
+    );
     app.run();
 }
 

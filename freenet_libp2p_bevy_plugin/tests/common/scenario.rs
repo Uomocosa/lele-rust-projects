@@ -5,12 +5,14 @@ use std::time::{Duration, Instant};
 use telegram_bot::send_video_best_effort;
 
 use super::{
-    TerminalGuard, build_game, cleanup_stale, finish_record, last_tick, log_contains, poke,
-    read_head, require_x11, speed_clip, start_record, tile, wakeup_screen,
+    TerminalGuard, build_game, cleanup_stale, finish_record, last_tick, log_contains, marker_times,
+    poke, read_head, require_x11, speed_clip, start_record, tile, wakeup_screen,
 };
 
 pub const DISCOVERY_BUDGET_SECS: u64 = 120;
 pub const JOIN_BUDGET_SECS: u64 = 180;
+/// libp2p-only join target: last joiner's press -> every peer fully meshed.
+pub const CONVERGE_BUDGET_MS: u64 = 500;
 
 const SPAWN_TIMEOUT_SECS: u64 = 180;
 const RECORD_SECS: u64 = 600;
@@ -248,7 +250,11 @@ async fn evaluate(scenario: &Scenario, peers: &Peers) -> Vec<Check> {
             scenario.join_budget_secs
         ),
     };
-    vec![spawn_check, discovery_check, join_check]
+    let mut checks = vec![spawn_check, discovery_check, join_check];
+    if scenario.join {
+        checks.push(converge_check(&peers.logs, scenario.peers));
+    }
+    checks
 }
 
 async fn evaluate_join(scenario: &Scenario, peers: &Peers) -> (bool, u128, String) {
@@ -475,4 +481,45 @@ fn created_room(log: &Path) -> Option<String> {
         let rest = line.get(index.checked_add(CREATED_MARKER.len())?..)?;
         rest.split_whitespace().next().map(str::to_string)
     })
+}
+
+// needed helper: last joiner's button press -> every peer has all N-1 links (event-driven)
+fn converge_check(logs: &[PathBuf], peers: usize) -> Check {
+    let want = format!("connected={}", peers.saturating_sub(1));
+    let last_press = logs
+        .iter()
+        .filter_map(|log| {
+            marker_times(log, "lobby intent pressed")
+                .first()
+                .map(|(ms, _)| *ms)
+        })
+        .max();
+    let meshed: Vec<Option<u64>> = logs
+        .iter()
+        .map(|log| {
+            marker_times(log, "lobby mesh ")
+                .into_iter()
+                .find(|(ms, line)| {
+                    last_press.is_some_and(|press| *ms >= press)
+                        && line.split_whitespace().any(|token| token == want)
+                })
+                .map(|(ms, _)| ms)
+        })
+        .collect();
+    let converge = last_press.and_then(|press| {
+        meshed
+            .iter()
+            .copied()
+            .collect::<Option<Vec<u64>>>()
+            .and_then(|times| times.into_iter().max())
+            .map(|done| done.saturating_sub(press))
+    });
+    Check {
+        name: "converge".to_string(),
+        ok: converge.is_some_and(|ms| ms <= CONVERGE_BUDGET_MS),
+        detail: converge.map_or_else(
+            || "never fully meshed after the last press".to_string(),
+            |ms| format!("{ms}ms budget={CONVERGE_BUDGET_MS}ms (last press -> full mesh)"),
+        ),
+    }
 }

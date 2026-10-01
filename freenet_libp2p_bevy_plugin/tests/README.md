@@ -53,6 +53,13 @@ Adding any such shortcut invalidates the test even if it makes it pass.
   - `lobby created room=<r>`
   - `lobby joined room=<r>`
   - `lobby tick catalogue=<a,b|none> room=<r|none> members=<k> connected=<c>`
+- Layering: Freenet only seeds candidates (board presence, polled in its own task);
+  room membership is libp2p-only — a peer is a member once it is connected AND has sent a
+  `/blackboard/pex/1.0.0` hello for the same room. Hellos carry the sender's members, so one
+  Freenet seed is enough to reach the whole room.
+- `lobby mesh room=<r> connected=<c>` is logged the moment the live link count changes; the
+  join test's `converge` check = last joiner's press -> every peer at `connected=N-1`,
+  budget 500ms (`CONVERGE_BUDGET_MS`).
 - Timings: `discovery_ms` = create → every peer lists the room in `catalogue`;
   `join_ms` = last joiner spawned → every peer has `room=<r>` and `connected=N-1`.
   Budgets: 120s discovery, 180s join (constants in `common/scenario.rs`).

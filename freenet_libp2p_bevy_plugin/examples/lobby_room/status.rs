@@ -22,6 +22,33 @@ pub fn setup_ui(mut commands: Commands) {
     ));
 }
 
+/// Event-driven `lobby mesh` marker: logs the live link count the moment it changes.
+pub fn log_mesh(
+    multiplayer: Res<discovery::Multiplayer>,
+    mut last: Local<Option<(String, usize)>>,
+) {
+    if !multiplayer.is_changed() {
+        return;
+    }
+    let Some(room) = multiplayer.room.as_ref() else {
+        return;
+    };
+    let connected = room
+        .members
+        .values()
+        .filter(|member| member.status == discovery::room_peers::DiscoveryStatus::Connected)
+        .count();
+    let now = (room.name.as_str().to_string(), connected);
+    if last.as_ref() == Some(&now) {
+        return;
+    }
+    tracing::info!(
+        "lobby mesh room={} connected={connected}",
+        room.name.as_str()
+    );
+    *last = Some(now);
+}
+
 pub fn log_tick(
     time: Res<Time>,
     username: Res<Username>,

@@ -115,6 +115,11 @@ fn handle_swarm<T: p2p::Message>(
         )) => {
             handle_request_response(swarm, event_tx, &peer, message);
         }
+        SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Exchange(
+            request_response::Event::Message { peer, message, .. },
+        )) => {
+            handle_exchange(swarm, event_tx, &peer, message);
+        }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Kademlia(
             kad::Event::OutboundQueryProgressed {
                 result: kad::QueryResult::GetRecord(Ok(kad::GetRecordOk::FoundRecord(peer_record))),
@@ -160,16 +165,37 @@ fn handle_swarm<T: p2p::Message>(
         ))) => {
             dial_mdns_peers(swarm, mode, peers);
         }
+        event
+        @ (SwarmEvent::ConnectionEstablished { .. } | SwarmEvent::ConnectionClosed { .. }) => {
+            note_connection(swarm, event_tx, event);
+        }
+        SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+            note_dial_failure(event_tx, peer_id, &error);
+        }
+        _ => {}
+    }
+}
+
+// needed helper: reports a peer's first connection and its last disconnection only
+fn note_connection<T: p2p::Message>(
+    swarm: &libp2p::Swarm<p2p::Behaviour<T>>,
+    event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
+    event: SwarmEvent<p2p::behaviour::BehaviourEvent<T>>,
+) {
+    match event {
         SwarmEvent::ConnectionEstablished {
             peer_id,
             connection_id,
             endpoint,
+            num_established,
             ..
         } => {
             log_established(&peer_id, connection_id, &endpoint);
-            event_tx
-                .send(p2p::Event::PeerConnected(peer_id.to_string()))
-                .ok();
+            if num_established.get() == 1 {
+                event_tx
+                    .send(p2p::Event::PeerConnected(peer_id.to_string()))
+                    .ok();
+            }
         }
         SwarmEvent::ConnectionClosed {
             peer_id,
@@ -187,12 +213,11 @@ fn handle_swarm<T: p2p::Message>(
                 num_established,
                 cause.as_ref(),
             );
-            event_tx
-                .send(p2p::Event::PeerDisconnected(peer_id.to_string()))
-                .ok();
-        }
-        SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-            note_dial_failure(event_tx, peer_id, &error);
+            if num_established == 0 {
+                event_tx
+                    .send(p2p::Event::PeerDisconnected(peer_id.to_string()))
+                    .ok();
+            }
         }
         _ => {}
     }
@@ -540,6 +565,35 @@ fn dispatch_net_command<T: p2p::Message>(
             let topic = gossipsub::IdentTopic::new(topic);
             let _ = swarm.behaviour_mut().gossipsub.publish(topic, data);
         }
+        p2p::NetCommand::Exchange { peer_id, data } => {
+            if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
+                swarm.behaviour_mut().exchange.send_request(&pid, data);
+            }
+        }
+    }
+}
+
+// needed helper: forwards one inbound peer-exchange payload and acks it empty
+fn handle_exchange<T: p2p::Message>(
+    swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
+    event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
+    peer: &libp2p::PeerId,
+    message: request_response::Message<Vec<u8>, Vec<u8>>,
+) {
+    if let request_response::Message::Request {
+        request, channel, ..
+    } = message
+    {
+        event_tx
+            .send(p2p::Event::Exchange {
+                from: peer.to_string(),
+                data: request,
+            })
+            .ok();
+        let _ = swarm
+            .behaviour_mut()
+            .exchange
+            .send_response(channel, Vec::new());
     }
 }
 // needed helper: dials one peer with peer binding when the id parses

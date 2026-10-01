@@ -29,6 +29,10 @@ pub enum TapEvent {
         from: String,
         data: Vec<u8>,
     },
+    Exchange {
+        from: String,
+        data: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,6 +78,10 @@ pub enum NetCommand {
     },
     Publish {
         topic: String,
+        data: Vec<u8>,
+    },
+    Exchange {
+        peer_id: String,
         data: Vec<u8>,
     },
 }
@@ -161,6 +169,10 @@ pub enum Event<T> {
     },
     Gossip {
         topic: String,
+        from: String,
+        data: Vec<u8>,
+    },
+    Exchange {
         from: String,
         data: Vec<u8>,
     },

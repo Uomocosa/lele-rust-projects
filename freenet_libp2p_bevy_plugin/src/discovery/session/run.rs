@@ -7,9 +7,7 @@ use discovery::lobby_rooms::connect_retry;
 use discovery::session::apply_command::apply_command;
 use discovery::session::apply_tap::apply_tap;
 use discovery::session::maintain::maintain;
-use discovery::session::maintain_board::maintain_board;
-use discovery::session::snapshot::snapshot;
-use discovery::session::{RunConfig, Session};
+use discovery::session::{RunConfig, Session, absorb_board, board_target, run_board, snapshot};
 
 pub async fn run(run: RunConfig) {
     let RunConfig {
@@ -32,17 +30,32 @@ pub async fn run(run: RunConfig) {
         dialable(addrs),
         config.capacity,
     );
-    let mut index = connect_retry("127.0.0.1", *endpoint, &id).await;
     let timing = config.timing;
+    let (target_tx, target_rx) = tokio::sync::watch::channel(None);
+    let (boards_tx, mut boards) = tokio::sync::mpsc::unbounded_channel();
+    let me = session.me.clone();
+    tokio::spawn(async move {
+        let index = connect_retry("127.0.0.1", *endpoint, &id).await;
+        run_board(index, me, config.capacity, timing, target_rx, boards_tx).await;
+    });
     let mut mesh_tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
-    let mut board_tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
     loop {
         tokio::select! {
-            Some(command) = commands.recv() => apply_command(&mut session, &link, command, &events),
-            Some(event) = tap.recv() => apply_tap(&mut session, &link, event, &events),
-            _ = mesh_tick.tick() => maintain(&mut session, &mut link, &timing),
-            _ = board_tick.tick() => maintain_board(&mut session, &mut index, &timing, &events).await,
+            Some(command) = commands.recv() => {
+                apply_command(&mut session, &link, command, &timing, &events);
+            }
+            Some(event) = tap.recv() => apply_tap(&mut session, &link, event, &timing, &events),
+            Some(board) = boards.recv() => absorb_board(&mut session, board, &events),
+            _ = mesh_tick.tick() => maintain(&mut session, &mut link, &timing, &events),
         }
+        let target = board_target(&session);
+        target_tx.send_if_modified(|current| {
+            let changed = *current != target;
+            if changed {
+                current.clone_from(&target);
+            }
+            changed
+        });
         let _ = multiplayer.send(snapshot(&session));
     }
 }

@@ -1,8 +1,8 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
 use crate::discovery;
-use discovery::id::RemotePeerId;
-use discovery::id::UniqueGameId;
+use discovery::id::{Presence, RemotePeerId, UniqueGameId};
 use discovery::lobby_rooms::RoomCatalogue;
 use discovery::session::Room;
 
@@ -13,8 +13,10 @@ pub struct Session {
     pub capacity: u16,
     pub catalogue: RoomCatalogue,
     pub room: Option<Room>,
-    pub last_republish: Option<Instant>,
-    pub last_board: Option<Instant>,
+    pub connected: BTreeSet<RemotePeerId>,
+    pub candidates: BTreeMap<RemotePeerId, Presence>,
+    pub last_dial: BTreeMap<RemotePeerId, Instant>,
+    pub last_hello: Option<Instant>,
 }
 
 impl Session {
@@ -32,8 +34,10 @@ impl Session {
             capacity,
             catalogue: RoomCatalogue::new(),
             room: None,
-            last_republish: None,
-            last_board: None,
+            connected: BTreeSet::new(),
+            candidates: BTreeMap::new(),
+            last_dial: BTreeMap::new(),
+            last_hello: None,
         }
     }
 }
