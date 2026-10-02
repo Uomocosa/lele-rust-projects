@@ -40,10 +40,10 @@ async fn main() {
         false,
     )));
     let discovery_plugins = discovery::Plugins(discovery::Config {
-        game_name: discovery::id::GameName("lobby_room_example".to_string()),
+        game_name: discovery::GameName("lobby_room_example".to_string()),
         token: args.token.clone().map_or_else(
             || freenet_libp2p_bevy_plugin::game_token!(),
-            discovery::id::GameToken,
+            discovery::GameToken,
         ),
         timing: discovery::Timing::default(),
         capacity: 8,

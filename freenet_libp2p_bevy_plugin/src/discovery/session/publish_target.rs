@@ -1,0 +1,36 @@
+use crate::discovery;
+use discovery::session::{PublishTarget, Session};
+
+#[must_use]
+pub fn publish_target(session: &Session) -> Option<PublishTarget> {
+    session.room.as_ref().map(|room| PublishTarget {
+        room: room.name.clone(),
+        addrs: session.addrs.clone(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::publish_target;
+    use crate::discovery;
+    use discovery::session::Session;
+
+    #[test]
+    fn test_usage() {
+        let mut session = Session::new(
+            discovery::PeerId("me".to_string()),
+            vec!["/ip4/9".to_string()],
+            discovery::Timing::default(),
+        );
+        assert!(publish_target(&session).is_none());
+        session.room = Some(discovery::Room {
+            name: discovery::RoomName("r".to_string()),
+            members: discovery::Members::new(),
+        });
+        let target = publish_target(&session);
+        assert_eq!(
+            target.map(|target| target.addrs),
+            Some(vec!["/ip4/9".to_string()])
+        );
+    }
+}

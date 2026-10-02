@@ -1,7 +1,7 @@
 //! Replacement lobby UI used by the discovery e2e test (`--ui custom`).
 //!
 //! It shows that the plugin's default UI can be swapped out entirely: this
-//! plugin only reads `discovery::Multiplayer` and writes `discovery::Command`.
+//! plugin only reads `discovery::Snapshot` and writes `discovery::Command`.
 #![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
 use derive_more::Deref;
@@ -26,7 +26,7 @@ pub struct NewRoomButton;
 struct RoomColumn;
 
 #[derive(Component, Deref)]
-pub struct JoinButton(pub discovery::id::RoomName);
+pub struct JoinButton(pub discovery::RoomName);
 
 fn spawn(mut commands: Commands) {
     commands.spawn((
@@ -64,18 +64,18 @@ fn spawn(mut commands: Commands) {
 
 fn rebuild_list(
     mut commands: Commands,
-    multiplayer: Res<discovery::Multiplayer>,
+    snapshot: Res<discovery::Snapshot>,
     column: Single<Entity, With<RoomColumn>>,
 ) {
-    if !multiplayer.is_changed() {
+    if !snapshot.is_changed() {
         return;
     }
-    tracing::info!("lobby ui rooms={}", multiplayer.catalogue.len());
+    tracing::info!("lobby ui rooms={}", snapshot.directory.len());
     commands
         .entity(*column)
         .despawn_related::<Children>()
         .with_children(|parent| {
-            for (name, record) in &multiplayer.catalogue {
+            for (name, record) in &snapshot.directory {
                 parent.spawn((
                     JoinButton(name.clone()),
                     Button,
@@ -100,9 +100,9 @@ fn on_create(
 ) {
     for interaction in &buttons {
         if *interaction == Interaction::Pressed {
-            let name = format!("lobby-{}", *discovery::id::now_epoch());
+            let name = format!("lobby-{}", *discovery::now_epoch());
             tracing::info!("lobby ui click create room={name}");
-            commands.write(discovery::Command::Create(discovery::id::RoomName(name)));
+            commands.write(discovery::Command::Create(discovery::RoomName(name)));
         }
     }
 }

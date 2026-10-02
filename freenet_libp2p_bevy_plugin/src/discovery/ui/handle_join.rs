@@ -5,16 +5,16 @@ use discovery::ui::RoomButton;
 
 pub fn handle_join(
     buttons: Query<(&Interaction, &RoomButton), Changed<Interaction>>,
-    multiplayer: Res<discovery::Multiplayer>,
+    snapshot: Res<discovery::Snapshot>,
     mut commands: MessageWriter<discovery::Command>,
 ) {
-    let multiplayer = multiplayer.into_inner();
-    let current = multiplayer.room.as_ref().map(|room| &room.name);
+    let snapshot = snapshot.into_inner();
+    let current = snapshot.room.as_ref().map(|room| &room.name);
     for (interaction, button) in &buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        let room: &discovery::id::RoomName = button;
+        let room: &discovery::RoomName = button;
         if current == Some(room) {
             tracing::info!(target: "room_lobby", "ui leave room={}", room.as_str());
             commands.write(discovery::Command::Leave);
@@ -36,8 +36,8 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_message::<discovery::Command>();
-        app.init_resource::<discovery::Multiplayer>();
-        let room = discovery::id::RoomName("alpha".to_string());
+        app.init_resource::<discovery::Snapshot>();
+        let room = discovery::RoomName("alpha".to_string());
         app.world_mut().spawn((
             discovery::ui::RoomButton(room.clone()),
             Interaction::Pressed,

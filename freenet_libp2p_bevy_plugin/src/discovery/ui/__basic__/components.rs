@@ -13,4 +13,4 @@ pub struct CreateRoomButton;
 pub struct RoomList;
 
 #[derive(Component, Debug, Clone, PartialEq, Eq, Deref)]
-pub struct RoomButton(pub discovery::id::RoomName);
+pub struct RoomButton(pub discovery::RoomName);

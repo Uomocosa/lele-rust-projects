@@ -26,7 +26,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.add_message::<discovery::Command>();
-        app.init_resource::<discovery::Multiplayer>();
+        app.init_resource::<discovery::Snapshot>();
         build_plugin(&discovery::ui::DefaultUiPlugin, &mut app);
         app.update();
         let mut buttons = app

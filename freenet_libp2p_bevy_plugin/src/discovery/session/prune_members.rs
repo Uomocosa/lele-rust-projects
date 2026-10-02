@@ -1,18 +1,12 @@
 use crate::discovery;
-use discovery::Event;
-use discovery::id::EpochSecs;
-use discovery::session::Session;
+use discovery::session::{Output, Session};
 
-pub fn prune_members(
-    session: &mut Session,
-    now: EpochSecs,
-    grace_secs: u64,
-    candidate_ttl_secs: u64,
-    events: &tokio::sync::mpsc::UnboundedSender<Event>,
-) {
+pub fn prune_members(session: &mut Session, now: discovery::EpochSecs) {
+    let ttl_secs = session.timing.presence_ttl_secs;
+    let grace_secs = session.timing.member_grace_secs;
     session
         .candidates
-        .retain(|_, presence| now.saturating_sub(*presence.updated_at) <= candidate_ttl_secs);
+        .retain(|_, presence| now.saturating_sub(*presence.updated_at) <= ttl_secs);
     let connected = &session.connected;
     let Some(room) = session.room.as_mut() else {
         return;
@@ -22,7 +16,9 @@ pub fn prune_members(
         connected.contains(peer) || now.saturating_sub(*member.presence.updated_at) <= grace_secs
     });
     if room.members.len() != before {
-        let _ = events.send(Event::MembersChanged);
+        session
+            .outputs
+            .push(Output::Event(discovery::Event::MembersChanged));
     }
 }
 
@@ -30,45 +26,41 @@ pub fn prune_members(
 mod tests {
     use super::prune_members;
     use crate::discovery;
-    use discovery::id::{EpochSecs, Presence, RemotePeerId, RoomName};
-    use discovery::room_peers::{DiscoveryStatus, Member, Members};
+    use discovery::session::Session;
 
     #[test]
     fn test_usage() {
-        let (events, _rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut session = discovery::session::Session::new(
-            discovery::id::UniqueGameId::new(
-                &discovery::id::GameName("g".to_string()),
-                &discovery::id::GameToken("t".to_string()),
-            ),
-            RemotePeerId("me".to_string()),
+        let mut session = Session::new(
+            discovery::PeerId("me".to_string()),
             Vec::new(),
-            8,
+            discovery::Timing::default(),
         );
-        let mut members = Members::new();
+        let mut members = discovery::Members::new();
         for peer in ["live", "gone"] {
             members.insert(
-                RemotePeerId(peer.to_string()),
-                Member {
-                    presence: Presence {
+                discovery::PeerId(peer.to_string()),
+                discovery::Member {
+                    presence: discovery::Presence {
                         addrs: Vec::new(),
-                        updated_at: EpochSecs(0),
+                        updated_at: discovery::EpochSecs(0),
                     },
-                    status: DiscoveryStatus::Known,
+                    status: discovery::LinkStatus::Known,
                 },
             );
         }
-        session.room = Some(discovery::session::Room {
-            name: RoomName("r".to_string()),
+        session.room = Some(discovery::Room {
+            name: discovery::RoomName("r".to_string()),
             members,
         });
-        session.connected.insert(RemotePeerId("live".to_string()));
-        prune_members(&mut session, EpochSecs(100), 10, 120, &events);
+        session
+            .connected
+            .insert(discovery::PeerId("live".to_string()));
+        prune_members(&mut session, discovery::EpochSecs(100));
         let left: Vec<_> = session
             .room
             .as_ref()
             .map(|room| room.members.keys().cloned().collect())
             .unwrap_or_default();
-        assert_eq!(left, vec![RemotePeerId("live".to_string())]);
+        assert_eq!(left, vec![discovery::PeerId("live".to_string())]);
     }
 }

@@ -1,0 +1,48 @@
+use crate::discovery;
+use discovery::Directory;
+
+#[must_use]
+pub fn merge_directory(mut base: Directory, incoming: Directory) -> Directory {
+    for (room, record) in incoming {
+        let merged = discovery::freenet::merge_room(base.remove(&room), record);
+        base.insert(room, merged);
+    }
+    base
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::merge_directory;
+    use crate::discovery;
+
+    fn record(peer: &str, updated_at: u64) -> discovery::RoomRecord {
+        let mut members = BTreeMap::new();
+        members.insert(
+            discovery::PeerId(peer.to_string()),
+            discovery::Presence {
+                addrs: Vec::new(),
+                updated_at: discovery::EpochSecs(updated_at),
+            },
+        );
+        discovery::RoomRecord {
+            capacity: 8,
+            members,
+        }
+    }
+
+    #[test]
+    fn test_usage() {
+        let room = discovery::RoomName("room-a".to_string());
+        let mut base = BTreeMap::new();
+        base.insert(room.clone(), record("peer", 5));
+        let mut incoming = BTreeMap::new();
+        incoming.insert(room.clone(), record("peer", 9));
+        let merged = merge_directory(base, incoming);
+        let row = merged
+            .get(&room)
+            .and_then(|record| record.members.get(&discovery::PeerId("peer".to_string())));
+        assert_eq!(row.map(|presence| *presence.updated_at), Some(9));
+    }
+}

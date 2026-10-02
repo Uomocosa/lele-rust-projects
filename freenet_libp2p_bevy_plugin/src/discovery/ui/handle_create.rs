@@ -13,9 +13,9 @@ pub fn handle_create(
             continue;
         }
         *counter = counter.saturating_add(1);
-        let name = format!("room-{}-{}", *discovery::id::now_epoch(), *counter);
+        let name = format!("room-{}-{}", *discovery::now_epoch(), *counter);
         tracing::info!(target: "room_lobby", "ui create room={name}");
-        commands.write(discovery::Command::Create(discovery::id::RoomName(name)));
+        commands.write(discovery::Command::Create(discovery::RoomName(name)));
     }
 }
 

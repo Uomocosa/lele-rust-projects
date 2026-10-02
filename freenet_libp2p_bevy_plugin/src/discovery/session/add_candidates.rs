@@ -1,11 +1,10 @@
 use crate::discovery;
-use discovery::id::{EpochSecs, Presence, RemotePeerId};
 use discovery::session::Session;
 
 pub fn add_candidates(
     session: &mut Session,
-    peers: impl IntoIterator<Item = (RemotePeerId, Vec<String>)>,
-    now: EpochSecs,
+    peers: impl IntoIterator<Item = (discovery::PeerId, Vec<String>)>,
+    now: discovery::EpochSecs,
 ) {
     for (peer, addrs) in peers {
         if peer == session.me || peer.is_empty() || addrs.is_empty() {
@@ -13,7 +12,7 @@ pub fn add_candidates(
         }
         session.candidates.insert(
             peer,
-            Presence {
+            discovery::Presence {
                 addrs,
                 updated_at: now,
             },
@@ -25,30 +24,32 @@ pub fn add_candidates(
 mod tests {
     use super::add_candidates;
     use crate::discovery;
-    use discovery::id::{EpochSecs, RemotePeerId};
+    use discovery::session::Session;
 
     #[test]
     fn test_usage() {
-        let mut session = discovery::session::Session::new(
-            discovery::id::UniqueGameId::new(
-                &discovery::id::GameName("g".to_string()),
-                &discovery::id::GameToken("t".to_string()),
-            ),
-            RemotePeerId("me".to_string()),
+        let mut session = Session::new(
+            discovery::PeerId("me".to_string()),
             Vec::new(),
-            8,
+            discovery::Timing::default(),
         );
         let peers = vec![
-            (RemotePeerId("me".to_string()), vec!["/ip4/1".to_string()]),
-            (RemotePeerId("a".to_string()), vec!["/ip4/2".to_string()]),
-            (RemotePeerId("b".to_string()), Vec::new()),
+            (
+                discovery::PeerId("me".to_string()),
+                vec!["/ip4/1".to_string()],
+            ),
+            (
+                discovery::PeerId("a".to_string()),
+                vec!["/ip4/2".to_string()],
+            ),
+            (discovery::PeerId("b".to_string()), Vec::new()),
         ];
-        add_candidates(&mut session, peers, EpochSecs(1));
+        add_candidates(&mut session, peers, discovery::EpochSecs(1));
         assert_eq!(session.candidates.len(), 1);
         assert!(
             session
                 .candidates
-                .contains_key(&RemotePeerId("a".to_string()))
+                .contains_key(&discovery::PeerId("a".to_string()))
         );
     }
 }

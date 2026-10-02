@@ -7,65 +7,59 @@ use crate::discovery;
 use crate::p2p;
 
 pub fn build_plugin(plugin: &discovery::Plugin, app: &mut App) {
-    app.init_resource::<discovery::Multiplayer>();
+    app.init_resource::<discovery::Snapshot>();
     app.add_message::<discovery::Command>();
     app.add_message::<discovery::Event>();
     app.add_systems(
         Update,
         (
-            discovery::bevy_systems::drain_multiplayer,
+            discovery::bevy_systems::drain_snapshots,
             discovery::bevy_systems::drain_events,
             discovery::bevy_systems::forward_commands,
         ),
     );
 
-    let (multiplayer_tx, multiplayer_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (snapshot_tx, snapshot_rx) = tokio::sync::mpsc::unbounded_channel();
     let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
     let (command_tx, command_rx) = tokio::sync::mpsc::unbounded_channel();
-    app.insert_resource(discovery::MultiplayerFeed(Mutex::new(Some(multiplayer_rx))));
+    app.insert_resource(discovery::SnapshotFeed(Mutex::new(Some(snapshot_rx))));
     app.insert_resource(discovery::EventFeed(Mutex::new(Some(event_rx))));
     app.insert_resource(discovery::CommandSender(command_tx));
 
-    let tap = app
-        .world_mut()
-        .get_resource_mut::<p2p::EventTap>()
-        .and_then(|tap| tap.take_rx());
-    let (ready, observed) = app.world().get_resource::<p2p::Signals>().map_or_else(
-        || {
-            let (_, ready) = tokio::sync::watch::channel(None);
-            let (_, observed) = tokio::sync::watch::channel(None);
-            (ready, observed)
-        },
-        p2p::Signals::subscribe,
-    );
-    let net_tx = app
-        .world()
-        .get_resource::<p2p::NetBridge>()
-        .map(|bridge| bridge.0.clone());
-    let endpoint = app
-        .world()
-        .get_resource::<discovery::FreenetEndpoint>()
-        .copied();
-
-    let (Some(tap), Some(net_tx), Some(endpoint)) = (tap, net_tx, endpoint) else {
-        error!(target: "room_lobby", "discovery: link resources missing, discovery disabled");
+    let Some(net) = net_link(app) else {
+        error!(target: "room_lobby", "discovery: p2p resources missing, discovery disabled");
         return;
     };
-
-    let run = discovery::session::RunConfig {
-        config: plugin.0.clone(),
-        endpoint,
-        link: discovery::link::NetLink {
-            tx: net_tx,
-            observed,
-        },
-        tap,
-        ready,
+    let Some(endpoint) = app
+        .world()
+        .get_resource::<discovery::FreenetEndpoint>()
+        .copied()
+    else {
+        error!(target: "room_lobby", "discovery: FreenetEndpoint missing, discovery disabled");
+        return;
+    };
+    let channels = discovery::Channels {
+        net,
         commands: command_rx,
-        multiplayer: multiplayer_tx,
+        snapshots: snapshot_tx,
         events: event_tx,
     };
-    tokio::spawn(discovery::session::run(run));
+    tokio::spawn(discovery::run((**plugin).clone(), endpoint, channels));
+}
+
+fn net_link(app: &mut App) -> Option<discovery::libp2p::Link> {
+    let events = app
+        .world_mut()
+        .get_resource_mut::<p2p::EventTap>()
+        .and_then(|tap| tap.take_rx())?;
+    let commands = (**app.world().get_resource::<p2p::NetBridge>()?).clone();
+    let (ready, observed) = app.world().get_resource::<p2p::Signals>()?.subscribe();
+    Some(discovery::libp2p::Link {
+        commands,
+        events,
+        ready,
+        observed,
+    })
 }
 
 #[cfg(test)]
@@ -81,10 +75,6 @@ mod tests {
         app.add_plugins(MinimalPlugins);
         let plugin = discovery::Plugin::new(discovery::Config::default());
         build_plugin(&plugin, &mut app);
-        assert!(
-            app.world()
-                .get_resource::<discovery::Multiplayer>()
-                .is_some()
-        );
+        assert!(app.world().get_resource::<discovery::Snapshot>().is_some());
     }
 }
