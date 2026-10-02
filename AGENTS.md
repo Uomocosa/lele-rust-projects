@@ -87,7 +87,6 @@ At the end of every non-trivial code change, run `cargo clippy --all-targets --a
 
 - **`lele_lint`:** Many syntax and structure conventions are automatically checked by
   `lele_lint` (`cargo run --manifest-path ../lele_lint/Cargo.toml`). At the end of every non-trivial change run `cargo clippy -- -D warnings` via `devenv tasks run lele:clippy 2>&1` before `lele_lint` (`devenv tasks run lele:lint 2>&1` or `cargo run --manifest-path ../lele_lint/Cargo.toml 2>&1`); fix `clippy -D warnings` first, then lint violations. **Agents NEVER run `bacon` — it is user-only.**
-  See the lele-lint-rs skill for the full error code reference.
 
 - **`#[allow(clippy::…)]` gate:** No agent may add `#[allow(clippy::pedantic)]` / `#[allow(clippy::nursery)]` (including `Cargo.toml` global `allow` or file-level `#![allow]`) without explicit user approval. Report the lint + `file:line`, propose a rewrite first, then ask. Existing `#[allow]` are gated by the user for usefulness.
 
