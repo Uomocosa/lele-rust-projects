@@ -1,5 +1,4 @@
 use crate::discovery;
-use crate::p2p;
 
 use discovery::Timing;
 use discovery::id::{GameName, GameToken};
@@ -9,7 +8,6 @@ pub struct Config {
     pub game_name: GameName,
     pub token: GameToken,
     pub timing: Timing,
-    pub transport: p2p::TransportMode,
     pub capacity: u16,
 }
 
@@ -19,7 +17,6 @@ impl Default for Config {
             game_name: GameName("test".to_string()),
             token: GameToken("test".to_string()),
             timing: Timing::default(),
-            transport: p2p::TransportMode::Both,
             capacity: 8,
         }
     }

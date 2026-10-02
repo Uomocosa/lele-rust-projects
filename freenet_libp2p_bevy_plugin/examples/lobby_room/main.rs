@@ -46,7 +46,6 @@ async fn main() {
             discovery::id::GameToken,
         ),
         timing: discovery::Timing::default(),
-        transport,
         capacity: 8,
     });
     // the scripted press runs after bevy's focus pass so it is not reset that frame
