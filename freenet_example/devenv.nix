@@ -23,6 +23,7 @@
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
+  env.CARGO_BUILD_JOBS = "8";
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";

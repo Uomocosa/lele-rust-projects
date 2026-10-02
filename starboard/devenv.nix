@@ -34,6 +34,7 @@
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
+  env.CARGO_BUILD_JOBS = "8";
   env.VK_ICD_FILENAMES = "${pkgs.mesa}/share/vulkan/icd.d/lvp_icd.x86_64.json";
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
