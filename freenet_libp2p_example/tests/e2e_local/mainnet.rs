@@ -222,7 +222,7 @@ async fn local_mainnet() -> Result<(), Box<dyn std::error::Error>> {
     };
     let Some(creds) = load_creds() else {
         return Err(format!(
-            "telegram creds missing — symlink .env -> ../deskctrl_mcp/.env converged={converged} lobby={lobby}"
+            "telegram creds missing — symlink .env -> ../telegram_bot/.env converged={converged} lobby={lobby}"
         )
         .into());
     };

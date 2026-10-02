@@ -210,7 +210,7 @@ async fn local_mainnet() {
     };
     let Some(creds) = load_creds() else {
         panic!(
-            "telegram creds missing: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not found — symlink freenet_example/.env -> ../deskctrl_mcp/.env (converged={converged} contract_params={contract_params})"
+            "telegram creds missing: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not found — symlink freenet_example/.env -> ../telegram_bot/.env (converged={converged} contract_params={contract_params})"
         );
     };
     let params_preview = contract_params.chars().take(16).collect::<String>();

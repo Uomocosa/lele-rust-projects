@@ -27,31 +27,11 @@
       "opencode-*": "allow",
       "definition-*": "allow",
       "*-rs": "allow",
-      "deskctrl": "allow",
       "crate-tag-ci": "allow",
       "libp2p": "allow",
       "freenet": "allow",
       "freenet-gateway": "allow",
       "freenet-contract-design": "allow"
-    }
-  },
-  "mcp": {
-    "deskctrl": {
-      "type": "local",
-      "command": [
-        "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/deskctrl_mcp/target/release/deskctrl-mcp"
-      ],
-      "enabled": true,
-      "environment": {
-        "AAI_ARTIFACTS_DIR": "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/deskctrl_mcp/artifacts/freenet_bevy"
-      }
-    },
-    "test-orchestrator": {
-      "type": "local",
-      "command": [
-        "/home/uomocosa/Syncthing/[AAI] Agentic AI/rust_projects/projects/test_orchestrator_mcp/target/release/test-orchestrator-mcp"
-      ],
-      "enabled": true
     }
   }
 }

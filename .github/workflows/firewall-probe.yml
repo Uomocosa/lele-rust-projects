@@ -17,7 +17,7 @@ on:
 # Verifies the standing Windows Firewall setup suppresses the "Query User" prompt
 # for a brand-new hashed deps\*.exe test binary.
 #
-# Rationale (see test_orchestrator_mcp/README.md): Windows Firewall raises a prompt
+# Rationale: Windows Firewall raises a prompt
 # the first time an unrecognized program listen()s on an inbound port. In unattended
 # CI that prompt would block a run. The standing fix is:
 #   * Set-NetFirewallProfile -NotifyOnListen False   (no dialog, hash-independent)

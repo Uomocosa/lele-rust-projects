@@ -21,7 +21,7 @@ skill and the workflow ever disagree, the workflow wins.
 
 - `<crate>` is the repo folder name with `_` and spaces converted to `-`.
   E.g. `freenet_libp2p_bevy_example_1` → `freenet-libp2p-bevy-example-1`,
-  `deskctrl_mcp` → `deskctrl-mcp`.
+  `lele_lint` → `lele-lint`.
 - `#N` is a run counter so you can test/release more than once per day
   (`#1`, `#2`, …). GitHub allows `#` in tag names.
 - An unknown crate or a malformed tag makes the `resolve` job fail the run
