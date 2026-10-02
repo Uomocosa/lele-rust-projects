@@ -1,10 +1,9 @@
 use std::time::Instant;
 
 use crate::discovery;
-use crate::p2p;
 use discovery::id::RoomName;
 use discovery::link::NetLink;
-use discovery::room_peers::{Members, peer_topic};
+use discovery::room_peers::Members;
 use discovery::session::{Room, Session, broadcast_hello, dial_candidates, seed_from_catalogue};
 use discovery::{Command, Event, Timing};
 
@@ -37,11 +36,6 @@ fn join(
         members: Members::new(),
     });
     seed_from_catalogue(session);
-    link.tx
-        .send(p2p::NetCommand::Subscribe {
-            topic: peer_topic(&session.id, &room),
-        })
-        .ok();
     broadcast_hello(session, link);
     let redial = std::time::Duration::from_secs(timing.redial_secs);
     dial_candidates(session, link, redial, Instant::now());
