@@ -22,6 +22,9 @@ pub use handle_hello::handle_hello;
 mod handle_directory;
 pub use handle_directory::handle_directory;
 
+mod live_directory;
+pub use live_directory::live_directory;
+
 mod tick;
 pub use tick::tick;
 

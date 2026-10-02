@@ -1,7 +1,13 @@
 use crate::discovery;
 use discovery::session::{Output, Session};
 
-pub fn handle_directory(session: &mut Session, directory: discovery::Directory) {
+pub fn handle_directory(
+    session: &mut Session,
+    directory: discovery::Directory,
+    now: discovery::EpochSecs,
+) {
+    let ttl_secs = session.timing.presence_ttl_secs;
+    let directory = discovery::session::live_directory(directory, now, ttl_secs);
     if directory == session.directory {
         return;
     }
@@ -49,13 +55,13 @@ mod tests {
                 members,
             },
         );
-        handle_directory(&mut session, directory.clone());
+        handle_directory(&mut session, directory.clone(), discovery::EpochSecs(10));
         assert_eq!(session.candidates.len(), 1);
         assert_eq!(
             std::mem::take(&mut session.outputs),
             vec![Output::Event(discovery::Event::DirectoryChanged)]
         );
-        handle_directory(&mut session, directory);
+        handle_directory(&mut session, directory, discovery::EpochSecs(10));
         assert_eq!(std::mem::take(&mut session.outputs), Vec::new());
     }
 }

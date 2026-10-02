@@ -5,7 +5,9 @@ pub fn handle(session: &mut Session, input: Input, now: discovery::EpochSecs) {
     match input {
         Input::Command(command) => discovery::session::handle_command(session, command, now),
         Input::Net(event) => discovery::session::handle_net_event(session, event, now),
-        Input::Directory(directory) => discovery::session::handle_directory(session, directory),
+        Input::Directory(directory) => {
+            discovery::session::handle_directory(session, directory, now);
+        }
         Input::Tick => discovery::session::tick(session, now),
     }
 }
