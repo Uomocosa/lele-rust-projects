@@ -1,8 +1,11 @@
 # Plan: rebuild `lele_function_taxonomy` on MIR
 
 Audience: the agent that executes this plan. Read all of it before touching code.
-Workspace root: `rust_projects/projects/` (paths below are relative to it). Branch: `master`.
-This plan runs **before** `docs/lele-rewrite-plan.md`. Read that plan's §1–§2 too: its ground rules apply here.
+Workspace root: `rust_projects/projects/` (paths below are relative to it).
+Branch: `master` (pushed to `origin/master`; state as of `4b0e3cd`). Work directly on `master` and push it.
+The old `refactor/discovery-cleanup` branch is stale (it lacks this work) — do not use it.
+Execution order: `docs/taxonomy-mir-plan.md` first, then `docs/lele-rewrite-plan.md`.
+Read `docs/lele-rewrite-plan.md` §1–§2 too: its ground rules apply here.
 
 ---
 
@@ -56,7 +59,7 @@ Definitions (for messages and docs), consistent with the `definition-function-ta
   `RUSTC_WORKSPACE_WRAPPER` handling, passing through non-workspace crates, tracking a config file in dep-info);
   the rustc-dev-guide (https://rustc-dev-guide.rust-lang.org/) chapters on `rustc_driver`/`rustc_interface` and on MIR.
 
-## 4. Current state (verified)
+## 4. Current state (verified on `master` at `4b0e3cd`)
 
 - `lele_function_taxonomy/` never uses the compiler: no `extern crate rustc_*` anywhere. The `rustc-private`
   feature only gates a `syn` walk (`src/run.rs`, which logs "TyCtxt wiring deferred").

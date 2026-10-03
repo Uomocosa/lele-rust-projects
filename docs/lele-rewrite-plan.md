@@ -2,7 +2,9 @@
 
 Audience: the agent that executes this plan. Read all of it before touching code.
 Workspace root: `rust_projects/projects/` (paths below are relative to it).
-Branch: `master`.
+Branch: `master` (pushed to `origin/master`; state as of `4b0e3cd`). Work directly on `master` and push it.
+The old `refactor/discovery-cleanup` branch is stale (it lacks this work) — do not use it.
+Execution order: `docs/taxonomy-mir-plan.md` first, then `docs/lele-rewrite-plan.md`.
 
 ---
 
@@ -47,7 +49,7 @@ Branch: `master`.
 
 ## 3. Where things stand
 
-Done and committed:
+Done, committed and pushed on `master` (merged in `cdfda37`, pushed at `4b0e3cd`):
 
 | Commit | Phase | Content |
 |---|---|---|
