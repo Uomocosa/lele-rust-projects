@@ -9,7 +9,8 @@ pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error>
     if let Some(section) = config.as_ref() {
         project
             .clippy_allow_whitelist
-            .clone_from(&section.clippy_allow_whitelist);
+            .clone_from(&section.lint.clippy_allow_whitelist);
+        project.boundaries.clone_from(&section.boundary);
     }
 
     let methods_dir = project.root.join("methods");

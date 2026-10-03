@@ -10,7 +10,6 @@ pub enum ConfigError {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
 pub struct LeleToml {
     #[serde(default)]
     pub lele: LeleSection,
@@ -19,7 +18,6 @@ pub struct LeleToml {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
 pub struct LeleSection {
     #[serde(default)]
     pub boundary: Vec<BoundaryEntry>,

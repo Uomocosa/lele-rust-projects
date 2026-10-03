@@ -48,7 +48,7 @@
     "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:methods-sync" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml -- --sync-methods"; showOutput = true; };
     "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml"; showOutput = true; };
-    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
+    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --bin lele-function-taxonomy -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "RUST_LOG=\"info,rodio=off,cpal=off,alsa=off\" cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:run-rooms-rejoin" = { exec = "RUST_LOG=\"info,clicker=debug,clicker_lib=debug,rodio=off,cpal=off,alsa=off\" cargo nextest run --test rooms_rejoin --all-features --run-ignored all -- --nocapture"; showOutput = true; };

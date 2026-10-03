@@ -1,7 +1,31 @@
 use serde::Deserialize;
 
 use crate::basic;
+use crate::basic::enums::Requirement;
 use crate::Dunder;
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct LeleSection {
+    #[serde(default)]
+    pub lint: LeleTomlLintSections,
+    #[serde(default)]
+    pub boundary: Vec<BoundaryEntry>,
+    #[serde(default, rename = "config")]
+    pub enforce_config: Option<toml::Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct BoundaryEntry {
+    pub name: String,
+    pub why: String,
+    pub folders: Vec<String>,
+    #[serde(default)]
+    pub cannot_use: Vec<String>,
+    #[serde(default)]
+    pub require: Option<Requirement>,
+}
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]

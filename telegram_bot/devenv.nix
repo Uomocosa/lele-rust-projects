@@ -19,7 +19,7 @@
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
     "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
     "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
-    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
+    "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --bin lele-function-taxonomy -- --manifest-path ./Cargo.toml"; showOutput = true; };
   };
 
   git-hooks.hooks = {

@@ -6,10 +6,10 @@ pub fn dunder(config: &Config) -> Dunder {
     if let Some(section) = config.as_ref() {
         merged
             .folders
-            .extend(section.dunder_whitelist.folders.clone());
+            .extend(section.lint.dunder_whitelist.folders.clone());
         merged
             .files
-            .extend(section.dunder_whitelist.files.iter().cloned());
+            .extend(section.lint.dunder_whitelist.files.iter().cloned());
     }
     merged
 }

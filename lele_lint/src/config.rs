@@ -7,12 +7,12 @@ use derive_more::Deref;
 
 use crate::Dunder;
 use crate::Error;
-use crate::LeleTomlLintSections;
+use crate::LeleSection;
 
 pub const CONFIG_FILENAME: &str = "lele.toml";
 
 #[derive(Deserialize, Debug, Default, Deref)]
-pub struct Config(pub Option<LeleTomlLintSections>);
+pub struct Config(pub Option<LeleSection>);
 
 #[atomic_delegates]
 impl Config {

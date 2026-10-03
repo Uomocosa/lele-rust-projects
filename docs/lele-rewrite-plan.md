@@ -57,17 +57,19 @@ Done, committed and pushed on `master` (merged in `cdfda37`, pushed at `4b0e3cd`
 | `8ca153f` | P1 | Every checker has `pub const DOC: RuleDoc` (category, summary, why, bad/good example crates). `--explain <CODE|name>`, `--rules-md`, generated `lele_lint/RULES.md`, `tests/rule_examples.rs` (bad reports its code, good is clean, all checker files registered, codes unique), `tests/rules_md.rs` (RULES.md not stale). `Severity` removed. |
 | `de21c13` | P2 | Strict `lele.toml`: unknown keys under `[lele]` / `[lele.lint]` are errors; a broken `lele.toml` stops lele_lint. Dead `[lele.lint.checkers]` removed from every crate. |
 
-**Saved work in progress (P3 step 1):** the config schema for the new rules, stored as a patch —
-`docs/lele-rewrite-p3-schema.patch` (made against `de21c13`; it compiles). Start P3 with
-`git apply docs/lele-rewrite-p3-schema.patch`, then delete the patch file in the P3 commit. It contains:
+**Config schema — partly landed by the taxonomy plan (T4).** The taxonomy plan (T4, its §5.5) already added
+the **boundary** part of the schema to lele_lint **by hand**: `LeleSection { lint, boundary, enforce_config }`,
+`BoundaryEntry { name, why, folders, cannot_use (default empty), require: Option<Requirement> }`,
+`Requirement::Honest`, `Config(pub Option<LeleSection>)` and `Project.boundaries`, with `load.rs`/`dunder.rs`/
+`apply_layout.rs` adapted. **Therefore P3 must NOT `git apply docs/lele-rewrite-p3-schema.patch`** — the patch's
+`Config`/`load`/`dunder`/`apply_layout`/`Project` boundary parts are already merged and would conflict. Add only
+the **vocabulary** parts by hand (`VocabularyEntry`, `LeleSection.vocabulary`, `Project.vocabulary`, the
+`apply_layout` line), then delete the patch file in the P3 commit.
 
-- `src/__basic__/structs.rs`: `LeleSection { lint, vocabulary: Vec<VocabularyEntry>, boundary: Vec<BoundaryEntry>, enforce_config }`,
-  `VocabularyEntry { name, meaning, banned }`, `BoundaryEntry { name, why, folders, cannot_use }`, all `deny_unknown_fields`.
-- `Config` is now `Config(pub Option<LeleSection>)`; `load.rs`, `dunder.rs`, `apply_layout.rs` adapted.
-- `Project` gained `vocabulary` and `boundaries` (filled in `apply_layout`).
-- **Do not commit it alone**: it parses config that nothing enforces yet. Commit it together with E035/E036.
-- `BoundaryEntry` has **no** `require` field in the patch; the taxonomy plan adds the boundary schema itself (see §6),
-  so the patch may be partly obsolete by the time P3 starts.
+- `src/__basic__/structs.rs`: add `VocabularyEntry { name, meaning, banned }`, `deny_unknown_fields`.
+- Do **not** re-add `BoundaryEntry`/`LeleSection`/`Config`/`Project` wiring — it is present.
+- **Do not commit the vocabulary schema alone**: it parses config that nothing enforces yet; commit with E035.
+- E036's validation becomes: a boundary needs a non-empty `cannot_use` **or** a `require`.
 
 How a rule is built (follow the existing pattern exactly):
 
@@ -142,6 +144,8 @@ Behaviour:
   forbidden path starts with the glob's base (`use std::time::*;` with `std::time::Instant` forbidden).
 - **Config validation (also E036, on `lele.toml`):** a folder that does not exist; empty `folders`; a boundary with
   neither a non-empty `cannot_use` nor a `require` (a `require`-only boundary is valid — the taxonomy checks it).
+  Note: the boundary schema itself (`BoundaryEntry`, `Requirement`, `LeleSection`, `Project.boundaries`) already
+  landed with the taxonomy plan (T4) — see §3.
 - **Message:** `` `tokio::sync::mpsc` is not allowed in boundary "session is pure protocol logic" (src/discovery/session) — <why> ``
   with the real line. One diagnostic per (file, line, path).
 - **Known limit (document it in the rule's `why` or RATIONALE):** a crate-local function that does I/O

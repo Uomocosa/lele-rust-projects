@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use atomic_delegate_macros::atomic_delegates;
 
 use crate::AllowWhitelistEntry;
+use crate::BoundaryEntry;
 use crate::Config;
 use crate::Dunder;
 use crate::Entry;
@@ -23,6 +24,7 @@ pub struct Project {
     pub methods_dir: Option<PathBuf>,
     pub methods_entries: Vec<Entry>,
     pub methods_parsed_files: HashMap<PathBuf, syn::File>,
+    pub boundaries: Vec<BoundaryEntry>,
 }
 
 #[atomic_delegates]

@@ -4,21 +4,12 @@ use serde::Deserialize;
 
 use crate::Config;
 use crate::Error;
-use crate::LeleTomlLintSections;
+use crate::LeleSection;
 
 #[derive(Deserialize)]
 struct LeleToml {
     #[serde(default)]
     lele: LeleSection,
-}
-
-#[derive(Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct LeleSection {
-    #[serde(default)]
-    lint: LeleTomlLintSections,
-    #[serde(default, rename = "config")]
-    _config: Option<toml::Value>,
 }
 
 pub fn load(project_root: &Path) -> Result<Config, Error> {
@@ -28,7 +19,7 @@ pub fn load(project_root: &Path) -> Result<Config, Error> {
         Err(_) => return Ok(Config::default()),
     };
     let parsed: LeleToml = toml::from_str(&content)?;
-    Ok(Config(Some(parsed.lele.lint)))
+    Ok(Config(Some(parsed.lele)))
 }
 
 #[cfg(test)]
@@ -53,6 +44,39 @@ mod tests {
         .unwrap();
         let err = load(dir.path()).unwrap_err().to_string();
         assert!(err.contains("checkers"), "{err}");
+    }
+
+    #[test]
+    fn test_usage_accepts_boundary() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("lele.toml"),
+            "[[lele.boundary]]\nname = \"session\"\nwhy = \"pure\"\nfolders = [\"src/session\"]\ncannot_use = [\"tokio\"]\nrequire = \"honest\"\n",
+        )
+        .unwrap();
+        let config = load(dir.path()).unwrap();
+        let section = config.as_ref().unwrap();
+        assert_eq!(section.boundary.len(), 1);
+        assert_eq!(
+            section.boundary.first().map(|b| b.name.as_str()),
+            Some("session")
+        );
+        assert_eq!(
+            section.boundary.first().and_then(|b| b.require),
+            Some(crate::Requirement::Honest)
+        );
+    }
+
+    #[test]
+    fn test_usage_rejects_unknown_boundary_key() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("lele.toml"),
+            "[[lele.boundary]]\nname = \"session\"\nwhy = \"pure\"\nfolders = [\"src/session\"]\nunknown = 1\n",
+        )
+        .unwrap();
+        let err = load(dir.path()).unwrap_err().to_string();
+        assert!(err.contains("unknown"), "{err}");
     }
 
     #[test]
