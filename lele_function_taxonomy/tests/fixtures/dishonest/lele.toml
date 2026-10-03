@@ -5,5 +5,5 @@ folders = ["src/core"]
 require = "honest"
 
 [honesty]
-declared_dishonest = ["crate::other::sensor"]
+declared_dishonest = ["other::sensor::sensor", "core::local_declared::declared_leaf"]
 declared_honest = ["std::time::Instant::now"]

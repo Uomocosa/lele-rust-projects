@@ -69,12 +69,22 @@ pub fn run_fixture(dir: &Path) -> FixtureRun {
     }
 }
 
+fn is_cargo_noise(line: &str) -> bool {
+    let t = line.trim_start();
+    t.starts_with("Checking ")
+        || t.starts_with("Compiling ")
+        || t.starts_with("Finished ")
+        || t.starts_with("warning: build failed")
+        || t.starts_with("error: could not compile")
+}
+
 pub fn normalized_output(run: &FixtureRun) -> String {
     let mut lines: Vec<String> = run
         .combined()
         .lines()
         .map(|l| l.trim_end().replace('\\', "/"))
         .filter(|l| !l.is_empty())
+        .filter(|l| !is_cargo_noise(l))
         .collect();
     lines.sort();
     let mut out = lines.join("\n");
@@ -84,19 +94,14 @@ pub fn normalized_output(run: &FixtureRun) -> String {
     out
 }
 
-pub fn expected_exit_code(name: &str) -> i32 {
-    match name {
-        "scope_missing_folder" | "scope_bad_key" => 1,
-        _ => 0,
-    }
-}
-
 pub fn assert_or_bless(run: &FixtureRun) {
     let expected_path = fixtures_root().join(&run.name).join("expected.txt");
     let actual = normalized_output(run);
+    let trivial = actual.is_empty() || actual.contains("nothing to check");
+    let expected_code = i32::from(!trivial);
     assert_eq!(
         run.status,
-        Some(expected_exit_code(&run.name)),
+        Some(expected_code),
         "fixture {} exit code mismatch\noutput:\n{}",
         run.name,
         run.combined()

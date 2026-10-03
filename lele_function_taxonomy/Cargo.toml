@@ -3,12 +3,21 @@ name = "lele_function_taxonomy"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
-description = "Precise function honesty taxonomy via rustc TyCtxt — Dishonest = hidden I/O via signature"
+description = "Precise function honesty taxonomy via rustc MIR — a require=honest boundary must contain only honest functions"
 license = "MIT"
+default-run = "lele-function-taxonomy"
 
 [[bin]]
 name = "lele-function-taxonomy"
 path = "src/main.rs"
+
+[[bin]]
+name = "lele-taxonomy-driver"
+path = "src/driver/main.rs"
+
+[build-dependencies]
+quote = "=1.0.47"
+proc-macro2 = "=1.0.107"
 
 [dependencies]
 clap = { version = "=4.6.6", features = ["derive"] }
@@ -21,12 +30,6 @@ tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 syn = { version = "=2.0.119", features = ["full", "visit", "extra-traits"] }
 quote = "=1.0.47"
 proc-macro2 = "=1.0.107"
-
-# rustc private crates are provided by the nightly sysroot (rustc-dev).
-# No Cargo registry entry needed — `extern crate rustc_driver` resolves via sysroot
-# when `rust-toolchain.toml` selects nightly and this feature is enabled.
-[features]
-rustc-private = []
 
 [lints.clippy]
 pedantic = { level = "deny", priority = -1 }

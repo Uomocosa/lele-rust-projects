@@ -1,0 +1,2 @@
+error: src/core/alpha.rs:3:8: error[TAX001]: `core::alpha::alpha_now` is dishonest: core::alpha::alpha_now (calls `std::time::SystemTime::now` (hidden read/write)); boundary "determinism core" requires honest functions
+error: src/core/gamma.rs:3:8: error[TAX001]: `core::gamma::gamma_elapsed` is dishonest: core::gamma::gamma_elapsed (calls `std::time::Instant::now` (hidden read/write)); boundary "determinism core" requires honest functions

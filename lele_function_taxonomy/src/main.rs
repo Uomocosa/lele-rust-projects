@@ -7,13 +7,11 @@ use lele_function_taxonomy::run;
 #[derive(Parser, Debug)]
 #[command(
     name = "lele-function-taxonomy",
-    about = "Precise function honesty taxonomy via rustc TyCtxt"
+    about = "Checks that functions in require=honest boundary folders are honest (rustc MIR)"
 )]
 struct Args {
     #[arg(long)]
     manifest_path: Option<PathBuf>,
-    #[arg(long, default_value_t = 1)]
-    honesty_depth: usize,
 }
 
 fn main() {
@@ -22,6 +20,5 @@ fn main() {
         .init();
 
     let args = Args::parse();
-    let code = run(args.manifest_path, Some(args.honesty_depth));
-    std::process::exit(code);
+    std::process::exit(run(args.manifest_path));
 }
