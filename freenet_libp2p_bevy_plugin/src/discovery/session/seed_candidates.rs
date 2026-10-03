@@ -5,7 +5,7 @@ pub fn seed_candidates(session: &mut Session) {
     let Some(room) = &session.room else {
         return;
     };
-    let Some(record) = session.directory.get(&room.name) else {
+    let Some(record) = session.lobby.get(&room.name) else {
         return;
     };
     let seeds: Vec<_> = record
@@ -53,7 +53,7 @@ mod tests {
             (discovery::PeerId("me".to_string()), presence.clone()),
             (discovery::PeerId("a".to_string()), presence),
         ]);
-        session.directory.insert(
+        session.lobby.insert(
             room,
             discovery::RoomRecord {
                 capacity: 8,

@@ -41,7 +41,7 @@ pub fn build_swarm<T: p2p::Message>(
                 let rr = request_response::Behaviour::with_codec(
                     p2p::MessageCodec::<T>::default(),
                     [(
-                        StreamProtocol::new("/blackboard/1.0.0"),
+                        StreamProtocol::new("/lobby/1.0.0"),
                         request_response::ProtocolSupport::Full,
                     )],
                     request_response::Config::default(),
@@ -49,7 +49,7 @@ pub fn build_swarm<T: p2p::Message>(
                 let exchange = request_response::Behaviour::with_codec(
                     p2p::MessageCodec::<Vec<u8>>::default(),
                     [(
-                        StreamProtocol::new("/blackboard/pex/1.0.0"),
+                        StreamProtocol::new("/lobby/pex/1.0.0"),
                         request_response::ProtocolSupport::Full,
                     )],
                     request_response::Config::default(),
@@ -64,7 +64,7 @@ pub fn build_swarm<T: p2p::Message>(
                     exchange,
                     kademlia,
                     identify: identify::Behaviour::new(identify::Config::new(
-                        "/blackboard/id/1.0.0".to_string(),
+                        "/lobby/id/1.0.0".to_string(),
                         kp.public(),
                     )),
                     ping: ping::Behaviour::default(),

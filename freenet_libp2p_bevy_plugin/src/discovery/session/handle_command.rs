@@ -14,7 +14,7 @@ pub fn handle_command(
     }
 }
 
-// needed helper: enters a room, says hello to every live link and dials the directory seeds
+// needed helper: enters a room, says hello to every live link and dials the lobby seeds
 fn join(session: &mut Session, room: discovery::RoomName, now: discovery::EpochSecs) {
     leave(session);
     session.room = Some(discovery::Room {

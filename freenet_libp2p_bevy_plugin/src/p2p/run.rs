@@ -45,7 +45,7 @@ pub async fn run<T: p2p::Message>(
     let mut listen_addrs: Vec<String> = Vec::new();
     let mut ready_deadline: Option<tokio::time::Instant> = None;
     let mut mesh_deadline = tokio::time::Instant::now().checked_add(Duration::from_secs(30));
-    let mut lobby_queries: std::collections::HashMap<libp2p::kad::QueryId, String> =
+    let mut room_queries: std::collections::HashMap<libp2p::kad::QueryId, String> =
         std::collections::HashMap::new();
 
     loop {
@@ -66,13 +66,13 @@ pub async fn run<T: p2p::Message>(
                 mesh_deadline = tokio::time::Instant::now().checked_add(Duration::from_secs(30));
             }
             cmd = cmd_rx.recv() => {
-                if !dispatch_command(&mut swarm, &event_tx, &mut lobby_queries, cmd) {
+                if !dispatch_command(&mut swarm, &event_tx, &mut room_queries, cmd) {
                     break;
                 }
             }
             net_cmd = net_rx.recv() => {
                 if let Some(net) = net_cmd {
-                    dispatch_net_command(&mut swarm, &event_tx, &mut lobby_queries, net);
+                    dispatch_net_command(&mut swarm, &event_tx, &mut room_queries, net);
                 } else {
                     break;
                 }
@@ -81,7 +81,7 @@ pub async fn run<T: p2p::Message>(
                 handle_swarm(
                     &mut swarm,
                     &event_tx,
-                    &lobby_queries,
+                    &room_queries,
                     &mut listen_addrs,
                     &mut ready_deadline,
                     mode,
@@ -96,7 +96,7 @@ pub async fn run<T: p2p::Message>(
 fn handle_swarm<T: p2p::Message>(
     swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    lobby_queries: &std::collections::HashMap<libp2p::kad::QueryId, String>,
+    room_queries: &std::collections::HashMap<libp2p::kad::QueryId, String>,
     listen_addrs: &mut Vec<String>,
     ready_deadline: &mut Option<tokio::time::Instant>,
     mode: p2p::TransportMode,
@@ -139,7 +139,7 @@ fn handle_swarm<T: p2p::Message>(
                 ..
             },
         )) => {
-            handle_found_providers(event_tx, lobby_queries, id, &providers);
+            handle_found_providers(event_tx, room_queries, id, &providers);
         }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Gossipsub(gossip_event)) => {
             handle_gossipsub(swarm, event_tx, gossip_event);
@@ -350,14 +350,14 @@ fn handle_found_record<T: p2p::Message>(
     let key_str = String::from_utf8_lossy(record.key.as_ref()).to_string();
     let parts: Vec<&str> = key_str.split('/').collect();
     if parts.len() >= 4
-        && let Some(lobby) = parts.get(2)
+        && let Some(room) = parts.get(2)
         && let Some(chunk) = parts.get(3)
     {
-        let lobby = lobby.to_string();
+        let room = room.to_string();
         let chunk = chunk.parse::<u64>().unwrap_or(0);
         event_tx
             .send(p2p::Event::HistoryChunk {
-                lobby,
+                room,
                 chunk,
                 data: record.value,
             })
@@ -386,21 +386,21 @@ fn note_dial_failure<T: p2p::Message>(
     }
 }
 
-// needed helper: forwards one kad provider set into a Bevy lobby event
+// needed helper: forwards one kad provider set into a Bevy room event
 fn handle_found_providers<T: p2p::Message>(
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    lobby_queries: &std::collections::HashMap<libp2p::kad::QueryId, String>,
+    room_queries: &std::collections::HashMap<libp2p::kad::QueryId, String>,
     id: libp2p::kad::QueryId,
     providers: &std::collections::HashSet<libp2p::PeerId>,
 ) {
-    if let Some(lobby) = lobby_queries.get(&id) {
+    if let Some(room) = room_queries.get(&id) {
         let peers = providers
             .iter()
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>();
         event_tx
-            .send(p2p::Event::LobbyProviders {
-                lobby: lobby.clone(),
+            .send(p2p::Event::RoomProviders {
+                room: room.clone(),
                 peers,
             })
             .ok();
@@ -441,7 +441,7 @@ fn handle_gossipsub<T: p2p::Message>(
 fn dispatch_command<T: p2p::Message>(
     swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    lobby_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
+    room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
     cmd: Option<p2p::Command<T>>,
 ) -> bool {
     let net = match cmd {
@@ -457,15 +457,15 @@ fn dispatch_command<T: p2p::Message>(
         Some(p2p::Command::AddKadPeer { peer_id, addrs }) => {
             p2p::NetCommand::AddKadPeer { peer_id, addrs }
         }
-        Some(p2p::Command::ProvideLobby { lobby }) => p2p::NetCommand::ProvideLobby { lobby },
-        Some(p2p::Command::FindLobby { lobby }) => p2p::NetCommand::FindLobby { lobby },
-        Some(p2p::Command::PutHistory { lobby, chunk, data }) => {
-            p2p::NetCommand::PutHistory { lobby, chunk, data }
+        Some(p2p::Command::ProvideRoom { room }) => p2p::NetCommand::ProvideRoom { room },
+        Some(p2p::Command::FindRoom { room }) => p2p::NetCommand::FindRoom { room },
+        Some(p2p::Command::PutHistory { room, chunk, data }) => {
+            p2p::NetCommand::PutHistory { room, chunk, data }
         }
-        Some(p2p::Command::FetchHistory { lobby, chunk }) => {
-            p2p::NetCommand::FetchHistory { lobby, chunk }
+        Some(p2p::Command::FetchHistory { room, chunk }) => {
+            p2p::NetCommand::FetchHistory { room, chunk }
         }
-        Some(p2p::Command::FetchRoster { lobby }) => p2p::NetCommand::FetchRoster { lobby },
+        Some(p2p::Command::FetchRoster { room }) => p2p::NetCommand::FetchRoster { room },
         Some(p2p::Command::Subscribe { topic }) => p2p::NetCommand::Subscribe { topic },
         Some(p2p::Command::Publish { topic, data }) => p2p::NetCommand::Publish { topic, data },
         Some(p2p::Command::Send { peer_id, payload }) => {
@@ -479,7 +479,7 @@ fn dispatch_command<T: p2p::Message>(
         }
         None => return false,
     };
-    dispatch_net_command(swarm, event_tx, lobby_queries, net);
+    dispatch_net_command(swarm, event_tx, room_queries, net);
     true
 }
 
@@ -487,7 +487,7 @@ fn dispatch_command<T: p2p::Message>(
 fn dispatch_net_command<T: p2p::Message>(
     swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    lobby_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
+    room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
     command: p2p::NetCommand,
 ) {
     match command {
@@ -515,21 +515,21 @@ fn dispatch_net_command<T: p2p::Message>(
         p2p::NetCommand::AddKadPeer { peer_id, addrs } => {
             seed_kad_peer(swarm, &peer_id, &addrs);
         }
-        p2p::NetCommand::ProvideLobby { lobby } => {
+        p2p::NetCommand::ProvideRoom { room } => {
             let _ = swarm
                 .behaviour_mut()
                 .kademlia
-                .start_providing(p2p::provider_key(&lobby));
+                .start_providing(p2p::provider_key(&room));
         }
-        p2p::NetCommand::FindLobby { lobby } => {
+        p2p::NetCommand::FindRoom { room } => {
             let id = swarm
                 .behaviour_mut()
                 .kademlia
-                .get_providers(p2p::provider_key(&lobby));
-            lobby_queries.insert(id, lobby);
+                .get_providers(p2p::provider_key(&room));
+            room_queries.insert(id, room);
         }
-        p2p::NetCommand::PutHistory { lobby, chunk, data } => {
-            let key = p2p::history_key(&lobby, chunk);
+        p2p::NetCommand::PutHistory { room, chunk, data } => {
+            let key = p2p::history_key(&room, chunk);
             let record = kad::Record {
                 key: key.clone(),
                 value: data,
@@ -542,20 +542,20 @@ fn dispatch_net_command<T: p2p::Message>(
                 .put_record(record, kad::Quorum::One);
             let _ = swarm.behaviour_mut().kademlia.start_providing(key);
         }
-        p2p::NetCommand::FetchHistory { lobby, chunk } => {
-            let key = p2p::history_key(&lobby, chunk);
+        p2p::NetCommand::FetchHistory { room, chunk } => {
+            let key = p2p::history_key(&room, chunk);
             swarm.behaviour_mut().kademlia.get_record(key);
         }
-        p2p::NetCommand::FetchRoster { lobby } => {
+        p2p::NetCommand::FetchRoster { room } => {
             let _ = swarm
                 .behaviour_mut()
                 .kademlia
-                .start_providing(p2p::provider_key(&lobby));
+                .start_providing(p2p::provider_key(&room));
             let id = swarm
                 .behaviour_mut()
                 .kademlia
-                .get_providers(p2p::provider_key(&lobby));
-            lobby_queries.insert(id, lobby);
+                .get_providers(p2p::provider_key(&room));
+            room_queries.insert(id, room);
         }
         p2p::NetCommand::Subscribe { topic } => {
             let topic = gossipsub::IdentTopic::new(topic);

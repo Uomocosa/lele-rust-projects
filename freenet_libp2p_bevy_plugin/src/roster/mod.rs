@@ -1,8 +1,8 @@
-pub mod lobby_roster;
-pub use lobby_roster::LobbyRoster;
+pub mod room_roster;
+pub use room_roster::RoomRoster;
 
-pub mod lobby;
-pub use lobby::Lobby;
+pub mod room;
+pub use room::Room;
 
 pub mod bevy_systems;
 

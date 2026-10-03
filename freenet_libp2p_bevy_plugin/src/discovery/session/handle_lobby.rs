@@ -1,20 +1,16 @@
 use crate::discovery;
 use discovery::session::{Output, Session};
 
-pub fn handle_directory(
-    session: &mut Session,
-    directory: discovery::Directory,
-    now: discovery::EpochSecs,
-) {
+pub fn handle_lobby(session: &mut Session, lobby: discovery::Lobby, now: discovery::EpochSecs) {
     let ttl_secs = session.timing.presence_ttl_secs;
-    let directory = discovery::session::live_directory(directory, now, ttl_secs);
-    if directory == session.directory {
+    let lobby = discovery::session::live_lobby(lobby, now, ttl_secs);
+    if lobby == session.lobby {
         return;
     }
-    session.directory = directory;
+    session.lobby = lobby;
     session
         .outputs
-        .push(Output::Event(discovery::Event::DirectoryChanged));
+        .push(Output::Event(discovery::Event::LobbyChanged));
     discovery::session::seed_candidates(session);
 }
 
@@ -22,7 +18,7 @@ pub fn handle_directory(
 mod tests {
     use std::collections::BTreeMap;
 
-    use super::handle_directory;
+    use super::handle_lobby;
     use crate::discovery;
     use discovery::session::{Output, Session};
 
@@ -47,21 +43,21 @@ mod tests {
                 },
             );
         }
-        let mut directory = discovery::Directory::new();
-        directory.insert(
+        let mut lobby = discovery::Lobby::new();
+        lobby.insert(
             discovery::RoomName("r".to_string()),
             discovery::RoomRecord {
                 capacity: 8,
                 members,
             },
         );
-        handle_directory(&mut session, directory.clone(), discovery::EpochSecs(10));
+        handle_lobby(&mut session, lobby.clone(), discovery::EpochSecs(10));
         assert_eq!(session.candidates.len(), 1);
         assert_eq!(
             std::mem::take(&mut session.outputs),
-            vec![Output::Event(discovery::Event::DirectoryChanged)]
+            vec![Output::Event(discovery::Event::LobbyChanged)]
         );
-        handle_directory(&mut session, directory, discovery::EpochSecs(10));
+        handle_lobby(&mut session, lobby, discovery::EpochSecs(10));
         assert_eq!(std::mem::take(&mut session.outputs), Vec::new());
     }
 }

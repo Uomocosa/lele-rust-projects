@@ -4,15 +4,15 @@ use derive_more::Deref;
 use crate::roster::basic::constants;
 
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deref)]
-pub struct Lobby(pub String);
+pub struct Room(pub String);
 
-impl Default for Lobby {
+impl Default for Room {
     fn default() -> Self {
-        Self(constants::DEFAULT_LOBBY.to_string())
+        Self(constants::DEFAULT_ROOM.to_string())
     }
 }
 
-impl Lobby {
+impl Room {
     #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
@@ -21,11 +21,11 @@ impl Lobby {
 
 #[cfg(test)]
 mod tests {
-    use super::Lobby;
+    use super::Room;
 
     #[test]
     fn test_usage() {
-        assert_eq!(&*Lobby::default(), "default");
-        assert_eq!(&*Lobby::new("alpha".to_string()), "alpha");
+        assert_eq!(&*Room::default(), "default");
+        assert_eq!(&*Room::new("alpha".to_string()), "alpha");
     }
 }

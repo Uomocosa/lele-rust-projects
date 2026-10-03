@@ -4,13 +4,13 @@ use crate::p2p;
 use crate::roster;
 
 pub fn poll_roster<T: p2p::Message>(
-    mut roster: ResMut<roster::LobbyRoster>,
-    lobby: Res<roster::Lobby>,
+    mut roster: ResMut<roster::RoomRoster>,
+    room: Res<roster::Room>,
     mut events: ResMut<p2p::Events<T>>,
     mut links: Local<std::collections::HashMap<String, u32, std::hash::RandomState>>,
 ) {
     let mut rest = Vec::new();
-    let lobby = lobby.into_inner();
+    let room = room.into_inner();
     for event in events.take_all() {
         match event {
             p2p::Event::PeerConnected(peer) => {
@@ -19,7 +19,7 @@ pub fn poll_roster<T: p2p::Message>(
                     .and_modify(|count| *count = count.saturating_add(1))
                     .or_insert(1);
                 let id = *blake3::hash(peer.as_bytes()).as_bytes();
-                roster.add_entry((**lobby).clone(), id, peer);
+                roster.add_entry((**room).clone(), id, peer);
             }
             p2p::Event::PeerDisconnected(peer) => {
                 let drained = links.get_mut(&peer).is_some_and(|count| {
@@ -29,7 +29,7 @@ pub fn poll_roster<T: p2p::Message>(
                 if drained {
                     links.remove(&peer);
                     let id = *blake3::hash(peer.as_bytes()).as_bytes();
-                    roster.remove_entry(lobby, id);
+                    roster.remove_entry(room, id);
                 }
             }
             p2p::Event::Ready { peer_id, addrs } => {
@@ -63,8 +63,8 @@ mod tests {
     fn test_usage() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(roster::LobbyRoster::default());
-        app.insert_resource(roster::Lobby("alpha".to_string()));
+        app.insert_resource(roster::RoomRoster::default());
+        app.insert_resource(roster::Room("alpha".to_string()));
         app.insert_resource(p2p::Events::<Dummy>::default());
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
@@ -79,13 +79,13 @@ mod tests {
         app.update();
         let alpha = app
             .world()
-            .resource::<roster::LobbyRoster>()
+            .resource::<roster::RoomRoster>()
             .get("alpha")
             .map_or(0, std::collections::BTreeMap::len);
         assert_eq!(alpha, 1);
         assert!(
             app.world()
-                .resource::<roster::LobbyRoster>()
+                .resource::<roster::RoomRoster>()
                 .get("default")
                 .is_none()
         );
@@ -95,7 +95,7 @@ mod tests {
         app.update();
         let members: usize = app
             .world()
-            .resource::<roster::LobbyRoster>()
+            .resource::<roster::RoomRoster>()
             .values()
             .map(BTreeMap::len)
             .sum();
@@ -107,8 +107,8 @@ mod tests {
     fn sub_connection_drop_keeps_member() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
-        app.insert_resource(roster::LobbyRoster::default());
-        app.insert_resource(roster::Lobby("alpha".to_string()));
+        app.insert_resource(roster::RoomRoster::default());
+        app.insert_resource(roster::Room("alpha".to_string()));
         app.insert_resource(p2p::Events::<Dummy>::default());
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
@@ -124,7 +124,7 @@ mod tests {
         app.update();
         let members: usize = app
             .world()
-            .resource::<roster::LobbyRoster>()
+            .resource::<roster::RoomRoster>()
             .values()
             .map(BTreeMap::len)
             .sum();
@@ -135,7 +135,7 @@ mod tests {
         app.update();
         let members: usize = app
             .world()
-            .resource::<roster::LobbyRoster>()
+            .resource::<roster::RoomRoster>()
             .values()
             .map(BTreeMap::len)
             .sum();

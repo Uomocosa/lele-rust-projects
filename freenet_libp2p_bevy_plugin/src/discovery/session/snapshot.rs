@@ -4,7 +4,7 @@ use discovery::session::Session;
 #[must_use]
 pub fn snapshot(session: &Session) -> discovery::Snapshot {
     discovery::Snapshot {
-        directory: session.directory.clone(),
+        lobby: session.lobby.clone(),
         room: session.room.clone(),
     }
 }

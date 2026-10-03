@@ -13,7 +13,7 @@ pub use basic::messages::{Command, Event};
 pub use basic::newtypes::{EpochSecs, GameName, GameToken, PeerId, RoomName};
 pub use basic::resources::{CommandSender, EventFeed, FreenetEndpoint, Snapshot, SnapshotFeed};
 pub use basic::structs::{Channels, Member, Presence, Room, RoomRecord};
-pub use basic::type_aliases::{Directory, Members};
+pub use basic::type_aliases::{Lobby, Members};
 
 mod config;
 pub use config::Config;

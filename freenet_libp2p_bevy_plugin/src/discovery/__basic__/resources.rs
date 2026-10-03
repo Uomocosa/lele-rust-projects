@@ -9,7 +9,7 @@ use crate::discovery;
 #[derive(Resource, Debug, Default, Clone, PartialEq, Eq, Reflect)]
 #[reflect(Resource, Default)]
 pub struct Snapshot {
-    pub directory: discovery::Directory,
+    pub lobby: discovery::Lobby,
     pub room: Option<discovery::Room>,
 }
 

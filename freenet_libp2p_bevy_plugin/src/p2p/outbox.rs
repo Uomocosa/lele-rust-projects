@@ -24,8 +24,8 @@ mod tests {
     fn test_usage() {
         let mut commands = Outbox::default();
         assert!(commands.is_empty());
-        commands.push(p2p::NetCommand::FindLobby {
-            lobby: "lobby".to_string(),
+        commands.push(p2p::NetCommand::FindRoom {
+            room: "room".to_string(),
         });
         assert_eq!(commands.len(), 1);
     }

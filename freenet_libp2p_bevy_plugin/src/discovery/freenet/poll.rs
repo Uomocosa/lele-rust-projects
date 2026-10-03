@@ -8,9 +8,9 @@ use crate::discovery;
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(10);
 
 pub async fn poll(
-    directory_client: &mut discovery::freenet::DirectoryClient,
-) -> Result<discovery::Directory, discovery::Error> {
-    while let Some(result) = directory_client
+    lobby_client: &mut discovery::freenet::LobbyClient,
+) -> Result<discovery::Lobby, discovery::Error> {
+    while let Some(result) = lobby_client
         .client
         .recv_response_timeout(DRAIN_TIMEOUT)
         .await
@@ -18,21 +18,18 @@ pub async fn poll(
         match result? {
             HostResponse::ContractResponse(ContractResponse::UpdateNotification {
                 update, ..
-            }) => absorb_update(directory_client, update),
+            }) => absorb_update(lobby_client, update),
             HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-                absorb_bytes(directory_client, state.as_ref());
+                absorb_bytes(lobby_client, state.as_ref());
             }
             _ => {}
         }
     }
-    Ok(directory_client.directory.clone())
+    Ok(lobby_client.lobby.clone())
 }
 
-// needed helper: merges one notification into the cached directory
-fn absorb_update(
-    directory_client: &mut discovery::freenet::DirectoryClient,
-    update: UpdateData<'static>,
-) {
+// needed helper: merges one notification into the cached lobby
+fn absorb_update(lobby_client: &mut discovery::freenet::LobbyClient, update: UpdateData<'static>) {
     let bytes = match update {
         UpdateData::State(state) | UpdateData::StateAndDelta { state, .. } => {
             Some(state.as_ref().to_vec())
@@ -41,15 +38,15 @@ fn absorb_update(
         _ => None,
     };
     if let Some(bytes) = bytes {
-        absorb_bytes(directory_client, &bytes);
+        absorb_bytes(lobby_client, &bytes);
     }
 }
 
-// needed helper: merges raw directory bytes into the cached directory
-fn absorb_bytes(directory_client: &mut discovery::freenet::DirectoryClient, bytes: &[u8]) {
-    let incoming: discovery::Directory = bincode::deserialize(bytes).unwrap_or_default();
-    let cached = std::mem::take(&mut directory_client.directory);
-    directory_client.directory = discovery::freenet::merge_directory(cached, incoming);
+// needed helper: merges raw lobby bytes into the cached lobby
+fn absorb_bytes(lobby_client: &mut discovery::freenet::LobbyClient, bytes: &[u8]) {
+    let incoming: discovery::Lobby = bincode::deserialize(bytes).unwrap_or_default();
+    let cached = std::mem::take(&mut lobby_client.lobby);
+    lobby_client.lobby = discovery::freenet::merge_lobby(cached, incoming);
 }
 
 #[cfg(test)]

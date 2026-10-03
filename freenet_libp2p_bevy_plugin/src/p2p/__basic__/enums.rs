@@ -20,8 +20,8 @@ pub enum TapEvent {
         peer_id: String,
         reason: String,
     },
-    LobbyProviders {
-        lobby: String,
+    RoomProviders {
+        room: String,
         peers: Vec<String>,
     },
     Gossip {
@@ -55,23 +55,23 @@ pub enum NetCommand {
         peer_id: String,
         addrs: Vec<String>,
     },
-    ProvideLobby {
-        lobby: String,
+    ProvideRoom {
+        room: String,
     },
-    FindLobby {
-        lobby: String,
+    FindRoom {
+        room: String,
     },
     PutHistory {
-        lobby: String,
+        room: String,
         chunk: u64,
         data: Vec<u8>,
     },
     FetchHistory {
-        lobby: String,
+        room: String,
         chunk: u64,
     },
     FetchRoster {
-        lobby: String,
+        room: String,
     },
     Subscribe {
         topic: String,
@@ -107,27 +107,27 @@ pub enum Command<T> {
         peer_id: String,
         addrs: Vec<String>,
     },
-    ProvideLobby {
-        lobby: String,
+    ProvideRoom {
+        room: String,
     },
-    FindLobby {
-        lobby: String,
+    FindRoom {
+        room: String,
     },
     Send {
         peer_id: String,
         payload: T,
     },
     PutHistory {
-        lobby: String,
+        room: String,
         chunk: u64,
         data: Vec<u8>,
     },
     FetchHistory {
-        lobby: String,
+        room: String,
         chunk: u64,
     },
     FetchRoster {
-        lobby: String,
+        room: String,
     },
     Subscribe {
         topic: String,
@@ -154,8 +154,8 @@ pub enum Event<T> {
         relay_peer_id: String,
     },
     ObservedAddr(String),
-    LobbyProviders {
-        lobby: String,
+    RoomProviders {
+        room: String,
         peers: Vec<String>,
     },
     Message {
@@ -163,7 +163,7 @@ pub enum Event<T> {
         payload: T,
     },
     HistoryChunk {
-        lobby: String,
+        room: String,
         chunk: u64,
         data: Vec<u8>,
     },

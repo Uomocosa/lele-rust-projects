@@ -1,8 +1,8 @@
 use crate::discovery;
-use discovery::Directory;
+use discovery::Lobby;
 
 #[must_use]
-pub fn merge_directory(mut base: Directory, incoming: Directory) -> Directory {
+pub fn merge_lobby(mut base: Lobby, incoming: Lobby) -> Lobby {
     for (room, record) in incoming {
         let merged = discovery::freenet::merge_room(base.remove(&room), record);
         base.insert(room, merged);
@@ -14,7 +14,7 @@ pub fn merge_directory(mut base: Directory, incoming: Directory) -> Directory {
 mod tests {
     use std::collections::BTreeMap;
 
-    use super::merge_directory;
+    use super::merge_lobby;
     use crate::discovery;
 
     fn record(peer: &str, updated_at: u64) -> discovery::RoomRecord {
@@ -39,7 +39,7 @@ mod tests {
         base.insert(room.clone(), record("peer", 5));
         let mut incoming = BTreeMap::new();
         incoming.insert(room.clone(), record("peer", 9));
-        let merged = merge_directory(base, incoming);
+        let merged = merge_lobby(base, incoming);
         let row = merged
             .get(&room)
             .and_then(|record| record.members.get(&discovery::PeerId("peer".to_string())));

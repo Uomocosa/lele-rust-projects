@@ -6,7 +6,7 @@ use crate::discovery;
 pub async fn fetch(
     client: &mut discovery::freenet::Client,
     instance_id: ContractInstanceId,
-) -> Result<discovery::Directory, discovery::Error> {
+) -> Result<discovery::Lobby, discovery::Error> {
     let get = ContractRequest::Get {
         key: instance_id,
         return_contract_code: false,

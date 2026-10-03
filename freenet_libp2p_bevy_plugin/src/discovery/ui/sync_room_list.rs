@@ -23,7 +23,7 @@ pub fn sync_room_list(
         .entity(list)
         .despawn_related::<Children>()
         .with_children(|parent| {
-            for (name, record) in &snapshot.directory {
+            for (name, record) in &snapshot.lobby {
                 let color = if current == Some(name) {
                     CURRENT_ROOM_COLOR
                 } else {
@@ -61,7 +61,7 @@ mod tests {
         let mut app = App::new();
         let mut snapshot = discovery::Snapshot::default();
         for name in ["alpha", "beta"] {
-            snapshot.directory.insert(
+            snapshot.lobby.insert(
                 discovery::RoomName(name.to_string()),
                 discovery::RoomRecord {
                     capacity: 8,

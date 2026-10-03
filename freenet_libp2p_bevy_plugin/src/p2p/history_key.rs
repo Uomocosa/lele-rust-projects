@@ -1,8 +1,8 @@
 use libp2p::kad::RecordKey;
 
 #[must_use]
-pub fn history_key(lobby: &str, chunk: u64) -> RecordKey {
-    RecordKey::new(&format!("blackboard/history/{lobby}/{chunk:08}"))
+pub fn history_key(room: &str, chunk: u64) -> RecordKey {
+    RecordKey::new(&format!("lobby/history/{room}/{chunk:08}"))
 }
 
 #[cfg(test)]
@@ -11,7 +11,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let key = history_key("lobby-a", 0);
+        let key = history_key("room-a", 0);
         assert_ne!(key.as_ref().len(), 0);
     }
 }

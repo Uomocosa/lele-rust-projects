@@ -1,8 +1,8 @@
 use libp2p::kad::RecordKey;
 
 #[must_use]
-pub fn provider_key(lobby: &str) -> RecordKey {
-    RecordKey::new(&format!("blackboard/lobby/{lobby}"))
+pub fn provider_key(room: &str) -> RecordKey {
+    RecordKey::new(&format!("lobby/room/{room}"))
 }
 
 #[cfg(test)]
@@ -11,7 +11,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let key = provider_key("lobby-a");
+        let key = provider_key("room-a");
         assert_ne!(key.as_ref().len(), 0);
     }
 }

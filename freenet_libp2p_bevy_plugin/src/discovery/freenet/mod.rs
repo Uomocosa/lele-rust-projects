@@ -2,7 +2,7 @@
 pub mod basic;
 
 pub use basic::constants::*;
-pub use basic::structs::DirectoryClient;
+pub use basic::structs::LobbyClient;
 
 mod client;
 pub use client::Client;
@@ -31,11 +31,11 @@ pub use poll::poll;
 mod publish_presence;
 pub use publish_presence::publish_presence;
 
-mod merge_directory;
-pub use merge_directory::merge_directory;
+mod merge_lobby;
+pub use merge_lobby::merge_lobby;
 
 mod merge_room;
 pub use merge_room::merge_room;
 
-mod run_directory;
-pub use run_directory::run_directory;
+mod run_lobby;
+pub use run_lobby::run_lobby;

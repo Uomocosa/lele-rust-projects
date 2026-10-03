@@ -19,11 +19,11 @@ pub use handle_net_event::handle_net_event;
 mod handle_hello;
 pub use handle_hello::handle_hello;
 
-mod handle_directory;
-pub use handle_directory::handle_directory;
+mod handle_lobby;
+pub use handle_lobby::handle_lobby;
 
-mod live_directory;
-pub use live_directory::live_directory;
+mod live_lobby;
+pub use live_lobby::live_lobby;
 
 mod tick;
 pub use tick::tick;

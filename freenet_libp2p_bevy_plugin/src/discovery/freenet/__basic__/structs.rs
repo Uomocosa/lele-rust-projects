@@ -2,8 +2,8 @@ use freenet_stdlib::prelude::ContractKey;
 
 use crate::discovery;
 
-pub struct DirectoryClient {
+pub struct LobbyClient {
     pub client: discovery::freenet::Client,
     pub key: ContractKey,
-    pub directory: discovery::Directory,
+    pub lobby: discovery::Lobby,
 }

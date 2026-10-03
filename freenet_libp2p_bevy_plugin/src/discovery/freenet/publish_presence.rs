@@ -6,7 +6,7 @@ use freenet_stdlib::prelude::{StateDelta, UpdateData};
 use crate::discovery;
 
 pub fn publish_presence(
-    directory_client: &mut discovery::freenet::DirectoryClient,
+    lobby_client: &mut discovery::freenet::LobbyClient,
     room: &discovery::RoomName,
     me: &discovery::PeerId,
     presence: discovery::Presence,
@@ -14,16 +14,16 @@ pub fn publish_presence(
 ) -> Result<(), discovery::Error> {
     let members = BTreeMap::from([(me.clone(), presence)]);
     let update =
-        discovery::Directory::from([(room.clone(), discovery::RoomRecord { capacity, members })]);
+        discovery::Lobby::from([(room.clone(), discovery::RoomRecord { capacity, members })]);
     let request = ContractRequest::Update {
-        key: directory_client.key,
+        key: lobby_client.key,
         data: UpdateData::Delta(StateDelta::from(bincode::serialize(&update)?)),
     };
-    directory_client
+    lobby_client
         .client
         .send(&ClientRequest::ContractOp(request))?;
-    let cached = std::mem::take(&mut directory_client.directory);
-    directory_client.directory = discovery::freenet::merge_directory(cached, update);
+    let cached = std::mem::take(&mut lobby_client.lobby);
+    lobby_client.lobby = discovery::freenet::merge_lobby(cached, update);
     Ok(())
 }
 

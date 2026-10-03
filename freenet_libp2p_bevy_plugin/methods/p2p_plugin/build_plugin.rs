@@ -25,8 +25,8 @@ pub fn build_plugin<T: p2p::Message>(p2p_plugin: &plugin::P2PPlugin<T>, app: &mu
     app.insert_resource(p2p::Outbox::default());
     app.insert_resource(p2p::Signals::default());
     app.insert_resource(p2p::EventTap::default());
-    app.insert_resource(roster::LobbyRoster::default());
-    app.insert_resource(roster::Lobby::default());
+    app.insert_resource(roster::RoomRoster::default());
+    app.insert_resource(roster::Room::default());
     app.insert_resource(p2p::Bridge {
         cmd_tx,
         event_rx: Mutex::new(Some(event_rx)),
@@ -73,10 +73,10 @@ mod tests {
         assert!(app.world().get_resource::<p2p::Events<Dummy>>().is_some());
         assert!(app.world().get_resource::<p2p::Bridge<Dummy>>().is_some());
         assert!(app.world().get_resource::<p2p::NetBridge>().is_some());
-        assert!(app.world().get_resource::<roster::LobbyRoster>().is_some());
+        assert!(app.world().get_resource::<roster::RoomRoster>().is_some());
         assert_eq!(
-            app.world().get_resource::<roster::Lobby>(),
-            Some(&roster::Lobby("default".to_string()))
+            app.world().get_resource::<roster::Room>(),
+            Some(&roster::Room("default".to_string()))
         );
         assert!(app.world().get_resource::<net_id::NetworkId>().is_some());
     }

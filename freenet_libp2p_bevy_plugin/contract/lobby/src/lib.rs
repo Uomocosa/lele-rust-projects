@@ -23,7 +23,7 @@ pub struct RoomRecord {
     pub members: BTreeMap<RemotePeerId, Presence>,
 }
 
-pub type BoardState = BTreeMap<RoomName, RoomRecord>;
+pub type LobbyState = BTreeMap<RoomName, RoomRecord>;
 
 const MAX_ROOMS: usize = 256;
 const MAX_MEMBERS_PER_ROOM: usize = 64;
@@ -58,7 +58,7 @@ fn merge_room(current: Option<RoomRecord>, incoming: RoomRecord) -> RoomRecord {
     }
 }
 
-fn merge_board(mut base: BoardState, incoming: BoardState) -> BoardState {
+fn merge_lobby(mut base: LobbyState, incoming: LobbyState) -> LobbyState {
     for (room, record) in incoming {
         if !valid_room_name(&room.0) {
             continue;
@@ -84,28 +84,28 @@ fn decode_update(data: UpdateData<'static>) -> Option<Vec<u8>> {
     }
 }
 
-fn decode_board(bytes: &[u8]) -> Result<BoardState, ContractError> {
+fn decode_lobby(bytes: &[u8]) -> Result<LobbyState, ContractError> {
     bincode::deserialize(bytes).map_err(|e| ContractError::InvalidUpdateWithInfo {
         reason: e.to_string(),
     })
 }
 
 #[allow(dead_code)]
-struct DirectoryContract;
+struct LobbyContract;
 
 #[contract]
-impl ContractInterface for DirectoryContract {
+impl ContractInterface for LobbyContract {
     fn validate_state(
         _parameters: Parameters<'static>,
         state: State<'static>,
         _related: RelatedContracts<'static>,
     ) -> Result<ValidateResult, ContractError> {
-        let board: BoardState =
+        let lobby: LobbyState =
             bincode::deserialize(state.as_ref()).map_err(|_| ContractError::InvalidState)?;
-        if board.len() > MAX_ROOMS {
+        if lobby.len() > MAX_ROOMS {
             return Err(ContractError::InvalidState);
         }
-        for (room, record) in &board {
+        for (room, record) in &lobby {
             if !valid_room_name(&room.0) || record.capacity == 0 {
                 return Err(ContractError::InvalidState);
             }
@@ -121,14 +121,14 @@ impl ContractInterface for DirectoryContract {
         state: State<'static>,
         data: Vec<UpdateData<'static>>,
     ) -> Result<UpdateModification<'static>, ContractError> {
-        let mut merged: BoardState =
+        let mut merged: LobbyState =
             bincode::deserialize(state.as_ref()).unwrap_or_default();
         for update in data {
             let Some(bytes) = decode_update(update) else {
                 continue;
             };
-            let incoming = decode_board(&bytes)?;
-            merged = merge_board(merged, incoming);
+            let incoming = decode_lobby(&bytes)?;
+            merged = merge_lobby(merged, incoming);
         }
         Ok(UpdateModification::valid(State::from(bincode::serialize(
             &merged,
@@ -139,9 +139,9 @@ impl ContractInterface for DirectoryContract {
         _parameters: Parameters<'static>,
         state: State<'static>,
     ) -> Result<StateSummary<'static>, ContractError> {
-        let board: BoardState =
+        let lobby: LobbyState =
             bincode::deserialize(state.as_ref()).map_err(|_| ContractError::InvalidState)?;
-        Ok(StateSummary::from(bincode::serialize(&board)?))
+        Ok(StateSummary::from(bincode::serialize(&lobby)?))
     }
 
     fn get_state_delta(
@@ -157,8 +157,8 @@ impl ContractInterface for DirectoryContract {
 mod tests {
     use super::*;
 
-    fn state_of(board: BoardState) -> State<'static> {
-        State::from(bincode::serialize(&board).unwrap())
+    fn state_of(lobby: LobbyState) -> State<'static> {
+        State::from(bincode::serialize(&lobby).unwrap())
     }
 
     fn room(peer: &str, updated_at: u64) -> RoomRecord {
@@ -180,20 +180,20 @@ mod tests {
     fn test_usage() {
         let params = Parameters::from(Vec::new());
         let related = RelatedContracts::default();
-        let empty = state_of(BoardState::default());
+        let empty = state_of(LobbyState::default());
         assert!(matches!(
-            DirectoryContract::validate_state(params.clone(), empty, related.clone()),
+            LobbyContract::validate_state(params.clone(), empty, related.clone()),
             Ok(ValidateResult::Valid)
         ));
 
-        let mut base = BoardState::new();
+        let mut base = LobbyState::new();
         base.insert(RoomName("room-a".to_string()), room("peer", 5));
         let update = UpdateData::Delta(StateDelta::from(
             bincode::serialize(&base).unwrap(),
         ));
-        let merged = DirectoryContract::update_state(
+        let merged = LobbyContract::update_state(
             params.clone(),
-            state_of(BoardState::default()),
+            state_of(LobbyState::default()),
             vec![update],
         )
         .unwrap();
@@ -201,18 +201,18 @@ mod tests {
             UpdateModification::ValidUpdate(state) => state.as_ref().to_vec(),
             _ => unreachable!(),
         };
-        let decoded: BoardState = bincode::deserialize(&bytes).unwrap();
+        let decoded: LobbyState = bincode::deserialize(&bytes).unwrap();
         assert_eq!(decoded.len(), 1);
 
         let older = UpdateData::Delta(StateDelta::from(
             bincode::serialize(&{
-                let mut old = BoardState::new();
+                let mut old = LobbyState::new();
                 old.insert(RoomName("room-a".to_string()), room("peer", 1));
                 old
             })
             .unwrap(),
         ));
-        let merged = DirectoryContract::update_state(
+        let merged = LobbyContract::update_state(
             params,
             State::from(bytes),
             vec![older],
@@ -222,7 +222,7 @@ mod tests {
             UpdateModification::ValidUpdate(state) => state.as_ref().to_vec(),
             _ => unreachable!(),
         };
-        let decoded: BoardState = bincode::deserialize(&bytes).unwrap();
+        let decoded: LobbyState = bincode::deserialize(&bytes).unwrap();
         assert_eq!(decoded[&RoomName("room-a".to_string())].members[&RemotePeerId("peer".to_string())].updated_at, 5);
     }
 }

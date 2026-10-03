@@ -77,8 +77,8 @@ fn tap_of<T: p2p::Message>(event: &p2p::Event<T>) -> Option<p2p::TapEvent> {
             peer_id: peer_id.clone(),
             reason: reason.clone(),
         }),
-        p2p::Event::LobbyProviders { lobby, peers } => Some(p2p::TapEvent::LobbyProviders {
-            lobby: lobby.clone(),
+        p2p::Event::RoomProviders { room, peers } => Some(p2p::TapEvent::RoomProviders {
+            room: room.clone(),
             peers: peers.clone(),
         }),
         p2p::Event::Exchange { from, data } => Some(p2p::TapEvent::Exchange {

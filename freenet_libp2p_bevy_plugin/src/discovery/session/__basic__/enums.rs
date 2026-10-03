@@ -5,7 +5,7 @@ use crate::p2p;
 pub enum Input {
     Command(discovery::Command),
     Net(p2p::TapEvent),
-    Directory(discovery::Directory),
+    Lobby(discovery::Lobby),
     Tick,
 }
 

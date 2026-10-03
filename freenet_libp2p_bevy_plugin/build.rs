@@ -46,7 +46,7 @@ fn build_one(manifest: &str, wasm_name: &str, out: &str, target_dir: &str) {
 }
 
 fn main() {
-    let contracts = [("directory", "directory_contract")];
+    let contracts = [("lobby", "lobby_contract")];
     for (dir, wasm_name) in contracts {
         println!("cargo:rerun-if-changed=contract/{dir}/src/lib.rs");
         println!("cargo:rerun-if-changed=contract/{dir}/Cargo.toml");

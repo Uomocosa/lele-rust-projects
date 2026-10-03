@@ -11,7 +11,7 @@ pub enum Command {
 
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub enum Event {
-    DirectoryChanged,
+    LobbyChanged,
     Joined(discovery::RoomName),
     Left(discovery::RoomName),
     MembersChanged,

@@ -85,12 +85,12 @@ fn rebuild_list(
     if !snapshot.is_changed() {
         return;
     }
-    tracing::info!("lobby ui rooms={}", snapshot.directory.len());
+    tracing::info!("lobby ui rooms={}", snapshot.lobby.len());
     commands
         .entity(*column)
         .despawn_related::<Children>()
         .with_children(|parent| {
-            for (name, record) in &snapshot.directory {
+            for (name, record) in &snapshot.lobby {
                 parent.spawn((
                     JoinButton(name.clone()),
                     Button,
@@ -124,7 +124,9 @@ fn on_create(
             continue;
         }
         tracing::info!("lobby ui click create room={name}");
-        commands.write(discovery::Command::Create(discovery::RoomName(name.to_string())));
+        commands.write(discovery::Command::Create(discovery::RoomName(
+            name.to_string(),
+        )));
     }
 }
 

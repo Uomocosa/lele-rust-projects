@@ -58,11 +58,7 @@ pub fn log_tick(
         return;
     }
     *accumulator = 0.0;
-    let rooms: Vec<&str> = snapshot
-        .directory
-        .keys()
-        .map(|name| name.as_str())
-        .collect();
+    let rooms: Vec<&str> = snapshot.lobby.keys().map(|name| name.as_str()).collect();
     let catalogue = if rooms.is_empty() {
         "none".to_string()
     } else {

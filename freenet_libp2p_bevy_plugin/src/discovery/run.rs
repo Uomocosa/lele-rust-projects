@@ -27,20 +27,19 @@ pub async fn run(
     let capacity = config.capacity;
     let mut session = Session::new(me.clone(), addrs, timing);
     let (target_tx, target_rx) = tokio::sync::watch::channel(None);
-    let (directory_tx, mut directories) = tokio::sync::mpsc::unbounded_channel();
+    let (lobby_tx, mut lobbies) = tokio::sync::mpsc::unbounded_channel();
     let params = discovery::freenet::contract_params(&config.game_name, &config.token);
     tokio::spawn(async move {
         let client =
             discovery::freenet::connect_retry("127.0.0.1", *endpoint, &params, &target_rx).await;
-        discovery::freenet::run_directory(client, me, capacity, timing, target_rx, directory_tx)
-            .await;
+        discovery::freenet::run_lobby(client, me, capacity, timing, target_rx, lobby_tx).await;
     });
     let mut tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
     loop {
         let input = tokio::select! {
             Some(command) = commands.recv() => Input::Command(command),
             Some(event) = net.events.recv() => Input::Net(event),
-            Some(directory) = directories.recv() => Input::Directory(directory),
+            Some(lobby) = lobbies.recv() => Input::Lobby(lobby),
             _ = tick.tick() => Input::Tick,
         };
         adopt_observed(&mut session, &mut net.observed);

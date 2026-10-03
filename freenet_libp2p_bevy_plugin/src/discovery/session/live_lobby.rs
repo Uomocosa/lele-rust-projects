@@ -1,12 +1,12 @@
 use crate::discovery;
 
 #[must_use]
-pub fn live_directory(
-    directory: discovery::Directory,
+pub fn live_lobby(
+    lobby: discovery::Lobby,
     now: discovery::EpochSecs,
     ttl_secs: u64,
-) -> discovery::Directory {
-    directory
+) -> discovery::Lobby {
+    lobby
         .into_iter()
         .filter_map(|(room, mut record)| {
             record
@@ -21,7 +21,7 @@ pub fn live_directory(
 mod tests {
     use std::collections::BTreeMap;
 
-    use super::live_directory;
+    use super::live_lobby;
     use crate::discovery;
 
     fn presence(updated_at: u64) -> discovery::Presence {
@@ -33,8 +33,8 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let mut directory = discovery::Directory::new();
-        directory.insert(
+        let mut lobby = discovery::Lobby::new();
+        lobby.insert(
             discovery::RoomName("live".to_string()),
             discovery::RoomRecord {
                 capacity: 8,
@@ -44,14 +44,14 @@ mod tests {
                 ]),
             },
         );
-        directory.insert(
+        lobby.insert(
             discovery::RoomName("dead".to_string()),
             discovery::RoomRecord {
                 capacity: 8,
                 members: BTreeMap::from([(discovery::PeerId("gone".to_string()), presence(1))]),
             },
         );
-        let live = live_directory(directory, discovery::EpochSecs(100), 30);
+        let live = live_lobby(lobby, discovery::EpochSecs(100), 30);
         let rooms: Vec<_> = live.keys().map(|room| room.as_str()).collect();
         assert_eq!(rooms, vec!["live"]);
         let members = live

@@ -1,6 +1,6 @@
 #[must_use]
 pub const fn contract_wasm() -> &'static [u8] {
-    include_bytes!("../../../contract/directory/directory_contract.wasm")
+    include_bytes!("../../../contract/lobby/lobby_contract.wasm")
 }
 
 #[cfg(test)]

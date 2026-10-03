@@ -40,7 +40,7 @@ mod tests {
         app.insert_resource(discovery::SnapshotFeed(Mutex::new(Some(rx))));
         app.add_systems(Update, drain_snapshots);
         let snapshot = discovery::Snapshot {
-            directory: discovery::Directory::new(),
+            lobby: discovery::Lobby::new(),
             room: Some(discovery::Room {
                 name: discovery::RoomName("r".to_string()),
                 members: discovery::Members::new(),

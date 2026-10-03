@@ -314,7 +314,7 @@ fn build_caption(scenario: &Scenario, env: &Env, peers: &Peers, checks: &[Check]
     }
     lines.push(format!("logs: {}", env.dir.display()));
     lines.push(
-        "rule: peers learn each other ONLY via the freenet board (no mdns/kad/bootstrap)"
+        "rule: peers learn each other ONLY via the freenet lobby (no mdns/kad/bootstrap)"
             .to_string(),
     );
     lines.join("\n")

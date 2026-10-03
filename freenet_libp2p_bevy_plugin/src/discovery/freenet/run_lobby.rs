@@ -6,16 +6,16 @@ use tokio::sync::watch::Receiver;
 use crate::discovery;
 use discovery::freenet::basic::constants;
 
-pub async fn run_directory(
-    mut directory_client: discovery::freenet::DirectoryClient,
+pub async fn run_lobby(
+    mut lobby_client: discovery::freenet::LobbyClient,
     me: discovery::PeerId,
     capacity: u16,
     timing: discovery::Timing,
     mut target: Receiver<Option<discovery::session::PublishTarget>>,
-    directories: UnboundedSender<discovery::Directory>,
+    lobbies: UnboundedSender<discovery::Lobby>,
 ) {
     let mut tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
-    let mut last_sent: Option<discovery::Directory> = None;
+    let mut last_sent: Option<discovery::Lobby> = None;
     let mut last_refresh: Option<Instant> = None;
     let mut last_publish: Option<Instant> = None;
     loop {
@@ -29,20 +29,20 @@ pub async fn run_directory(
             }
         }
         let now = Instant::now();
-        let mut directory = discovery::freenet::poll(&mut directory_client).await.ok();
-        if is_due(last_refresh, now, timing.board_secs) {
+        let mut lobby = discovery::freenet::poll(&mut lobby_client).await.ok();
+        if is_due(last_refresh, now, timing.lobby_secs) {
             let timeout = Duration::from_secs(constants::REQUEST_TIMEOUT_SECS);
-            let refresh = discovery::freenet::refresh(&mut directory_client);
+            let refresh = discovery::freenet::refresh(&mut lobby_client);
             if let Ok(Ok(fresh)) = tokio::time::timeout(timeout, refresh).await {
-                directory = Some(fresh);
+                lobby = Some(fresh);
             }
             last_refresh = Some(now);
         }
-        if let Some(directory) = directory
-            && last_sent.as_ref() != Some(&directory)
+        if let Some(lobby) = lobby
+            && last_sent.as_ref() != Some(&lobby)
         {
-            last_sent = Some(directory.clone());
-            if directories.send(directory).is_err() {
+            last_sent = Some(lobby.clone());
+            if lobbies.send(lobby).is_err() {
                 return;
             }
         }
@@ -55,7 +55,7 @@ pub async fn run_directory(
                 updated_at: discovery::now_epoch(),
             };
             let _ = discovery::freenet::publish_presence(
-                &mut directory_client,
+                &mut lobby_client,
                 &current.room,
                 &me,
                 presence,
