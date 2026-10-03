@@ -1,0 +1,9 @@
+Cargo.toml:1:0 E021 missing [lints.clippy] in Cargo.toml — add minimum clippy config (pedantic/nursery + 13 deny lints)
+click_counter/increment.rs:1:0 E030 missing `methods/click_counter/increment.rs` for `click_counter::increment` — create it with `pub fn increment` and a `test_usage` test
+click_counter/mod.rs:1:0 E030 missing `methods/click_counter/mod.rs` — run `lele_lint --sync-methods`
+click_counter/new.rs:1:0 E030 missing `methods/click_counter/new.rs` for `click_counter::new` — create it with `pub fn new` and a `test_usage` test
+mod.rs:1:0 E030 missing `methods/mod.rs` — run `lele_lint --sync-methods`
+src/clicker/click_counter.rs:1:0 E006 file `clicker/click_counter.rs` must contain a `#[cfg(test)] mod tests { fn test_usage() { ... } }` block, or add `// no test_usage necessary` as its last line to opt out
+src/clicker/click_counter.rs:1:0 E032 `new` is a constructor and must be defined in the struct file, not delegated
+src/clicker/click_counter.rs:1:0 E032 inherent impl for `ClickCounter` must be annotated with `#[atomic_delegates]`; empty each body and move it to methods/click_counter/add.rs (one `pub fn` + `test_usage` per file)
+src/clicker/click_counter.rs:6:0 E031 comments are not allowed in the methods layout (code, tests and logs only)
