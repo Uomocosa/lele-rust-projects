@@ -34,7 +34,9 @@
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
-  env.CARGO_BUILD_JOBS = "8";
+  # Cold `--all-targets --all-features` build on 14 GB RAM: 8 jobs peak 13.3 GB / 4m16s,
+  # 6 jobs peak 11.8 GB / 4m41s. Trade ~25 s for ~1.5 GB of headroom.
+  env.CARGO_BUILD_JOBS = "6";
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
@@ -58,7 +60,7 @@
     "lele:clippy" = { exec = "cargo clippy --all-targets --all-features -- -D warnings"; showOutput = true; };
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
     "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
-    "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
+    "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };

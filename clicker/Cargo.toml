@@ -35,5 +35,13 @@ atomic_delegate_macros = { path = "../atomic_delegate_macros" }
 bevy = { version = "=0.19.0" }
 derive_more = { version = "=2.1.1", features = ["deref", "deref_mut", "from"] }
 
+# Early-phase profile: optimise for compile time and peak RAM, not runtime speed.
+# Debug info is a big RAM/disk cost; keep only line tables for our crate
+# (readable backtraces) and none for dependencies.
+[profile.dev]
+opt-level = 0
+debug = "line-tables-only"
+
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 1
+debug = false

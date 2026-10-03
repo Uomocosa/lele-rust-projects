@@ -9,7 +9,10 @@ use freenet_stdlib::client_api::{ClientError, HostResponse};
 
 use crate::discovery;
 
-pub async fn connect(host: &str, port: u16) -> Result<discovery::link::Client, discovery::Error> {
+pub async fn connect(
+    host: &str,
+    port: u16,
+) -> Result<discovery::freenet::Client, discovery::Error> {
     let url = format!("ws://{host}:{port}/v1/contract/command?encodingProtocol=native");
     info!(target: "room_lobby", url = %url, "connecting to freenet node");
     let mut request = url.into_client_request()?;
@@ -54,7 +57,7 @@ pub async fn connect(host: &str, port: u16) -> Result<discovery::link::Client, d
             }
         }
     });
-    Ok(discovery::link::Client {
+    Ok(discovery::freenet::Client {
         write: write_tx,
         read: read_rx,
     })

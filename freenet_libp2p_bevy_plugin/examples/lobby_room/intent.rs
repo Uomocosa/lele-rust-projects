@@ -22,7 +22,7 @@ pub fn press_once<C, J>(
     mut join: Query<(&mut Interaction, &J), Without<C>>,
 ) where
     C: Component,
-    J: Component + Deref<Target = discovery::id::RoomName>,
+    J: Component + Deref<Target = discovery::RoomName>,
 {
     if intent.sent {
         return;

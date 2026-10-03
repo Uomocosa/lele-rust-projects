@@ -1,18 +1,18 @@
 use bevy::prelude::Message;
 
-use crate::discovery::basic::newtypes::RoomName;
+use crate::discovery;
 
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    Create(RoomName),
-    Join(RoomName),
+    Create(discovery::RoomName),
+    Join(discovery::RoomName),
     Leave,
 }
 
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub enum Event {
-    CatalogueChanged,
-    Joined(RoomName),
-    Left(RoomName),
+    DirectoryChanged,
+    Joined(discovery::RoomName),
+    Left(discovery::RoomName),
     MembersChanged,
 }

@@ -1,13 +1,15 @@
 //! Replacement lobby UI used by the discovery e2e test (`--ui custom`).
 //!
 //! It shows that the plugin's default UI can be swapped out entirely: this
-//! plugin only reads `discovery::Multiplayer` and writes `discovery::Command`.
+//! plugin only reads `discovery::Snapshot` and writes `discovery::Command`.
 #![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
+use bevy::text::EditableText;
 use derive_more::Deref;
 use freenet_libp2p_bevy_plugin::discovery;
 
 const PANEL_COLOR: Color = Color::srgb(0.30, 0.12, 0.34);
+const FIELD_COLOR: Color = Color::srgb(0.10, 0.10, 0.12);
 const ROOM_COLOR: Color = Color::srgb(0.12, 0.28, 0.38);
 
 pub struct LobbyUi;
@@ -20,13 +22,16 @@ impl Plugin for LobbyUi {
 }
 
 #[derive(Component)]
+pub struct NameField;
+
+#[derive(Component)]
 pub struct NewRoomButton;
 
 #[derive(Component)]
 struct RoomColumn;
 
 #[derive(Component, Deref)]
-pub struct JoinButton(pub discovery::id::RoomName);
+pub struct JoinButton(pub discovery::RoomName);
 
 fn spawn(mut commands: Commands) {
     commands.spawn((
@@ -41,6 +46,16 @@ fn spawn(mut commands: Commands) {
         },
         BackgroundColor(PANEL_COLOR),
         children![
+            (
+                NameField,
+                EditableText::new(""),
+                Node {
+                    width: Val::Px(200.0),
+                    padding: UiRect::axes(Val::Px(6.0), Val::Px(4.0)),
+                    ..default()
+                },
+                BackgroundColor(FIELD_COLOR),
+            ),
             (
                 NewRoomButton,
                 Button,
@@ -64,18 +79,18 @@ fn spawn(mut commands: Commands) {
 
 fn rebuild_list(
     mut commands: Commands,
-    multiplayer: Res<discovery::Multiplayer>,
+    snapshot: Res<discovery::Snapshot>,
     column: Single<Entity, With<RoomColumn>>,
 ) {
-    if !multiplayer.is_changed() {
+    if !snapshot.is_changed() {
         return;
     }
-    tracing::info!("lobby ui rooms={}", multiplayer.catalogue.len());
+    tracing::info!("lobby ui rooms={}", snapshot.directory.len());
     commands
         .entity(*column)
         .despawn_related::<Children>()
         .with_children(|parent| {
-            for (name, record) in &multiplayer.catalogue {
+            for (name, record) in &snapshot.directory {
                 parent.spawn((
                     JoinButton(name.clone()),
                     Button,
@@ -96,14 +111,20 @@ fn rebuild_list(
 
 fn on_create(
     buttons: Query<&Interaction, (Changed<Interaction>, With<NewRoomButton>)>,
+    field: Single<&EditableText, With<NameField>>,
     mut commands: MessageWriter<discovery::Command>,
 ) {
     for interaction in &buttons {
-        if *interaction == Interaction::Pressed {
-            let name = format!("lobby-{}", *discovery::id::now_epoch());
-            tracing::info!("lobby ui click create room={name}");
-            commands.write(discovery::Command::Create(discovery::id::RoomName(name)));
+        if *interaction != Interaction::Pressed {
+            continue;
         }
+        let typed = field.value().to_string();
+        let name = typed.trim();
+        if name.is_empty() {
+            continue;
+        }
+        tracing::info!("lobby ui click create room={name}");
+        commands.write(discovery::Command::Create(discovery::RoomName(name.to_string())));
     }
 }
 

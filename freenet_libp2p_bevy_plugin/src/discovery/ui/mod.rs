@@ -1,7 +1,7 @@
 #[path = "__basic__/mod.rs"]
 pub mod basic;
 
-pub use basic::components::{CreateRoomButton, RoomButton, RoomList, UiRoot};
+pub use basic::components::{CreateRoomButton, RoomButton, RoomList, RoomNameInput, UiRoot};
 
 mod default_ui_plugin;
 pub use default_ui_plugin::DefaultUiPlugin;

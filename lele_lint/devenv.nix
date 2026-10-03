@@ -9,15 +9,17 @@
     cargo-nextest
   ];
 
-  env.CARGO_TARGET_DIR = "/tmp/frt-build";
-  env.CARGO_BUILD_JOBS = "8";
+  # Persistent (survives reboot, unlike /tmp): every crate runs lele_lint, so keep
+  # its build cached. Same dir as the `lele:lint` task uses in the other crates.
+  env.CARGO_TARGET_DIR = "${builtins.getEnv "HOME"}/.cache/cargo-target/lele_lint";
+  env.CARGO_BUILD_JOBS = "6";
 
   tasks = {
     "lele:build" = { exec = "cargo build --all-targets --all-features"; showOutput = true; };
     "lele:clippy" = { exec = "cargo clippy --all-targets --all-features -- -D warnings"; showOutput = true; };
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
     "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
-    "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
+    "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "cargo run --manifest-path ../lele_function_taxonomy/Cargo.toml --features rustc-private -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "lele:docs:check" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- check"; showOutput = true; };
     "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- serve"; showOutput = true; };

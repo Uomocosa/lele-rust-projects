@@ -2,8 +2,8 @@
 //!
 //! Runs the exact `lobby_room` status UI and the default discovery UI
 //! (`discovery::ui::DefaultUiPlugin`) with no freenet node, no P2P and no core
-//! discovery plugin, so nothing overwrites `discovery::Multiplayer`. An external
-//! driver (`lele-ui-preview`) injects `Multiplayer` fixtures over the Bevy Remote
+//! discovery plugin, so nothing overwrites `discovery::Snapshot`. An external
+//! driver (`lele-ui-preview`) injects `Snapshot` fixtures over the Bevy Remote
 //! Protocol (`world.insert_resources`) and captures `brp_extras/screenshot`.
 //! The BRP port comes from `BRP_EXTRAS_PORT` (default 15702, bound to localhost).
 
@@ -25,7 +25,7 @@ fn main() {
         ..default()
     }));
     app.add_plugins(BrpExtrasPlugin::new());
-    app.init_resource::<discovery::Multiplayer>();
+    app.init_resource::<discovery::Snapshot>();
     app.add_message::<discovery::Command>();
     app.add_plugins(discovery::ui::DefaultUiPlugin);
     app.insert_resource(status::Username("preview".to_string()));

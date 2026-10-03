@@ -8,22 +8,22 @@ const CURRENT_ROOM_COLOR: Color = Color::srgb(0.18, 0.45, 0.25);
 
 pub fn sync_room_list(
     mut commands: Commands,
-    multiplayer: Res<discovery::Multiplayer>,
+    snapshot: Res<discovery::Snapshot>,
     list: Single<Entity, With<RoomList>>,
     mut ready: Local<bool>,
 ) {
-    if *ready && !multiplayer.is_changed() {
+    if *ready && !snapshot.is_changed() {
         return;
     }
     *ready = true;
-    let multiplayer = multiplayer.into_inner();
+    let snapshot = snapshot.into_inner();
     let list = list.into_inner();
-    let current = multiplayer.room.as_ref().map(|room| &room.name);
+    let current = snapshot.room.as_ref().map(|room| &room.name);
     commands
         .entity(list)
         .despawn_related::<Children>()
         .with_children(|parent| {
-            for (name, record) in &multiplayer.catalogue {
+            for (name, record) in &snapshot.directory {
                 let color = if current == Some(name) {
                     CURRENT_ROOM_COLOR
                 } else {
@@ -59,17 +59,17 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut app = App::new();
-        let mut multiplayer = discovery::Multiplayer::default();
+        let mut snapshot = discovery::Snapshot::default();
         for name in ["alpha", "beta"] {
-            multiplayer.catalogue.insert(
-                discovery::id::RoomName(name.to_string()),
-                discovery::id::RoomRecord {
+            snapshot.directory.insert(
+                discovery::RoomName(name.to_string()),
+                discovery::RoomRecord {
                     capacity: 8,
                     members: std::collections::BTreeMap::new(),
                 },
             );
         }
-        app.insert_resource(multiplayer);
+        app.insert_resource(snapshot);
         app.world_mut().spawn(discovery::ui::RoomList);
         app.add_systems(Update, sync_room_list);
         app.update();

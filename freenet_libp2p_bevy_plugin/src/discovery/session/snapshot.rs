@@ -1,11 +1,10 @@
 use crate::discovery;
-use discovery::Multiplayer;
 use discovery::session::Session;
 
 #[must_use]
-pub fn snapshot(session: &Session) -> Multiplayer {
-    Multiplayer {
-        catalogue: session.catalogue.clone(),
+pub fn snapshot(session: &Session) -> discovery::Snapshot {
+    discovery::Snapshot {
+        directory: session.directory.clone(),
         room: session.room.clone(),
     }
 }
@@ -14,19 +13,15 @@ pub fn snapshot(session: &Session) -> Multiplayer {
 mod tests {
     use super::snapshot;
     use crate::discovery;
+    use discovery::session::Session;
 
     #[test]
     fn test_usage() {
-        let session = discovery::session::Session::new(
-            discovery::id::UniqueGameId::new(
-                &discovery::id::GameName("test".to_string()),
-                &discovery::id::GameToken("token".to_string()),
-            ),
-            discovery::id::RemotePeerId("me".to_string()),
-            Vec::new(),
-            8,
+        let session = Session::new(
+            discovery::PeerId("me".to_string()),
+            vec!["/ip4/9".to_string()],
+            discovery::Timing::default(),
         );
-        let snapshot = snapshot(&session);
-        assert!(snapshot.room.is_none());
+        assert_eq!(snapshot(&session), discovery::Snapshot::default());
     }
 }

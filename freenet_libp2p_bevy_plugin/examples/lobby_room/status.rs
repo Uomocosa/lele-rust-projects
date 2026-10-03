@@ -23,20 +23,17 @@ pub fn setup_ui(mut commands: Commands) {
 }
 
 /// Event-driven `lobby mesh` marker: logs the live link count the moment it changes.
-pub fn log_mesh(
-    multiplayer: Res<discovery::Multiplayer>,
-    mut last: Local<Option<(String, usize)>>,
-) {
-    if !multiplayer.is_changed() {
+pub fn log_mesh(snapshot: Res<discovery::Snapshot>, mut last: Local<Option<(String, usize)>>) {
+    if !snapshot.is_changed() {
         return;
     }
-    let Some(room) = multiplayer.room.as_ref() else {
+    let Some(room) = snapshot.room.as_ref() else {
         return;
     };
     let connected = room
         .members
         .values()
-        .filter(|member| member.status == discovery::room_peers::DiscoveryStatus::Connected)
+        .filter(|member| member.status == discovery::LinkStatus::Connected)
         .count();
     let now = (room.name.as_str().to_string(), connected);
     if last.as_ref() == Some(&now) {
@@ -52,7 +49,7 @@ pub fn log_mesh(
 pub fn log_tick(
     time: Res<Time>,
     username: Res<Username>,
-    multiplayer: Res<discovery::Multiplayer>,
+    snapshot: Res<discovery::Snapshot>,
     mut accumulator: Local<f32>,
     mut query: Query<&mut Text, With<StatusText>>,
 ) {
@@ -61,8 +58,8 @@ pub fn log_tick(
         return;
     }
     *accumulator = 0.0;
-    let rooms: Vec<&str> = multiplayer
-        .catalogue
+    let rooms: Vec<&str> = snapshot
+        .directory
         .keys()
         .map(|name| name.as_str())
         .collect();
@@ -71,18 +68,15 @@ pub fn log_tick(
     } else {
         rooms.join(",")
     };
-    let room = multiplayer
+    let room = snapshot
         .room
         .as_ref()
         .map_or_else(|| "none".to_string(), |room| room.name.as_str().to_string());
-    let members = multiplayer
-        .room
-        .as_ref()
-        .map_or(0, |room| room.members.len());
-    let connected = multiplayer.room.as_ref().map_or(0, |room| {
+    let members = snapshot.room.as_ref().map_or(0, |room| room.members.len());
+    let connected = snapshot.room.as_ref().map_or(0, |room| {
         room.members
             .values()
-            .filter(|member| member.status == discovery::room_peers::DiscoveryStatus::Connected)
+            .filter(|member| member.status == discovery::LinkStatus::Connected)
             .count()
     });
     tracing::info!(

@@ -40,13 +40,12 @@ async fn main() {
         false,
     )));
     let discovery_plugins = discovery::Plugins(discovery::Config {
-        game_name: discovery::id::GameName("lobby_room_example".to_string()),
+        game_name: discovery::GameName("lobby_room_example".to_string()),
         token: args.token.clone().map_or_else(
             || freenet_libp2p_bevy_plugin::game_token!(),
-            discovery::id::GameToken,
+            discovery::GameToken,
         ),
         timing: discovery::Timing::default(),
-        transport,
         capacity: 8,
     });
     // the scripted press runs after bevy's focus pass so it is not reset that frame

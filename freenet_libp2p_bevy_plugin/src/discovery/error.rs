@@ -16,18 +16,12 @@ pub enum Error {
     Io(String),
     #[error("channel send error")]
     ChannelSend,
-    #[error("response timed out")]
-    ResponseTimeout,
     #[error("contract not found")]
     ContractNotFound,
     #[error("freenet stdlib error: {0}")]
     FreenetClient(String),
     #[error("unexpected response: {0}")]
     UnexpectedResponse(String),
-    #[error("node error: {0}")]
-    Node(String),
-    #[error("missing bevy link resources")]
-    MissingLink,
 }
 
 #[rustfmt::skip]
