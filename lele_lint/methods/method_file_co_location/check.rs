@@ -5,7 +5,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::method_file_co_location::MethodFileCoLocation,
@@ -45,7 +44,6 @@ pub fn check(
                         "method file `{}` must be co-located with `{type_snake}.rs`; found in: {candidates}",
                         rel_path.display()
                     ),
-                    severity: Severity::Error,
                 });
             }
         } else if let Some(suffix) = file_stem.rsplit('_').next() {
@@ -58,7 +56,6 @@ pub fn check(
                     message: format!(
                         "orphan method file `{file_stem}.rs` — no parent type found; rename to `{suffix}.rs` or `<type>_{suffix}.rs` with a `<type>.rs` defining the type",
                     ),
-                    severity: Severity::Error,
                 });
             }
         }

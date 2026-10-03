@@ -6,7 +6,6 @@ use syn::visit::Visit;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::constants_placement::ConstantsPlacement,
@@ -113,7 +112,6 @@ fn check_fn_file_const(
                 rel_path.display(),
                 sibling.display(),
             ),
-            severity: Severity::Error,
         });
     }
 }
@@ -140,7 +138,6 @@ fn check_lift_to_ancestor(
                 rel_path.display(),
                 target.display(),
             ),
-            severity: Severity::Error,
         });
     }
 }
@@ -171,7 +168,6 @@ fn check_lower_to_subdir(
             ancestor.display(),
             target.display(),
         ),
-        severity: Severity::Error,
     });
 }
 

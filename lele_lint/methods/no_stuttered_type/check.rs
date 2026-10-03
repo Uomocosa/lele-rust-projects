@@ -4,7 +4,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_stuttered_type::NoStutteredType,
@@ -35,7 +34,6 @@ pub fn check(
             message: format!(
                 "type `{name}` repeats parent module `{dir}` — rename to `{suggested}` (`{dir}::{suggested}`)"
             ),
-            severity: Severity::Error,
         });
     }
 

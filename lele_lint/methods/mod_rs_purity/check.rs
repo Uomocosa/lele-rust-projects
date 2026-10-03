@@ -4,7 +4,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::mod_rs_purity::ModRsPurity, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -27,7 +26,6 @@ pub fn check(_self: &checkers::mod_rs_purity::ModRsPurity, project: &Project) ->
                 col: 0,
                 code: "E019".to_string(),
                 message,
-                severity: Severity::Error,
             });
         }
     }

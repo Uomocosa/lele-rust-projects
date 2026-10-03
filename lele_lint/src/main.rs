@@ -3,12 +3,13 @@ use std::process;
 
 use clap::Parser;
 use lele_lint::checkers::build_checkers;
+use lele_lint::explain;
 use lele_lint::print_checker_list;
 use lele_lint::print_diagnostics;
+use lele_lint::rules_markdown;
 use lele_lint::sync_methods;
 use lele_lint::Config;
 use lele_lint::Project;
-use lele_lint::Severity;
 
 #[derive(Parser)]
 #[command(name = "lele_lint", about = "Enforce lele-syntax-rs conventions")]
@@ -21,6 +22,9 @@ struct Args {
 
     #[arg(long, value_name = "CODE")]
     explain: Option<String>,
+
+    #[arg(long = "rules-md")]
+    rules_md: bool,
 
     #[arg(long, value_name = "PATH")]
     config: Option<PathBuf>,
@@ -44,9 +48,18 @@ fn main() {
         return;
     }
 
+    if args.rules_md {
+        print!("{}", rules_markdown(&build_checkers()));
+        return;
+    }
+
     if let Some(code) = args.explain {
-        eprintln!("--explain: not yet implemented for {code}", code = code);
-        process::exit(1);
+        let Some(text) = explain(&build_checkers(), &code) else {
+            eprintln!("lele_lint: no rule with code or name `{code}`");
+            process::exit(1);
+        };
+        print!("{text}");
+        return;
     }
 
     let mut project = match Project::discover(args.path.as_deref(), args.scan_folder.as_deref()) {
@@ -82,12 +95,7 @@ fn main() {
 
     print_diagnostics(&all_diags, &args.error_format);
 
-    let error_count = all_diags
-        .iter()
-        .filter(|d| d.severity == Severity::Error)
-        .count();
-
-    if error_count > 0 {
+    if !all_diags.is_empty() {
         process::exit(1);
     }
 }

@@ -5,7 +5,6 @@ use crate::common;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::methods_layout::MethodsLayout,
@@ -137,7 +136,6 @@ fn diag(project: &Project, rel: &Path, message: String) -> Diagnostic {
         col: 0,
         code: "E030".to_string(),
         message,
-        severity: Severity::Error,
     }
 }
 

@@ -2,7 +2,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::atomic_delegates::AtomicDelegates,
@@ -67,7 +66,6 @@ pub fn check(
                     message: format!(
                         "method(s) `{names}` have >3 statements — extract each into `<type>_<method>.rs`"
                     ),
-                    severity: Severity::Error,
                 });
                 continue;
             }
@@ -103,7 +101,6 @@ pub fn check(
                                     "one-liner method `{}` body must be on one line, e.g. `{{ module::func(self) }}`",
                                     method.sig.ident
                                 ),
-                                severity: Severity::Error,
                             });
                         }
                     }
@@ -141,7 +138,6 @@ pub fn check(
                         col: 0,
                         code: "E012".to_string(),
                         message,
-                        severity: Severity::Error,
                     });
                 }
             }

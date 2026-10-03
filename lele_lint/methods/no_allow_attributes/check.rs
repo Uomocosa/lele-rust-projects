@@ -8,7 +8,6 @@ use crate::checkers;
 use crate::AllowWhitelistEntry;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_allow_attributes::NoAllowAttributes,
@@ -87,7 +86,6 @@ impl<'ast> Visit<'ast> for AllowFinder<'_> {
             message: format!(
                 "`{kind}` attribute is banned — add an [[lele.lint.clippy_allow_whitelist]] entry with the exact `allow` lint path, `file` and a non-empty `reason` in lele.toml to whitelist it"
             ),
-            severity: Severity::Error,
         });
     }
 }

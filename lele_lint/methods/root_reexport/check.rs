@@ -5,7 +5,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::root_reexport::RootReexport, project: &Project) -> Vec<Diagnostic> {
     let lib = match project.parsed_files.get(&PathBuf::from("lib.rs")) {
@@ -40,7 +39,6 @@ pub fn check(_self: &checkers::root_reexport::RootReexport, project: &Project) -
                     "public type `{}` in root module `{stem}` is not re-exported at the crate root — add `pub use {stem}::{};` to lib.rs",
                     missing.ty, missing.ty
                 ),
-                severity: Severity::Error,
             });
         }
         for missing in missing_fn_flatten(stem, file, lib) {
@@ -50,7 +48,6 @@ pub fn check(_self: &checkers::root_reexport::RootReexport, project: &Project) -
                 col: 0,
                 code: checkers::root_reexport::RootReexport::CODE.to_string(),
                 message: missing,
-                severity: Severity::Error,
             });
         }
     }

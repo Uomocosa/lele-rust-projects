@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::no_positional::NoPositional, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -83,7 +82,6 @@ fn scan_stmts(
                         code: "E009".to_string(),
                         message: "positional field access like `.0` or `.1` is not allowed — define the struct with named fields instead"
                             .to_string(),
-                        severity: Severity::Error,
                     });
                 }
             }
@@ -102,7 +100,6 @@ fn scan_expr(expr: &syn::Expr, rel_path: &Path, project: &Project, diags: &mut V
                 col: 0,
                 code: "E009".to_string(),
                 message: "positional field access is not allowed, use named fields".to_string(),
-                severity: Severity::Error,
             });
         }
     }

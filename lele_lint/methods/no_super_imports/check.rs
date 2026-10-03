@@ -7,7 +7,6 @@ use syn::visit::Visit;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_super_imports::NoSuperImports,
@@ -32,7 +31,6 @@ pub fn check(
                     "`{}` used outside `#[cfg(test)]` — write `{replacement}` instead and add `{import}` at the top of the file",
                     hit.path
                 ),
-                severity: Severity::Error,
             });
         }
     }

@@ -6,7 +6,6 @@ use crate::checkers;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
-use crate::Severity;
 
 const MAX_PRIVATE_HELPERS: usize = 2;
 
@@ -47,7 +46,6 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
                     MAX_PRIVATE_HELPERS,
                     ANNOTATION
                 ),
-                severity: Severity::Error,
             });
         }
 
@@ -65,7 +63,6 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
                         pub_like_fns.len(),
                         func.sig.ident
                     ),
-                    severity: Severity::Error,
                 });
             }
         }

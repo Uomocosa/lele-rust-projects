@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_trivial_accessors::NoTrivialAccessors,
@@ -45,7 +44,6 @@ pub fn check(
                                     "trivial accessor `{}` reads {vis} field `{field}`, make field public/pub(crate) and access directly",
                                     method.sig.ident
                                 ),
-                                severity: Severity::Error,
                             });
                         } else if let Some(field) = is_trivial_setter(method, &pub_fields) {
                             let vis = vis_fields.get(&field).cloned().unwrap_or_default();
@@ -58,7 +56,6 @@ pub fn check(
                                     "trivial setter `{}` assigns {vis} field `{field}`, make field public/pub(crate) and assign directly",
                                     method.sig.ident
                                 ),
-                                severity: Severity::Error,
                             });
                         }
                     }

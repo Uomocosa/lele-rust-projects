@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_collection_newtype::NoCollectionNewtype,
@@ -73,7 +72,6 @@ fn check_struct(
         message: format!(
             "{name} wraps {collection}<T>; define singular {singular}(T) with Deref and use Vec<{singular}> at call sites"
         ),
-        severity: Severity::Error,
     });
 }
 
