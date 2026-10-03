@@ -1,5 +1,6 @@
 pub(crate) mod atomic_delegates;
 pub(crate) mod atomic_file;
+pub(crate) mod boundary_imports;
 mod build_checkers;
 pub(crate) mod clippy_config_cargo;
 pub(crate) mod clippy_config_clippy;
@@ -30,5 +31,6 @@ pub(crate) mod single_field_newtype;
 pub(crate) mod snake_case_files;
 pub(crate) mod test_inline;
 pub(crate) mod test_usage;
+pub(crate) mod vocabulary;
 
 pub use build_checkers::build_checkers;

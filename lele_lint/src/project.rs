@@ -11,6 +11,7 @@ use crate::Dunder;
 use crate::Entry;
 use crate::Error;
 use crate::ModuleInfoMap;
+use crate::VocabularyEntry;
 
 #[derive(Default)]
 pub struct Project {
@@ -24,6 +25,7 @@ pub struct Project {
     pub methods_dir: Option<PathBuf>,
     pub methods_entries: Vec<Entry>,
     pub methods_parsed_files: HashMap<PathBuf, syn::File>,
+    pub vocabulary: Vec<VocabularyEntry>,
     pub boundaries: Vec<BoundaryEntry>,
 }
 

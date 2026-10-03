@@ -1,5 +1,6 @@
 pub mod atomic_delegates;
 pub mod atomic_file;
+pub mod boundary_imports;
 pub mod clippy_config_cargo;
 pub mod clippy_config_clippy;
 pub mod config;
@@ -32,3 +33,4 @@ pub mod single_field_newtype;
 pub mod snake_case_files;
 pub mod test_inline;
 pub mod test_usage;
+pub mod vocabulary;

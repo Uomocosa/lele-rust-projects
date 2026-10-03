@@ -1317,6 +1317,7 @@ mod tests {
 - [E024 `root_reexport`](#e024-root_reexport): A public type in a crate-root file is re-exported from `lib.rs` (`pub use meters::Meters;`); a root fn file is a private `mod` plus `pub use`.
 - [E025 `no_stuttered_path`](#e025-no_stuttered_path): No `meters::Meters` paths for crate-root modules: import the type once and write `Meters`.
 - [E033 `no_super_imports`](#e033-no_super_imports): `super::` is allowed only inside `#[cfg(test)]`; production code imports the domain (`use crate::stock;`).
+- [E036 `boundary_imports`](#e036-boundary_imports): A `[[lele.boundary]]` folder may not use any path from its `cannot_use` list.
 
 ### E004 `no_cross_domain_reexport`
 
@@ -1971,6 +1972,92 @@ pub mod structs;
 pub struct Item {
     pub name: String,
     pub price: u32,
+}
+```
+
+### E036 `boundary_imports`
+
+A `[[lele.boundary]]` folder may not use any path from its `cannot_use` list.
+
+**Why:** A boundary marks a pure core; forbidden imports are how I/O and frameworks leak in.
+
+**Bad** (reports E036):
+
+`lele.toml`
+
+```toml
+[[lele.boundary]]
+name = "session is pure"
+why = "no io"
+folders = ["src/session"]
+cannot_use = ["std::time"]
+require = "honest"
+```
+
+`src/lib.rs`
+
+```rust
+pub mod session;
+```
+
+`src/session/mod.rs`
+
+```rust
+mod expire;
+pub use expire::expire;
+```
+
+`src/session/expire.rs`
+
+```rust
+pub fn expire(now: u64) -> u64 {
+    let current = std::time::SystemTime::now();
+    let _ = current;
+    now.saturating_sub(1)
+}
+```
+
+**Good:**
+
+`lele.toml`
+
+```toml
+[[lele.boundary]]
+name = "session is pure"
+why = "no io"
+folders = ["src/session"]
+cannot_use = ["std::time"]
+require = "honest"
+```
+
+`src/lib.rs`
+
+```rust
+pub mod session;
+```
+
+`src/session/mod.rs`
+
+```rust
+mod expire;
+pub use expire::expire;
+```
+
+`src/session/expire.rs`
+
+```rust
+pub fn expire(now: u64) -> u64 {
+    now.saturating_sub(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::expire;
+
+    #[test]
+    fn test_usage() {
+        assert_eq!(expire(3), 2);
+    }
 }
 ```
 
@@ -2684,6 +2771,7 @@ pub struct Item {
 
 - [E023 `no_allow_attributes`](#e023-no_allow_attributes): No `#[allow(...)]`/`#[expect(...)]` unless whitelisted in `lele.toml` with the exact lint, file and a reason.
 - [E031 `no_comments`](#e031-no_comments): No comments in `src/` or `methods/`, except `// needed helper: <why>` and a final `// no test_usage necessary`.
+- [E035 `vocabulary`](#e035-vocabulary): Names we declare use the crate's vocabulary; banned synonyms are reported.
 
 ### E023 `no_allow_attributes`
 
@@ -2815,6 +2903,84 @@ mod tests {
     #[test]
     fn test_usage() {
         assert_eq!(greet("Ada"), "Hello, Ada!");
+    }
+}
+```
+
+### E035 `vocabulary`
+
+Names we declare use the crate's vocabulary; banned synonyms are reported.
+
+**Why:** One name per concept keeps code searchable; the declaration lives in `lele.toml`.
+
+**Bad** (reports E035):
+
+`lele.toml`
+
+```toml
+[[lele.vocabulary]]
+name = "directory"
+meaning = "The shared list of open rooms."
+banned = ["board"]
+```
+
+`src/lib.rs`
+
+```rust
+mod merge_board;
+pub use merge_board::merge_board;
+```
+
+`src/merge_board.rs`
+
+```rust
+pub fn merge_board(rooms: &[&str]) -> usize {
+    rooms.len()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::merge_board;
+
+    #[test]
+    fn test_usage() {
+        assert_eq!(merge_board(&["a"]), 1);
+    }
+}
+```
+
+**Good:**
+
+`lele.toml`
+
+```toml
+[[lele.vocabulary]]
+name = "directory"
+meaning = "The shared list of open rooms."
+banned = ["board"]
+```
+
+`src/lib.rs`
+
+```rust
+mod merge_directory;
+pub use merge_directory::merge_directory;
+```
+
+`src/merge_directory.rs`
+
+```rust
+pub fn merge_directory(rooms: &[&str]) -> usize {
+    rooms.len()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::merge_directory;
+
+    #[test]
+    fn test_usage() {
+        assert_eq!(merge_directory(&["a"]), 1);
     }
 }
 ```

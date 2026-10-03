@@ -10,6 +10,7 @@ pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error>
         project
             .clippy_allow_whitelist
             .clone_from(&section.lint.clippy_allow_whitelist);
+        project.vocabulary.clone_from(&section.vocabulary);
         project.boundaries.clone_from(&section.boundary);
     }
 

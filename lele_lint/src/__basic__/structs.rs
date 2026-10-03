@@ -10,9 +10,19 @@ pub struct LeleSection {
     #[serde(default)]
     pub lint: LeleTomlLintSections,
     #[serde(default)]
+    pub vocabulary: Vec<VocabularyEntry>,
+    #[serde(default)]
     pub boundary: Vec<BoundaryEntry>,
     #[serde(default, rename = "config")]
     pub enforce_config: Option<toml::Value>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct VocabularyEntry {
+    pub name: String,
+    pub meaning: String,
+    pub banned: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

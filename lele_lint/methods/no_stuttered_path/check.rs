@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn test_usage_flags_severity_stutter() {
+    fn test_usage_flags_type_stutter() {
         let stems = stems(&["severity"]);
         let src = "fn f(s: severity::Severity) {}\n";
         assert_eq!(hit_paths(src, &stems), vec!["severity::Severity"]);

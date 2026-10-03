@@ -10,6 +10,7 @@ mod is_short_body;
 mod is_stuttered_path;
 mod primary_type_name;
 mod self_type_last;
+mod split_words;
 mod to_pascal_case;
 
 mod collect_declared;
@@ -47,6 +48,7 @@ pub(crate) use module_paths::module_path_of;
 pub(crate) use primary_type_name::primary_type_name;
 pub(crate) use root_index_content::root_index_content;
 pub(crate) use self_type_last::self_type_last;
+pub(crate) use split_words::split_words;
 pub(crate) use type_index_content::type_index_content;
 
 pub(crate) use lele_snake_case::to_snake_case;
