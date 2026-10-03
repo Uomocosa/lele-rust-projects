@@ -7,6 +7,9 @@ use crate::discovery;
 pub struct UiRoot;
 
 #[derive(Component, Debug, Default, Clone, Copy)]
+pub struct RoomNameInput;
+
+#[derive(Component, Debug, Default, Clone, Copy)]
 pub struct CreateRoomButton;
 
 #[derive(Component, Debug, Default, Clone, Copy)]

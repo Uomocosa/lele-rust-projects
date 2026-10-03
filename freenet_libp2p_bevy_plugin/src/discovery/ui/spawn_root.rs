@@ -1,9 +1,11 @@
 use bevy::prelude::*;
+use bevy::text::EditableText;
 
 use crate::discovery;
-use discovery::ui::{CreateRoomButton, RoomList, UiRoot};
+use discovery::ui::{CreateRoomButton, RoomList, RoomNameInput, UiRoot};
 
 const BUTTON_COLOR: Color = Color::srgb(0.20, 0.24, 0.32);
+const INPUT_COLOR: Color = Color::srgb(0.10, 0.11, 0.14);
 
 pub fn spawn_root(mut commands: Commands) {
     commands.spawn((
@@ -18,14 +20,33 @@ pub fn spawn_root(mut commands: Commands) {
         },
         children![
             (
-                CreateRoomButton,
-                Button,
                 Node {
-                    padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(6.0),
                     ..default()
                 },
-                BackgroundColor(BUTTON_COLOR),
-                children![Text::new("Create room")],
+                children![
+                    (
+                        RoomNameInput,
+                        EditableText::new(""),
+                        Node {
+                            width: Val::Px(220.0),
+                            padding: UiRect::axes(Val::Px(8.0), Val::Px(6.0)),
+                            ..default()
+                        },
+                        BackgroundColor(INPUT_COLOR),
+                    ),
+                    (
+                        CreateRoomButton,
+                        Button,
+                        Node {
+                            padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+                            ..default()
+                        },
+                        BackgroundColor(BUTTON_COLOR),
+                        children![Text::new("Create room")],
+                    ),
+                ],
             ),
             (
                 RoomList,
@@ -55,5 +76,9 @@ mod tests {
             .world_mut()
             .query_filtered::<(), With<discovery::ui::RoomList>>();
         assert_eq!(lists.iter(app.world()).count(), 1);
+        let mut inputs = app
+            .world_mut()
+            .query_filtered::<(), With<discovery::ui::RoomNameInput>>();
+        assert_eq!(inputs.iter(app.world()).count(), 1);
     }
 }

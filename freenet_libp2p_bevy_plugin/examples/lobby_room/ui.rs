@@ -4,10 +4,12 @@
 //! plugin only reads `discovery::Snapshot` and writes `discovery::Command`.
 #![allow(clippy::needless_pass_by_value)]
 use bevy::prelude::*;
+use bevy::text::EditableText;
 use derive_more::Deref;
 use freenet_libp2p_bevy_plugin::discovery;
 
 const PANEL_COLOR: Color = Color::srgb(0.30, 0.12, 0.34);
+const FIELD_COLOR: Color = Color::srgb(0.10, 0.10, 0.12);
 const ROOM_COLOR: Color = Color::srgb(0.12, 0.28, 0.38);
 
 pub struct LobbyUi;
@@ -18,6 +20,9 @@ impl Plugin for LobbyUi {
             .add_systems(Update, (rebuild_list, on_create, on_join));
     }
 }
+
+#[derive(Component)]
+pub struct NameField;
 
 #[derive(Component)]
 pub struct NewRoomButton;
@@ -41,6 +46,16 @@ fn spawn(mut commands: Commands) {
         },
         BackgroundColor(PANEL_COLOR),
         children![
+            (
+                NameField,
+                EditableText::new(""),
+                Node {
+                    width: Val::Px(200.0),
+                    padding: UiRect::axes(Val::Px(6.0), Val::Px(4.0)),
+                    ..default()
+                },
+                BackgroundColor(FIELD_COLOR),
+            ),
             (
                 NewRoomButton,
                 Button,
@@ -96,14 +111,20 @@ fn rebuild_list(
 
 fn on_create(
     buttons: Query<&Interaction, (Changed<Interaction>, With<NewRoomButton>)>,
+    field: Single<&EditableText, With<NameField>>,
     mut commands: MessageWriter<discovery::Command>,
 ) {
     for interaction in &buttons {
-        if *interaction == Interaction::Pressed {
-            let name = format!("lobby-{}", *discovery::now_epoch());
-            tracing::info!("lobby ui click create room={name}");
-            commands.write(discovery::Command::Create(discovery::RoomName(name)));
+        if *interaction != Interaction::Pressed {
+            continue;
         }
+        let typed = field.value().to_string();
+        let name = typed.trim();
+        if name.is_empty() {
+            continue;
+        }
+        tracing::info!("lobby ui click create room={name}");
+        commands.write(discovery::Command::Create(discovery::RoomName(name.to_string())));
     }
 }
 

@@ -1,45 +1,57 @@
 use bevy::prelude::*;
+use bevy::text::EditableText;
 
 use crate::discovery;
-use discovery::ui::CreateRoomButton;
+use discovery::ui::{CreateRoomButton, RoomNameInput};
 
 pub fn handle_create(
     buttons: Query<&Interaction, (Changed<Interaction>, With<CreateRoomButton>)>,
+    input: Single<&EditableText, With<RoomNameInput>>,
     mut commands: MessageWriter<discovery::Command>,
-    mut counter: Local<u32>,
 ) {
     for interaction in &buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        *counter = counter.saturating_add(1);
-        let name = format!("room-{}-{}", *discovery::now_epoch(), *counter);
+        let typed = input.value().to_string();
+        let name = typed.trim();
+        if name.is_empty() {
+            tracing::info!(target: "room_lobby", "ui create ignored: empty room name");
+            continue;
+        }
         tracing::info!(target: "room_lobby", "ui create room={name}");
-        commands.write(discovery::Command::Create(discovery::RoomName(name)));
+        commands.write(discovery::Command::Create(discovery::RoomName(name.to_string())));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use bevy::prelude::*;
+    use bevy::text::EditableText;
 
     use super::handle_create;
     use crate::discovery;
 
-    #[test]
-    fn test_usage() {
+    fn sent_after_press(typed: &str) -> Vec<discovery::Command> {
         let mut app = App::new();
         app.add_message::<discovery::Command>();
+        app.world_mut()
+            .spawn((discovery::ui::RoomNameInput, EditableText::new(typed)));
         app.world_mut()
             .spawn((discovery::ui::CreateRoomButton, Interaction::Pressed));
         app.add_systems(Update, handle_create);
         app.update();
         let messages = app.world().resource::<Messages<discovery::Command>>();
         let mut cursor = messages.get_cursor();
-        let sent: Vec<_> = cursor.read(messages).collect();
-        assert!(matches!(
-            sent.as_slice(),
-            [discovery::Command::Create(name)] if name.starts_with("room-")
-        ));
+        cursor.read(messages).cloned().collect()
+    }
+
+    #[test]
+    fn test_usage() {
+        assert_eq!(
+            sent_after_press(" alpha "),
+            vec![discovery::Command::Create(discovery::RoomName("alpha".to_string()))]
+        );
+        assert!(sent_after_press("   ").is_empty());
     }
 }
