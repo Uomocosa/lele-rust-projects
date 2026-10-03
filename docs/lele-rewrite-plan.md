@@ -60,7 +60,8 @@ Done and committed:
 - `Config` is now `Config(pub Option<LeleSection>)`; `load.rs`, `dunder.rs`, `apply_layout.rs` adapted.
 - `Project` gained `vocabulary` and `boundaries` (filled in `apply_layout`).
 - **Do not commit it alone**: it parses config that nothing enforces yet. Commit it together with E035/E036.
-- `BoundaryEntry` has **no** `require` field in the patch; it is added by the taxonomy plan (see §6).
+- `BoundaryEntry` has **no** `require` field in the patch; the taxonomy plan adds the boundary schema itself (see §6),
+  so the patch may be partly obsolete by the time P3 starts.
 
 How a rule is built (follow the existing pattern exactly):
 
@@ -133,7 +134,8 @@ Behaviour:
   - Ignore paths starting with `crate`, `self`, `super`.
 - **Hit:** the (expanded) path starts with a forbidden path (segment-wise). For a glob import, also a hit when the
   forbidden path starts with the glob's base (`use std::time::*;` with `std::time::Instant` forbidden).
-- **Config validation (also E036, on `lele.toml`):** a folder that does not exist; empty `folders` or `cannot_use`.
+- **Config validation (also E036, on `lele.toml`):** a folder that does not exist; empty `folders`; a boundary with
+  neither a non-empty `cannot_use` nor a `require` (a `require`-only boundary is valid — the taxonomy checks it).
 - **Message:** `` `tokio::sync::mpsc` is not allowed in boundary "session is pure protocol logic" (src/discovery/session) — <why> ``
   with the real line. One diagnostic per (file, line, path).
 - **Known limit (document it in the rule's `why` or RATIONALE):** a crate-local function that does I/O
@@ -210,7 +212,7 @@ enforces part of it (or "judgement only"), and links. **Verify every link with a
 
 ## 6. Reliable function taxonomy (`lele_function_taxonomy`) — separate plan, runs FIRST
 
-The taxonomy rewrite has its own plan (`docs/taxonomy-mir-plan.md`, written after this one) and the user
+The taxonomy rewrite has its own plan (`docs/taxonomy-mir-plan.md`) and the user
 executes it **before** this plan. Decisions taken (binding):
 
 | Question | Decision |
@@ -218,18 +220,19 @@ executes it **before** this plan. Decisions taken (binding):
 | Approach | **B: rustc driver reading MIR**, inside the existing crate (run as `RUSTC_WORKSPACE_WRAPPER`, pinned nightly + `rustc-dev`). |
 | Model | **Boundaries only.** `require = "honest"` on `[[lele.boundary]]` folders. Remove `honesty_depth` and `entry_allowlist`. `[honesty] declared_dishonest` / `declared_honest` stay as the leaf lists. |
 | Unknown external functions | **Assumed honest** (fewer false alarms). Only listed I/O roots are dishonest. |
-| `&self` + interior mutability | See the MIR plan (decision recorded there). |
+| `&self` + interior mutability | **Honest** (option A). Global state (`static mut`, non-`Freeze` statics, `thread_local!`) is always dishonest. |
 
 Findings that motivated it (verified by reading the code): the crate never uses rustc (no `extern crate rustc_*`);
 classification is substring matching (`'static` ⇒ "dishonest"; aliases escape); only free `fn`s in `src/` are read
 (no methods, closures, `methods/`); calls keyed by bare name; method-call syntax ignored; one-pass, order-dependent
 propagation; diagnostics at line 1; code `TAX001`. The `taxonomy_check` hook therefore almost never fails.
 
-**Coordination with this plan:** `[[lele.boundary]]` is shared by both tools, and lele_lint's `lele.toml` schema is
-strict. Because the MIR plan lands first, it must apply `docs/lele-rewrite-p3-schema.patch` itself and add
-`require: Option<Requirement>` (enum `Requirement { Honest }`, serde lowercase) to lele_lint's `BoundaryEntry`,
-otherwise `lele.toml` files using `require` are rejected. If it does, P3 here starts from that state instead of the
-patch (skip `git apply`). Check `git log` first so the patch is never applied twice.
+**Coordination with this plan:** `[[lele.boundary]]` is shared by both tools and lele_lint's `lele.toml` schema is
+strict. The taxonomy plan (T4, its §5.5) adds the **boundary** part of the schema to lele_lint by hand —
+`LeleSection.boundary`, `BoundaryEntry { name, why, folders, cannot_use (default empty), require: Option<Requirement> }`,
+`Config(pub Option<LeleSection>)` — and leaves `vocabulary` to P3 here. So when P3 starts, check `git log`:
+if the taxonomy plan has landed, **do not** `git apply` the patch; add only the vocabulary parts by hand
+(`VocabularyEntry`, `LeleSection.vocabulary`, `Project.vocabulary`, the `apply_layout` line) and delete the patch file.
 
 ## 7. P5 (later, not part of this plan)
 
