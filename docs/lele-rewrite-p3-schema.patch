@@ -1,0 +1,171 @@
+diff --git a/lele_lint/methods/config/dunder.rs b/lele_lint/methods/config/dunder.rs
+index 4ead317..e7fd5ab 100644
+--- a/lele_lint/methods/config/dunder.rs
++++ b/lele_lint/methods/config/dunder.rs
+@@ -6,10 +6,10 @@ pub fn dunder(config: &Config) -> Dunder {
+     if let Some(section) = config.as_ref() {
+         merged
+             .folders
+-            .extend(section.dunder_whitelist.folders.clone());
++            .extend(section.lint.dunder_whitelist.folders.clone());
+         merged
+             .files
+-            .extend(section.dunder_whitelist.files.iter().cloned());
++            .extend(section.lint.dunder_whitelist.files.iter().cloned());
+     }
+     merged
+ }
+diff --git a/lele_lint/methods/config/load.rs b/lele_lint/methods/config/load.rs
+index ef08dc0..1e205ef 100644
+--- a/lele_lint/methods/config/load.rs
++++ b/lele_lint/methods/config/load.rs
+@@ -4,7 +4,7 @@ use serde::Deserialize;
+ 
+ use crate::Config;
+ use crate::Error;
+-use crate::LeleTomlLintSections;
++use crate::LeleSection;
+ 
+ #[derive(Deserialize)]
+ struct LeleToml {
+@@ -12,14 +12,6 @@ struct LeleToml {
+     lele: LeleSection,
+ }
+ 
+-#[derive(Default, Deserialize)]
+-#[serde(deny_unknown_fields)]
+-struct LeleSection {
+-    #[serde(default)]
+-    lint: LeleTomlLintSections,
+-    #[serde(default, rename = "config")]
+-    _config: Option<toml::Value>,
+-}
+ 
+ pub fn load(project_root: &Path) -> Result<Config, Error> {
+     let config_path = project_root.join("lele.toml");
+@@ -28,7 +20,7 @@ pub fn load(project_root: &Path) -> Result<Config, Error> {
+         Err(_) => return Ok(Config::default()),
+     };
+     let parsed: LeleToml = toml::from_str(&content)?;
+-    Ok(Config(Some(parsed.lele.lint)))
++    Ok(Config(Some(parsed.lele)))
+ }
+ 
+ #[cfg(test)]
+diff --git a/lele_lint/methods/project/apply_layout.rs b/lele_lint/methods/project/apply_layout.rs
+index 3b2258c..52ecf67 100644
+--- a/lele_lint/methods/project/apply_layout.rs
++++ b/lele_lint/methods/project/apply_layout.rs
+@@ -9,7 +9,9 @@ pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error>
+     if let Some(section) = config.as_ref() {
+         project
+             .clippy_allow_whitelist
+-            .clone_from(&section.clippy_allow_whitelist);
++            .clone_from(&section.lint.clippy_allow_whitelist);
++        project.vocabulary.clone_from(&section.vocabulary);
++        project.boundaries.clone_from(&section.boundary);
+     }
+ 
+     let methods_dir = project.root.join("methods");
+diff --git a/lele_lint/src/__basic__/structs.rs b/lele_lint/src/__basic__/structs.rs
+index c369799..e859812 100644
+--- a/lele_lint/src/__basic__/structs.rs
++++ b/lele_lint/src/__basic__/structs.rs
+@@ -3,6 +3,36 @@ use serde::Deserialize;
+ use crate::basic;
+ use crate::Dunder;
+ 
++#[derive(Deserialize, Debug, Default)]
++#[serde(deny_unknown_fields)]
++pub struct LeleSection {
++    #[serde(default)]
++    pub lint: LeleTomlLintSections,
++    #[serde(default)]
++    pub vocabulary: Vec<VocabularyEntry>,
++    #[serde(default)]
++    pub boundary: Vec<BoundaryEntry>,
++    #[serde(default, rename = "config")]
++    pub enforce_config: Option<toml::Value>,
++}
++
++#[derive(Deserialize, Debug, Clone)]
++#[serde(deny_unknown_fields)]
++pub struct VocabularyEntry {
++    pub name: String,
++    pub meaning: String,
++    pub banned: Vec<String>,
++}
++
++#[derive(Deserialize, Debug, Clone)]
++#[serde(deny_unknown_fields)]
++pub struct BoundaryEntry {
++    pub name: String,
++    pub why: String,
++    pub folders: Vec<String>,
++    pub cannot_use: Vec<String>,
++}
++
+ #[derive(Deserialize, Debug, Default)]
+ #[serde(deny_unknown_fields)]
+ pub struct LeleTomlLintSections {
+diff --git a/lele_lint/src/config.rs b/lele_lint/src/config.rs
+index b7ab745..a7baa1c 100644
+--- a/lele_lint/src/config.rs
++++ b/lele_lint/src/config.rs
+@@ -7,12 +7,12 @@ use derive_more::Deref;
+ 
+ use crate::Dunder;
+ use crate::Error;
+-use crate::LeleTomlLintSections;
++use crate::LeleSection;
+ 
+ pub const CONFIG_FILENAME: &str = "lele.toml";
+ 
+ #[derive(Deserialize, Debug, Default, Deref)]
+-pub struct Config(pub Option<LeleTomlLintSections>);
++pub struct Config(pub Option<LeleSection>);
+ 
+ #[atomic_delegates]
+ impl Config {
+diff --git a/lele_lint/src/lib.rs b/lele_lint/src/lib.rs
+index eb05fd0..a8d0428 100644
+--- a/lele_lint/src/lib.rs
++++ b/lele_lint/src/lib.rs
+@@ -8,8 +8,8 @@ pub use config::Config;
+ pub mod basic;
+ pub use basic::enums::EntryKind;
+ pub use basic::structs::{
+-    AllowWhitelistEntry, Diagnostic, Entry, ExampleFile, LeleTomlLintSections, ModDecl, Reexport,
+-    RuleDoc,
++    AllowWhitelistEntry, BoundaryEntry, Diagnostic, Entry, ExampleFile, LeleSection,
++    LeleTomlLintSections, ModDecl, Reexport, RuleDoc, VocabularyEntry,
+ };
+ pub use basic::type_aliases::ModuleInfoMap;
+ pub mod dunder;
+diff --git a/lele_lint/src/project.rs b/lele_lint/src/project.rs
+index 7da5001..830f29a 100644
+--- a/lele_lint/src/project.rs
++++ b/lele_lint/src/project.rs
+@@ -5,11 +5,13 @@ use std::path::PathBuf;
+ use atomic_delegate_macros::atomic_delegates;
+ 
+ use crate::AllowWhitelistEntry;
++use crate::BoundaryEntry;
+ use crate::Config;
+ use crate::Dunder;
+ use crate::Entry;
+ use crate::Error;
+ use crate::ModuleInfoMap;
++use crate::VocabularyEntry;
+ 
+ #[derive(Default)]
+ pub struct Project {
+@@ -23,6 +25,8 @@ pub struct Project {
+     pub methods_dir: Option<PathBuf>,
+     pub methods_entries: Vec<Entry>,
+     pub methods_parsed_files: HashMap<PathBuf, syn::File>,
++    pub vocabulary: Vec<VocabularyEntry>,
++    pub boundaries: Vec<BoundaryEntry>,
+ }
+ 
+ #[atomic_delegates]
