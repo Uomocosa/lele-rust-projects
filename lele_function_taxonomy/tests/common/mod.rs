@@ -51,6 +51,10 @@ pub fn run_fixture(dir: &Path) -> FixtureRun {
     match Command::new(bin)
         .arg("--manifest-path")
         .arg(&manifest)
+        .env(
+            "LELE_TAXONOMY_DRIVER",
+            env!("CARGO_BIN_EXE_lele-taxonomy-driver"),
+        )
         .env_remove("LELE_BLESS")
         .output()
     {

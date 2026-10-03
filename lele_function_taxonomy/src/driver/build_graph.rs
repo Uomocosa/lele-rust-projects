@@ -218,13 +218,25 @@ fn static_cause<'tcx>(
                 .instantiate_identity()
                 .skip_normalization();
             if ty.is_freeze(tcx, env) {
-                None
-            } else {
-                Some(DirectCause::HiddenStaticRead(name))
+                return None;
             }
+            if is_logging_static(tcx, ty) {
+                return None;
+            }
+            Some(DirectCause::HiddenStaticRead(name))
         }
         Rvalue::ThreadLocalRef(def_id) => Some(DirectCause::ThreadLocal(tcx.def_path_str(*def_id))),
         _ => None,
+    }
+}
+
+// needed helper: tracing/log callsite statics are sanctioned (logging is honest everywhere)
+fn is_logging_static<'tcx>(tcx: TyCtxt<'tcx>, ty: ty::Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Adt(adt, _) => roots::is_logging_type(&tcx.def_path_str(adt.did())),
+        ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => is_logging_static(tcx, *inner),
+        ty::Array(inner, _) | ty::Slice(inner) => is_logging_static(tcx, *inner),
+        _ => false,
     }
 }
 

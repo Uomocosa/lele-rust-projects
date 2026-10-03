@@ -29,8 +29,12 @@ pub fn run(manifest_path: Option<PathBuf>) -> i32 {
         return 1;
     }
 
-    let Some(driver) = toolchain::driver_path() else {
-        eprintln!("TAX002: taxonomy driver binary not found next to the runner");
+    let driver = if let Some(driver) = toolchain::driver_path() {
+        driver
+    } else if let Some(driver) = toolchain::build_driver() {
+        driver
+    } else {
+        eprintln!("TAX002: could not locate or build the taxonomy driver");
         return 1;
     };
 
@@ -47,7 +51,8 @@ pub fn run(manifest_path: Option<PathBuf>) -> i32 {
         }
     };
 
-    let status = Command::new(toolchain::cargo())
+    let mut command = Command::new(toolchain::pinned_cargo());
+    command
         .arg("check")
         .arg("--manifest-path")
         .arg(&manifest)
@@ -57,8 +62,9 @@ pub fn run(manifest_path: Option<PathBuf>) -> i32 {
         .env("LELE_TAXONOMY_CONFIG", &config_path)
         .env("CARGO_TARGET_DIR", &target_dir)
         .env("LD_LIBRARY_PATH", lib_path)
-        .env("CARGO_BUILD_JOBS", "6")
-        .status();
+        .env("CARGO_BUILD_JOBS", "6");
+    toolchain::apply_pinned_env(&mut command);
+    let status = command.status();
 
     match status {
         Ok(status) if status.success() => 0,

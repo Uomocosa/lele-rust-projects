@@ -2,6 +2,13 @@
 declared_honest = []
 declared_dishonest = ["std::time::SystemTime::now", "std::time::Instant::now", "rand::thread_rng", "rand::random", "getrandom::getrandom", "std::fs::read", "std::fs::write", "std::env::var"]
 
+[[lele.boundary]]
+name       = "session is pure protocol logic"
+why        = "Session is driven by run.rs; it receives `now` and messages as arguments and returns actions."
+folders    = ["src/discovery/session"]
+cannot_use = ["tokio", "libp2p", "bevy", "std::net", "std::fs", "std::time"]
+require    = "honest"
+
 [[lele.lint.clippy_allow_whitelist]]
 allow = "unreachable_code"
 file = "src/p2p/behaviour.rs"

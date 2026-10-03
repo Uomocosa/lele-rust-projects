@@ -68,6 +68,13 @@ fn matches_one(path: &str, root: &str) -> bool {
     }
 }
 
+// needed helper: logging is honest everywhere; tracing/log callsite statics are sanctioned
+pub fn is_logging_type(type_path: &str) -> bool {
+    type_path.starts_with("tracing_core::callsite::")
+        || type_path.starts_with("tracing::")
+        || type_path.starts_with("log::")
+}
+
 pub fn is_io_root(path: &str, extra: &[String]) -> Option<String> {
     let normalized = normalize(path);
     let mut candidates = self_types(path);
@@ -105,6 +112,12 @@ mod tests {
         assert!(is_io_root("tokio::time::Instant::now", &[]).is_some());
         assert!(is_io_root("std::sync::atomic::Atomic::<u32>::fetch_add", &[]).is_none());
         assert!(is_io_root("my_crate::helper", &[]).is_none());
+        assert!(super::is_logging_type(
+            "tracing_core::callsite::DefaultCallsite"
+        ));
+        assert!(super::is_logging_type("tracing::foo::Bar"));
+        assert!(super::is_logging_type("log::foo::Baz"));
+        assert!(!super::is_logging_type("std::sync::OnceLock"));
         assert!(is_io_root(
             "my_crate::read_sensor",
             &["my_crate::read_sensor".to_string()]

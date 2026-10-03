@@ -14,6 +14,63 @@ pub fn cargo() -> String {
     std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
 }
 
+// needed helper: the pinned toolchain ships rustc-dev, needed to build the driver
+pub fn pinned_cargo() -> PathBuf {
+    let candidate = Path::new(&sysroot()).join("bin/cargo");
+    if candidate.is_file() {
+        candidate
+    } else {
+        PathBuf::from(cargo())
+    }
+}
+
+pub fn manifest_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
+// needed helper: force cargo to use the pinned rustc from the same sysroot as the driver
+pub fn apply_pinned_env(command: &mut std::process::Command) {
+    let bin_dir = Path::new(&sysroot()).join("bin");
+    let path = {
+        let existing = std::env::var("PATH").unwrap_or_default();
+        format!("{}:{existing}", bin_dir.display())
+    };
+    command
+        .env("RUSTC", bin_dir.join("rustc"))
+        .env("PATH", path);
+}
+
+// needed helper: where a self-built driver lands, separate from the analysis target
+pub fn driver_target_dir() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+    PathBuf::from(home).join(".cache/cargo-target/lele_taxonomy_driver")
+}
+
+// needed helper: build the driver with the pinned toolchain when it is not found
+pub fn build_driver() -> Option<PathBuf> {
+    let target_dir = driver_target_dir();
+    let mut command = std::process::Command::new(pinned_cargo());
+    command
+        .arg("build")
+        .arg("--manifest-path")
+        .arg(manifest_dir().join("Cargo.toml"))
+        .arg("--bin")
+        .arg("lele-taxonomy-driver")
+        .env("CARGO_TARGET_DIR", &target_dir)
+        .env("CARGO_BUILD_JOBS", "6");
+    apply_pinned_env(&mut command);
+    let status = command.status().ok()?;
+    if !status.success() {
+        return None;
+    }
+    let candidate = target_dir.join("debug/lele-taxonomy-driver");
+    if candidate.is_file() {
+        Some(candidate)
+    } else {
+        None
+    }
+}
+
 pub fn target_dir() -> PathBuf {
     if let Ok(existing) = std::env::var("LELE_TAXONOMY_TARGET_DIR") {
         if !existing.is_empty() {
@@ -31,15 +88,9 @@ pub fn driver_path() -> Option<PathBuf> {
             return Some(candidate);
         }
     }
-    let exe = std::env::current_exe().ok()?;
-    let dir = exe.parent()?;
-    let candidate = dir.join("lele-taxonomy-driver");
-    if candidate.is_file() {
-        return Some(candidate);
-    }
-    let sibling = dir.join("lele-taxonomy-driver.exe");
-    if sibling.is_file() {
-        return Some(sibling);
+    let built = driver_target_dir().join("debug/lele-taxonomy-driver");
+    if built.is_file() {
+        return Some(built);
     }
     None
 }
