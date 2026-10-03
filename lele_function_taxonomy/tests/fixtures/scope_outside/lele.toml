@@ -1,0 +1,5 @@
+[[lele.boundary]]
+name    = "small honest core"
+why     = "Only src/core is checked."
+folders = ["src/core"]
+require = "honest"

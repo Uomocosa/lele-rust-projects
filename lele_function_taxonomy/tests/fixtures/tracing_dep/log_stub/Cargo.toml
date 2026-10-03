@@ -1,0 +1,8 @@
+[package]
+name = "fixture-log-stub"
+version = "0.0.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]

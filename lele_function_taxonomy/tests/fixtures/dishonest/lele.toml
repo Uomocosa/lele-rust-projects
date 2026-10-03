@@ -1,0 +1,9 @@
+[[lele.boundary]]
+name    = "dishonest core"
+why     = "Every function here reaches hidden input/output."
+folders = ["src/core"]
+require = "honest"
+
+[honesty]
+declared_dishonest = ["crate::other::sensor"]
+declared_honest = ["std::time::Instant::now"]

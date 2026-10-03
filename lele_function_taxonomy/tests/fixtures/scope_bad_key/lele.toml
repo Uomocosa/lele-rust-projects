@@ -1,0 +1,8 @@
+[[lele.boundary]]
+name    = "honest core"
+why     = "Uses a removed honesty key."
+folders = ["src/core"]
+require = "honest"
+
+[honesty]
+honesty_depth = 1
