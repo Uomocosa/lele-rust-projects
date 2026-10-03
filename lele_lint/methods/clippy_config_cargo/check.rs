@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 const REQUIRED_LINTS: &[&str] = &[
     "unwrap_used",
@@ -35,7 +34,6 @@ pub fn check(
                 col: 0,
                 code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
                 message: "Cargo.toml not found or unreadable — add [lints.clippy] with minimum clippy config".to_string(),
-                severity: Severity::Error,
             }];
         }
     };
@@ -48,7 +46,6 @@ pub fn check(
                 col: 0,
                 code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
                 message: format!("Cargo.toml parse error: {e}"),
-                severity: Severity::Error,
             }];
         }
     };
@@ -76,7 +73,6 @@ pub fn check(
             col: 0,
             code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
             message: "missing [lints.clippy] in Cargo.toml — add minimum clippy config (pedantic/nursery + 13 deny lints)".to_string(),
-            severity: Severity::Error,
         }],
     }
 }
@@ -186,7 +182,6 @@ fn diag_for_key(path: &PathBuf, key: &str, expected: &str) -> Diagnostic {
         message: format!(
             "Cargo.toml [lints.clippy].{key} {expected} — minimum clippy config requires it"
         ),
-        severity: Severity::Error,
     }
 }
 

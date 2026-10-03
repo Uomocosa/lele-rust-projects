@@ -2,7 +2,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::constructor_no_skip::ConstructorNoSkip,
@@ -40,7 +39,6 @@ pub fn check(
                     col: 0,
                     code: "E013".to_string(),
                     message: format!("{blurb} must not have #[rustfmt::skip]",),
-                    severity: Severity::Error,
                 });
             }
         }

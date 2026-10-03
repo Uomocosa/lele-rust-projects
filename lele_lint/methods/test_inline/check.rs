@@ -2,7 +2,6 @@ use crate::checkers;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::test_inline::TestInline, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -21,7 +20,6 @@ pub fn check(_self: &checkers::test_inline::TestInline, project: &Project) -> Ve
                     "unit tests must be in the same file as the primary item — delete `{}` and move the tests inline",
                     entry.relative_path.display()
                 ),
-                severity: Severity::Error,
             });
         }
     }

@@ -4,7 +4,6 @@ use crate::checkers;
 use crate::Diagnostic;
 use crate::EntryKind;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::snake_case_files::SnakeCaseFiles,
@@ -34,7 +33,6 @@ pub fn check(
                         kind = kind,
                         name = name
                     ),
-                    severity: Severity::Error,
                 });
             }
         }

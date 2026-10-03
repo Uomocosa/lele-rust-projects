@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::single_field_newtype::SingleFieldNewtype,
@@ -127,7 +126,6 @@ fn push(diags: &mut Vec<Diagnostic>, rel_path: &Path, project: &Project, message
         col: 0,
         code: "E018".to_string(),
         message,
-        severity: Severity::Error,
     });
 }
 

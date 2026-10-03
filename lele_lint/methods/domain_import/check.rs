@@ -5,7 +5,6 @@ use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::domain_import::DomainImport, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -20,7 +19,6 @@ pub fn check(_self: &checkers::domain_import::DomainImport, project: &Project) -
                         col: 0,
                         code: "E011".to_string(),
                         message: msg,
-                        severity: Severity::Error,
                     });
                 }
             }

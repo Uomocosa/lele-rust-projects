@@ -1,7 +1,6 @@
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 const REQUIRED_KEYS: &[&str] = &[
     "allow-unwrap-in-tests",
@@ -24,7 +23,6 @@ pub fn check(
                 col: 0,
                 code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: "clippy.toml not found — add it with allow-unwrap-in-tests, allow-expect-in-tests, allow-panic-in-tests, allow-indexing-slicing-in-tests = true".to_string(),
-                severity: Severity::Error,
             }];
         }
     };
@@ -37,7 +35,6 @@ pub fn check(
                 col: 0,
                 code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: format!("clippy.toml parse error: {e}"),
-                severity: Severity::Error,
             }];
         }
     };
@@ -50,7 +47,6 @@ pub fn check(
                 col: 0,
                 code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
                 message: "clippy.toml must be a table with allow-* = true entries".to_string(),
-                severity: Severity::Error,
             }];
         }
     };
@@ -66,7 +62,6 @@ pub fn check(
                 message: format!(
                     "clippy.toml missing {key} = true — minimum clippy config requires it"
                 ),
-                severity: Severity::Error,
             }),
         }
     }

@@ -1,5 +1,4 @@
 use crate::Diagnostic;
-use crate::Severity;
 use std::io::Write;
 
 pub fn print_diagnostics(diags: &[Diagnostic], error_format: &str) {
@@ -13,31 +12,21 @@ pub fn print_diagnostics(diags: &[Diagnostic], error_format: &str) {
 }
 
 fn print_clippy(d: &Diagnostic, w: &mut impl Write) {
-    let level = match d.severity {
-        Severity::Error => "error",
-        Severity::Warning => "warning",
-    };
     let _ = writeln!(
         w,
-        "{}:{}:{}: {}[{}]: {}",
+        "{}:{}:{}: error[{}]: {}",
         d.file.display(),
         d.line,
         d.col,
-        level,
         d.code,
         d.message
     );
 }
 
 fn print_github(d: &Diagnostic, w: &mut impl Write) {
-    let level = match d.severity {
-        Severity::Error => "error",
-        Severity::Warning => "warning",
-    };
     let _ = writeln!(
         w,
-        "::{level} file={file},line={line},col={col},title={code}::{message}",
-        level = level,
+        "::error file={file},line={line},col={col},title={code}::{message}",
         file = d.file.display(),
         line = d.line,
         col = d.col,

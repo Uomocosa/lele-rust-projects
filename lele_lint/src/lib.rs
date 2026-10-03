@@ -6,9 +6,10 @@ pub mod config;
 pub use config::Config;
 #[path = "__basic__/mod.rs"]
 pub mod basic;
-pub use basic::enums::{EntryKind, Severity};
+pub use basic::enums::EntryKind;
 pub use basic::structs::{
-    AllowWhitelistEntry, Diagnostic, Entry, LeleTomlLintSections, ModDecl, Reexport,
+    AllowWhitelistEntry, Diagnostic, Entry, ExampleFile, LeleTomlLintSections, ModDecl, Reexport,
+    RuleDoc,
 };
 pub use basic::type_aliases::ModuleInfoMap;
 pub mod dunder;
@@ -21,11 +22,17 @@ pub use module_info::ModuleInfo;
 pub mod methods;
 mod print_checker_list;
 pub use print_checker_list::print_checker_list;
+mod explain;
+pub use explain::explain;
 mod print_diagnostics;
 pub use print_diagnostics::print_diagnostics;
 pub mod project;
 pub use project::Project;
 mod parse_source_files;
+mod render_rule;
+pub use render_rule::render_rule;
+mod rules_markdown;
+pub use rules_markdown::rules_markdown;
 mod sync_methods;
 mod walk_entries;
 pub use sync_methods::sync_methods;

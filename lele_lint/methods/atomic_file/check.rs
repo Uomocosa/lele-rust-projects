@@ -7,7 +7,6 @@ use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -51,7 +50,6 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
                     extra.name,
                     suggested_file
                 ),
-                severity: Severity::Error,
             });
         }
 
@@ -115,7 +113,6 @@ fn check_delegate_shape(
         col: 0,
         code: "E001".to_string(),
         message,
-        severity: Severity::Error,
     });
 }
 
@@ -166,7 +163,6 @@ fn check_fn_file_purity(
             message: format!(
                 "SHAPE-F fn-file `{file_stem}.rs` must hold only the fn — move exposed `{kind} {name}` to {home} (O2-extraction)"
             ),
-            severity: Severity::Error,
         });
     }
 }
@@ -291,7 +287,6 @@ fn check_filename_match(
         col: 0,
         code: "E001".to_string(),
         message: format!("filename mismatch — `{file_stem}.rs` should be `{expected}.rs`"),
-        severity: Severity::Error,
     });
 }
 

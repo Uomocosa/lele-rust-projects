@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_cross_domain_reexport::NoCrossDomainReexport,
@@ -34,7 +33,6 @@ pub fn check(
                             "cross-domain re-export `pub use {}` in mod.rs, move to lib.rs",
                             reexported_path
                         ),
-                        severity: Severity::Error,
                     });
                 }
             }

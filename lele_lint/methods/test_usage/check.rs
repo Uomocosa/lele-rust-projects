@@ -6,7 +6,6 @@ use crate::Diagnostic;
 use crate::Dunder;
 use crate::EntryKind;
 use crate::Project;
-use crate::Severity;
 
 const OPT_OUT: &str = "// no test_usage necessary";
 
@@ -32,7 +31,6 @@ pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<
                     "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
                     rel_path.display()
                 ),
-                severity: Severity::Error,
             });
         }
     }

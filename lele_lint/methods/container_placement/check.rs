@@ -4,7 +4,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Role {
@@ -196,7 +195,6 @@ fn push(diags: &mut Vec<Diagnostic>, project: &Project, rel_path: &Path, message
         col: 0,
         code: "E029".to_string(),
         message,
-        severity: Severity::Error,
     });
 }
 

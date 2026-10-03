@@ -5,7 +5,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 const RESERVED_DELEGATE_METHODS: &[&str] = &["new"];
 
@@ -181,7 +180,6 @@ fn diag(project: &Project, rel_path: &Path, message: String) -> Diagnostic {
         col: 0,
         code: "E032".to_string(),
         message,
-        severity: Severity::Error,
     }
 }
 

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct Dunder {
     #[serde(default)]
     pub folders: HashMap<String, String>,

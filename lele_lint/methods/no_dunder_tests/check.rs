@@ -6,7 +6,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_dunder_tests::NoDunderTests,
@@ -29,7 +28,6 @@ pub fn check(
                 code: "E034".to_string(),
                 message: "`#[cfg(test)]` is not allowed in a `__basic__` container — cover the function or method that uses these types instead"
                     .to_string(),
-                severity: Severity::Error,
             });
         }
     }

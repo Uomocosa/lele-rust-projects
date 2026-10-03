@@ -7,7 +7,6 @@ use syn::visit::Visit;
 use crate::checkers;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -31,7 +30,6 @@ pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) 
                     "`{}` path used outside a top-level `use` declaration — add `use crate::<module>;` at the top of the file and reference `<module>::…` instead",
                     hit.path
                 ),
-                severity: Severity::Error,
             });
         }
     }

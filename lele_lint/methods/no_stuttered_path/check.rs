@@ -8,7 +8,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::no_stuttered_path::NoStutteredPath,
@@ -36,7 +35,6 @@ pub fn check(
                     "stuttered path `{}` adds no information — import `{}` once and use `{}` directly",
                     hit.path, hit.ty, hit.ty
                 ),
-                severity: Severity::Error,
             });
         }
     }

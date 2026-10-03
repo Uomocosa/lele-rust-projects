@@ -7,7 +7,6 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::single_caller_type::SingleCallerType,
@@ -56,7 +55,6 @@ pub fn check(
                     "type `{name}` has exactly one caller in `{}` and no atomic-delegate methods — define it in the caller's file instead of its own file",
                     caller.display()
                 ),
-                severity: Severity::Error,
             });
         }
     }

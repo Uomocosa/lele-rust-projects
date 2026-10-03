@@ -6,7 +6,6 @@ use crate::Diagnostic;
 use crate::Entry;
 use crate::EntryKind;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(_self: &checkers::no_comments::NoComments, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -38,7 +37,6 @@ fn scan_entries(entries: &[Entry], base: &Path, diags: &mut Vec<Diagnostic>) {
                 message:
                     "comments are not allowed in the methods layout (code, tests and logs only)"
                         .to_string(),
-                severity: Severity::Error,
             });
         }
     }

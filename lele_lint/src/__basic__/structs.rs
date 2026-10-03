@@ -4,6 +4,7 @@ use crate::basic;
 use crate::Dunder;
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct LeleTomlLintSections {
     #[serde(default)]
     pub dunder_whitelist: Dunder,
@@ -12,6 +13,7 @@ pub struct LeleTomlLintSections {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct AllowWhitelistEntry {
     pub allow: String,
     pub file: String,
@@ -25,7 +27,6 @@ pub struct Diagnostic {
     pub col: usize,
     pub code: String,
     pub message: String,
-    pub severity: basic::enums::Severity,
 }
 
 pub struct Entry {
@@ -45,4 +46,19 @@ pub struct ModDecl {
 pub struct Reexport {
     pub segments: Vec<String>,
     pub is_glob: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ExampleFile {
+    pub path: &'static str,
+    pub source: &'static str,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RuleDoc {
+    pub category: &'static str,
+    pub summary: &'static str,
+    pub why: &'static str,
+    pub bad: &'static [ExampleFile],
+    pub good: &'static [ExampleFile],
 }

@@ -8,7 +8,6 @@ use crate::Entry;
 use crate::EntryKind;
 use crate::ModuleInfoMap;
 use crate::Project;
-use crate::Severity;
 
 pub fn check(
     _self: &checkers::method_visibility::MethodVisibility,
@@ -41,7 +40,6 @@ pub fn check(
                             "method file `{}` of struct `{}` must be declared with `mod` (private), not `pub mod`",
                             file_name, struct_name
                         ),
-                        severity: Severity::Error,
                     });
                 }
 
@@ -57,7 +55,6 @@ pub fn check(
                             "method file `{}` of struct `{}` must not appear in a `pub use` re-export",
                             file_name, struct_name
                         ),
-                        severity: Severity::Error,
                     });
                 }
             }
