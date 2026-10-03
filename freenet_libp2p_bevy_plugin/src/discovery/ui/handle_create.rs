@@ -9,18 +9,20 @@ pub fn handle_create(
     input: Single<&EditableText, With<RoomNameInput>>,
     mut commands: MessageWriter<discovery::Command>,
 ) {
+    let typed = input.into_inner().value().to_string();
     for interaction in &buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        let typed = input.value().to_string();
         let name = typed.trim();
         if name.is_empty() {
             tracing::info!(target: "room_lobby", "ui create ignored: empty room name");
             continue;
         }
         tracing::info!(target: "room_lobby", "ui create room={name}");
-        commands.write(discovery::Command::Create(discovery::RoomName(name.to_string())));
+        commands.write(discovery::Command::Create(discovery::RoomName(
+            name.to_string(),
+        )));
     }
 }
 
@@ -50,8 +52,10 @@ mod tests {
     fn test_usage() {
         assert_eq!(
             sent_after_press(" alpha "),
-            vec![discovery::Command::Create(discovery::RoomName("alpha".to_string()))]
+            vec![discovery::Command::Create(discovery::RoomName(
+                "alpha".to_string()
+            ))]
         );
-        assert!(sent_after_press("   ").is_empty());
+        assert_eq!(sent_after_press("   "), Vec::new());
     }
 }
