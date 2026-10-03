@@ -70,7 +70,13 @@ fn main() {
         }
     };
 
-    let config = Config::load(&project.root).unwrap_or_default();
+    let config = match Config::load(&project.root) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("lele_lint: lele.toml: {e}");
+            process::exit(1);
+        }
+    };
 
     if let Err(e) = project.apply_layout(&config) {
         eprintln!("lele_lint: {e}", e = e);

@@ -4,6 +4,7 @@ use crate::basic;
 use crate::Dunder;
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct LeleTomlLintSections {
     #[serde(default)]
     pub dunder_whitelist: Dunder,
@@ -12,6 +13,7 @@ pub struct LeleTomlLintSections {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct AllowWhitelistEntry {
     pub allow: String,
     pub file: String,
