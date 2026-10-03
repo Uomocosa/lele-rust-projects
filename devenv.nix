@@ -11,7 +11,7 @@
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
-  env.CARGO_BUILD_JOBS = "8";
+  env.CARGO_BUILD_JOBS = "6";
 
   tasks."lele:toml" = {
     exec = "tombi lint";

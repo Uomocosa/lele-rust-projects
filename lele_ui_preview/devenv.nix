@@ -10,14 +10,14 @@
   ];
 
   env.CARGO_TARGET_DIR = "/tmp/frt-build";
-  env.CARGO_BUILD_JOBS = "8";
+  env.CARGO_BUILD_JOBS = "6";
 
   tasks = {
     "lele:build" = { exec = "cargo build --all-targets --all-features"; showOutput = true; };
     "lele:clippy" = { exec = "cargo clippy --all-targets --all-features -- -D warnings"; showOutput = true; };
     "lele:fmt" = { exec = "cargo fmt -- --check"; showOutput = true; };
     "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
-    "lele:lint" = { exec = "cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
+    "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     # Generate ../lele_code_viewer/ui_preview (web driver, headless Chrome).
     "ui:preview:viewer" = { exec = "cargo run --release -- ../lele_code_viewer"; showOutput = true; };
     # Generate ../freenet_libp2p_bevy_plugin/ui_preview (Bevy driver over BRP; opens a window).
