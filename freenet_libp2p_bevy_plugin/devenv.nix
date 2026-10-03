@@ -36,7 +36,8 @@
   # Persistent (survives reboot, unlike /tmp) and space-free (tikv-jemalloc-sys
   # `configure` rejects paths with spaces, e.g. "[AAI] Agentic AI").
   env.CARGO_TARGET_DIR = "${builtins.getEnv "HOME"}/.cache/cargo-target/frt-build";
-  # 8 parallel rustc jobs peaked at ~13 GB of 14 GB on a cold build; 6 leaves headroom.
+  # Cold `--all-targets --all-features` build on 14 GB RAM: 8 jobs peak 13.3 GB / 4m16s,
+  # 6 jobs peak 11.8 GB / 4m41s. Trade ~25 s for ~1.5 GB of headroom.
   env.CARGO_BUILD_JOBS = "6";
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
