@@ -33,8 +33,11 @@
     xdotool
   ];
 
-  env.CARGO_TARGET_DIR = "/tmp/frt-build";
-  env.CARGO_BUILD_JOBS = "8";
+  # Persistent (survives reboot, unlike /tmp) and space-free (tikv-jemalloc-sys
+  # `configure` rejects paths with spaces, e.g. "[AAI] Agentic AI").
+  env.CARGO_TARGET_DIR = "${builtins.getEnv "HOME"}/.cache/cargo-target/frt-build";
+  # 8 parallel rustc jobs peaked at ~13 GB of 14 GB on a cold build; 6 leaves headroom.
+  env.CARGO_BUILD_JOBS = "6";
   env.C_INCLUDE_PATH = "${pkgs.glibc.dev}/include:${pkgs.linuxHeaders}/include";
   env.CFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
   env.CPPFLAGS = "-I${pkgs.glibc.dev}/include -Wno-error";
