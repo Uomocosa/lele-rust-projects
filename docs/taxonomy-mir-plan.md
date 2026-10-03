@@ -1,7 +1,7 @@
 # Plan: rebuild `lele_function_taxonomy` on MIR
 
 Audience: the agent that executes this plan. Read all of it before touching code.
-Workspace root: `rust_projects/projects/` (paths below are relative to it). Branch: `refactor/discovery-cleanup`.
+Workspace root: `rust_projects/projects/` (paths below are relative to it). Branch: `master`.
 This plan runs **before** `docs/lele-rewrite-plan.md`. Read that plan's §1–§2 too: its ground rules apply here.
 
 ---

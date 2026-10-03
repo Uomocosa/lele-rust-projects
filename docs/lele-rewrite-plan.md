@@ -2,7 +2,7 @@
 
 Audience: the agent that executes this plan. Read all of it before touching code.
 Workspace root: `rust_projects/projects/` (paths below are relative to it).
-Branch: `refactor/discovery-cleanup`.
+Branch: `master`.
 
 ---
 
