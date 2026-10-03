@@ -13,11 +13,4 @@ fn main() {
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_default();
     println!("cargo:rustc-env=LELE_TAXONOMY_SYSROOT={sysroot}");
-    let src = format!(
-        "pub const BUILD_SYSROOT: &str = {};",
-        quote::quote!(#sysroot)
-    );
-    let out =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap_or_default()).join("sysroot.rs");
-    let _ = std::fs::write(out, src);
 }

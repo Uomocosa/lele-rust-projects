@@ -15,21 +15,13 @@ path = "src/main.rs"
 name = "lele-taxonomy-driver"
 path = "src/driver/main.rs"
 
-[build-dependencies]
-quote = "=1.0.47"
-proc-macro2 = "=1.0.107"
-
 [dependencies]
 clap = { version = "=4.6.6", features = ["derive"] }
 thiserror = "=2.0.19"
 serde = { version = "=1.0.229", features = ["derive"] }
 toml = "=0.8.23"
-cargo_metadata = "=0.23.1"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
-syn = { version = "=2.0.119", features = ["full", "visit", "extra-traits"] }
-quote = "=1.0.47"
-proc-macro2 = "=1.0.107"
 
 [lints.clippy]
 pedantic = { level = "deny", priority = -1 }
@@ -78,7 +70,6 @@ use_self = "allow"
 
 [dev-dependencies]
 tempfile = "=3.27.0"
-walkdir = "=2.5.0"
 
 # Early-phase profile: optimise for compile time and peak RAM, not runtime speed.
 # Debug info is a big RAM/disk cost; keep only line tables for our crate

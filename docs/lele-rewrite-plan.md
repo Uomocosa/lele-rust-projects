@@ -200,7 +200,9 @@ enforces part of it (or "judgement only"), and links. **Verify every link with a
    **Do not** present "rule of three" / AHA as a rule.
 2. **Ubiquitous language** — why E035 exists; how to pick `name` and write `meaning`. Ref: Fowler "UbiquitousLanguage".
 3. **Functional core, imperative shell / Sans-IO / ports and adapters** — why E036 exists; core folders vs adapter
-   folders (adapters are named after the technology they talk to). Refs: Gary Bernhardt "Boundaries",
+   folders (adapters are named after the technology they talk to). A boundary has **two** checks: lele_lint E036
+   enforces its **imports** (`cannot_use`), and `lele_function_taxonomy` enforces its **honesty** (`require = "honest"`
+   — no hidden I/O reachable through local calls). Refs: Gary Bernhardt "Boundaries",
    "Functional Core, Imperative Shell"; Firezone "Sans-IO"; sans-io.readthedocs.io; Cockburn "Hexagonal architecture".
 4. **Group by feature** — domain folders group by feature; `methods/`, `__basic__/`, `bevy_systems/` are the three
    deliberate exceptions and why (hide bodies until needed; small types don't need a file and a test each; systems
