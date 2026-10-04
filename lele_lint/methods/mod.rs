@@ -33,4 +33,3 @@ pub mod single_field_newtype;
 pub mod snake_case_files;
 pub mod test_inline;
 pub mod test_usage;
-pub mod vocabulary;

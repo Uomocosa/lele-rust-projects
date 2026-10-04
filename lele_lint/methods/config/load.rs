@@ -68,23 +68,6 @@ mod tests {
     }
 
     #[test]
-    fn test_usage_accepts_vocabulary() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("lele.toml"),
-            "[[lele.vocabulary]]\nname = \"directory\"\nmeaning = \"the rooms\"\nbanned = [\"board\"]\n",
-        )
-        .unwrap();
-        let config = load(dir.path()).unwrap();
-        let section = config.as_ref().unwrap();
-        assert_eq!(section.vocabulary.len(), 1);
-        assert_eq!(
-            section.vocabulary.first().map(|v| v.name.as_str()),
-            Some("directory")
-        );
-    }
-
-    #[test]
     fn test_usage_rejects_unknown_boundary_key() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(

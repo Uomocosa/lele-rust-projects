@@ -1,10 +1,5 @@
 [lele.lint]
 
-[[lele.vocabulary]]
-name = "diagnostic"
-meaning = "A rule violation reported to the user: file, line, col, code, message. Always an error; this crate has no warnings."
-banned = ["warning", "warnings", "severity"]
-
 [[lele.boundary]]
 name       = "syntax analysis is pure"
 why        = "src/common holds pure helpers over syn ASTs, paths and strings; filesystem and process I/O live in Project::discover/walk_entries/parse_source_files."

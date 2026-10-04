@@ -2771,7 +2771,6 @@ pub struct Item {
 
 - [E023 `no_allow_attributes`](#e023-no_allow_attributes): No `#[allow(...)]`/`#[expect(...)]` unless whitelisted in `lele.toml` with the exact lint, file and a reason.
 - [E031 `no_comments`](#e031-no_comments): No comments in `src/` or `methods/`, except `// needed helper: <why>` and a final `// no test_usage necessary`.
-- [E035 `vocabulary`](#e035-vocabulary): Names we declare use the crate's vocabulary; banned synonyms are reported.
 
 ### E023 `no_allow_attributes`
 
@@ -2903,84 +2902,6 @@ mod tests {
     #[test]
     fn test_usage() {
         assert_eq!(greet("Ada"), "Hello, Ada!");
-    }
-}
-```
-
-### E035 `vocabulary`
-
-Names we declare use the crate's vocabulary; banned synonyms are reported.
-
-**Why:** One name per concept keeps code searchable; the declaration lives in `lele.toml`.
-
-**Bad** (reports E035):
-
-`lele.toml`
-
-```toml
-[[lele.vocabulary]]
-name = "directory"
-meaning = "The shared list of open rooms."
-banned = ["board"]
-```
-
-`src/lib.rs`
-
-```rust
-mod merge_board;
-pub use merge_board::merge_board;
-```
-
-`src/merge_board.rs`
-
-```rust
-pub fn merge_board(rooms: &[&str]) -> usize {
-    rooms.len()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::merge_board;
-
-    #[test]
-    fn test_usage() {
-        assert_eq!(merge_board(&["a"]), 1);
-    }
-}
-```
-
-**Good:**
-
-`lele.toml`
-
-```toml
-[[lele.vocabulary]]
-name = "directory"
-meaning = "The shared list of open rooms."
-banned = ["board"]
-```
-
-`src/lib.rs`
-
-```rust
-mod merge_directory;
-pub use merge_directory::merge_directory;
-```
-
-`src/merge_directory.rs`
-
-```rust
-pub fn merge_directory(rooms: &[&str]) -> usize {
-    rooms.len()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::merge_directory;
-
-    #[test]
-    fn test_usage() {
-        assert_eq!(merge_directory(&["a"]), 1);
     }
 }
 ```

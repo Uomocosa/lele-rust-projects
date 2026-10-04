@@ -10,7 +10,7 @@ pub use basic::enums::EntryKind;
 pub use basic::enums::Requirement;
 pub use basic::structs::{
     AllowWhitelistEntry, BoundaryEntry, Diagnostic, Entry, ExampleFile, LeleSection,
-    LeleTomlLintSections, ModDecl, Reexport, RuleDoc, VocabularyEntry,
+    LeleTomlLintSections, ModDecl, Reexport, RuleDoc,
 };
 pub use basic::type_aliases::ModuleInfoMap;
 pub mod dunder;

@@ -35,7 +35,6 @@ pub fn build_checkers() -> Vec<Box<dyn Checker>> {
     checkers::no_comments::NoComments::register(&mut checkers);
     checkers::delegate_macro::DelegateMacro::register(&mut checkers);
     checkers::boundary_imports::BoundaryImports::register(&mut checkers);
-    checkers::vocabulary::Vocabulary::register(&mut checkers);
     checkers
 }
 
