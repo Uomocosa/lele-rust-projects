@@ -2,14 +2,22 @@ use std::path::PathBuf;
 use std::process;
 
 use clap::Parser;
+use clap::ValueEnum;
 use lele_bevy_lint::checkers::build_checkers;
 use lele_bevy_lint::inventory;
+use lele_bevy_lint::skill_markdown;
 use lele_lint::Config;
 use lele_lint::Project;
 use lele_lint::explain;
 use lele_lint::print_checker_list;
 use lele_lint::print_diagnostics;
 use lele_lint::rules_markdown;
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Emit {
+    RulesMd,
+    SkillMd,
+}
 
 #[derive(Parser)]
 #[command(
@@ -26,8 +34,8 @@ struct Args {
     #[arg(long, value_name = "CODE")]
     explain: Option<String>,
 
-    #[arg(long = "rules-md")]
-    rules_md: bool,
+    #[arg(long, value_enum, value_name = "KIND")]
+    emit: Option<Emit>,
 
     #[arg(long = "ui-inventory")]
     ui_inventory: bool,
@@ -50,9 +58,16 @@ fn main() {
         return;
     }
 
-    if args.rules_md {
-        print!("{}", rules_markdown(&build_checkers()));
-        return;
+    match args.emit {
+        Some(Emit::RulesMd) => {
+            print!("{}", rules_markdown(&build_checkers()));
+            return;
+        }
+        Some(Emit::SkillMd) => {
+            print!("{}", skill_markdown());
+            return;
+        }
+        None => {}
     }
 
     if let Some(code) = args.explain {
