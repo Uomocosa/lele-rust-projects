@@ -1,4 +1,5 @@
 use lele_lint::Diagnostic;
+use lele_lint::Origin;
 use lele_lint::Project;
 
 use crate::checkers;
@@ -8,7 +9,9 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
     let graph = scan::CallGraph::collect(project);
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         if !scan::file_reaches_production(file, &graph) {
             continue;
         }
@@ -24,6 +27,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
         let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Png) else {
             diags.push(scan::diag(
                 project,
+                source.origin,
                 rel_path,
                 visual.line,
                 "E029",
@@ -38,6 +42,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
         if !preview.ignored {
             diags.push(scan::diag(
                 project,
+                source.origin,
                 rel_path,
                 preview.line,
                 "E029",
@@ -48,7 +53,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
             ));
         }
 
-        substance_check(project, rel_path, file, preview, &mut diags);
+        substance_check(project, source.origin, rel_path, file, preview, &mut diags);
     }
 
     diags
@@ -57,6 +62,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
 // needed helper: the preview must touch a component declared in this file
 fn substance_check(
     project: &Project,
+    origin: Origin,
     rel_path: &std::path::Path,
     file: &syn::File,
     preview: &scan::Preview,
@@ -75,6 +81,7 @@ fn substance_check(
     }
     diags.push(scan::diag(
         project,
+        origin,
         rel_path,
         preview.line,
         "E029",

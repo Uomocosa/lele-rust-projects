@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+use lele_lint::Origin;
 use lele_lint::Project;
 
 use crate::scan;
@@ -40,18 +41,19 @@ struct Row {
 // needed helper: one inventory row per file that has UI or previews
 fn rows(project: &Project) -> Vec<Row> {
     let mut rows: Vec<Row> = project
-        .parsed_files
-        .iter()
-        .filter_map(|(rel_path, file)| {
+        .sources()
+        .filter_map(|source| {
+            let rel_path = source.relative_path;
+            let file = source.file;
             let visuals = scan::prod_visuals(file);
             let previews = scan::collect_previews(file);
             let relevant_plugin =
-                scan::defines_plugin(file) && scan::dir_spawns_ui(project, rel_path);
+                scan::defines_plugin(file) && scan::dir_spawns_ui(project, source.origin, rel_path);
             if visuals.is_empty() && previews.is_empty() && !relevant_plugin {
                 return None;
             }
             Some(Row {
-                file: rel_path.display().to_string(),
+                file: display_path(source.origin, rel_path),
                 markers: join_unique(scan::declared_components(file)),
                 visual: join_unique(visuals.iter().map(|found| found.visual.clone()).collect()),
                 anim: join_unique(scan::drivers(file)),
@@ -63,6 +65,15 @@ fn rows(project: &Project) -> Vec<Row> {
         .collect();
     rows.sort_by(|a, b| a.file.cmp(&b.file));
     rows
+}
+
+// needed helper: origin-prefixed display path for the table
+fn display_path(origin: Origin, rel_path: &std::path::Path) -> String {
+    match origin {
+        Origin::Src => rel_path.display().to_string(),
+        Origin::Methods => format!("methods/{}", rel_path.display()),
+        Origin::Examples => format!("examples/{}", rel_path.display()),
+    }
 }
 
 // needed helper: comma-joined sorted-unique idents

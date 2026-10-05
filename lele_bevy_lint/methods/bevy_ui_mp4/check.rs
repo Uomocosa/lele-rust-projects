@@ -8,7 +8,9 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
     let graph = scan::CallGraph::collect(project);
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         if !scan::file_reaches_production(file, &graph) {
             continue;
         }
@@ -26,9 +28,7 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
 
         let previews = scan::collect_previews(file);
         let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Mp4) else {
-            diags.push(scan::diag(
-                project,
-                rel_path,
+            diags.push(scan::diag(project, source.origin, rel_path,
                 visual.line,
                 "E037",
                 format!(
@@ -43,6 +43,7 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
         if !preview.ignored {
             diags.push(scan::diag(
                 project,
+                source.origin,
                 rel_path,
                 preview.line,
                 "E037",

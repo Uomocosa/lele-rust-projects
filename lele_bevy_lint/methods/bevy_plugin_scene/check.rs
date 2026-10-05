@@ -10,16 +10,16 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
-        if !scan::defines_plugin(file) || !scan::dir_spawns_ui(project, rel_path) {
+    for source in project.sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
+        if !scan::defines_plugin(file) || !scan::dir_spawns_ui(project, source.origin, rel_path) {
             continue;
         }
 
         let previews = scan::collect_previews(file);
         let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Scene) else {
-            diags.push(scan::diag(
-                project,
-                rel_path,
+            diags.push(scan::diag(project, source.origin, rel_path,
                 1,
                 "E038",
                 String::from(
@@ -32,6 +32,7 @@ pub fn check(
         if !preview.ignored {
             diags.push(scan::diag(
                 project,
+                source.origin,
                 rel_path,
                 preview.line,
                 "E038",

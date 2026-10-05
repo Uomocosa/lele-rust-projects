@@ -9,14 +9,14 @@ pub fn check(
     project: &Project,
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         for preview in scan::collect_previews(file) {
             if preview.calls_run {
                 continue;
             }
-            diags.push(scan::diag(
-                project,
-                rel_path,
+            diags.push(scan::diag(project, source.origin, rel_path,
                 preview.line,
                 "E039",
                 format!(

@@ -32,8 +32,10 @@ representation, not a fork.
      call after the schedule argument (tuples and `.chain()` members
      included). Unregistered helpers that merely take `Commands`/`Query`
      (builders, click handlers) are exempt.
-   - `#[cfg(test)]` modules are skipped, so a test-only `app.add_systems(...)`
-     call never counts as registration.
+   - Registration is collected globally across `src/` and `methods/` (so a
+     delegate such as `methods/<plugin>/build_plugin.rs` still counts), then
+     every `pub fn` system definition is checked against it. `examples/` is
+     exempt, and `#[cfg(test)]` registrations never count.
    - Blind spots, accepted and documented: systems passed via variables
      or function pointers instead of paths, and `add_systems` calls nested
      inside other `add_systems` arguments.

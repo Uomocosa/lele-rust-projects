@@ -1,8 +1,10 @@
+use std::collections::HashSet;
+
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
 use lele_lint::Diagnostic;
-use lele_lint::EntryKind;
+use lele_lint::Origin;
 use lele_lint::Project;
 
 use crate::checkers;
@@ -18,19 +20,25 @@ const SYSTEM_PARAM_NAMES: [&str; 6] = [
 ];
 
 pub fn check(_self: &checkers::bevy_folder::BevyFolder, project: &Project) -> Vec<Diagnostic> {
+    let registered: HashSet<String> = project
+        .sources()
+        .flat_map(|source| registered_systems(source.file))
+        .collect();
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
-        if rel_path
+    for source in project.sources() {
+        if matches!(source.origin, Origin::Examples) {
+            continue;
+        }
+        if source
+            .relative_path
             .components()
             .any(|c| c.as_os_str().to_str() == Some("bevy_systems"))
         {
             continue;
         }
 
-        let registered = registered_systems(file);
-
-        for item in &file.items {
+        for item in &source.file.items {
             let syn::Item::Fn(func) = item else {
                 continue;
             };
@@ -48,23 +56,17 @@ pub fn check(_self: &checkers::bevy_folder::BevyFolder, project: &Project) -> Ve
                 continue;
             }
 
-            let entry = project
-                .entries
-                .iter()
-                .find(|e| e.relative_path == *rel_path && e.kind == EntryKind::File);
-
-            diags.push(Diagnostic {
-                file: entry
-                    .map(|e| e.absolute_path.clone())
-                    .unwrap_or_else(|| project.src_dir.join(rel_path)),
-                line: func.sig.fn_token.span().start().line,
-                col: 0,
-                code: "E008".to_string(),
-                message: format!(
+            diags.push(scan::diag(
+                project,
+                source.origin,
+                source.relative_path,
+                func.sig.fn_token.span().start().line,
+                "E008",
+                format!(
                     "pub fn `{}` is registered with `app.add_systems()` but lives outside bevy_systems/; move it into the domain's bevy_systems/ folder",
                     func.sig.ident
                 ),
-            });
+            ));
         }
     }
 

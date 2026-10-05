@@ -20,8 +20,8 @@ impl CallGraph {
             callees: HashMap::new(),
             systems: HashSet::new(),
         };
-        for file in project.parsed_files.values() {
-            for item in &file.items {
+        for source in project.sources() {
+            for item in &source.file.items {
                 if scan::is_test_module(item) {
                     continue;
                 }
