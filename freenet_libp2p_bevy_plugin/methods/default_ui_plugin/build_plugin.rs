@@ -3,13 +3,13 @@ use bevy::prelude::*;
 use crate::discovery;
 
 pub fn build_plugin(_plugin: &discovery::ui::DefaultUiPlugin, app: &mut App) {
-    app.add_systems(Startup, discovery::ui::spawn_root);
+    app.add_systems(Startup, discovery::ui::bevy_systems::spawn_root);
     app.add_systems(
         Update,
         (
-            discovery::ui::sync_room_list,
-            discovery::ui::handle_create,
-            discovery::ui::handle_join,
+            discovery::ui::bevy_systems::sync_room_list,
+            discovery::ui::bevy_systems::handle_create,
+            discovery::ui::bevy_systems::handle_join,
         ),
     );
 }
