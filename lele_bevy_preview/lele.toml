@@ -1,0 +1,8 @@
+[honesty]
+declared_honest = []
+declared_dishonest = ["std::time::SystemTime::now", "std::time::Instant::now", "std::env::var", "std::fs::read", "std::fs::write", "std::fs::remove_file", "std::process::Command::new"]
+
+[[lele.lint.clippy_allow_whitelist]]
+allow = "module_inception"
+file = "src/scene/mod.rs"
+reason = "`scene/scene.rs` holds the Scene struct while `scene/` holds its states, timeline and validation; the lele atomic-file rule names a type's file after the type, so the collision is structural rather than stylistic"
