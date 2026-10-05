@@ -71,6 +71,7 @@
     "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- serve"; showOutput = true; };
     "lele:docs:export" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- export --out target/docs-site"; showOutput = true; };
     "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- --scan-folder src,examples"; showOutput = true; };
+    "ui:previews" = { exec = "cargo nextest run --all-targets ui_png_preview ui_mp4_preview ui_scene_preview --all-features --run-ignored all -- --nocapture"; showOutput = true; };
   };
 
   git-hooks.hooks = {

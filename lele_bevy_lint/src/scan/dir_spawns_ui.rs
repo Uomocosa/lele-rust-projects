@@ -6,11 +6,11 @@ use crate::scan;
 
 #[must_use]
 pub fn dir_spawns_ui(project: &Project, rel_path: &Path) -> bool {
-    let dir = rel_path.parent().unwrap_or_else(|| Path::new(""));
+    let dir = rel_path.parent();
     project
         .parsed_files
         .iter()
-        .any(|(other, file)| other.starts_with(dir) && !scan::prod_visuals(file).is_empty())
+        .any(|(other, file)| other.parent() == dir && !scan::prod_visuals(file).is_empty())
 }
 
 #[cfg(test)]
@@ -28,5 +28,6 @@ mod tests {
         );
         assert!(dir_spawns_ui(&project, Path::new("ui/plugin.rs")));
         assert!(!dir_spawns_ui(&project, Path::new("p2p/plugin.rs")));
+        assert!(!dir_spawns_ui(&project, Path::new("plugin.rs")));
     }
 }

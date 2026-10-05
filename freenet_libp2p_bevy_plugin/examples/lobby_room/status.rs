@@ -85,3 +85,86 @@ pub fn log_tick(
         ));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bevy::prelude::*;
+
+    use super::{StatusText, Username, log_tick};
+    use freenet_libp2p_bevy_plugin::discovery;
+
+    fn preview_build(app: &mut App) {
+        app.insert_resource(Username(String::from("preview")));
+        app.insert_resource(discovery::Snapshot::default());
+        app.add_systems(Startup, spawn_status);
+        app.add_systems(Update, log_tick);
+    }
+
+    fn spawn_status(mut commands: Commands) {
+        commands.spawn((
+            StatusText,
+            Text::new("lobby starting"),
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(12.0),
+                left: Val::Px(12.0),
+                ..default()
+            },
+        ));
+    }
+
+    const fn preview_noop(_world: &mut World) {}
+
+    fn add_room(world: &mut World) {
+        let mut snapshot = world.resource_mut::<discovery::Snapshot>();
+        snapshot.lobby.insert(
+            discovery::RoomName(String::from("gamma")),
+            discovery::RoomRecord {
+                capacity: 4,
+                members: std::collections::BTreeMap::new(),
+            },
+        );
+    }
+
+    fn config() -> lele_bevy_preview::preview::Config {
+        let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui_preview");
+        lele_bevy_preview::preview::Config {
+            out_dir: out,
+            ..Default::default()
+        }
+    }
+
+    fn scene(
+        timeline: Option<lele_bevy_preview::scene::Timeline>,
+    ) -> lele_bevy_preview::scene::Scene {
+        lele_bevy_preview::scene::Scene {
+            name: String::from("status"),
+            build: preview_build,
+            states: vec![lele_bevy_preview::scene::State {
+                label: String::from("lobby"),
+                apply: preview_noop,
+            }],
+            timeline,
+        }
+    }
+
+    #[test]
+    #[ignore = "headed preview"]
+    fn status_ui_png_preview() {
+        let _marker: Option<StatusText> = None;
+        lele_bevy_preview::run(&scene(None), &config(), env!("CARGO_PKG_NAME")).expect("preview");
+    }
+
+    #[test]
+    #[ignore = "headed recording"]
+    fn status_ui_mp4_preview() {
+        let timeline = lele_bevy_preview::scene::Timeline {
+            label: String::from("add_gamma"),
+            frames: 4,
+            fps: 12,
+            apply: add_room,
+        };
+        lele_bevy_preview::run(&scene(Some(timeline)), &config(), env!("CARGO_PKG_NAME"))
+            .expect("preview");
+    }
+}

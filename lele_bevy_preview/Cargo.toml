@@ -10,12 +10,12 @@ name = "lele_bevy_preview"
 
 [dependencies]
 bevy = { version = "=0.19.1", default-features = false, features = ["2d", "ui"] }
-blake3 = "=1.8.7"
-derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
-serde = { version = "=1.0.229", features = ["derive"] }
-serde_json = "=1.0.151"
-thiserror = "=2.0.18"
-tracing = "=0.1.44"
+blake3 = "1.8"
+derive_more = { version = "2.1", features = ["deref", "deref_mut"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
 telegram_bot = { path = "../telegram_bot" }
 
 [dev-dependencies]

@@ -12,6 +12,7 @@ pub mod dir_spawns_ui;
 pub mod drivers;
 pub mod file_path;
 pub mod file_reaches_production;
+pub mod is_test_attrs;
 pub mod is_test_module;
 pub mod prod_visuals;
 
@@ -24,5 +25,6 @@ pub use dir_spawns_ui::dir_spawns_ui;
 pub use drivers::drivers;
 pub use file_path::file_path;
 pub use file_reaches_production::file_reaches_production;
+pub use is_test_attrs::is_test_attrs;
 pub use is_test_module::is_test_module;
 pub use prod_visuals::prod_visuals;

@@ -32,6 +32,8 @@ representation, not a fork.
      call after the schedule argument (tuples and `.chain()` members
      included). Unregistered helpers that merely take `Commands`/`Query`
      (builders, click handlers) are exempt.
+   - `#[cfg(test)]` modules are skipped, so a test-only `app.add_systems(...)`
+     call never counts as registration.
    - Blind spots, accepted and documented: systems passed via variables
      or function pointers instead of paths, and `add_systems` calls nested
      inside other `add_systems` arguments.
@@ -64,14 +66,15 @@ representation, not a fork.
      handler over UI is still expected to show its press/hover clip.
 
 **bevy_plugin_scene (E038) — a UI-spawning Plugin needs a scene preview**
-   - A file defining `impl Plugin for ...` whose directory subtree contains a
-     file that spawns UI must define an `#[ignore]`d `*_ui_scene_preview`
-     test in that same file.
+   - A file defining `impl Plugin for ...` whose own directory contains a
+     file that spawns UI must define an `#[ignore]`d `*_ui_scene_preview` test
+     in that same file.
    - Directory-scoped rather than call-graph-scoped: a crate-wide call graph
      keys callees by bare name and collides on common names like `build` and
-     `setup`, which flagged P2P plugins as UI plugins. The subtree rule is a
-     presence rule; it cannot prove every scene is covered — E029/E037 and
-     the harness pixel gate cover per-file rendering.
+     `setup`, which flagged P2P plugins as UI plugins. Same-directory scoping
+     avoids flagging aggregate plugins that merely live above the UI folder;
+     it is a presence rule — E029/E037 and the harness pixel gate cover
+     per-file rendering.
 
 **preview_routing (E039) — previews render through the harness**
    - Every `*_ui_png_preview`, `*_ui_mp4_preview` and `*_ui_scene_preview`

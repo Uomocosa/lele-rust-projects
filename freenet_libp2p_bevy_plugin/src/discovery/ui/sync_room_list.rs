@@ -81,4 +81,92 @@ mod tests {
         names.sort();
         assert_eq!(names, vec!["alpha".to_string(), "beta".to_string()]);
     }
+
+    fn preview_build(app: &mut App) {
+        app.insert_resource(preview_snapshot());
+        app.add_systems(Startup, spawn_list);
+        app.add_systems(Update, sync_room_list);
+    }
+
+    fn preview_snapshot() -> discovery::Snapshot {
+        let mut snapshot = discovery::Snapshot::default();
+        for (name, capacity) in [("alpha", 8_u16), ("beta", 4_u16)] {
+            snapshot.lobby.insert(
+                discovery::RoomName(name.to_string()),
+                discovery::RoomRecord {
+                    capacity,
+                    members: std::collections::BTreeMap::new(),
+                },
+            );
+        }
+        snapshot
+    }
+
+    fn spawn_list(mut commands: Commands) {
+        commands.spawn((discovery::ui::RoomList, Node::default()));
+    }
+
+    const fn preview_noop(_world: &mut World) {}
+
+    fn add_room(world: &mut World) {
+        let mut snapshot = world.resource_mut::<discovery::Snapshot>();
+        snapshot.lobby.insert(
+            discovery::RoomName(String::from("gamma")),
+            discovery::RoomRecord {
+                capacity: 4,
+                members: std::collections::BTreeMap::new(),
+            },
+        );
+    }
+
+    #[test]
+    #[ignore = "headed preview"]
+    fn sync_room_list_ui_png_preview() {
+        let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui_preview");
+        lele_bevy_preview::run(
+            &lele_bevy_preview::scene::Scene {
+                name: String::from("sync_room_list"),
+                build: preview_build,
+                states: vec![lele_bevy_preview::scene::State {
+                    label: String::from("two rooms"),
+                    apply: preview_noop,
+                }],
+                timeline: None,
+            },
+            &lele_bevy_preview::preview::Config {
+                out_dir: out,
+                ..Default::default()
+            },
+            env!("CARGO_PKG_NAME"),
+        )
+        .expect("preview");
+    }
+
+    #[test]
+    #[ignore = "headed recording"]
+    fn sync_room_list_ui_mp4_preview() {
+        let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui_preview");
+        lele_bevy_preview::run(
+            &lele_bevy_preview::scene::Scene {
+                name: String::from("sync_room_list"),
+                build: preview_build,
+                states: vec![lele_bevy_preview::scene::State {
+                    label: String::from("two rooms"),
+                    apply: preview_noop,
+                }],
+                timeline: Some(lele_bevy_preview::scene::Timeline {
+                    label: String::from("add_gamma"),
+                    frames: 4,
+                    fps: 12,
+                    apply: add_room,
+                }),
+            },
+            &lele_bevy_preview::preview::Config {
+                out_dir: out,
+                ..Default::default()
+            },
+            env!("CARGO_PKG_NAME"),
+        )
+        .expect("preview");
+    }
 }

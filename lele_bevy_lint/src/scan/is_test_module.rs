@@ -1,19 +1,10 @@
+use crate::scan;
+
 pub fn is_test_module(item: &syn::Item) -> bool {
     let syn::Item::Mod(module) = item else {
         return false;
     };
-    module.attrs.iter().any(|attr| {
-        attr.path().is_ident("cfg")
-            && attr
-                .parse_nested_meta(|meta| {
-                    if meta.path.is_ident("test") {
-                        Ok(())
-                    } else {
-                        Err(meta.error("expected test"))
-                    }
-                })
-                .is_ok()
-    })
+    scan::is_test_attrs(&module.attrs)
 }
 
 #[cfg(test)]

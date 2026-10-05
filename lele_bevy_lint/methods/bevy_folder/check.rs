@@ -6,6 +6,7 @@ use lele_lint::EntryKind;
 use lele_lint::Project;
 
 use crate::checkers;
+use crate::scan;
 
 const SYSTEM_PARAM_NAMES: [&str; 6] = [
     "Res",
@@ -100,6 +101,13 @@ struct RegisteredSystems {
 }
 
 impl<'ast> Visit<'ast> for RegisteredSystems {
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        if scan::is_test_attrs(&node.attrs) {
+            return;
+        }
+        syn::visit::visit_item_mod(self, node);
+    }
+
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
         if node.method == "add_systems" {
             self.armed = true;
@@ -165,5 +173,18 @@ mod tests {
 
         let empty: syn::File = syn::parse_str("pub fn helper(x: u32) {}").unwrap();
         assert_eq!(registered_systems(&empty).len(), 0);
+    }
+
+    #[test]
+    fn test_usage_ignores_test_module_registrations() {
+        let file: syn::File = syn::parse_str(
+            "pub fn tick(_q: Query) {}
+             #[cfg(test)]
+             mod tests {
+                 fn helper(app: &mut App) { app.add_systems(Update, tick); }
+             }",
+        )
+        .unwrap();
+        assert_eq!(registered_systems(&file).len(), 0);
     }
 }

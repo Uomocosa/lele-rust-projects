@@ -85,6 +85,7 @@ ui_preview = ["dep:bevy_brp_extras", "bevy/bevy_remote", "bevy/serialize"]
 
 [dev-dependencies]
 telegram_bot = { path = "../telegram_bot" }
+lele_bevy_preview = { path = "../lele_bevy_preview" }
 freenet = "=0.2.132"
 tempfile = "=3.27.0"
 

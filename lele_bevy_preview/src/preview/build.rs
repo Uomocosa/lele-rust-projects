@@ -5,8 +5,8 @@ use crate::scene::Scene;
 
 pub fn build(scene: &Scene, config: &preview::Config) -> App {
     let mut app = App::new();
-    let _ = preview::install::install(&mut app, config);
     (scene.build)(&mut app);
+    let _ = preview::install::install(&mut app, config);
     app
 }
 

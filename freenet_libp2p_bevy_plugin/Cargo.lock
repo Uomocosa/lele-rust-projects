@@ -3997,6 +3997,7 @@ dependencies = [
  "futures",
  "futures-util",
  "http",
+ "lele_bevy_preview",
  "libp2p",
  "serde",
  "telegram_bot",
@@ -5748,6 +5749,20 @@ name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
+
+[[package]]
+name = "lele_bevy_preview"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "blake3",
+ "derive_more",
+ "serde",
+ "serde_json",
+ "telegram_bot",
+ "thiserror 2.0.18",
+ "tracing",
+]
 
 [[package]]
 name = "lele_snake_case"

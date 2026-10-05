@@ -81,4 +81,33 @@ mod tests {
             .query_filtered::<(), With<discovery::ui::RoomNameInput>>();
         assert_eq!(inputs.iter(app.world()).count(), 1);
     }
+
+    fn preview_build(app: &mut App) {
+        app.add_systems(Startup, spawn_root);
+    }
+
+    const fn preview_noop(_world: &mut World) {}
+
+    #[test]
+    #[ignore = "headed preview"]
+    fn spawn_root_ui_png_preview() {
+        let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui_preview");
+        lele_bevy_preview::run(
+            &lele_bevy_preview::scene::Scene {
+                name: String::from("spawn_root"),
+                build: preview_build,
+                states: vec![lele_bevy_preview::scene::State {
+                    label: String::from("empty lobby"),
+                    apply: preview_noop,
+                }],
+                timeline: None,
+            },
+            &lele_bevy_preview::preview::Config {
+                out_dir: out,
+                ..Default::default()
+            },
+            env!("CARGO_PKG_NAME"),
+        )
+        .expect("preview");
+    }
 }

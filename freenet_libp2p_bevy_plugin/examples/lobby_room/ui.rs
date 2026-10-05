@@ -141,3 +141,97 @@ fn on_join(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bevy::prelude::*;
+
+    use super::{JoinButton, LobbyUi, NameField, NewRoomButton, RoomColumn};
+    use freenet_libp2p_bevy_plugin::discovery;
+
+    fn preview_build(app: &mut App) {
+        app.add_message::<discovery::Command>();
+        app.insert_resource(preview_snapshot());
+        app.add_plugins(LobbyUi);
+    }
+
+    fn preview_snapshot() -> discovery::Snapshot {
+        let mut snapshot = discovery::Snapshot::default();
+        snapshot.lobby.insert(
+            discovery::RoomName(String::from("alpha")),
+            discovery::RoomRecord {
+                capacity: 8,
+                members: std::collections::BTreeMap::new(),
+            },
+        );
+        snapshot
+    }
+
+    const fn preview_noop(_world: &mut World) {}
+
+    fn add_room(world: &mut World) {
+        let mut snapshot = world.resource_mut::<discovery::Snapshot>();
+        snapshot.lobby.insert(
+            discovery::RoomName(String::from("gamma")),
+            discovery::RoomRecord {
+                capacity: 4,
+                members: std::collections::BTreeMap::new(),
+            },
+        );
+    }
+
+    fn config() -> lele_bevy_preview::preview::Config {
+        let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui_preview");
+        lele_bevy_preview::preview::Config {
+            out_dir: out,
+            ..Default::default()
+        }
+    }
+
+    fn scene(
+        name: &str,
+        timeline: Option<lele_bevy_preview::scene::Timeline>,
+    ) -> lele_bevy_preview::scene::Scene {
+        lele_bevy_preview::scene::Scene {
+            name: name.to_string(),
+            build: preview_build,
+            states: vec![lele_bevy_preview::scene::State {
+                label: String::from("one room"),
+                apply: preview_noop,
+            }],
+            timeline,
+        }
+    }
+
+    #[test]
+    #[ignore = "headed preview"]
+    fn lobby_ui_png_preview() {
+        let _markers: Option<(NameField, NewRoomButton, RoomColumn, JoinButton)> = None;
+        lele_bevy_preview::run(&scene("lobby_ui", None), &config(), env!("CARGO_PKG_NAME"))
+            .expect("preview");
+    }
+
+    #[test]
+    #[ignore = "headed recording"]
+    fn lobby_ui_mp4_preview() {
+        let timeline = lele_bevy_preview::scene::Timeline {
+            label: String::from("add_gamma"),
+            frames: 4,
+            fps: 12,
+            apply: add_room,
+        };
+        lele_bevy_preview::run(
+            &scene("lobby_ui", Some(timeline)),
+            &config(),
+            env!("CARGO_PKG_NAME"),
+        )
+        .expect("preview");
+    }
+
+    #[test]
+    #[ignore = "headed scene"]
+    fn lobby_ui_scene_preview() {
+        lele_bevy_preview::run(&scene("lobby_ui", None), &config(), env!("CARGO_PKG_NAME"))
+            .expect("preview");
+    }
+}
