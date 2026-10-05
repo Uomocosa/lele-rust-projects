@@ -14,11 +14,6 @@ name = "lobby_room"
 path = "examples/lobby_room/main.rs"
 required-features = ["e2e"]
 
-[[example]]
-name = "lobby_room_preview"
-path = "examples/lobby_room_preview/main.rs"
-required-features = ["ui_preview"]
-
 [[test]]
 name = "lobby_room_discovery"
 path = "tests/lobby_room_discovery.rs"
@@ -54,7 +49,6 @@ missing_errors_doc = "allow"
 [dependencies]
 atomic_delegate_macros = { path = "../atomic_delegate_macros" }
 bevy = { version = "=0.19.1", default-features = false, features = ["2d", "ui"] }
-bevy_brp_extras = { version = "=0.22.8", optional = true }
 derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
 libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "gossipsub", "mdns", "macros"] }
 tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "io-util"] }
@@ -81,7 +75,6 @@ room_lobby = [
 ]
 default_ui = ["room_lobby"]
 e2e = ["room_lobby", "default_ui"]
-ui_preview = ["dep:bevy_brp_extras", "bevy/bevy_remote", "bevy/serialize"]
 
 [dev-dependencies]
 telegram_bot = { path = "../telegram_bot" }
@@ -103,7 +96,6 @@ debug = false
 
 # The heaviest rustc invocations on a cold build (peak RSS at opt-level 1 / 0:
 # bevy_pbr 6.9 / 6.4 GB, freenet 5.1 / 4.4 GB, bevy_render 4.5 / 4.3 GB).
-# bevy_pbr only comes in via `ui_preview` (bevy_remote -> bevy_dev_tools).
 [profile.dev.package.bevy_pbr]
 opt-level = 0
 

@@ -1,3 +1,0 @@
-pub fn legacy() -> u32 {
-    1
-}

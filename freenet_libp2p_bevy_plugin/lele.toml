@@ -13,10 +13,3 @@ require    = "honest"
 allow = "unreachable_code"
 file = "src/p2p/behaviour.rs"
 reason = "rustc `unreachable_code` is emitted inside the libp2p `#[derive(NetworkBehaviour)]` macro expansion (libp2p-swarm-derive 0.35.1); the generated code cannot be edited and the lint cannot be removed by rewriting behaviour.rs"
-
-# lele-ui-preview (../lele_ui_preview): runs examples/lobby_room_preview (no node, no P2P) and injects
-# `discovery::Snapshot` fixtures generated from its reflected schema over BRP into ./ui_preview/.
-[ui_preview.bevy]
-command = ["devenv", "shell", "--", "cargo", "run", "-j", "2", "--example", "lobby_room_preview", "--features", "ui_preview"]
-resource = "Snapshot"
-max_states = 15
