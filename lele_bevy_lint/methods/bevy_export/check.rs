@@ -1,10 +1,9 @@
-use lele_lint::diagnostic::Diagnostic;
-use lele_lint::project::Project;
-use lele_lint::severity::Severity;
+use lele_lint::Diagnostic;
+use lele_lint::Project;
 
-use super::bevy_export::BevyExport;
+use crate::checkers;
 
-pub(crate) fn check(_self: &BevyExport, project: &Project) -> Vec<Diagnostic> {
+pub fn check(_self: &checkers::bevy_export::BevyExport, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (mod_rs_path, info) in &project.module_info {
@@ -31,7 +30,6 @@ pub(crate) fn check(_self: &BevyExport, project: &Project) -> Vec<Diagnostic> {
                         "pub use {} re-exports bevy_systems items at the domain root; remove it — access via `{{domain}}::bevy_systems::{{name}}`",
                         reexported_path
                     ),
-                    severity: Severity::Error,
                 });
             }
         }

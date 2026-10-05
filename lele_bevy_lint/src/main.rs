@@ -3,11 +3,12 @@ use std::process;
 
 use clap::Parser;
 use lele_bevy_lint::checkers::build_checkers;
-use lele_lint::print_checker_list;
-use lele_lint::print_diagnostics;
 use lele_lint::Config;
 use lele_lint::Project;
-use lele_lint::Severity;
+use lele_lint::explain;
+use lele_lint::print_checker_list;
+use lele_lint::print_diagnostics;
+use lele_lint::rules_markdown;
 
 #[derive(Parser)]
 #[command(
@@ -24,6 +25,9 @@ struct Args {
     #[arg(long, value_name = "CODE")]
     explain: Option<String>,
 
+    #[arg(long = "rules-md")]
+    rules_md: bool,
+
     #[arg(long, value_name = "PATH")]
     config: Option<PathBuf>,
 
@@ -35,18 +39,25 @@ fn main() {
     let args = Args::parse();
 
     if args.checker_list {
-        let config = Config::default();
-        let checkers = build_checkers(&config);
-        print_checker_list(&checkers);
+        print_checker_list(&build_checkers());
+        return;
+    }
+
+    if args.rules_md {
+        print!("{}", rules_markdown(&build_checkers()));
         return;
     }
 
     if let Some(code) = args.explain {
-        eprintln!("--explain: not yet implemented for {code}", code = code);
-        process::exit(1);
+        let Some(text) = explain(&build_checkers(), &code) else {
+            eprintln!("lele_bevy_lint: no rule with code or name `{code}`");
+            process::exit(1);
+        };
+        print!("{text}");
+        return;
     }
 
-    let project = match Project::discover(args.path.as_deref(), None) {
+    let mut project = match Project::discover(args.path.as_deref(), None) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("lele_bevy_lint: {e}", e = e);
@@ -54,9 +65,20 @@ fn main() {
         }
     };
 
-    let config = Config::load(&project.root).unwrap_or_default();
+    let config = match Config::load(&project.root) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("lele_bevy_lint: lele.toml: {e}");
+            process::exit(1);
+        }
+    };
 
-    let checkers = build_checkers(&config);
+    if let Err(e) = project.apply_layout(&config) {
+        eprintln!("lele_bevy_lint: {e}", e = e);
+        process::exit(1);
+    }
+
+    let checkers = build_checkers();
 
     let mut all_diags = Vec::new();
     for checker in &checkers {
@@ -66,12 +88,7 @@ fn main() {
 
     print_diagnostics(&all_diags, &args.error_format);
 
-    let error_count = all_diags
-        .iter()
-        .filter(|d| d.severity == Severity::Error)
-        .count();
-
-    if error_count > 0 {
+    if !all_diags.is_empty() {
         process::exit(1);
     }
 }

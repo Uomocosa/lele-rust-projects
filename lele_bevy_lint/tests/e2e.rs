@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use lele_bevy_lint::checkers::build_checkers;
-use lele_lint::Config;
 use lele_lint::Diagnostic;
 use lele_lint::Project;
 
@@ -17,8 +16,7 @@ fn run_checkers(path: &str) -> Vec<Diagnostic> {
     let Ok(p) = discovered else {
         return Vec::new();
     };
-    let config = Config::load(&p.root).unwrap_or_default();
-    let checkers = build_checkers(&config);
+    let checkers = build_checkers();
     checkers.iter().flat_map(|c| c.check(&p)).collect()
 }
 

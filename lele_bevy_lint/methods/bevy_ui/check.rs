@@ -2,12 +2,11 @@ use derive_more::{Deref, DerefMut};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
-use lele_lint::diagnostic::Diagnostic;
-use lele_lint::entry_kind::EntryKind;
-use lele_lint::project::Project;
-use lele_lint::severity::Severity;
+use lele_lint::Diagnostic;
+use lele_lint::EntryKind;
+use lele_lint::Project;
 
-use super::bevy_ui::BevyUi;
+use crate::checkers;
 
 const VISUAL_IDENTS: [&str; 9] = [
     "Sprite",
@@ -33,7 +32,7 @@ const MP4_SIGNALS: [&str; 5] = [
 
 const CONTRACT_MARKER: &str = "PREVIEW_ARTIFACT=";
 
-pub(crate) fn check(_self: &BevyUi, project: &Project) -> Vec<Diagnostic> {
+pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let graph = CallGraph::collect(project);
 
@@ -84,7 +83,7 @@ pub(crate) fn check(_self: &BevyUi, project: &Project) -> Vec<Diagnostic> {
                 message: format!(
                     "file spawns Bevy visual component `{visual}` reachable from production code but defines no ignored `*_ui_png_preview` test ending with assert!(exists) + println!(PREVIEW_ARTIFACT=...); add one rendering this file's scene"
                 ),
-                severity: Severity::Error,
+
             });
         }
 
@@ -96,7 +95,7 @@ pub(crate) fn check(_self: &BevyUi, project: &Project) -> Vec<Diagnostic> {
                 code: "E029".to_string(),
                 message: "file drives a recording (start_record_at/drive_cursor/place_window) but defines no ignored `*_ui_mp4_preview` test ending with assert!(exists) + println!(PREVIEW_ARTIFACT=...)"
                     .to_string(),
-                severity: Severity::Error,
+
             });
         }
 
@@ -130,7 +129,6 @@ fn check_preview(
                 "`fn {}` must carry `#[ignore]` (headed preview)",
                 preview.name
             ),
-            severity: Severity::Error,
         });
     }
     if !preview.flags & FLAG_UNIT != 0 {
@@ -143,7 +141,6 @@ fn check_preview(
                 "`fn {}` must return `()` (libtest only accepts `()` or `Result<(), E>`)",
                 preview.name
             ),
-            severity: Severity::Error,
         });
     }
     if !preview.flags & FLAG_ASSERT != 0 {
@@ -156,7 +153,7 @@ fn check_preview(
                 "`fn {}` must keep a preceding `assert!(<artifact>.exists())` before the contract line",
                 preview.name
             ),
-            severity: Severity::Error,
+
         });
     }
     if !preview.flags & FLAG_CONTRACT != 0 {
@@ -169,7 +166,7 @@ fn check_preview(
                 "`fn {}` must end with `println!(\"PREVIEW_ARTIFACT={{}}\", path.display())` as its last statement",
                 preview.name
             ),
-            severity: Severity::Error,
+
         });
     }
     if !shot_names_stem(file, stem, ext) {
@@ -182,7 +179,7 @@ fn check_preview(
                 "`fn {}` does not reference `{stem}.{ext}`; name the capture file after the source file",
                 preview.name
             ),
-            severity: Severity::Error,
+
         });
     }
 }
@@ -385,10 +382,10 @@ struct CallCollector<'a> {
 
 impl<'ast> Visit<'ast> for CallCollector<'_> {
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
-        if let syn::Expr::Path(path) = &*node.func {
-            if let Some(last) = path.path.segments.last() {
-                self.calls.push(last.ident.to_string());
-            }
+        if let syn::Expr::Path(path) = &*node.func
+            && let Some(last) = path.path.segments.last()
+        {
+            self.calls.push(last.ident.to_string());
         }
         syn::visit::visit_expr_call(self, node);
     }
@@ -621,8 +618,8 @@ impl Visit<'_> for StemFinder<'_> {
 #[cfg(test)]
 mod tests {
     use super::{
-        collect_previews, shot_names_stem, test_signals, FLAG_ASSERT, FLAG_CONTRACT, FLAG_IGNORE,
-        FLAG_UNIT,
+        FLAG_ASSERT, FLAG_CONTRACT, FLAG_IGNORE, FLAG_UNIT, collect_previews, shot_names_stem,
+        test_signals,
     };
 
     fn parse(source: &str) -> syn::File {

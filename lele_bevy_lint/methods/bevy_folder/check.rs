@@ -1,12 +1,11 @@
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
-use lele_lint::diagnostic::Diagnostic;
-use lele_lint::entry_kind::EntryKind;
-use lele_lint::project::Project;
-use lele_lint::severity::Severity;
+use lele_lint::Diagnostic;
+use lele_lint::EntryKind;
+use lele_lint::Project;
 
-use super::bevy_folder::BevyFolder;
+use crate::checkers;
 
 const SYSTEM_PARAM_NAMES: [&str; 6] = [
     "Res",
@@ -17,7 +16,7 @@ const SYSTEM_PARAM_NAMES: [&str; 6] = [
     "MessageReader",
 ];
 
-pub(crate) fn check(_self: &BevyFolder, project: &Project) -> Vec<Diagnostic> {
+pub fn check(_self: &checkers::bevy_folder::BevyFolder, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     for (rel_path, file) in &project.parsed_files {
@@ -64,7 +63,6 @@ pub(crate) fn check(_self: &BevyFolder, project: &Project) -> Vec<Diagnostic> {
                     "pub fn `{}` is registered with `app.add_systems()` but lives outside bevy_systems/; move it into the domain's bevy_systems/ folder",
                     func.sig.ident
                 ),
-                severity: Severity::Error,
             });
         }
     }
@@ -117,10 +115,10 @@ impl<'ast> Visit<'ast> for RegisteredSystems {
     }
 
     fn visit_path(&mut self, node: &'ast syn::Path) {
-        if self.armed {
-            if let Some(last) = node.segments.last() {
-                self.found.push(last.ident.to_string());
-            }
+        if self.armed
+            && let Some(last) = node.segments.last()
+        {
+            self.found.push(last.ident.to_string());
         }
         syn::visit::visit_path(self, node);
     }
