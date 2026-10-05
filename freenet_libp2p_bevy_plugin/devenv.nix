@@ -70,6 +70,7 @@
     "lele:docs:check" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- check"; showOutput = true; };
     "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- serve"; showOutput = true; };
     "lele:docs:export" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- export --out target/docs-site"; showOutput = true; };
+    "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- --scan-folder src,examples"; showOutput = true; };
   };
 
   git-hooks.hooks = {
@@ -98,6 +99,13 @@
       enable = true;
       name = "taxonomy_check (freenet_libp2p_bevy_plugin)";
       entry = "bash -c 'cd freenet_libp2p_bevy_plugin && devenv tasks run lele:taxonomy_check 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-bevy-lint = {
+      enable = true;
+      name = "lele_bevy_lint (freenet_libp2p_bevy_plugin)";
+      entry = "bash -c 'cd freenet_libp2p_bevy_plugin && devenv tasks run lele:bevy-lint 2>&1'";
       pass_filenames = false;
       always_run = true;
     };

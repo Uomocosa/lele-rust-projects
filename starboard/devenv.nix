@@ -50,6 +50,7 @@
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --all-features --run-ignored all -- --nocapture"; showOutput = true; };
+    "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml"; showOutput = true; };
   };
 
   git-hooks.hooks = {
@@ -78,6 +79,13 @@
       enable = true;
       name = "taxonomy_check (starboard)";
       entry = "bash -c 'cd starboard && devenv tasks run lele:taxonomy_check 2>&1'";
+      pass_filenames = false;
+      always_run = true;
+    };
+    lele-bevy-lint = {
+      enable = true;
+      name = "lele_bevy_lint (starboard)";
+      entry = "bash -c 'cd starboard && devenv tasks run lele:bevy-lint 2>&1'";
       pass_filenames = false;
       always_run = true;
     };
