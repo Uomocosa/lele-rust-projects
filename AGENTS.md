@@ -6,6 +6,11 @@ Read [OBJECTIVE.md](./OBJECTIVE.md) for the project's goals, constraints, and cu
 
 ---
 
+## Skills (V2)
+
+Skills are auto-discovered and advertised by description; load with the `skill` tool.
+For Rust work, load `lele-rs` first (it indexes the leaf skills), then the matching leaf.
+
 ## Project Commands
 
 | Key | Command |

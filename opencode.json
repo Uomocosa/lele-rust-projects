@@ -4,30 +4,15 @@
   "compaction": {
     "auto": true
   },
-  "instructions": [
-    "~/.config/opencode/skills/lele-rs/SKILL.md",
-    "~/.config/opencode/skills/lele-syntax-rs/SKILL.md",
-    "~/.config/opencode/skills/opencode-git-workflow/SKILL.md",
-    "~/.config/opencode/skills/itertools-rs/SKILL.md",
-    "~/.config/opencode/skills/criterion-rs/SKILL.md",
-    "~/.config/opencode/skills/rayon-rs/SKILL.md",
-    "~/.config/opencode/skills/devenv-rs/SKILL.md",
-    "~/.config/opencode/skills/definition-function-taxonomy/SKILL.md",
-    "~/.config/opencode/skills/definition-tdd/SKILL.md"
-  ],
-  "permission": {
-    "external_directory": {
-      "*": "allow",
-      "/**": "allow"
-    },
-    "skill": {
-      "*": "deny",
-      "opencode-*": "allow",
-      "definition-*": "allow",
-      "*-rs": "allow",
-      "crate-tag-ci": "allow",
-      "libp2p": "allow",
-      "freenet": "allow"
-    }
-  }
+  "permissions": [
+    { "action": "external_directory", "resource": "*", "effect": "allow" },
+    { "action": "external_directory", "resource": "/**", "effect": "allow" },
+    { "action": "skill", "resource": "*", "effect": "deny" },
+    { "action": "skill", "resource": "opencode-*", "effect": "allow" },
+    { "action": "skill", "resource": "definition-*", "effect": "allow" },
+    { "action": "skill", "resource": "*-rs", "effect": "allow" },
+    { "action": "skill", "resource": "crate-tag-ci", "effect": "allow" },
+    { "action": "skill", "resource": "libp2p", "effect": "allow" },
+    { "action": "skill", "resource": "freenet", "effect": "allow" }
+  ]
 }
