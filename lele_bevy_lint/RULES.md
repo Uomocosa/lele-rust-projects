@@ -100,6 +100,9 @@ pub fn tick_enemies(_q: Query) {}
 ## Tests
 
 - [E029 `bevy_ui`](#e029-bevy_ui): A file whose visual spawn is reachable from production must ship an ignored `*_ui_png_preview` (and, when it drives a recorder, a `*_ui_mp4_preview`) test ending with `assert!(exists)` plus `println!("PREVIEW_ARTIFACT=...")`.
+- [E037 `bevy_ui_mp4`](#e037-bevy_ui_mp4): A file that spawns UI reachable from production and drives it over time or input must ship an ignored `*_ui_mp4_preview` test.
+- [E038 `bevy_plugin_scene`](#e038-bevy_plugin_scene): A file defining a `Plugin` whose build spawns UI must ship an ignored `*_ui_scene_preview` test.
+- [E039 `preview_routing`](#e039-preview_routing): Every `*_ui_png_preview`, `*_ui_mp4_preview` and `*_ui_scene_preview` test must call `lele_bevy_preview::run(...)`.
 
 ### E029 `bevy_ui`
 
@@ -140,6 +143,137 @@ mod tests {
         let shot = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("spawn_root.png");
         assert!(shot.exists());
         println!("PREVIEW_ARTIFACT={}", shot.display());
+    }
+}
+```
+
+### E037 `bevy_ui_mp4`
+
+A file that spawns UI reachable from production and drives it over time or input must ship an ignored `*_ui_mp4_preview` test.
+
+**Why:** Static frames cannot show motion, hover or press states; a time/input-driven UI needs a recorded clip to be reviewable.
+
+**Bad** (reports E037):
+
+`src/discovery/ui/sync_room_list.rs`
+
+```rust
+pub fn setup(s: &mut S) { s.spawn((Node,)); }
+
+pub fn tick(time: Res<Time>, q: Query<&Interaction>) {
+    let _ = time.delta_secs();
+    if q.is_changed() {}
+}
+```
+
+**Good:**
+
+`src/discovery/ui/sync_room_list.rs`
+
+```rust
+pub fn setup(s: &mut S) { s.spawn((Node,)); }
+
+pub fn tick(time: Res<Time>) { let _ = time.delta_secs(); }
+
+#[cfg(test)]
+mod tests {
+    use lele_bevy_preview::{run, scene::Scene};
+
+    #[test]
+    #[ignore = "headed recording"]
+    fn sync_room_list_ui_mp4_preview() {
+        let scene = Scene { name: String::from("sync_room_list") };
+        let _ = run(&scene, &Config::default(), "x");
+    }
+}
+```
+
+### E038 `bevy_plugin_scene`
+
+A file defining a `Plugin` whose build spawns UI must ship an ignored `*_ui_scene_preview` test.
+
+**Why:** A plugin is the assembly point for a whole screen; its scene preview proves the assembled screen renders.
+
+**Bad** (reports E038):
+
+`src/discovery/ui/default_ui_plugin.rs`
+
+```rust
+pub fn spawn_ui(s: &mut S) { s.spawn((Node,)); }
+
+pub struct DefaultUiPlugin;
+
+impl Plugin for DefaultUiPlugin {
+    fn build(&self, app: &mut A) { spawn_ui(app); }
+}
+```
+
+**Good:**
+
+`src/discovery/ui/default_ui_plugin.rs`
+
+```rust
+pub fn spawn_ui(s: &mut S) { s.spawn((Node,)); }
+
+pub struct DefaultUiPlugin;
+
+impl Plugin for DefaultUiPlugin {
+    fn build(&self, app: &mut A) { spawn_ui(app); }
+}
+
+#[cfg(test)]
+mod tests {
+    use lele_bevy_preview::{run, scene::Scene};
+
+    #[test]
+    #[ignore = "headed scene"]
+    fn default_ui_plugin_ui_scene_preview() {
+        let scene = Scene { name: String::from("default_ui_plugin") };
+        let _ = run(&scene, &Config::default(), "x");
+    }
+}
+```
+
+### E039 `preview_routing`
+
+Every `*_ui_png_preview`, `*_ui_mp4_preview` and `*_ui_scene_preview` test must call `lele_bevy_preview::run(...)`.
+
+**Why:** A preview test that renders and asserts nothing can pass while producing a blank frame; routing through the harness makes empty frames fail.
+
+**Bad** (reports E039):
+
+`src/discovery/ui/spawn_root.rs`
+
+```rust
+pub fn setup(s: &mut S) { s.spawn((Node,)); }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "headed"]
+    fn spawn_root_ui_png_preview() {
+        let shot = std::path::PathBuf::from("spawn_root.png");
+        assert!(shot.exists());
+    }
+}
+```
+
+**Good:**
+
+`src/discovery/ui/spawn_root.rs`
+
+```rust
+pub fn setup(s: &mut S) { s.spawn((Node,)); }
+
+#[cfg(test)]
+mod tests {
+    use lele_bevy_preview::{run, scene::Scene};
+
+    #[test]
+    #[ignore = "headed"]
+    fn spawn_root_ui_png_preview() {
+        let scene = Scene { name: String::from("spawn_root") };
+        let _ = run(&scene, &Config::default(), "x");
     }
 }
 ```

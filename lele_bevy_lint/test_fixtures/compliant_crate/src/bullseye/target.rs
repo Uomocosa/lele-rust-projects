@@ -1,31 +1,26 @@
-// Spawns a Bevy visual component and ships the required ignored ui_png
-// test with a file-stem-named capture (E029 compliant).
+// Spawns a UI visual and ships the required ignored ui_png preview routed
+// through the harness (E029 + E039 compliant).
 
-pub struct Sprite;
+#[derive(Component)]
+pub struct Target;
+
 pub struct Spawner;
 
 pub fn spawn_target(spawner: &mut Spawner) {
-    spawner.spawn((Sprite,));
+    spawner.spawn((Target, Sprite));
 }
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    #[ignore = "headed window"]
-    fn target_ui_png_preview() {
-        let shot =
-            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target.png");
-        assert!(shot.exists());
-        println!("PREVIEW_ARTIFACT={}", shot.display());
-    }
+    use lele_bevy_preview::{run, scene::Scene};
 
     #[test]
-    #[ignore = "headed recording"]
-    fn target_ui_mp4_preview() {
-        drive_cursor("target");
-        let clip =
-            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target.mp4");
-        assert!(clip.exists());
-        println!("PREVIEW_ARTIFACT={}", clip.display());
+    #[ignore = "headed preview"]
+    fn target_ui_png_preview() {
+        let _ = Target;
+        let scene = Scene {
+            name: String::from("target"),
+        };
+        let _ = run(&scene, &Config::default(), "compliant_crate");
     }
 }

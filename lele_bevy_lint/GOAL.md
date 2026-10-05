@@ -7,7 +7,7 @@ no knowledge of Bevy. Running `lele_bevy_lint` at all *is* "bevy mode"; there
 is no separate flag or config toggle to enable it.
 
 `lele_bevy_lint` depends on `lele_lint` as a path dependency and reuses its
-`Checker`/`Project`/`Config`/`Diagnostic`/`Severity` types and CLI shape —
+`Checker`/`Project`/`Config`/`Diagnostic` types and CLI shape —
 it is a second, independent set of checkers over the same `Project`
 representation, not a fork.
 
@@ -36,28 +36,48 @@ representation, not a fork.
      or function pointers instead of paths, and `add_systems` calls nested
      inside other `add_systems` arguments.
 
-**bevy_ui (E029) — files that define UI must ship ignored preview tests**
-   - A file counts as a UI definition when a visual spawn it owns
-     (method named `spawn` with a bundle containing last path segment
-     `Sprite`, `Text2d`, `Text`, `Mesh2d`, `MeshMaterial2d`, `Camera2d`,
-     `Camera`, `Node`, or `ImageNode`) is reachable from production code.
-     Reachability is computed over non-test items from the `main`/`build`/
-     `setup` roots through direct calls and `add_systems` registrations;
-     `#[cfg(test)]` modules are skipped, so `testing/` helpers used only by
-     preview tests are excluded as a consequence (no path blocklist).
-   - Kind is method-detected, never guessed: screenshot tokens
-     (`Screenshot`, `save_to_disk`) require a `*_ui_png_preview` test;
-     recorder tokens (`start_record_at`, `drive_cursor`, `place_window`,
-     `x11grab`, `ffmpeg`) require a `*_ui_mp4_preview` test. One
-     diagnostic per missing kind.
-   - Each preview test must: end with `_ui_png_preview`/`_ui_mp4_preview`,
-     carry `#[ignore]`, return `()` (libtest only accepts `()` or
-     `Result<(), E>`), keep a preceding `assert!(<artifact>.exists())`,
-     and end with `println!("PREVIEW_ARTIFACT={}", path.display())` as its
-     last statement. The file must also reference `<file_stem>.png` /
-     `<file_stem>.mp4` matching the kinds present.
+**bevy_ui (E029) — files that spawn UI must ship an ignored png preview**
+   - A file counts as UI when a non-test spawn bundle it owns contains a
+     UI visual: `Sprite`, `Text2d`, `Text`, `Mesh2d`, `MeshMaterial2d`,
+     `Node`, or `ImageNode`. Cameras are not UI and no longer trigger this
+     rule.
+   - Reachability is computed over non-test items from the `main`/`build`/
+     `setup` roots through direct calls, `add_systems` registrations and
+     `impl` methods; `#[cfg(test)]` modules are skipped.
+   - The file must define an `#[ignore]`d `*_ui_png_preview` test. If the
+     file declares any `#[derive(Component)]` type, the preview must
+     reference at least one of them, so a no-op shell cannot satisfy the
+     rule.
+   - The preview must route through `lele_bevy_preview::run(...)` — that is
+     enforced separately by E039.
    - Deliberately strict-spawn: files that only mutate visuals
      (`Query<&mut Text2d>`) or build meshes without spawning stay exempt.
+
+**bevy_ui_mp4 (E037) — UI driven over time or input needs an mp4 preview**
+   - When a UI-spawning file also matches a time/input driver token
+     (`Res<Time>`, `delta_secs`, `elapsed_secs`, `Timer`, `Local`,
+     `Animatable`, `AnimationClip`, `AnimationPlayer`, `tween`,
+     `keyframe`, `is_changed`, `Changed<Interaction>`, `Interaction`,
+     `ButtonInput`, `MouseButton`, `KeyCode`), it must define an
+     `#[ignore]`d `*_ui_mp4_preview` test.
+   - Input-driven tokens are included deliberately: a purely discrete
+     handler over UI is still expected to show its press/hover clip.
+
+**bevy_plugin_scene (E038) — a UI-spawning Plugin needs a scene preview**
+   - A file defining `impl Plugin for ...` whose directory subtree contains a
+     file that spawns UI must define an `#[ignore]`d `*_ui_scene_preview`
+     test in that same file.
+   - Directory-scoped rather than call-graph-scoped: a crate-wide call graph
+     keys callees by bare name and collides on common names like `build` and
+     `setup`, which flagged P2P plugins as UI plugins. The subtree rule is a
+     presence rule; it cannot prove every scene is covered — E029/E037 and
+     the harness pixel gate cover per-file rendering.
+
+**preview_routing (E039) — previews render through the harness**
+   - Every `*_ui_png_preview`, `*_ui_mp4_preview` and `*_ui_scene_preview`
+     test must call `lele_bevy_preview::run(...)`. A preview test that
+     renders and asserts nothing is now a diagnostic instead of a
+     convention someone must remember.
 
 ## Usage
 
@@ -65,10 +85,21 @@ representation, not a fork.
 # From a Bevy project's own directory, or via a sibling relative path:
 cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- .
 cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- --checker-list
+cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- --explain E029
+
+# Include example crates (UI often lives in examples/):
+cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- --scan-folder src,examples
+
+# Report the UI/preview gap map for the crate:
+cargo run --manifest-path ../lele_bevy_lint/Cargo.toml -- --scan-folder src,examples --ui-inventory
 ```
 
-## Configuration (lele_lint.toml)
+`--ui-inventory` prints one row per file that has UI or previews, with its
+marker components, visual idents, animation/input drivers, and whether a
+png/mp4/scene preview exists. Every `x` is a gap the rules can act on.
 
-Reuses the same `lele_lint.toml` file and `[lele_lint.checkers]` toggles as
-`lele_lint` (e.g. `bevy_folder = false` to disable one checker), read via
-`lele_lint::config::Config::load`.
+## Configuration
+
+`lele_bevy_lint` reads the same `lele.toml` as `lele_lint` for boundaries and
+clippy allow-lists. Every Bevy rule is always on; there are no per-checker
+toggles.

@@ -39,6 +39,9 @@ fn violation_crate_catches_all_errors() {
         "E005", // bevy_export
         "E008", // bevy_folder
         "E029", // bevy_ui
+        "E037", // bevy_ui_mp4
+        "E038", // bevy_plugin_scene
+        "E039", // preview_routing
     ];
 
     for code in &expected {
@@ -49,12 +52,4 @@ fn violation_crate_catches_all_errors() {
             codes = codes,
         );
     }
-
-    let ui_errors = diags.iter().filter(|d| d.code == "E029").count();
-    assert!(
-        ui_errors >= 3,
-        "expected at least 3 E029 diagnostics (missing preview, broken contract, missing mp4), got {ui_errors}: {diags:?}",
-        ui_errors = ui_errors,
-        diags = diags,
-    );
 }

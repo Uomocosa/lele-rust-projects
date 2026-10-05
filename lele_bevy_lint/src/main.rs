@@ -3,6 +3,7 @@ use std::process;
 
 use clap::Parser;
 use lele_bevy_lint::checkers::build_checkers;
+use lele_bevy_lint::inventory;
 use lele_lint::Config;
 use lele_lint::Project;
 use lele_lint::explain;
@@ -27,6 +28,12 @@ struct Args {
 
     #[arg(long = "rules-md")]
     rules_md: bool,
+
+    #[arg(long = "ui-inventory")]
+    ui_inventory: bool,
+
+    #[arg(long = "scan-folder", value_name = "FOLDERS", value_delimiter = ',')]
+    scan_folder: Option<Vec<String>>,
 
     #[arg(long, value_name = "PATH")]
     config: Option<PathBuf>,
@@ -57,7 +64,7 @@ fn main() {
         return;
     }
 
-    let mut project = match Project::discover(args.path.as_deref(), None) {
+    let mut project = match Project::discover(args.path.as_deref(), args.scan_folder.as_deref()) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("lele_bevy_lint: {e}", e = e);
@@ -76,6 +83,11 @@ fn main() {
     if let Err(e) = project.apply_layout(&config) {
         eprintln!("lele_bevy_lint: {e}", e = e);
         process::exit(1);
+    }
+
+    if args.ui_inventory {
+        print!("{}", inventory::report(&project));
+        return;
     }
 
     let checkers = build_checkers();
