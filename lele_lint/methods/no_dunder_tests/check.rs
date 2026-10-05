@@ -13,7 +13,9 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         if !in_dunder(rel_path, project) {
             continue;
         }
@@ -22,7 +24,7 @@ pub fn check(
                 continue;
             };
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: project.absolute_path(source.origin, rel_path),
                 line,
                 col: 0,
                 code: "E034".to_string(),

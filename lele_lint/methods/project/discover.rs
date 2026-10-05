@@ -1,8 +1,11 @@
+use std::collections::HashMap;
 use std::path::Path;
+use std::path::PathBuf;
 
-use super::find_cargo_root;
-use crate::parse_source_files::parse_source_files;
-use crate::walk_entries::walk_entries;
+use crate::methods;
+use crate::parse_source_files;
+use crate::walk_entries;
+use crate::Entry;
 use crate::Error;
 use crate::ModuleInfo;
 use crate::Project;
@@ -18,22 +21,36 @@ pub fn discover(
         return discover_folders(base, folders);
     }
 
-    let root = find_cargo_root(base)?;
+    let root = methods::project::find_cargo_root(base)?;
     let src_dir = root.join("src");
     if !src_dir.exists() || !src_dir.is_dir() {
         return Err(Error::NoSrcDirectory(src_dir.display().to_string()));
     }
-    let entries = walk_entries(&src_dir, &src_dir)?;
+    let entries = walk_entries::walk_entries(&src_dir, &src_dir)?;
     let module_info = ModuleInfo::build(&src_dir, &entries);
-    let parsed_files = parse_source_files(&src_dir, &entries);
+    let parsed_files = parse_source_files::parse_source_files(&src_dir, &entries);
+    let (example_entries, example_parsed_files) = scan_examples(&root)?;
     Ok(Project {
         root,
         src_dir,
         entries,
         module_info,
         parsed_files,
+        example_entries,
+        example_parsed_files,
         ..Project::default()
     })
+}
+
+// needed helper: examples/ is linted by default alongside src/ and methods/
+fn scan_examples(root: &Path) -> Result<(Vec<Entry>, HashMap<PathBuf, syn::File>), Error> {
+    let dir = root.join("examples");
+    if !dir.is_dir() {
+        return Ok((Vec::new(), HashMap::new()));
+    }
+    let entries = walk_entries::walk_entries(&dir, &dir)?;
+    let parsed = parse_source_files::parse_source_files(&dir, &entries);
+    Ok((entries, parsed))
 }
 
 // needed helper: aggregate scanning over explicitly-passed folders (relative to the invocation base)
@@ -45,10 +62,10 @@ fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, Error> {
         if !abs.exists() || !abs.is_dir() {
             return Err(Error::NoScanFolder(abs.display().to_string()));
         }
-        entries.extend(walk_entries(&abs, base)?);
+        entries.extend(walk_entries::walk_entries(&abs, base)?);
     }
     let module_info = ModuleInfo::build(base, &entries);
-    let parsed_files = parse_source_files(base, &entries);
+    let parsed_files = parse_source_files::parse_source_files(base, &entries);
     let owned_base = base.to_path_buf();
     Ok(Project {
         root: owned_base.clone(),
@@ -90,6 +107,24 @@ mod tests {
     }
 
     #[test]
+    fn test_usage_examples_are_parsed_by_default() {
+        let base = tempfile::tempdir().unwrap();
+        let root = base.path();
+        fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='x'\nversion='0.0.0'\n",
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("src")).unwrap();
+        write_file(root, "src/a.rs");
+        write_file(root, "examples/demo.rs");
+        let project = discover(Some(root), None).unwrap();
+        assert!(project
+            .example_parsed_files
+            .contains_key(&PathBuf::from("demo.rs")));
+    }
+
+    #[test]
     fn test_discover_folders_is_aggregated() {
         let base = tempfile::tempdir().unwrap();
         let root = base.path();
@@ -117,3 +152,5 @@ mod tests {
         ));
     }
 }
+
+// no test_usage necessary

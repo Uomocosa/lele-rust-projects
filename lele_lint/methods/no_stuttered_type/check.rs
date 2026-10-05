@@ -11,7 +11,9 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         if is_exempt_path(rel_path) {
             continue;
         }
@@ -27,7 +29,7 @@ pub fn check(
         };
         let suggested = common::to_pascal_case(&suffix);
         diags.push(Diagnostic {
-            file: project.src_dir.join(rel_path),
+            file: project.absolute_path(source.origin, rel_path),
             line: 1,
             col: 0,
             code: checkers::no_stuttered_type::NoStutteredType::CODE.to_string(),

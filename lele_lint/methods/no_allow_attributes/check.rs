@@ -14,9 +14,11 @@ pub fn check(
     project: &Project,
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         let mut finder = AllowFinder {
-            file: project.src_dir.join(rel_path),
+            file: project.absolute_path(source.origin, rel_path),
             crate_rel: Path::new("src").join(rel_path),
             clippy_allow_whitelist: &project.clippy_allow_whitelist,
             diags: Vec::new(),

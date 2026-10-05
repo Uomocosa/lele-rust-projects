@@ -1,5 +1,5 @@
-use crate::parse_source_files::parse_source_files;
-use crate::walk_entries::walk_entries;
+use crate::parse_source_files;
+use crate::walk_entries;
 use crate::Config;
 use crate::Error;
 use crate::Project;
@@ -18,8 +18,8 @@ pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error>
         return Ok(());
     }
 
-    let entries = walk_entries(&methods_dir, &methods_dir)?;
-    let parsed_files = parse_source_files(&methods_dir, &entries);
+    let entries = walk_entries::walk_entries(&methods_dir, &methods_dir)?;
+    let parsed_files = parse_source_files::parse_source_files(&methods_dir, &entries);
     project.methods_dir = Some(methods_dir);
     project.methods_entries = entries;
     project.methods_parsed_files = parsed_files;

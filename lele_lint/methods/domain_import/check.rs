@@ -9,12 +9,14 @@ use crate::Project;
 pub fn check(_self: &checkers::domain_import::DomainImport, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         for item in &file.items {
             if let syn::Item::Use(item_use) = item {
                 if let Some(msg) = check_import(item_use, &project.dunder) {
                     diags.push(Diagnostic {
-                        file: project.src_dir.join(rel_path),
+                        file: project.absolute_path(source.origin, rel_path),
                         line: find_use_line(item_use),
                         col: 0,
                         code: "E011".to_string(),

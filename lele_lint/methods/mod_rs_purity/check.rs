@@ -8,7 +8,9 @@ use crate::Project;
 pub fn check(_self: &checkers::mod_rs_purity::ModRsPurity, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         let Some(file_name) = rel_path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
@@ -21,7 +23,7 @@ pub fn check(_self: &checkers::mod_rs_purity::ModRsPurity, project: &Project) ->
                 continue;
             };
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: project.absolute_path(source.origin, rel_path),
                 line: item.span().start().line,
                 col: 0,
                 code: "E019".to_string(),

@@ -7,12 +7,12 @@ use crate::Project;
 pub fn check(_self: &checkers::no_positional::NoPositional, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
-        if !has_positional_types(file) {
+    for source in project.content_sources() {
+        if !has_positional_types(source.file) {
             continue;
         }
-
-        scan_block_for_positional(&file.items, rel_path, project, &mut diags);
+        let file_path = project.absolute_path(source.origin, source.relative_path);
+        scan_block_for_positional(&source.file.items, &file_path, &mut diags);
     }
 
     diags
@@ -29,27 +29,22 @@ fn has_positional_types(file: &syn::File) -> bool {
 }
 
 // needed helper: recursive item block scanner
-fn scan_block_for_positional(
-    items: &[syn::Item],
-    rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
-) {
+fn scan_block_for_positional(items: &[syn::Item], file_path: &Path, diags: &mut Vec<Diagnostic>) {
     for item in items {
         match item {
             syn::Item::Impl(impl_block) => {
                 for impl_item in &impl_block.items {
                     if let syn::ImplItem::Fn(method) = impl_item {
-                        scan_stmts(&method.block.stmts, rel_path, project, diags);
+                        scan_stmts(&method.block.stmts, file_path, diags);
                     }
                 }
             }
             syn::Item::Fn(func) => {
-                scan_stmts(&func.block.stmts, rel_path, project, diags);
+                scan_stmts(&func.block.stmts, file_path, diags);
             }
             syn::Item::Mod(module) => {
                 if let Some((_, inner)) = &module.content {
-                    scan_block_for_positional(inner, rel_path, project, diags);
+                    scan_block_for_positional(inner, file_path, diags);
                 }
             }
             _ => {}
@@ -58,25 +53,20 @@ fn scan_block_for_positional(
 }
 
 // needed helper: statement-level scanner
-fn scan_stmts(
-    stmts: &[syn::Stmt],
-    rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
-) {
+fn scan_stmts(stmts: &[syn::Stmt], file_path: &Path, diags: &mut Vec<Diagnostic>) {
     for stmt in stmts {
         match stmt {
-            syn::Stmt::Expr(expr, _) => scan_expr(expr, rel_path, project, diags),
+            syn::Stmt::Expr(expr, _) => scan_expr(expr, file_path, diags),
             syn::Stmt::Local(local) => {
                 if let Some(init) = &local.init {
-                    scan_expr(&init.expr, rel_path, project, diags);
+                    scan_expr(&init.expr, file_path, diags);
                 }
             }
             syn::Stmt::Macro(m) => {
                 let content = m.mac.tokens.to_string();
                 if has_positional_access(&content) {
                     diags.push(Diagnostic {
-                        file: project.src_dir.join(rel_path),
+                        file: file_path.to_path_buf(),
                         line: 1,
                         col: 0,
                         code: "E009".to_string(),
@@ -91,11 +81,11 @@ fn scan_stmts(
 }
 
 // needed helper: expression-level position access checker
-fn scan_expr(expr: &syn::Expr, rel_path: &Path, project: &Project, diags: &mut Vec<Diagnostic>) {
+fn scan_expr(expr: &syn::Expr, file_path: &Path, diags: &mut Vec<Diagnostic>) {
     if let syn::Expr::Field(field) = expr {
         if matches!(&field.member, syn::Member::Unnamed(_)) {
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: file_path.to_path_buf(),
                 line: 1,
                 col: 0,
                 code: "E009".to_string(),

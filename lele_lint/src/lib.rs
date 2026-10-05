@@ -7,10 +7,11 @@ pub use config::Config;
 #[path = "__basic__/mod.rs"]
 pub mod basic;
 pub use basic::enums::EntryKind;
+pub use basic::enums::Origin;
 pub use basic::enums::Requirement;
 pub use basic::structs::{
     AllowWhitelistEntry, BoundaryEntry, Diagnostic, Entry, ExampleFile, LeleSection,
-    LeleTomlLintSections, ModDecl, Reexport, RuleDoc,
+    LeleTomlLintSections, ModDecl, ParsedSource, Reexport, RuleDoc,
 };
 pub use basic::type_aliases::ModuleInfoMap;
 pub mod dunder;

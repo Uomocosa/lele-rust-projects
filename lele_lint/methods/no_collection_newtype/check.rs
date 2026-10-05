@@ -10,26 +10,22 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
-        scan_items(&file.items, rel_path, project, &mut diags);
+    for source in project.content_sources() {
+        let file_path = project.absolute_path(source.origin, source.relative_path);
+        scan_items(&source.file.items, &file_path, &mut diags);
     }
 
     diags
 }
 
 // needed helper: recursive item scanner
-fn scan_items(
-    items: &[syn::Item],
-    rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
-) {
+fn scan_items(items: &[syn::Item], file_path: &Path, diags: &mut Vec<Diagnostic>) {
     for item in items {
         match item {
-            syn::Item::Struct(struct_def) => check_struct(struct_def, rel_path, project, diags),
+            syn::Item::Struct(struct_def) => check_struct(struct_def, file_path, diags),
             syn::Item::Mod(module) => {
                 if let Some((_, inner)) = &module.content {
-                    scan_items(inner, rel_path, project, diags);
+                    scan_items(inner, file_path, diags);
                 }
             }
             _ => {}
@@ -38,12 +34,7 @@ fn scan_items(
 }
 
 // needed helper: single-field collection inner-type validation
-fn check_struct(
-    struct_def: &syn::ItemStruct,
-    rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
-) {
+fn check_struct(struct_def: &syn::ItemStruct, file_path: &Path, diags: &mut Vec<Diagnostic>) {
     if struct_def.fields.len() != 1 {
         return;
     }
@@ -65,7 +56,7 @@ fn check_struct(
     let name = struct_def.ident.to_string();
     let singular = singular_name(&name);
     diags.push(Diagnostic {
-        file: project.src_dir.join(rel_path),
+        file: file_path.to_path_buf(),
         line: 1,
         col: 0,
         code: "E028".to_string(),
@@ -225,9 +216,7 @@ fn singular_name(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
-
-    use crate::Project;
+    use std::path::Path;
 
     use super::check_struct;
     use super::singular_name;
@@ -241,7 +230,7 @@ mod tests {
     fn test_usage() {
         let s = parse("pub struct ExampleNames(pub Vec<String>);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("Vec<ExampleName>"));
     }
@@ -250,7 +239,7 @@ mod tests {
     fn test_usage_singular_newtype_passes() {
         let s = parse("pub struct ExampleName(pub String);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert!(diags.is_empty());
     }
 
@@ -258,7 +247,7 @@ mod tests {
     fn test_usage_map_newtype_is_rejected() {
         let s = parse("pub struct Scores(pub HashMap<String, u32>);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
     }
 
@@ -266,7 +255,7 @@ mod tests {
     fn test_usage_multi_field_vec_passes() {
         let s = parse("pub struct Player { pub names: Vec<String> }");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert!(diags.is_empty());
     }
 
@@ -274,7 +263,7 @@ mod tests {
     fn test_usage_serde_exempt() {
         let s = parse("#[derive(Deserialize)] pub struct Tags(pub Vec<String>);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert!(diags.is_empty());
     }
 
@@ -290,7 +279,7 @@ mod tests {
     fn test_usage_borrowed_slice_rejected() {
         let s = parse("pub struct ExampleNames<'a>(pub &'a [String]);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
     }
 
@@ -298,7 +287,7 @@ mod tests {
     fn test_usage_mut_slice_rejected() {
         let s = parse("pub struct ExampleNames<'a>(pub &'a mut [String]);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
     }
 
@@ -306,7 +295,7 @@ mod tests {
     fn test_usage_boxed_slice_rejected() {
         let s = parse("pub struct ExampleNames(pub Box<[String]>);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
     }
 
@@ -319,7 +308,7 @@ mod tests {
         ] {
             let s = parse(code);
             let mut diags = Vec::new();
-            check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+            check_struct(&s, Path::new("x.rs"), &mut diags);
             assert!(diags.is_empty());
         }
     }
@@ -328,18 +317,7 @@ mod tests {
     fn test_usage_unsigned_slice_exempt() {
         let s = parse("pub struct Bytes<'a>(pub &'a [u8]);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert!(diags.is_empty());
-    }
-
-    fn default_project() -> Project {
-        Project {
-            root: PathBuf::from("."),
-            src_dir: PathBuf::from("src"),
-            entries: Vec::new(),
-            module_info: std::collections::HashMap::default(),
-            parsed_files: std::collections::HashMap::default(),
-            ..Project::default()
-        }
     }
 }

@@ -11,7 +11,9 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         if file
             .items
             .iter()
@@ -36,7 +38,7 @@ pub fn check(
                         if let Some(field) = is_trivial_accessor(method, &pub_fields) {
                             let vis = vis_fields.get(&field).cloned().unwrap_or_default();
                             diags.push(Diagnostic {
-                                file: project.src_dir.join(rel_path),
+                                file: project.absolute_path(source.origin, rel_path),
                                 line: 1,
                                 col: 0,
                                 code: "E010".to_string(),
@@ -48,7 +50,7 @@ pub fn check(
                         } else if let Some(field) = is_trivial_setter(method, &pub_fields) {
                             let vis = vis_fields.get(&field).cloned().unwrap_or_default();
                             diags.push(Diagnostic {
-                                file: project.src_dir.join(rel_path),
+                                file: project.absolute_path(source.origin, rel_path),
                                 line: 1,
                                 col: 0,
                                 code: "E010".to_string(),

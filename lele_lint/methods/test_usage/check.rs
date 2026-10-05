@@ -4,7 +4,7 @@ use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
 use crate::Dunder;
-use crate::EntryKind;
+use crate::Origin;
 use crate::Project;
 
 const OPT_OUT: &str = "// no test_usage necessary";
@@ -12,18 +12,23 @@ const OPT_OUT: &str = "// no test_usage necessary";
 pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
-        if is_exempt(rel_path, file, &project.dunder) {
+    for source in project.content_sources() {
+        if matches!(source.origin, Origin::Examples) {
+            continue;
+        }
+        let rel_path = source.relative_path;
+        if is_exempt(rel_path, source.file, &project.dunder) {
             continue;
         }
 
-        if has_test_usage_opt_out(project, rel_path) {
+        let absolute = project.absolute_path(source.origin, rel_path);
+        if reads_opt_out(&absolute) {
             continue;
         }
 
-        if !has_test_usage(file) {
+        if !has_test_usage(source.file) {
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: absolute,
                 line: 1,
                 col: 0,
                 code: "E006".to_string(),
@@ -39,21 +44,10 @@ pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<
 }
 
 // needed helper: opt-out comment lookup on disk
-fn has_test_usage_opt_out(project: &Project, rel_path: &Path) -> bool {
-    let entry = match project
-        .entries
-        .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)
-    {
-        Some(e) => e,
-        None => return false,
+fn reads_opt_out(path: &Path) -> bool {
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return false;
     };
-
-    let content = match std::fs::read_to_string(&entry.absolute_path) {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-
     opt_out_at_end(&content)
 }
 

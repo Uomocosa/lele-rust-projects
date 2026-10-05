@@ -10,26 +10,22 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
-        scan_items(&file.items, rel_path, project, &mut diags);
+    for source in project.content_sources() {
+        let file_path = project.absolute_path(source.origin, source.relative_path);
+        scan_items(&source.file.items, &file_path, &mut diags);
     }
 
     diags
 }
 
 // needed helper: recursive item scanner
-fn scan_items(
-    items: &[syn::Item],
-    rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
-) {
+fn scan_items(items: &[syn::Item], file_path: &Path, diags: &mut Vec<Diagnostic>) {
     for item in items {
         match item {
-            syn::Item::Struct(struct_def) => check_struct(struct_def, rel_path, project, diags),
+            syn::Item::Struct(struct_def) => check_struct(struct_def, file_path, diags),
             syn::Item::Mod(module) => {
                 if let Some((_, inner)) = &module.content {
-                    scan_items(inner, rel_path, project, diags);
+                    scan_items(inner, file_path, diags);
                 }
             }
             _ => {}
@@ -38,12 +34,7 @@ fn scan_items(
 }
 
 // needed helper: single-field struct shape validation
-fn check_struct(
-    struct_def: &syn::ItemStruct,
-    rel_path: &Path,
-    project: &Project,
-    diags: &mut Vec<Diagnostic>,
-) {
+fn check_struct(struct_def: &syn::ItemStruct, file_path: &Path, diags: &mut Vec<Diagnostic>) {
     let name = struct_def.ident.to_string();
     let field_count = struct_def.fields.len();
 
@@ -55,14 +46,13 @@ fn check_struct(
             if has_deref_derive(struct_def) {
                 return;
             }
-            push(diags, rel_path, project, format!("{name} has a single named field without Deref and must be a tuple newtype like `pub struct {name}(pub T)`; named single-field structs must derive Deref"));
+            push(diags, file_path, format!("{name} has a single named field without Deref and must be a tuple newtype like `pub struct {name}(pub T)`; named single-field structs must derive Deref"));
             return;
         }
         if !has_deref_derive(struct_def) {
             push(
                 diags,
-                rel_path,
-                project,
+                file_path,
                 format!("{name} is a single-field tuple newtype and must derive Deref"),
             );
         }
@@ -70,8 +60,7 @@ fn check_struct(
         if let syn::Fields::Unnamed(_) = struct_def.fields {
             push(
                 diags,
-                rel_path,
-                project,
+                file_path,
                 format!(
                     "{name} has multiple fields and must use named fields like `{{ a: A, b: B }}`"
                 ),
@@ -119,9 +108,9 @@ fn has_derive_name(struct_def: &syn::ItemStruct, names: &[&str]) -> bool {
 }
 
 // needed helper: diagnostic emission
-fn push(diags: &mut Vec<Diagnostic>, rel_path: &Path, project: &Project, message: String) {
+fn push(diags: &mut Vec<Diagnostic>, file_path: &Path, message: String) {
     diags.push(Diagnostic {
-        file: project.src_dir.join(rel_path),
+        file: file_path.to_path_buf(),
         line: 1,
         col: 0,
         code: "E018".to_string(),
@@ -131,7 +120,7 @@ fn push(diags: &mut Vec<Diagnostic>, rel_path: &Path, project: &Project, message
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     use crate::Project;
 
@@ -171,7 +160,7 @@ mod tests {
     fn test_usage_single_field_named_is_rejected() {
         let s = parse("pub struct X { pub value: u64 }");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("tuple newtype"));
     }
@@ -180,7 +169,7 @@ mod tests {
     fn test_usage_single_named_with_deref_passes() {
         let s = parse("#[derive(Debug, Clone, Deref)] pub struct X { pub value: Vec<String> }");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert!(diags.is_empty());
     }
 
@@ -188,7 +177,7 @@ mod tests {
     fn test_usage_single_field_without_deref_is_rejected() {
         let s = parse("pub struct X(pub u64);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("derive Deref"));
     }
@@ -197,7 +186,7 @@ mod tests {
     fn test_usage_single_field_with_deref_passes() {
         let s = parse("#[derive(Deref)] pub struct X(pub u64);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert!(diags.is_empty());
     }
 
@@ -213,7 +202,7 @@ mod tests {
             let s = parse(code);
             assert!(has_data_shape_derive(&s));
             let mut diags = Vec::new();
-            check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+            check_struct(&s, Path::new("x.rs"), &mut diags);
             assert!(diags.is_empty());
         }
     }
@@ -223,7 +212,7 @@ mod tests {
         let s = parse("#[derive(Clone, Debug)] struct X { value: u64 }");
         assert!(!has_data_shape_derive(&s));
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
     }
 
@@ -231,20 +220,9 @@ mod tests {
     fn test_usage_multi_field_tuple_is_rejected() {
         let s = parse("pub struct X(pub String, pub u32);");
         let mut diags = Vec::new();
-        check_struct(&s, Path::new("x.rs"), &default_project(), &mut diags);
+        check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("named fields"));
-    }
-
-    fn default_project() -> Project {
-        Project {
-            root: PathBuf::from("."),
-            src_dir: PathBuf::from("src"),
-            entries: Vec::new(),
-            module_info: std::collections::HashMap::default(),
-            parsed_files: std::collections::HashMap::default(),
-            ..Project::default()
-        }
     }
 }
 

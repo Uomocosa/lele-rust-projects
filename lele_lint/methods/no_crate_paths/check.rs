@@ -11,7 +11,9 @@ use crate::Project;
 pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         if is_crate_root(rel_path) {
             continue;
         }
@@ -22,7 +24,7 @@ pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) 
         }
         for hit in std::mem::take(&mut hits) {
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: project.absolute_path(source.origin, rel_path),
                 line: hit.line,
                 col: 0,
                 code: "E020".to_string(),

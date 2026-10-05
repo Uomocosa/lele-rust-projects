@@ -16,7 +16,9 @@ pub fn check(
     let mut diags = Vec::new();
     let root_stems = root_module_stems(project);
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
         let mut hits = Vec::new();
         {
             let mut visitor = StutterVisitor {
@@ -27,7 +29,7 @@ pub fn check(
         }
         for hit in std::mem::take(&mut hits) {
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: project.absolute_path(source.origin, rel_path),
                 line: hit.line,
                 col: 0,
                 code: checkers::no_stuttered_path::NoStutteredPath::CODE.to_string(),

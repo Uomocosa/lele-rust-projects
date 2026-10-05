@@ -1,10 +1,8 @@
-use std::path::Path;
-
 use syn::spanned::Spanned;
 
 use crate::checkers;
 use crate::Diagnostic;
-use crate::EntryKind;
+use crate::Origin;
 use crate::Project;
 
 const MAX_PRIVATE_HELPERS: usize = 2;
@@ -14,7 +12,12 @@ const ANNOTATION: &str = "// needed helper:";
 pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        if matches!(source.origin, Origin::Examples) {
+            continue;
+        }
+        let rel_path = source.relative_path;
+        let file = source.file;
         let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
@@ -28,15 +31,16 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
             continue;
         }
 
-        let Some(source) = read_source(project, rel_path) else {
+        let absolute = project.absolute_path(source.origin, rel_path);
+        let Ok(text) = std::fs::read_to_string(&absolute) else {
             continue;
         };
 
-        let private_count = count_unannotated_private_helpers(file, &source);
+        let private_count = count_unannotated_private_helpers(file, &text);
 
         if private_count > MAX_PRIVATE_HELPERS {
             diags.push(Diagnostic {
-                file: project.src_dir.join(rel_path),
+                file: absolute.clone(),
                 line: 1,
                 col: 0,
                 code: "E015".to_string(),
@@ -54,7 +58,7 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
         if pub_like_fns.len() > 1 {
             for func in &pub_like_fns {
                 diags.push(Diagnostic {
-                    file: project.src_dir.join(rel_path),
+                    file: absolute.clone(),
                     line: func.sig.fn_token.span().start().line,
                     col: 0,
                     code: "E015".to_string(),
@@ -69,15 +73,6 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
     }
 
     diags
-}
-
-fn read_source(project: &Project, rel_path: &Path) -> Option<String> {
-    let entry = project
-        .entries
-        .iter()
-        .find(|e| e.relative_path == rel_path && e.kind == EntryKind::File)?;
-
-    std::fs::read_to_string(&entry.absolute_path).ok()
 }
 
 fn count_unannotated_private_helpers(file: &syn::File, source: &str) -> usize {

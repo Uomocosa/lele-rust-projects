@@ -45,11 +45,14 @@ pub fn check(
         return diags;
     };
 
-    for (rel_path, file) in &project.parsed_files {
+    for source in project.content_sources() {
+        let rel_path = source.relative_path;
+        let file = source.file;
+        let file_path = project.absolute_path(source.origin, rel_path);
         if is_container(rel_path, project) {
-            check_container_file(rel_path, file, project, &mut diags);
+            check_container_file(rel_path, file, project, &file_path, &mut diags);
         } else {
-            check_free_file(rel_path, file, project, &folder, &mut diags);
+            check_free_file(rel_path, file, &folder, &file_path, &mut diags);
         }
     }
 
@@ -105,6 +108,7 @@ fn check_container_file(
     rel_path: &Path,
     file: &syn::File,
     project: &Project,
+    file_path: &Path,
     diags: &mut Vec<Diagnostic>,
 ) {
     let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
@@ -124,8 +128,7 @@ fn check_container_file(
         if has_behavior(file, &name) {
             push(
                 diags,
-                project,
-                rel_path,
+                file_path,
                 format!(
                     "`{name}` has impls; `{stem}.rs` holds behavior-free items only — move it to `{name}.rs`"
                 ),
@@ -137,8 +140,7 @@ fn check_container_file(
             let hint = natural.map_or("a non-container item".to_string(), |r| r.file().to_string());
             push(
                 diags,
-                project,
-                rel_path,
+                file_path,
                 format!("`{name}` is a {hint}; move it to `{hint}`"),
             );
         }
@@ -149,8 +151,8 @@ fn check_container_file(
 fn check_free_file(
     rel_path: &Path,
     file: &syn::File,
-    project: &Project,
     folder: &str,
+    file_path: &Path,
     diags: &mut Vec<Diagnostic>,
 ) {
     let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
@@ -176,8 +178,7 @@ fn check_free_file(
         }
         push(
             diags,
-            project,
-            rel_path,
+            file_path,
             format!(
                 "`{name}` is a behavior-free {}; move it to `{}`",
                 role.file(),
@@ -188,9 +189,9 @@ fn check_free_file(
 }
 
 // needed helper: diagnostic construction
-fn push(diags: &mut Vec<Diagnostic>, project: &Project, rel_path: &Path, message: String) {
+fn push(diags: &mut Vec<Diagnostic>, file_path: &Path, message: String) {
     diags.push(Diagnostic {
-        file: project.src_dir.join(rel_path),
+        file: file_path.to_path_buf(),
         line: 1,
         col: 0,
         code: "E029".to_string(),

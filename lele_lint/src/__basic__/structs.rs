@@ -59,6 +59,12 @@ pub struct Entry {
     pub kind: basic::enums::EntryKind,
 }
 
+pub struct ParsedSource<'a> {
+    pub origin: basic::enums::Origin,
+    pub relative_path: &'a std::path::Path,
+    pub file: &'a syn::File,
+}
+
 #[derive(Debug, Clone)]
 pub struct ModDecl {
     pub name: String,

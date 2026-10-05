@@ -11,3 +11,10 @@ pub enum EntryKind {
 pub enum Requirement {
     Honest,
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Origin {
+    Src,
+    Methods,
+    Examples,
+}
