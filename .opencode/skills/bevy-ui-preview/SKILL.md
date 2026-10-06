@@ -27,8 +27,8 @@ reads, and `png`/`mp4`/`scene` whether a preview exists. Every `-` is a gap.
 - spawns UI (`Node`, `Text`, `ImageNode`, `Sprite`, `Text2d`, `Mesh2d`,
   `MeshMaterial2d`) -> an ignored `*_ui_png_preview`
 - also reads a time/input driver (`Res<Time>`, `delta_secs`, `elapsed_secs`,
-  `Timer`, `Local`, `Animatable`, `AnimationClip`, `AnimationPlayer`, `tween`,
-  `keyframe`, `is_changed`, `Changed<Interaction>`, `Interaction`,
+  `Timer`, `Animatable`, `AnimationClip`, `AnimationPlayer`, `tween`,
+  `keyframe`, `Interaction`,
   `ButtonInput`, `MouseButton`, `KeyCode`) -> an ignored `*_ui_mp4_preview`
 - defines `impl Plugin` and its domain spawns UI -> an ignored
   `*_ui_scene_preview`
@@ -46,6 +46,7 @@ mod tests {
     use bevy::prelude::*;
     use lele_bevy_preview::preview::Config;
     use lele_bevy_preview::run;
+    use lele_bevy_preview::scene::Kind;
     use lele_bevy_preview::scene::Scene;
     use lele_bevy_preview::scene::State;
 
@@ -65,6 +66,7 @@ mod tests {
         run(
             &Scene {
                 name: String::from("spawn_root"),
+                kind: Kind::System,
                 build: build_scene,
                 states: vec![State {
                     label: String::from("empty lobby"),
@@ -82,10 +84,16 @@ mod tests {
 
 ## 4. The scene DSL
 
+- `Kind` = `System` | `Component` | `Plugin` | `App`; required, it prefixes the Telegram
+  message (`[system] spawn_root`).
 - `State` = one PNG; `apply: fn(&mut World)` mutates the world before capture.
-- `Timeline` = N frames -> one MP4; `frames`, `fps`, `apply`.
+- `Timeline` = N frames -> one MP4; `frames`, `fps`, `apply`. `Config::lead_in_frames`
+  baseline frames are captured before `apply`, and a clip whose frames are all
+  identical fails with `Error::StaticClip`.
+- A change that lands in one tick (`is_changed`, `Changed<T>`, `Local`) is not motion:
+  show it as two `State`s (before, after) instead of an mp4.
 - `build: fn(&mut App)` assembles the scene with typed code — no reflection, no JSON.
-- `Config`: `width`, `height`, `warmup_frames`, `max_capture_frames`,
+- `Config`: `width`, `height`, `warmup_frames`, `lead_in_frames`, `max_capture_frames`,
   `min_distinct_colors`, `out_dir`.
 
 `run` renders every state, encodes the timeline if present, and fails with
@@ -97,7 +105,9 @@ colours — a blank frame is an error, not a green test.
 `run` hashes every frame and persists a manifest. On a re-run, `FirstRun` /
 `New` / `Changed` are sendable and `Same` is not. Telegram delivery fires only
 for sendable artifacts when `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` are set;
-missing credentials are not an error.
+missing credentials are not an error. When anything in a scene is sendable, the
+whole scene (every state PNG plus the clip) goes out as one Telegram album with a
+single numbered caption, so before/after images stay together.
 
 ## 6. Run commands
 
@@ -252,7 +262,7 @@ pub fn setup(s: &mut S) { s.spawn((Node,)); }
 
 pub fn tick(time: Res<Time>, q: Query<&Interaction>) {
     let _ = time.delta_secs();
-    if q.is_changed() {}
+    let _ = q;
 }
 ```
 

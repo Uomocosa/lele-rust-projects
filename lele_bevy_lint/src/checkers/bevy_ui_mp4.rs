@@ -20,7 +20,7 @@ impl BevyUiMp4 {
 
 pub fn tick(time: Res<Time>, q: Query<&Interaction>) {
     let _ = time.delta_secs();
-    if q.is_changed() {}
+    let _ = q;
 }
 ",
         }],

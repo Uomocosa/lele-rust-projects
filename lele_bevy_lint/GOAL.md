@@ -59,9 +59,9 @@ representation, not a fork.
 
 **bevy_ui_mp4 (E037) — UI driven over time or input needs an mp4 preview**
    - When a UI-spawning file also matches a time/input driver token
-     (`Res<Time>`, `delta_secs`, `elapsed_secs`, `Timer`, `Local`,
+     (`Res<Time>`, `delta_secs`, `elapsed_secs`, `Timer`,
      `Animatable`, `AnimationClip`, `AnimationPlayer`, `tween`,
-     `keyframe`, `is_changed`, `Changed<Interaction>`, `Interaction`,
+     `keyframe`, `Interaction`,
      `ButtonInput`, `MouseButton`, `KeyCode`), it must define an
      `#[ignore]`d `*_ui_mp4_preview` test.
    - Input-driven tokens are included deliberately: a purely discrete

@@ -3,13 +3,11 @@ use syn::visit::Visit;
 
 use crate::scan;
 
-const DRIVER_TOKENS: [&str; 19] = [
-    "is_changed",
+const DRIVER_TOKENS: [&str; 16] = [
     "delta_secs",
     "elapsed_secs",
     "delta",
     "Timer",
-    "Local",
     "Time",
     "Animatable",
     "AnimatableUi",
@@ -18,7 +16,6 @@ const DRIVER_TOKENS: [&str; 19] = [
     "tween",
     "keyframe",
     "keyframes",
-    "Changed",
     "Interaction",
     "ButtonInput",
     "MouseButton",
@@ -83,7 +80,18 @@ mod tests {
         assert!(found.contains(&"Time".to_string()));
         assert!(found.contains(&"delta_secs".to_string()));
         assert!(found.contains(&"Interaction".to_string()));
-        assert!(found.contains(&"is_changed".to_string()));
+        assert!(!found.contains(&"is_changed".to_string()));
+    }
+
+    #[test]
+    fn test_usage_change_detection_is_not_a_driver() {
+        let file = syn::parse_str(
+            "pub fn sync(snapshot: Res<Snapshot>, mut ready: Local<bool>, q: Query<Entity, Changed<Name>>) {
+                 if snapshot.is_changed() { *ready = true; }
+             }",
+        )
+        .unwrap();
+        assert_eq!(drivers(&file).len(), 0);
     }
 
     #[test]
