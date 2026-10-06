@@ -46,6 +46,7 @@ mod tests {
                 fingerprint: format!("ui|{label}"),
                 pixel_hash: String::from("h"),
                 media: Media::Png,
+                kind: crate::scene::Kind::System,
             },
             status,
         }

@@ -65,6 +65,7 @@ fn config(dir: &std::path::Path) -> Config {
     Config {
         out_dir: PathBuf::from(dir),
         warmup_frames: 30,
+        lead_in_frames: 2,
         max_capture_frames: 240,
         ..Config::default()
     }
@@ -73,6 +74,7 @@ fn config(dir: &std::path::Path) -> Config {
 fn scene(states: Vec<State>) -> Scene {
     Scene {
         name: String::from("card"),
+        kind: lele_bevy_preview::scene::Kind::System,
         build: build_scene,
         states,
         timeline: None,
@@ -146,6 +148,7 @@ fn a_blank_scene_is_rejected_rather_than_writing_an_empty_png() {
     let dir = tempfile::tempdir().unwrap();
     let empty = Scene {
         name: String::from("empty"),
+        kind: lele_bevy_preview::scene::Kind::System,
         build: noop_build,
         states: vec![rest()],
         timeline: None,
@@ -192,10 +195,11 @@ fn a_changed_visual_is_reported_as_changed() {
 }
 
 #[test]
-fn a_timeline_renders_one_frame_per_declared_frame() {
+fn a_timeline_renders_its_lead_in_then_one_frame_per_declared_frame() {
     let dir = tempfile::tempdir().unwrap();
     let with_timeline = Scene {
         name: String::from("pulse"),
+        kind: lele_bevy_preview::scene::Kind::System,
         build: with_count_and_camera,
         states: vec![rest()],
         timeline: Some(Timeline {
@@ -207,7 +211,7 @@ fn a_timeline_renders_one_frame_per_declared_frame() {
     };
     let frames =
         lele_bevy_preview::timeline::render_frames(&with_timeline, &config(dir.path())).unwrap();
-    assert_eq!(frames.len(), 4);
+    assert_eq!(frames.len(), 6, "2 lead-in frames plus the 4 declared ones");
     for frame in &frames {
         assert!(frame.0.exists(), "{} missing", frame.0.display());
     }
@@ -218,6 +222,7 @@ fn frames_of_a_timeline_differ_as_the_value_grows() {
     let dir = tempfile::tempdir().unwrap();
     let with_timeline = Scene {
         name: String::from("pulse"),
+        kind: lele_bevy_preview::scene::Kind::System,
         build: with_count_and_camera,
         states: vec![rest()],
         timeline: Some(Timeline {

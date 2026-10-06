@@ -33,6 +33,7 @@ fn paint_red(world: &mut World) {
 fn scene() -> Scene {
     Scene {
         name: String::from("panel"),
+        kind: lele_bevy_preview::scene::Kind::System,
         build: build_real_ui,
         states: vec![
             State {

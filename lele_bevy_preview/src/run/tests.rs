@@ -19,6 +19,7 @@ fn noop_build(_app: &mut App) {}
 fn scene() -> Scene {
     Scene {
         name: String::from("sync_room_list"),
+        kind: crate::scene::Kind::System,
         build: noop_build,
         states: vec![State {
             label: String::from("two rooms"),
@@ -98,6 +99,7 @@ fn test_usage_manifest_accumulates_across_scenes() {
     run(&scene(), &config(dir.path()), "demo").unwrap();
     let other = Scene {
         name: String::from("spawn_root"),
+        kind: crate::scene::Kind::System,
         ..scene()
     };
     run(&other, &config(dir.path()), "demo").unwrap();

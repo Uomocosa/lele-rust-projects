@@ -4,9 +4,11 @@ use crate::Error;
 use crate::deliver;
 use crate::deliver::basic::enums::Media;
 use crate::deliver::basic::structs::{Artifact, Capture, Manifest};
+use crate::scene::Kind;
 
 pub fn collect(
     scene: &str,
+    kind: Kind,
     rendered: &[(PathBuf, String, String)],
     previous: Option<&Manifest>,
 ) -> Result<Vec<Capture>, Error> {
@@ -18,6 +20,7 @@ pub fn collect(
             fingerprint: deliver::fingerprint_of::fingerprint_of(scene, label),
             pixel_hash: pixels.clone(),
             media: Media::Png,
+            kind,
         };
         let status = deliver::state_status::state_status(previous, &artifact);
         captures.push(Capture {

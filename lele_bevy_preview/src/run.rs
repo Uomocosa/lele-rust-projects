@@ -8,7 +8,8 @@ use crate::timeline;
 pub fn run(scene: &Scene, config: &preview::Config, crate_name: &str) -> Result<Report, Error> {
     let rendered = preview::render_states::render_states(scene, config)?;
     let previous = deliver::load_previous::load_previous(&config.out_dir);
-    let captures = deliver::collect::collect(&scene.name, &rendered, previous.as_ref())?;
+    let captures =
+        deliver::collect::collect(&scene.name, scene.kind, &rendered, previous.as_ref())?;
     let clip = timeline::build_clip::build_clip(scene, config)?;
     deliver::update_manifest::update_manifest(
         &config.out_dir,
@@ -16,7 +17,7 @@ pub fn run(scene: &Scene, config: &preview::Config, crate_name: &str) -> Result<
         &captures,
         clip.as_ref(),
     )?;
-    deliver::send_changed::send_changed(&captures, clip.as_ref())?;
+    deliver::send_changed::send_changed(scene, &captures, clip.as_ref())?;
     announce(&captures, clip.as_ref());
     Ok(Report { captures, clip })
 }

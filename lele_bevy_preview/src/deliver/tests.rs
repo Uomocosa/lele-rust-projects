@@ -10,6 +10,7 @@ fn artifact(scene: &str, label: &str, fingerprint: &str, pixels: &str) -> delive
         fingerprint: fingerprint.to_string(),
         pixel_hash: pixels.to_string(),
         media: deliver::Media::Png,
+        kind: crate::scene::Kind::System,
     }
 }
 
@@ -95,12 +96,13 @@ fn test_usage_collect_labels_every_artifact_with_a_status() {
         String::from("rest"),
         String::from("h1"),
     )];
-    let captures = deliver::collect("ui", &rendered, None).unwrap();
+    let captures = deliver::collect("ui", crate::scene::Kind::System, &rendered, None).unwrap();
     assert_eq!(captures.len(), 1);
     assert_eq!(captures[0].status, deliver::Status::FirstRun);
     assert_eq!(captures[0].artifact.fingerprint, "ui|rest");
     let previous = manifest(vec![captures[0].artifact.clone()]);
-    let again = deliver::collect("ui", &rendered, Some(&previous)).unwrap();
+    let again =
+        deliver::collect("ui", crate::scene::Kind::System, &rendered, Some(&previous)).unwrap();
     assert_eq!(again[0].status, deliver::Status::Same);
 }
 

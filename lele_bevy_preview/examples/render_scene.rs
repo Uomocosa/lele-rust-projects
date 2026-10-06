@@ -46,6 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_or_else(|| PathBuf::from("/tmp/opencode/scene-out"), PathBuf::from);
     let scene = Scene {
         name: String::from("panel"),
+        kind: lele_bevy_preview::scene::Kind::System,
         build,
         states: vec![
             State {

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::deliver;
 use crate::deliver::basic::enums::Media;
+use crate::scene::Kind;
 
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +15,8 @@ pub struct Artifact {
     pub pixel_hash: String,
     #[serde(default)]
     pub media: Media,
+    #[serde(default)]
+    pub kind: Kind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

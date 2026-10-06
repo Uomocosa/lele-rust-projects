@@ -15,6 +15,7 @@ fn noop_build(_app: &mut App) {}
 fn scene() -> scene::Scene {
     scene::Scene {
         name: String::from("spawn_root"),
+        kind: crate::scene::Kind::System,
         build: noop_build,
         states: vec![State {
             label: String::from("empty"),
@@ -65,6 +66,7 @@ fn test_usage_rejects_empty_states_zero_frames_and_blank_names() {
     assert!(scene::check::check(&zero_frames).is_err());
     let unnamed = scene::Scene {
         name: String::new(),
+        kind: crate::scene::Kind::System,
         ..scene()
     };
     assert!(scene::check::check(&unnamed).is_err());
