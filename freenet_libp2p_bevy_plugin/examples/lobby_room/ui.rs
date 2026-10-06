@@ -194,11 +194,18 @@ mod tests {
     ) -> lele_bevy_preview::scene::Scene {
         lele_bevy_preview::scene::Scene {
             name: name.to_string(),
+            kind: lele_bevy_preview::scene::Kind::App,
             build: preview_build,
-            states: vec![lele_bevy_preview::scene::State {
-                label: String::from("one room"),
-                apply: preview_noop,
-            }],
+            states: vec![
+                lele_bevy_preview::scene::State {
+                    label: String::from("one room"),
+                    apply: preview_noop,
+                },
+                lele_bevy_preview::scene::State {
+                    label: String::from("two rooms"),
+                    apply: add_room,
+                },
+            ],
             timeline,
         }
     }
@@ -212,11 +219,18 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "headed scene"]
+    fn lobby_ui_scene_preview() {
+        lele_bevy_preview::run(&scene("lobby_ui", None), &config(), env!("CARGO_PKG_NAME"))
+            .expect("preview");
+    }
+
+    #[test]
     #[ignore = "headed recording"]
     fn lobby_ui_mp4_preview() {
         let timeline = lele_bevy_preview::scene::Timeline {
             label: String::from("add_gamma"),
-            frames: 4,
+            frames: 12,
             fps: 12,
             apply: add_room,
         };
@@ -226,12 +240,5 @@ mod tests {
             env!("CARGO_PKG_NAME"),
         )
         .expect("preview");
-    }
-
-    #[test]
-    #[ignore = "headed scene"]
-    fn lobby_ui_scene_preview() {
-        lele_bevy_preview::run(&scene("lobby_ui", None), &config(), env!("CARGO_PKG_NAME"))
-            .expect("preview");
     }
 }

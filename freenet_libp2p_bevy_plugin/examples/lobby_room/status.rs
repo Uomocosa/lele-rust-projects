@@ -139,6 +139,7 @@ mod tests {
     ) -> lele_bevy_preview::scene::Scene {
         lele_bevy_preview::scene::Scene {
             name: String::from("status"),
+            kind: lele_bevy_preview::scene::Kind::App,
             build: preview_build,
             states: vec![lele_bevy_preview::scene::State {
                 label: String::from("lobby"),
@@ -160,8 +161,8 @@ mod tests {
     fn status_ui_mp4_preview() {
         let timeline = lele_bevy_preview::scene::Timeline {
             label: String::from("add_gamma"),
-            frames: 4,
-            fps: 12,
+            frames: 90,
+            fps: 30,
             apply: add_room,
         };
         lele_bevy_preview::run(&scene(Some(timeline)), &config(), env!("CARGO_PKG_NAME"))

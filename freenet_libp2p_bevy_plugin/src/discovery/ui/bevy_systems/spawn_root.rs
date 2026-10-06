@@ -95,6 +95,7 @@ mod tests {
         lele_bevy_preview::run(
             &lele_bevy_preview::scene::Scene {
                 name: String::from("spawn_root"),
+                kind: lele_bevy_preview::scene::Kind::System,
                 build: preview_build,
                 states: vec![lele_bevy_preview::scene::State {
                     label: String::from("empty lobby"),

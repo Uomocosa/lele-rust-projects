@@ -126,40 +126,19 @@ mod tests {
         lele_bevy_preview::run(
             &lele_bevy_preview::scene::Scene {
                 name: String::from("sync_room_list"),
+                kind: lele_bevy_preview::scene::Kind::System,
                 build: preview_build,
-                states: vec![lele_bevy_preview::scene::State {
-                    label: String::from("two rooms"),
-                    apply: preview_noop,
-                }],
+                states: vec![
+                    lele_bevy_preview::scene::State {
+                        label: String::from("two rooms"),
+                        apply: preview_noop,
+                    },
+                    lele_bevy_preview::scene::State {
+                        label: String::from("three rooms"),
+                        apply: add_room,
+                    },
+                ],
                 timeline: None,
-            },
-            &lele_bevy_preview::preview::Config {
-                out_dir: out,
-                ..Default::default()
-            },
-            env!("CARGO_PKG_NAME"),
-        )
-        .expect("preview");
-    }
-
-    #[test]
-    #[ignore = "headed recording"]
-    fn sync_room_list_ui_mp4_preview() {
-        let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui_preview");
-        lele_bevy_preview::run(
-            &lele_bevy_preview::scene::Scene {
-                name: String::from("sync_room_list"),
-                build: preview_build,
-                states: vec![lele_bevy_preview::scene::State {
-                    label: String::from("two rooms"),
-                    apply: preview_noop,
-                }],
-                timeline: Some(lele_bevy_preview::scene::Timeline {
-                    label: String::from("add_gamma"),
-                    frames: 4,
-                    fps: 12,
-                    apply: add_room,
-                }),
             },
             &lele_bevy_preview::preview::Config {
                 out_dir: out,

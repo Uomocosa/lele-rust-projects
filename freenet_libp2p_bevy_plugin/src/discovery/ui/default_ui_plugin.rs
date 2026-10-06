@@ -24,8 +24,22 @@ mod tests {
 
     fn preview_build(app: &mut App) {
         app.add_message::<discovery::Command>();
-        app.insert_resource(discovery::Snapshot::default());
+        app.insert_resource(preview_snapshot());
         app.add_plugins(discovery::ui::DefaultUiPlugin);
+    }
+
+    fn preview_snapshot() -> discovery::Snapshot {
+        let mut snapshot = discovery::Snapshot::default();
+        for (name, capacity) in [("alpha", 8_u16), ("beta", 4_u16)] {
+            snapshot.lobby.insert(
+                discovery::RoomName(name.to_string()),
+                discovery::RoomRecord {
+                    capacity,
+                    members: std::collections::BTreeMap::new(),
+                },
+            );
+        }
+        snapshot
     }
 
     const fn preview_noop(_world: &mut World) {}
@@ -51,9 +65,10 @@ mod tests {
         lele_bevy_preview::run(
             &lele_bevy_preview::scene::Scene {
                 name: String::from("default_ui_plugin"),
+                kind: lele_bevy_preview::scene::Kind::Plugin,
                 build: preview_build,
                 states: vec![lele_bevy_preview::scene::State {
-                    label: String::from("default ui"),
+                    label: String::from("lobby with two rooms"),
                     apply: preview_noop,
                 }],
                 timeline: None,
