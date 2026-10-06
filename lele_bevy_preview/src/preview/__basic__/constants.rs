@@ -3,6 +3,7 @@ pub const DEFAULT_HEIGHT: u32 = 540;
 pub const DEFAULT_WARMUP_FRAMES: u32 = 90;
 pub const DEFAULT_MAX_CAPTURE_FRAMES: u32 = 600;
 pub const DEFAULT_MIN_DISTINCT_COLORS: usize = 2;
+pub const DEFAULT_LEAD_IN_FRAMES: u32 = 6;
 pub const PUMP_FRAMES: u32 = 600;
 pub const SETTLE_CAPTURES: u32 = 3;
 pub const CLEAR_R: f32 = 0.06;

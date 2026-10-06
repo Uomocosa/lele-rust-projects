@@ -8,6 +8,17 @@ use crate::scene::basic::structs::{State, Timeline};
 
 // needed helper: fixture shared by the tests in this file
 fn noop(_world: &mut World) {}
+// needed helper: a visible change, because a clip whose frames never differ is rejected
+fn appear(world: &mut World) {
+    world.spawn((
+        bevy::ui::Node {
+            width: bevy::ui::Val::Px(200.0),
+            height: bevy::ui::Val::Px(120.0),
+            ..Default::default()
+        },
+        bevy::ui::BackgroundColor(bevy::color::Color::srgb(0.9, 0.2, 0.2)),
+    ));
+}
 // needed helper: fixture shared by the tests in this file
 fn noop_build(_app: &mut App) {}
 
@@ -15,6 +26,7 @@ fn noop_build(_app: &mut App) {}
 fn scene(spec: Option<Timeline>) -> Scene {
     Scene {
         name: String::from("press"),
+        kind: crate::scene::Kind::System,
         build: noop_build,
         states: vec![State {
             label: String::from("rest"),
@@ -30,7 +42,7 @@ fn spec(frames: u32) -> Timeline {
         label: String::from("hover_then_press"),
         frames,
         fps: 30,
-        apply: noop,
+        apply: appear,
     }
 }
 
@@ -39,6 +51,7 @@ fn fast(dir: &std::path::Path) -> preview::Config {
     preview::Config {
         out_dir: dir.to_path_buf(),
         warmup_frames: 5,
+        lead_in_frames: 2,
         max_capture_frames: 240,
         min_distinct_colors: 1,
         ..preview::Config::default()
@@ -58,11 +71,11 @@ fn test_usage() {
 
 #[test]
 // needed helper: fixture shared by the tests in this file
-fn test_usage_renders_one_png_per_declared_frame() {
+fn test_usage_renders_the_lead_in_then_one_png_per_declared_frame() {
     let dir = tempfile::tempdir().unwrap();
     let frames =
         timeline::render_frames::render_frames(&scene(Some(spec(3))), &fast(dir.path())).unwrap();
-    assert_eq!(frames.len(), 3);
+    assert_eq!(frames.len(), 5, "2 lead-in frames plus the 3 declared ones");
     for frame in &frames {
         assert!(frame.0.exists(), "{} missing", frame.0.display());
     }
@@ -129,3 +142,28 @@ fn test_usage_a_missing_ffmpeg_binary_is_reported_not_ignored() {
     assert!(matches!(result, Err(crate::Error::Ffmpeg { .. })));
 }
 // no test_usage necessary
+
+#[test]
+// needed helper: fixture shared by the tests in this file
+fn test_usage_a_clip_whose_frames_never_differ_is_rejected() {
+    let dir = tempfile::tempdir().unwrap();
+    let flat = Timeline {
+        apply: noop,
+        ..spec(3)
+    };
+    let result = timeline::build_clip::build_clip(&scene(Some(flat)), &fast(dir.path()));
+    assert!(matches!(result, Err(crate::Error::StaticClip { .. })));
+}
+
+#[test]
+// needed helper: fixture shared by the tests in this file
+fn test_usage_the_baseline_precedes_the_change() {
+    let dir = tempfile::tempdir().unwrap();
+    let frames =
+        timeline::render_frames::render_frames(&scene(Some(spec(3))), &fast(dir.path())).unwrap();
+    assert_eq!(frames[0].1, frames[1].1, "lead-in frames show the baseline");
+    assert_ne!(
+        frames[1].1, frames[4].1,
+        "the change shows up after the lead-in"
+    );
+}

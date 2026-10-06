@@ -23,6 +23,11 @@ pub enum Error {
         min: usize,
     },
 
+    #[error(
+        "clip `{label}` of scene `{scene}` is static: every frame is identical, so it shows no change"
+    )]
+    StaticClip { scene: String, label: String },
+
     #[error("ffmpeg is required to build an mp4 preview but was not found on PATH")]
     NoFfmpeg,
 

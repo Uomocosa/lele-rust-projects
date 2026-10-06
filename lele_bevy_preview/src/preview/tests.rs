@@ -12,6 +12,7 @@ fn noop_build(_app: &mut App) {}
 fn scene() -> scene::Scene {
     scene::Scene {
         name: String::from("demo"),
+        kind: crate::scene::Kind::System,
         build: noop_build,
         states: vec![
             crate::scene::basic::structs::State {

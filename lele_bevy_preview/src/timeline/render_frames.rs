@@ -19,10 +19,13 @@ pub fn render_frames(
     let _ = std::fs::remove_dir_all(&scratch);
     let mut app = preview::build::build(scene, config);
     preview::warmup::warmup(&mut app, config);
-    (spec.apply)(app.world_mut());
     let target = preview::target_of::target_of(&mut app);
     let mut frames = Vec::new();
-    for index in 0..spec.frames {
+    let total = config.lead_in_frames.saturating_add(spec.frames);
+    for index in 0..total {
+        if index == config.lead_in_frames {
+            (spec.apply)(app.world_mut());
+        }
         app.update();
         let path = scratch.join(format!("frame-{:04}.png", index.saturating_add(1)));
         let image =

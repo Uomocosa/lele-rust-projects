@@ -14,6 +14,12 @@ pub fn build_clip(scene: &Scene, config: &preview::Config) -> Result<Option<Capt
     };
     let rendered = timeline::render_frames::render_frames(scene, config)?;
     let (frames, hashes): (Vec<PathBuf>, Vec<String>) = rendered.into_iter().unzip();
+    if hashes.windows(2).all(|pair| pair.first() == pair.get(1)) {
+        return Err(Error::StaticClip {
+            scene: scene.name.clone(),
+            label: spec.label.clone(),
+        });
+    }
     let out = config.out_dir.join(format!(
         "{}__{}.mp4",
         scene.name,
@@ -34,6 +40,7 @@ pub fn build_clip(scene: &Scene, config: &preview::Config) -> Result<Option<Capt
         ),
         pixel_hash: clip_hash(spec.fps, &hashes),
         media: Media::Mp4,
+        kind: scene.kind,
     };
     let previous = deliver::load_previous::load_previous(&config.out_dir);
     let status = deliver::state_status::state_status(previous.as_ref(), &artifact);
