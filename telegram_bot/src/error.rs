@@ -19,6 +19,8 @@ pub enum Error {
     NotPng { path: String },
     #[error("telegram {path} is not mp4 (no ftyp box)")]
     NotMp4 { path: String },
+    #[error("telegram album needs 2..=10 items, got {count}")]
+    BadAlbumSize { count: usize },
     #[error("telegram {op} request failed: {message}")]
     Request { op: &'static str, message: String },
     #[error("telegram {op} failed: status={status} body={snippet}")]
