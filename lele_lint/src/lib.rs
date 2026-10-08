@@ -11,7 +11,7 @@ pub use basic::enums::Origin;
 pub use basic::enums::Requirement;
 pub use basic::structs::{
     AllowWhitelistEntry, BoundaryEntry, Diagnostic, Entry, ExampleFile, LeleSection,
-    LeleTomlLintSections, ModDecl, ParsedSource, Reexport, RuleDoc,
+    LeleTomlLintSections, ModDecl, ParseFailure, ParsedSource, Reexport, RuleDoc, ScannedDir,
 };
 pub use basic::type_aliases::ModuleInfoMap;
 pub mod dunder;

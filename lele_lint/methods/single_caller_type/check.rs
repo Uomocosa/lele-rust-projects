@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use derive_more::{Deref, DerefMut};
 use syn::visit::Visit;
 
 use crate::checkers;
@@ -123,11 +124,12 @@ fn collect_embedded_type_names(parsed_files: &HashMap<PathBuf, syn::File>) -> Ha
 
 // needed helper: type path visitor
 fn collect_type_paths(ty: &syn::Type, names: &mut HashSet<String>) {
+    #[derive(Deref, DerefMut)]
     struct Collect<'a>(&'a mut HashSet<String>);
     impl<'ast> syn::visit::Visit<'ast> for Collect<'_> {
         fn visit_path(&mut self, node: &'ast syn::Path) {
             if let Some(seg) = node.segments.last() {
-                self.0.insert(seg.ident.to_string());
+                self.insert(seg.ident.to_string());
             }
             syn::visit::visit_path(self, node);
         }

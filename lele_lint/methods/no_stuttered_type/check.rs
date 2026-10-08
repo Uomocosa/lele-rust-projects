@@ -71,7 +71,7 @@ fn primary_exposed_type(file: &syn::File, stem: &str) -> Option<String> {
             syn::Item::Enum(e) => (&e.ident, &e.vis),
             _ => return None,
         };
-        if !is_exposed(vis) {
+        if !common::is_exposed(vis) {
             return None;
         }
         let name = ident.to_string();
@@ -81,18 +81,6 @@ fn primary_exposed_type(file: &syn::File, stem: &str) -> Option<String> {
             None
         }
     })
-}
-
-// needed helper: `pub` or `pub(crate)` visibility check
-fn is_exposed(vis: &syn::Visibility) -> bool {
-    match vis {
-        syn::Visibility::Public(_) => true,
-        syn::Visibility::Restricted(r) => {
-            r.path.segments.len() == 1
-                && r.path.segments.first().is_some_and(|s| s.ident == "crate")
-        }
-        syn::Visibility::Inherited => false,
-    }
 }
 
 // needed helper: strict dir-prefix strip; exact matches and short suffixes are exempt

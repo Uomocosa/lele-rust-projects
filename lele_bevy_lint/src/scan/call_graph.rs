@@ -164,7 +164,7 @@ struct SystemPaths<'a>(&'a mut Vec<String>);
 impl<'ast> Visit<'ast> for SystemPaths<'_> {
     fn visit_path(&mut self, node: &'ast syn::Path) {
         if let Some(last) = node.segments.last() {
-            self.0.push(last.ident.to_string());
+            self.push(last.ident.to_string());
         }
         syn::visit::visit_path(self, node);
     }

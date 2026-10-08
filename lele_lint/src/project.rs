@@ -12,6 +12,7 @@ use crate::Entry;
 use crate::Error;
 use crate::ModuleInfoMap;
 use crate::Origin;
+use crate::ParseFailure;
 use crate::ParsedSource;
 
 #[derive(Default)]
@@ -29,6 +30,7 @@ pub struct Project {
     pub example_entries: Vec<Entry>,
     pub example_parsed_files: HashMap<PathBuf, syn::File>,
     pub boundaries: Vec<BoundaryEntry>,
+    pub parse_failures: Vec<ParseFailure>,
 }
 
 #[atomic_delegates]

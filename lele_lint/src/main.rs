@@ -83,6 +83,17 @@ fn main() {
         process::exit(1);
     }
 
+    if !project.parse_failures.is_empty() {
+        for failure in &project.parse_failures {
+            eprintln!(
+                "lele_lint: could not parse {}: {}",
+                failure.path.display(),
+                failure.cause
+            );
+        }
+        process::exit(1);
+    }
+
     if args.sync_methods {
         if let Err(e) = sync_methods(&project) {
             eprintln!("lele_lint: {e}", e = e);

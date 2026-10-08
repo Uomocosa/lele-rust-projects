@@ -48,7 +48,7 @@ impl<'ast> Visit<'ast> for DriverScanner<'_> {
         for segment in &node.segments {
             let name = segment.ident.to_string();
             if DRIVER_TOKENS.contains(&name.as_str()) {
-                self.0.push(name);
+                self.push(name);
             }
         }
         syn::visit::visit_path(self, node);
@@ -57,7 +57,7 @@ impl<'ast> Visit<'ast> for DriverScanner<'_> {
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
         let name = node.method.to_string();
         if DRIVER_TOKENS.contains(&name.as_str()) {
-            self.0.push(name);
+            self.push(name);
         }
         syn::visit::visit_expr_method_call(self, node);
     }

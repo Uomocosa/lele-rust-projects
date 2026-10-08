@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::checkers;
@@ -13,6 +14,7 @@ pub fn check(
     let mut diags = Vec::new();
 
     let type_dirs = build_type_map(project);
+    let known_stems: HashSet<String> = type_dirs.keys().cloned().collect();
 
     for (rel_path, file) in &project.parsed_files {
         let Some(file_stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
@@ -25,9 +27,9 @@ pub fn check(
 
         let file_dir = rel_path.parent().unwrap_or(Path::new(""));
 
-        if let Some(candidate_dirs) = find_parent_type(file_stem, &type_dirs) {
+        if let Some(candidate_dirs) = find_parent_type(file_stem, &known_stems, &type_dirs) {
             if !candidate_dirs.iter().any(|dir| dir == file_dir) {
-                let Some(type_snake) = longest_matching_prefix(file_stem, &type_dirs) else {
+                let Some(type_snake) = common::longest_type_prefix(file_stem, &known_stems) else {
                     continue;
                 };
                 let candidates = candidate_dirs
@@ -93,35 +95,28 @@ fn build_type_map(project: &Project) -> HashMap<String, Vec<PathBuf>> {
 }
 
 // needed helper: find all directories holding a known type matching this stem
-fn find_parent_type(stem: &str, type_dirs: &HashMap<String, Vec<PathBuf>>) -> Option<Vec<PathBuf>> {
-    longest_matching_prefix(stem, type_dirs).and_then(|prefix| type_dirs.get(prefix).cloned())
-}
-
-// needed helper: longest type prefix matching the stem, if any
-fn longest_matching_prefix<'a>(
-    stem: &'a str,
+fn find_parent_type(
+    stem: &str,
+    known_stems: &HashSet<String>,
     type_dirs: &HashMap<String, Vec<PathBuf>>,
-) -> Option<&'a str> {
-    let underscores: Vec<usize> = stem.match_indices('_').map(|(i, _)| i).collect();
-    for &pos in underscores.iter().rev() {
-        let Some(prefix) = stem.get(..pos) else {
-            continue;
-        };
-        if type_dirs.contains_key(prefix) {
-            return Some(prefix);
-        }
-    }
-    None
+) -> Option<Vec<PathBuf>> {
+    common::longest_type_prefix(stem, known_stems).and_then(|prefix| type_dirs.get(prefix).cloned())
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::collections::HashSet;
     use std::path::PathBuf;
 
-    use super::{check, find_parent_type, longest_matching_prefix, pub_fn_names};
+    use super::{check, find_parent_type, pub_fn_names};
     use crate::checkers::method_file_co_location::MethodFileCoLocation;
+    use crate::common;
     use crate::Project;
+
+    fn known_stems(dirs: &HashMap<String, Vec<PathBuf>>) -> HashSet<String> {
+        dirs.keys().cloned().collect()
+    }
 
     #[test]
     fn test_usage() {
@@ -130,14 +125,17 @@ mod tests {
         dirs.insert("config".to_string(), vec![PathBuf::from("clicker")]);
 
         assert_eq!(
-            find_parent_type("freenet_client_connect", &dirs),
+            find_parent_type("freenet_client_connect", &known_stems(&dirs), &dirs),
             Some(vec![PathBuf::from("freenet")])
         );
         assert_eq!(
-            find_parent_type("config_new", &dirs),
+            find_parent_type("config_new", &known_stems(&dirs), &dirs),
             Some(vec![PathBuf::from("clicker")])
         );
-        assert_eq!(find_parent_type("bevy_systems", &dirs), None);
+        assert_eq!(
+            find_parent_type("bevy_systems", &known_stems(&dirs), &dirs),
+            None
+        );
     }
 
     #[test]
@@ -147,7 +145,7 @@ mod tests {
         dirs.insert("freenet_client".to_string(), vec![PathBuf::from("freenet")]);
 
         assert_eq!(
-            longest_matching_prefix("freenet_client_connect", &dirs),
+            common::longest_type_prefix("freenet_client_connect", &known_stems(&dirs)),
             Some("freenet_client")
         );
     }
@@ -161,7 +159,7 @@ mod tests {
         );
 
         assert_eq!(
-            find_parent_type("plugin_build", &dirs),
+            find_parent_type("plugin_build", &known_stems(&dirs), &dirs),
             Some(vec![PathBuf::from("boxes"), PathBuf::from("roster")])
         );
     }

@@ -202,24 +202,12 @@ fn push(diags: &mut Vec<Diagnostic>, file_path: &Path, message: String) {
 // needed helper: exposed (pub/pub(crate)) primary item name
 fn exposed_name(item: &syn::Item) -> Option<String> {
     match item {
-        syn::Item::Struct(s) if is_exposed(&s.vis) => Some(s.ident.to_string()),
-        syn::Item::Enum(e) if is_exposed(&e.vis) => Some(e.ident.to_string()),
-        syn::Item::Type(t) if is_exposed(&t.vis) => Some(t.ident.to_string()),
-        syn::Item::Const(c) if is_exposed(&c.vis) => Some(c.ident.to_string()),
-        syn::Item::Static(s) if is_exposed(&s.vis) => Some(s.ident.to_string()),
+        syn::Item::Struct(s) if common::is_exposed(&s.vis) => Some(s.ident.to_string()),
+        syn::Item::Enum(e) if common::is_exposed(&e.vis) => Some(e.ident.to_string()),
+        syn::Item::Type(t) if common::is_exposed(&t.vis) => Some(t.ident.to_string()),
+        syn::Item::Const(c) if common::is_exposed(&c.vis) => Some(c.ident.to_string()),
+        syn::Item::Static(s) if common::is_exposed(&s.vis) => Some(s.ident.to_string()),
         _ => None,
-    }
-}
-
-// needed helper: `pub` or `pub(crate)` visibility check
-fn is_exposed(vis: &syn::Visibility) -> bool {
-    match vis {
-        syn::Visibility::Public(_) => true,
-        syn::Visibility::Restricted(r) => {
-            r.path.segments.len() == 1
-                && r.path.segments.first().is_some_and(|s| s.ident == "crate")
-        }
-        syn::Visibility::Inherited => false,
     }
 }
 

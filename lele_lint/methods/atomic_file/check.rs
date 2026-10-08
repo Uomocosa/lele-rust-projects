@@ -82,7 +82,7 @@ fn check_delegate_shape(
     if common::primary_type_name(file, file_stem).is_some() {
         return;
     }
-    let Some(type_snake) = longest_known_prefix(file_stem, known_stems) else {
+    let Some(type_snake) = common::longest_type_prefix(file_stem, known_stems) else {
         return;
     };
     let Some(rest) = file_stem
@@ -116,14 +116,6 @@ fn check_delegate_shape(
     });
 }
 
-// needed helper: longest known primary-type stem prefix of a file stem
-fn longest_known_prefix<'a>(stem: &'a str, known_stems: &HashSet<String>) -> Option<&'a str> {
-    stem.match_indices('_').rev().find_map(|(pos, _)| {
-        stem.get(..pos)
-            .filter(|prefix| known_stems.contains(*prefix))
-    })
-}
-
 // needed helper: SHAPE-F fn-file purity
 fn check_fn_file_purity(
     file: &syn::File,
@@ -135,19 +127,19 @@ fn check_fn_file_purity(
     let has_pub_fn = file
         .items
         .iter()
-        .any(|item| matches!(item, syn::Item::Fn(f) if is_exposed(&f.vis)));
+        .any(|item| matches!(item, syn::Item::Fn(f) if common::is_exposed(&f.vis)));
     if !has_pub_fn {
         return;
     }
     for item in &file.items {
         let (name, kind) = match item {
-            syn::Item::Struct(s) if is_exposed(&s.vis) => (s.ident.to_string(), "struct"),
-            syn::Item::Enum(e) if is_exposed(&e.vis) => (e.ident.to_string(), "enum"),
-            syn::Item::Const(c) if is_exposed(&c.vis) => (c.ident.to_string(), "const"),
-            syn::Item::Static(s) if is_exposed(&s.vis) => (s.ident.to_string(), "static"),
-            syn::Item::Type(t) if is_exposed(&t.vis) => (t.ident.to_string(), "type"),
-            syn::Item::Trait(t) if is_exposed(&t.vis) => (t.ident.to_string(), "trait"),
-            syn::Item::Union(u) if is_exposed(&u.vis) => (u.ident.to_string(), "union"),
+            syn::Item::Struct(s) if common::is_exposed(&s.vis) => (s.ident.to_string(), "struct"),
+            syn::Item::Enum(e) if common::is_exposed(&e.vis) => (e.ident.to_string(), "enum"),
+            syn::Item::Const(c) if common::is_exposed(&c.vis) => (c.ident.to_string(), "const"),
+            syn::Item::Static(s) if common::is_exposed(&s.vis) => (s.ident.to_string(), "static"),
+            syn::Item::Type(t) if common::is_exposed(&t.vis) => (t.ident.to_string(), "type"),
+            syn::Item::Trait(t) if common::is_exposed(&t.vis) => (t.ident.to_string(), "trait"),
+            syn::Item::Union(u) if common::is_exposed(&u.vis) => (u.ident.to_string(), "union"),
             _ => continue,
         };
         let home = if kind == "const" || kind == "static" {
@@ -164,18 +156,6 @@ fn check_fn_file_purity(
                 "SHAPE-F fn-file `{file_stem}.rs` must hold only the fn — move exposed `{kind} {name}` to {home} (O2-extraction)"
             ),
         });
-    }
-}
-
-// needed helper: `pub` or `pub(crate)` visibility check
-fn is_exposed(vis: &syn::Visibility) -> bool {
-    match vis {
-        syn::Visibility::Public(_) => true,
-        syn::Visibility::Restricted(r) => {
-            r.path.segments.len() == 1
-                && r.path.segments.first().is_some_and(|s| s.ident == "crate")
-        }
-        syn::Visibility::Inherited => false,
     }
 }
 
@@ -205,28 +185,12 @@ fn is_exempt_path(rel_path: &Path, file_name: &str, dunder: &Dunder) -> bool {
     if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
         return true;
     }
-    if is_dunder_path(rel_path, dunder) {
+    if common::is_dunder_path(rel_path, dunder) {
         return true;
     }
     rel_path
         .components()
         .any(|c| c.as_os_str().to_str() == Some("tests"))
-}
-
-// needed helper: whitelisted dunder folder or file path check
-fn is_dunder_path(rel_path: &Path, dunder: &Dunder) -> bool {
-    let in_folder = rel_path.components().any(|c| {
-        c.as_os_str()
-            .to_str()
-            .is_some_and(|name| dunder.folders.contains_key(name))
-    });
-    if in_folder {
-        return true;
-    }
-    rel_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .is_some_and(|stem| dunder.files.iter().any(|file| file.as_str() == stem))
 }
 
 // needed helper: pub item collection
@@ -273,7 +237,7 @@ fn check_filename_match(
         return;
     }
 
-    if file_stem.contains('_') && has_known_parent_prefix(file_stem, known_stems) {
+    if file_stem.contains('_') && common::longest_type_prefix(file_stem, known_stems).is_some() {
         if let Some((_prefix, suffix)) = file_stem.rsplit_once('_') {
             if expected.ends_with(suffix) {
                 return;
@@ -303,24 +267,15 @@ fn known_type_stems(project: &Project) -> HashSet<String> {
         .collect()
 }
 
-// needed helper: any underscore-prefix of the stem names a known type
-fn has_known_parent_prefix(file_stem: &str, known_stems: &HashSet<String>) -> bool {
-    file_stem.match_indices('_').any(|(pos, _)| {
-        file_stem
-            .get(..pos)
-            .is_some_and(|prefix| known_stems.contains(prefix))
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
 
     use super::{
-        check, check_filename_match, check_fn_file_purity, collect_pub_items,
-        has_known_parent_prefix, is_exempt_path, is_exposed,
+        check, check_filename_match, check_fn_file_purity, collect_pub_items, is_exempt_path,
     };
     use crate::checkers::atomic_file::AtomicFile;
+    use crate::common;
     use crate::Dunder;
     use crate::Project;
     use std::path::{Path, PathBuf};
@@ -382,12 +337,12 @@ mod tests {
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("filename mismatch"));
 
-        assert!(!has_known_parent_prefix("freenet_client_connect", &known));
+        assert!(common::longest_type_prefix("freenet_client_connect", &known).is_none());
         let with_prefix: HashSet<String> = HashSet::from(["freenet_client".to_string()]);
-        assert!(has_known_parent_prefix(
-            "freenet_client_connect",
-            &with_prefix
-        ));
+        assert_eq!(
+            common::longest_type_prefix("freenet_client_connect", &with_prefix),
+            Some("freenet_client")
+        );
     }
 
     #[test]
@@ -412,13 +367,6 @@ mod tests {
         );
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("SHAPE-F"));
-
-        let vis_pub: syn::Visibility = syn::parse_quote! { pub };
-        let vis_crate: syn::Visibility = syn::parse_quote! { pub(crate) };
-        let vis_priv: syn::Visibility = syn::parse_quote! {};
-        assert!(is_exposed(&vis_pub));
-        assert!(is_exposed(&vis_crate));
-        assert!(!is_exposed(&vis_priv));
     }
 
     #[test]

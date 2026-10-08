@@ -11,6 +11,9 @@ pub fn check(
     let mut diags = Vec::new();
 
     for (mod_rs_path, info) in &project.module_info {
+        if is_crate_root(mod_rs_path) {
+            continue;
+        }
         let own_domain = own_domain_of(mod_rs_path);
 
         for reexport in &info.reexports {
@@ -49,6 +52,13 @@ fn reexport_target_domain(segments: &[String]) -> Option<String> {
     None
 }
 
+// needed helper: `lib.rs` / `main.rs` are the crate root where cross-domain re-exports belong
+fn is_crate_root(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| matches!(n, "lib.rs" | "main.rs"))
+}
+
 // needed helper: top-level domain owning a mod.rs
 fn own_domain_of(mod_rs_path: &Path) -> String {
     mod_rs_path
@@ -62,6 +72,7 @@ fn own_domain_of(mod_rs_path: &Path) -> String {
 mod tests {
     use std::path::Path;
 
+    use super::is_crate_root;
     use super::own_domain_of;
     use super::reexport_target_domain;
 
@@ -89,5 +100,13 @@ mod tests {
             "discovery"
         );
         assert_eq!(own_domain_of(Path::new("player/mod.rs")), "player");
+    }
+
+    #[test]
+    fn test_usage_crate_root_is_exempt() {
+        assert!(is_crate_root(Path::new("lib.rs")));
+        assert!(is_crate_root(Path::new("main.rs")));
+        assert!(is_crate_root(Path::new("src/main.rs")));
+        assert!(!is_crate_root(Path::new("player/mod.rs")));
     }
 }

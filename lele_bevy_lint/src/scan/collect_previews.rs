@@ -92,7 +92,7 @@ struct CrateMention<'a>(&'a mut bool);
 impl<'ast> Visit<'ast> for CrateMention<'_> {
     fn visit_path(&mut self, node: &'ast syn::Path) {
         if node.segments.iter().any(|s| s.ident == PREVIEW_CRATE) {
-            *self.0 = true;
+            ***self = true;
         }
         syn::visit::visit_path(self, node);
     }
@@ -101,18 +101,18 @@ impl<'ast> Visit<'ast> for CrateMention<'_> {
         match node {
             syn::UseTree::Path(path) => {
                 if path.ident == PREVIEW_CRATE {
-                    *self.0 = true;
+                    ***self = true;
                 }
                 self.visit_use_tree(&path.tree);
             }
             syn::UseTree::Name(name) => {
                 if name.ident == PREVIEW_CRATE {
-                    *self.0 = true;
+                    ***self = true;
                 }
             }
             syn::UseTree::Rename(rename) => {
                 if rename.ident == PREVIEW_CRATE {
-                    *self.0 = true;
+                    ***self = true;
                 }
             }
             syn::UseTree::Group(group) => {

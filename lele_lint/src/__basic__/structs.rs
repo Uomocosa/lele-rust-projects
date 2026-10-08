@@ -53,6 +53,19 @@ pub struct Diagnostic {
     pub message: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct ParseFailure {
+    pub path: std::path::PathBuf,
+    pub cause: String,
+}
+
+#[derive(Default)]
+pub struct ScannedDir {
+    pub entries: Vec<Entry>,
+    pub parsed_files: std::collections::HashMap<std::path::PathBuf, syn::File>,
+    pub parse_failures: Vec<ParseFailure>,
+}
+
 pub struct Entry {
     pub relative_path: std::path::PathBuf,
     pub absolute_path: std::path::PathBuf,

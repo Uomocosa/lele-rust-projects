@@ -77,7 +77,7 @@ struct PathNames<'a>(&'a mut Vec<String>);
 impl<'ast> Visit<'ast> for PathNames<'_> {
     fn visit_path(&mut self, node: &'ast syn::Path) {
         for segment in &node.segments {
-            self.0.push(segment.ident.to_string());
+            self.push(segment.ident.to_string());
         }
         syn::visit::visit_path(self, node);
     }

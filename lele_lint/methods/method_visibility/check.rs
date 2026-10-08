@@ -21,42 +21,47 @@ pub fn check(
         let struct_names = collect_struct_names(files, parent_dir, project);
 
         for file_name in files.iter().filter(|f| f.ends_with(".rs")) {
-            if let Some(struct_name) = is_method_file(file_name, &struct_names) {
-                if !is_actually_method_file(file_name, parent_dir, project) {
-                    continue;
-                }
+            let Some(struct_name) = file_name
+                .strip_suffix(".rs")
+                .and_then(|stem| common::longest_type_prefix(stem, &struct_names))
+                .map(str::to_string)
+            else {
+                continue;
+            };
+            if !is_actually_method_file(file_name, parent_dir, project) {
+                continue;
+            }
 
-                let method_mod_name = file_name.strip_suffix(".rs").unwrap_or(file_name);
+            let method_mod_name = file_name.strip_suffix(".rs").unwrap_or(file_name);
 
-                if let Some(declared_pub) =
-                    declared_as_pub_mod(&project.module_info, parent_dir, method_mod_name)
-                {
-                    diags.push(Diagnostic {
-                        file: declared_pub,
-                        line: 1,
-                        col: 0,
-                        code: "E003".to_string(),
-                        message: format!(
-                            "method file `{}` of struct `{}` must be declared with `mod` (private), not `pub mod`",
-                            file_name, struct_name
-                        ),
-                    });
-                }
+            if let Some(declared_pub) =
+                declared_as_pub_mod(&project.module_info, parent_dir, method_mod_name)
+            {
+                diags.push(Diagnostic {
+                    file: declared_pub,
+                    line: 1,
+                    col: 0,
+                    code: "E003".to_string(),
+                    message: format!(
+                        "method file `{}` of struct `{}` must be declared with `mod` (private), not `pub mod`",
+                        file_name, struct_name
+                    ),
+                });
+            }
 
-                if let Some(reexported_at) =
-                    reexported_in_pub_use(&project.module_info, parent_dir, method_mod_name)
-                {
-                    diags.push(Diagnostic {
-                        file: reexported_at,
-                        line: 1,
-                        col: 0,
-                        code: "E003".to_string(),
-                        message: format!(
-                            "method file `{}` of struct `{}` must not appear in a `pub use` re-export",
-                            file_name, struct_name
-                        ),
-                    });
-                }
+            if let Some(reexported_at) =
+                reexported_in_pub_use(&project.module_info, parent_dir, method_mod_name)
+            {
+                diags.push(Diagnostic {
+                    file: reexported_at,
+                    line: 1,
+                    col: 0,
+                    code: "E003".to_string(),
+                    message: format!(
+                        "method file `{}` of struct `{}` must not appear in a `pub use` re-export",
+                        file_name, struct_name
+                    ),
+                });
             }
         }
     }
@@ -143,21 +148,6 @@ fn collect_struct_names(
     names
 }
 
-// needed helper: method-file name pattern matching (longest prefix)
-fn is_method_file(file_name: &str, struct_names: &HashSet<String>) -> Option<String> {
-    let stem = file_name.strip_suffix(".rs")?;
-    let underscores: Vec<usize> = stem.match_indices('_').map(|(i, _)| i).collect();
-    for &pos in underscores.iter().rev() {
-        let Some(prefix) = stem.get(..pos) else {
-            continue;
-        };
-        if struct_names.contains(prefix) {
-            return Some(prefix.to_string());
-        }
-    }
-    None
-}
-
 // needed helper: pub mod declaration check
 fn declared_as_pub_mod(
     module_info: &ModuleInfoMap,
@@ -210,7 +200,14 @@ fn reexported_in_pub_use(
 mod tests {
     use std::collections::HashSet;
 
-    use super::is_method_file;
+    use crate::common;
+
+    fn method_struct(file_name: &str, struct_names: &HashSet<String>) -> Option<String> {
+        file_name
+            .strip_suffix(".rs")
+            .and_then(|stem| common::longest_type_prefix(stem, struct_names))
+            .map(str::to_string)
+    }
 
     #[test]
     fn test_usage() {
@@ -220,13 +217,13 @@ mod tests {
         struct_names.insert("freenet_client".to_string());
 
         assert_eq!(
-            is_method_file("player_new.rs", &struct_names),
+            method_struct("player_new.rs", &struct_names),
             Some("player".to_string())
         );
         assert_eq!(
-            is_method_file("freenet_client_connect.rs", &struct_names),
+            method_struct("freenet_client_connect.rs", &struct_names),
             Some("freenet_client".to_string())
         );
-        assert_eq!(is_method_file("bevy_systems.rs", &struct_names), None);
+        assert_eq!(method_struct("bevy_systems.rs", &struct_names), None);
     }
 }

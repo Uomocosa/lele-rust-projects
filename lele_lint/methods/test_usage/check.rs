@@ -76,7 +76,7 @@ fn is_exempt(rel_path: &Path, file: &syn::File, dunder: &Dunder) -> bool {
         return true;
     }
 
-    if is_dunder_path(rel_path, dunder) {
+    if common::is_dunder_path(rel_path, dunder) {
         return true;
     }
 
@@ -88,22 +88,6 @@ fn is_exempt(rel_path: &Path, file: &syn::File, dunder: &Dunder) -> bool {
     }
 
     is_type_only(file) || is_atomic_delegate_only(file)
-}
-
-// needed helper: whitelisted dunder folder or file path check
-fn is_dunder_path(rel_path: &Path, dunder: &Dunder) -> bool {
-    let in_folder = rel_path.components().any(|c| {
-        c.as_os_str()
-            .to_str()
-            .is_some_and(|name| dunder.folders.contains_key(name))
-    });
-    if in_folder {
-        return true;
-    }
-    rel_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .is_some_and(|stem| dunder.files.iter().any(|file| file.as_str() == stem))
 }
 
 // needed helper: pure module tree detection

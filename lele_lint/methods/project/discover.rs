@@ -1,14 +1,12 @@
-use std::collections::HashMap;
 use std::path::Path;
-use std::path::PathBuf;
 
 use crate::methods;
 use crate::parse_source_files;
 use crate::walk_entries;
-use crate::Entry;
 use crate::Error;
 use crate::ModuleInfo;
 use crate::Project;
+use crate::ScannedDir;
 
 pub fn discover(
     start_dir: Option<&Path>,
@@ -28,29 +26,36 @@ pub fn discover(
     }
     let entries = walk_entries::walk_entries(&src_dir, &src_dir)?;
     let module_info = ModuleInfo::build(&src_dir, &entries);
-    let parsed_files = parse_source_files::parse_source_files(&src_dir, &entries);
-    let (example_entries, example_parsed_files) = scan_examples(&root)?;
+    let (parsed_files, mut parse_failures) =
+        parse_source_files::parse_source_files(&src_dir, &entries);
+    let examples = scan_examples(&root)?;
+    parse_failures.extend(examples.parse_failures);
     Ok(Project {
         root,
         src_dir,
         entries,
         module_info,
         parsed_files,
-        example_entries,
-        example_parsed_files,
+        example_entries: examples.entries,
+        example_parsed_files: examples.parsed_files,
+        parse_failures,
         ..Project::default()
     })
 }
 
 // needed helper: examples/ is linted by default alongside src/ and methods/
-fn scan_examples(root: &Path) -> Result<(Vec<Entry>, HashMap<PathBuf, syn::File>), Error> {
+fn scan_examples(root: &Path) -> Result<ScannedDir, Error> {
     let dir = root.join("examples");
     if !dir.is_dir() {
-        return Ok((Vec::new(), HashMap::new()));
+        return Ok(ScannedDir::default());
     }
     let entries = walk_entries::walk_entries(&dir, &dir)?;
-    let parsed = parse_source_files::parse_source_files(&dir, &entries);
-    Ok((entries, parsed))
+    let (parsed_files, parse_failures) = parse_source_files::parse_source_files(&dir, &entries);
+    Ok(ScannedDir {
+        entries,
+        parsed_files,
+        parse_failures,
+    })
 }
 
 // needed helper: aggregate scanning over explicitly-passed folders (relative to the invocation base)
@@ -65,7 +70,7 @@ fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, Error> {
         entries.extend(walk_entries::walk_entries(&abs, base)?);
     }
     let module_info = ModuleInfo::build(base, &entries);
-    let parsed_files = parse_source_files::parse_source_files(base, &entries);
+    let (parsed_files, parse_failures) = parse_source_files::parse_source_files(base, &entries);
     let owned_base = base.to_path_buf();
     Ok(Project {
         root: owned_base.clone(),
@@ -73,6 +78,7 @@ fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, Error> {
         entries,
         module_info,
         parsed_files,
+        parse_failures,
         ..Project::default()
     })
 }

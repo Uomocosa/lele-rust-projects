@@ -1,3 +1,5 @@
+use syn::spanned::Spanned;
+
 use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
@@ -164,9 +166,10 @@ fn names_str(idents: &[&syn::Ident]) -> String {
         .join(", ")
 }
 
-// needed helper: one-line body check (placeholder)
-fn is_one_line_body(_method: &syn::ImplItemFn) -> bool {
-    true
+// needed helper: whether the delegate-call block spans exactly one source line
+fn is_one_line_body(method: &syn::ImplItemFn) -> bool {
+    let span = method.block.span();
+    span.start().line == span.end().line
 }
 
 #[cfg(test)]
@@ -238,5 +241,33 @@ mod tests {
         let diags = check(&checkers::atomic_delegates::AtomicDelegates, &project);
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("#[rustfmt::skip]"));
+    }
+
+    #[test]
+    fn test_usage_multiline_delegate_call_demands_one_line() {
+        let mut project = Project::default();
+        project.parsed_files.insert(
+            PathBuf::from("foo.rs"),
+            syn::parse_str(
+                "pub struct Foo;\n#[rustfmt::skip]\nimpl Foo {\n    fn run(&self) {\n        foo_run::run(self)\n    }\n}\n",
+            )
+            .unwrap(),
+        );
+        let diags = check(&checkers::atomic_delegates::AtomicDelegates, &project);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.contains("must be on one line"));
+    }
+
+    #[test]
+    fn test_usage_single_line_delegate_call_is_clean() {
+        let mut project = Project::default();
+        project.parsed_files.insert(
+            PathBuf::from("foo.rs"),
+            syn::parse_str(
+                "pub struct Foo;\n#[rustfmt::skip]\nimpl Foo {\n    fn run(&self) { foo_run::run(self) }\n}\n",
+            )
+            .unwrap(),
+        );
+        assert!(check(&checkers::atomic_delegates::AtomicDelegates, &project).is_empty());
     }
 }

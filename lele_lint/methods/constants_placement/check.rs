@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use syn::visit::Visit;
 
 use crate::checkers;
+use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 
@@ -33,8 +34,8 @@ fn collect_defined_consts(parsed_files: &HashMap<PathBuf, syn::File>) -> HashMap
     for (rel_path, file) in parsed_files {
         for item in &file.items {
             let (name, exposed) = match item {
-                syn::Item::Const(c) => (c.ident.to_string(), is_exposed(&c.vis)),
-                syn::Item::Static(s) => (s.ident.to_string(), is_exposed(&s.vis)),
+                syn::Item::Const(c) => (c.ident.to_string(), common::is_exposed(&c.vis)),
+                syn::Item::Static(s) => (s.ident.to_string(), common::is_exposed(&s.vis)),
                 _ => continue,
             };
             if exposed {
@@ -99,7 +100,7 @@ fn check_fn_file_const(
     let has_pub_fn = file
         .items
         .iter()
-        .any(|item| matches!(item, syn::Item::Fn(f) if is_exposed(&f.vis)));
+        .any(|item| matches!(item, syn::Item::Fn(f) if common::is_exposed(&f.vis)));
     if has_pub_fn {
         let sibling = sibling_constants(rel_path, project);
         diags.push(Diagnostic {
@@ -223,18 +224,6 @@ fn common_prefix(a: &Path, b: &Path) -> PathBuf {
         }
     }
     out
-}
-
-// needed helper: `pub` or `pub(crate)` visibility check
-fn is_exposed(vis: &syn::Visibility) -> bool {
-    match vis {
-        syn::Visibility::Public(_) => true,
-        syn::Visibility::Restricted(r) => {
-            r.path.segments.len() == 1
-                && r.path.segments.first().is_some_and(|s| s.ident == "crate")
-        }
-        syn::Visibility::Inherited => false,
-    }
 }
 
 #[cfg(test)]
