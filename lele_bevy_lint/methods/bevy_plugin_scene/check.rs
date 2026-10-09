@@ -21,7 +21,7 @@ pub fn check(
         let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Scene) else {
             diags.push(scan::diag(project, source.origin, rel_path,
                 1,
-                "E038",
+                checkers::bevy_plugin_scene::BevyPluginScene::CODE,
                 String::from(
                     "file defines a `Plugin` whose domain spawns UI but has no ignored `*_ui_scene_preview` test routing through `lele_bevy_preview::run`",
                 ),
@@ -35,7 +35,7 @@ pub fn check(
                 source.origin,
                 rel_path,
                 preview.line,
-                "E038",
+                checkers::bevy_plugin_scene::BevyPluginScene::CODE,
                 format!(
                     "`fn {}` must carry `#[ignore]` so the default test suite stays GPU-free",
                     preview.name

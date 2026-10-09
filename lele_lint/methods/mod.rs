@@ -9,6 +9,7 @@ pub mod constructor_no_skip;
 pub mod container_placement;
 pub mod delegate_macro;
 pub mod domain_import;
+pub mod dunder_path;
 pub mod helper_count;
 pub mod method_file_co_location;
 pub mod method_visibility;

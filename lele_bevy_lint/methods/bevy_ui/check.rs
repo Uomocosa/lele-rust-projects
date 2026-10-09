@@ -30,7 +30,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
                 source.origin,
                 rel_path,
                 visual.line,
-                "E029",
+                checkers::bevy_ui::BevyUi::CODE,
                 format!(
                     "file spawns UI `{}` reachable from production but defines no ignored `*_ui_png_preview` test that renders it through `lele_bevy_preview::run`",
                     visual.visual
@@ -45,7 +45,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
                 source.origin,
                 rel_path,
                 preview.line,
-                "E029",
+                checkers::bevy_ui::BevyUi::CODE,
                 format!(
                     "`fn {}` must carry `#[ignore]` so the default test suite stays GPU-free",
                     preview.name
@@ -84,7 +84,7 @@ fn substance_check(
         origin,
         rel_path,
         preview.line,
-        "E029",
+        checkers::bevy_ui::BevyUi::CODE,
         format!(
             "`fn {}` must reference at least one component declared in this file ({}) so the preview cannot be a no-op shell",
             preview.name,

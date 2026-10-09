@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::basic;
 use crate::basic::enums::Requirement;
-use crate::Dunder;
+use crate::DunderPath;
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
@@ -31,7 +31,7 @@ pub struct BoundaryEntry {
 #[serde(deny_unknown_fields)]
 pub struct LeleTomlLintSections {
     #[serde(default)]
-    pub dunder_whitelist: Dunder,
+    pub dunder_paths: Vec<DunderPath>,
     #[serde(default)]
     pub clippy_allow_whitelist: Vec<AllowWhitelistEntry>,
 }

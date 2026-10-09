@@ -51,7 +51,7 @@ pub fn check(
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
-                code: "E016".to_string(),
+                code: checkers::single_caller_type::SingleCallerType::CODE.to_string(),
                 message: format!(
                     "type `{name}` has exactly one caller in `{}` and no atomic-delegate methods — define it in the caller's file instead of its own file",
                     caller.display()
@@ -87,11 +87,7 @@ fn is_exempt_path(rel_path: &Path, project: &Project) -> bool {
     file_name == "mod.rs"
         || file_name == "lib.rs"
         || file_name == "constants.rs"
-        || rel_path.components().any(|c| {
-            c.as_os_str()
-                .to_str()
-                .is_some_and(|name| project.dunder.folders.contains_key(name))
-        })
+        || common::in_dunder_dir(rel_path, &project.dunder_paths)
         || rel_path
             .components()
             .any(|c| c.as_os_str().to_str() == Some("tests"))

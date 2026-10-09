@@ -81,7 +81,7 @@ fn push(diags: &mut Vec<Diagnostic>, file_path: &Path, message: String) {
         file: file_path.to_path_buf(),
         line: 1,
         col: 0,
-        code: "E018".to_string(),
+        code: checkers::single_field_newtype::SingleFieldNewtype::CODE.to_string(),
         message,
     });
 }

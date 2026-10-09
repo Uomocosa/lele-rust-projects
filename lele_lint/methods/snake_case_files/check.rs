@@ -27,7 +27,7 @@ pub fn check(
                     file: entry.absolute_path.clone(),
                     line: 1,
                     col: 0,
-                    code: "E002".to_string(),
+                    code: checkers::snake_case_files::SnakeCaseFiles::CODE.to_string(),
                     message: format!(
                         "{kind} `{name}` is not snake_case — rename it to use lowercase letters, digits, and underscores",
                         kind = kind,
@@ -62,12 +62,10 @@ fn is_snake_case(name: &str) -> bool {
 
 // needed helper: configured/whitelisted dunder folder or file names are exempt from snake_case
 fn is_allowed_dunder(project: &Project, name: &str) -> bool {
-    project.dunder.folders.contains_key(name)
-        || project
-            .dunder
-            .files
-            .iter()
-            .any(|file| file.as_str() == name)
+    project
+        .dunder_paths
+        .iter()
+        .any(|dunder| dunder.file_stem() == Some(std::ffi::OsStr::new(name)))
 }
 
 #[cfg(test)]

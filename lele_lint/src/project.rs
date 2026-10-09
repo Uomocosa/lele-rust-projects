@@ -7,7 +7,7 @@ use atomic_delegate_macros::atomic_delegates;
 use crate::AllowWhitelistEntry;
 use crate::BoundaryEntry;
 use crate::Config;
-use crate::Dunder;
+use crate::DunderPath;
 use crate::Entry;
 use crate::Error;
 use crate::ModuleInfoMap;
@@ -22,7 +22,7 @@ pub struct Project {
     pub entries: Vec<Entry>,
     pub module_info: ModuleInfoMap,
     pub parsed_files: HashMap<PathBuf, syn::File>,
-    pub dunder: Dunder,
+    pub dunder_paths: Vec<DunderPath>,
     pub clippy_allow_whitelist: Vec<AllowWhitelistEntry>,
     pub methods_dir: Option<PathBuf>,
     pub methods_entries: Vec<Entry>,

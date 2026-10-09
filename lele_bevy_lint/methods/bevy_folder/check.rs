@@ -61,7 +61,7 @@ pub fn check(_self: &checkers::bevy_folder::BevyFolder, project: &Project) -> Ve
                 source.origin,
                 source.relative_path,
                 func.sig.fn_token.span().start().line,
-                "E008",
+                checkers::bevy_folder::BevyFolder::CODE,
                 format!(
                     "pub fn `{}` is registered with `app.add_systems()` but lives outside bevy_systems/; move it into the domain's bevy_systems/ folder",
                     func.sig.ident

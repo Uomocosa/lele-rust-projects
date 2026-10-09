@@ -178,7 +178,7 @@ fn diag(project: &Project, rel_path: &Path, message: String) -> Diagnostic {
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: "E032".to_string(),
+        code: checkers::delegate_macro::DelegateMacro::CODE.to_string(),
         message,
     }
 }

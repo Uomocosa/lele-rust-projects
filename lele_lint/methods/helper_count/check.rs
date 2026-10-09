@@ -43,7 +43,7 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
                 file: absolute.clone(),
                 line: 1,
                 col: 0,
-                code: "E015".to_string(),
+                code: checkers::helper_count::HelperCount::CODE.to_string(),
                 message: format!(
                     "{} unannotated helper functions (max {}). Annotate context-specific helpers with `{}` on the line above each function; extract reusable ones into atomic delegate files",
                     private_count,
@@ -61,7 +61,7 @@ pub fn check(_self: &checkers::helper_count::HelperCount, project: &Project) -> 
                     file: absolute.clone(),
                     line: func.sig.fn_token.span().start().line,
                     col: 0,
-                    code: "E015".to_string(),
+                    code: checkers::helper_count::HelperCount::CODE.to_string(),
                     message: format!(
                         "{} public/pub(crate) top-level functions in this file (fn `{}` among them); only the file's single core function may be pub/pub(crate) — extract the others into their own files",
                         pub_like_fns.len(),

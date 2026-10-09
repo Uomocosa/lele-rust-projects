@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use syn::spanned::Spanned;
 
 use crate::checkers;
@@ -16,7 +14,7 @@ pub fn check(
     for source in project.content_sources() {
         let rel_path = source.relative_path;
         let file = source.file;
-        if !in_dunder(rel_path, project) {
+        if !common::in_dunder_dir(rel_path, &project.dunder_paths) {
             continue;
         }
         for item in &file.items {
@@ -27,7 +25,7 @@ pub fn check(
                 file: project.absolute_path(source.origin, rel_path),
                 line,
                 col: 0,
-                code: "E034".to_string(),
+                code: checkers::no_dunder_tests::NoDunderTests::CODE.to_string(),
                 message: "`#[cfg(test)]` is not allowed in a `__basic__` container — cover the function or method that uses these types instead"
                     .to_string(),
             });
@@ -35,16 +33,6 @@ pub fn check(
     }
 
     diags
-}
-
-// needed helper: whether a path lives inside a whitelisted dunder folder
-fn in_dunder(rel_path: &Path, project: &Project) -> bool {
-    rel_path.components().any(|component| {
-        component
-            .as_os_str()
-            .to_str()
-            .is_some_and(|name| project.dunder.folders.contains_key(name))
-    })
 }
 
 // needed helper: cfg(test) item start line, if the item is a test
@@ -66,12 +54,12 @@ mod tests {
 
     use super::check;
     use crate::checkers::no_dunder_tests::NoDunderTests;
-    use crate::Dunder;
+    use crate::common;
     use crate::Project;
 
     fn project(files: &[(&str, &str)]) -> Project {
         let mut project = Project {
-            dunder: Dunder::default(),
+            dunder_paths: common::default_dunder_paths(),
             ..Project::default()
         };
         for (path, source) in files {

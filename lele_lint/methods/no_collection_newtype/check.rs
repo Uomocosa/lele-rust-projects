@@ -60,7 +60,7 @@ fn check_struct(struct_def: &syn::ItemStruct, file_path: &Path, diags: &mut Vec<
         file: file_path.to_path_buf(),
         line: 1,
         col: 0,
-        code: "E028".to_string(),
+        code: checkers::no_collection_newtype::NoCollectionNewtype::CODE.to_string(),
         message: format!(
             "{name} wraps {collection}<T>; define singular {singular}(T) with Deref and use Vec<{singular}> at call sites"
         ),

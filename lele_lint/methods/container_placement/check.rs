@@ -41,7 +41,7 @@ pub fn check(
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
-    let Some(folder) = canonical_folder(project) else {
+    let Some(folder) = common::dunder_dir(&project.dunder_paths) else {
         return diags;
     };
 
@@ -49,7 +49,7 @@ pub fn check(
         let rel_path = source.relative_path;
         let file = source.file;
         let file_path = project.absolute_path(source.origin, rel_path);
-        if is_container(rel_path, project) {
+        if common::in_dunder_dir(rel_path, &project.dunder_paths) {
             check_container_file(rel_path, file, project, &file_path, &mut diags);
         } else {
             check_free_file(rel_path, file, &folder, &file_path, &mut diags);
@@ -57,20 +57,6 @@ pub fn check(
     }
 
     diags
-}
-
-// needed helper: canonical dunder folder name (sorted for determinism)
-fn canonical_folder(project: &Project) -> Option<String> {
-    project.dunder.folders.keys().min().cloned()
-}
-
-// needed helper: whether a path lives inside a whitelisted dunder folder
-fn is_container(rel_path: &Path, project: &Project) -> bool {
-    rel_path.components().any(|c| {
-        c.as_os_str()
-            .to_str()
-            .is_some_and(|name| project.dunder.folders.contains_key(name))
-    })
 }
 
 // needed helper: role named by a container file stem
@@ -89,20 +75,6 @@ fn role_of_stem(stem: &str) -> Option<Role> {
     }
 }
 
-// needed helper: file declared as a whitelisted dunder file
-fn is_dunder_file(rel_path: &Path, project: &Project) -> bool {
-    rel_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .is_some_and(|stem| {
-            project
-                .dunder
-                .files
-                .iter()
-                .any(|file| file.as_str() == stem)
-        })
-}
-
 // needed helper: container file item-role validation
 fn check_container_file(
     rel_path: &Path,
@@ -114,7 +86,7 @@ fn check_container_file(
     let Some(stem) = rel_path.file_stem().and_then(|s| s.to_str()) else {
         return;
     };
-    if stem == "mod.rs" || is_dunder_file(rel_path, project) {
+    if stem == "mod.rs" || common::is_dunder_file_path(rel_path, &project.dunder_paths) {
         return;
     }
     let Some(role) = role_of_stem(stem) else {
@@ -194,7 +166,7 @@ fn push(diags: &mut Vec<Diagnostic>, file_path: &Path, message: String) {
         file: file_path.to_path_buf(),
         line: 1,
         col: 0,
-        code: "E029".to_string(),
+        code: checkers::container_placement::ContainerPlacement::CODE.to_string(),
         message,
     });
 }
@@ -315,10 +287,14 @@ mod tests {
 
     use super::{check, container_dir};
     use crate::checkers::container_placement::ContainerPlacement;
+    use crate::common;
     use crate::Project;
 
     fn project(files: &[(&str, &str)]) -> Project {
-        let mut project = Project::default();
+        let mut project = Project {
+            dunder_paths: common::default_dunder_paths(),
+            ..Project::default()
+        };
         for (path, source) in files {
             let file: syn::File = syn::parse_str(source).unwrap();
             project.parsed_files.insert(PathBuf::from(path), file);

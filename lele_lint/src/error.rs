@@ -22,4 +22,7 @@ pub enum Error {
 
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("dunder path `{}` must end in `__<name>__`", .0.display())]
+    NotDunder(std::path::PathBuf),
 }

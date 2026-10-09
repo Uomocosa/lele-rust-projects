@@ -18,7 +18,7 @@ every **Good** example reports nothing at all.
 - [E017 `method_file_co_location`](#e017-method_file_co_location): A `<type>_<method>.rs` file must sit in the same folder as `<type>.rs`.
 - [E019 `mod_rs_purity`](#e019-mod_rs_purity): `mod.rs` holds only `mod`/`pub mod` declarations and `pub use` re-exports.
 - [E026 `constants_placement`](#e026-constants_placement): A constant lives in the nearest `constants.rs` (or `__basic__/constants.rs`) shared by all its users.
-- [E029 `container_placement`](#e029-container_placement): Behavior-free types (plain structs, enums, newtypes, aliases, ECS markers) go in the domain's `__basic__/<role>.rs`.
+- [E040 `container_placement`](#e040-container_placement): Behavior-free types (plain structs, enums, newtypes, aliases, ECS markers) go in the domain's `__basic__/<role>.rs`.
 
 ### E001 `atomic_file`
 
@@ -553,13 +553,13 @@ mod tests {
 }
 ```
 
-### E029 `container_placement`
+### E040 `container_placement`
 
 Behavior-free types (plain structs, enums, newtypes, aliases, ECS markers) go in the domain's `__basic__/<role>.rs`.
 
 **Why:** Small data types don't need a file and a test each; grouping them keeps atomic files for code that does something.
 
-**Bad** (reports E029):
+**Bad** (reports E040):
 
 `src/lib.rs`
 

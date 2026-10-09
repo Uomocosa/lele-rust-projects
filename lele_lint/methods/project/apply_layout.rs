@@ -5,7 +5,7 @@ use crate::Error;
 use crate::Project;
 
 pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error> {
-    project.dunder = config.dunder();
+    project.dunder_paths = config.dunder_paths();
     if let Some(section) = config.as_ref() {
         project
             .clippy_allow_whitelist

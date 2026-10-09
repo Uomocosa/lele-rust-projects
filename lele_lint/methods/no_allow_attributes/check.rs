@@ -84,7 +84,7 @@ impl<'ast> Visit<'ast> for AllowFinder<'_> {
             file: self.file.clone(),
             line: start.line,
             col: start.column,
-            code: "E023".to_string(),
+            code: checkers::no_allow_attributes::NoAllowAttributes::CODE.to_string(),
             message: format!(
                 "`{kind}` attribute is banned — add an [[lele.lint.clippy_allow_whitelist]] entry with the exact `allow` lint path, `file` and a non-empty `reason` in lele.toml to whitelist it"
             ),

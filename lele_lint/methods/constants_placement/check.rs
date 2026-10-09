@@ -107,7 +107,7 @@ fn check_fn_file_const(
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: "E026".to_string(),
+            code: checkers::constants_placement::ConstantsPlacement::CODE.to_string(),
             message: format!(
                 "const `{name}` lives in fn-file `{}` — move it to `{}` (nearest constants.rs)",
                 rel_path.display(),
@@ -133,7 +133,7 @@ fn check_lift_to_ancestor(
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: "E026".to_string(),
+            code: checkers::constants_placement::ConstantsPlacement::CODE.to_string(),
             message: format!(
                 "const `{name}` is used across top-level dirs but lives in `{}` — lift it to `src/{}`",
                 rel_path.display(),
@@ -163,7 +163,7 @@ fn check_lower_to_subdir(
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: "E026".to_string(),
+        code: checkers::constants_placement::ConstantsPlacement::CODE.to_string(),
         message: format!(
             "const `{name}` lives at root but is only used under `{}` — lower it to `{}`",
             ancestor.display(),
@@ -172,14 +172,9 @@ fn check_lower_to_subdir(
     });
 }
 
-// needed helper: canonical dunder folder name (sorted for determinism)
-fn dunder_folder(project: &Project) -> Option<String> {
-    project.dunder.folders.keys().min().cloned()
-}
-
 // needed helper: constants.rs target path for a domain directory
 fn constants_target(project: &Project, dir: &Path) -> PathBuf {
-    if let Some(folder) = dunder_folder(project) {
+    if let Some(folder) = common::dunder_dir(&project.dunder_paths) {
         return dir.join(folder).join("constants.rs");
     }
     if dir.as_os_str().is_empty() {
@@ -230,6 +225,7 @@ fn common_prefix(a: &Path, b: &Path) -> PathBuf {
 mod tests {
     use super::{check, common_ancestor_dir, common_prefix, sibling_constants};
     use crate::checkers;
+    use crate::common;
     use crate::Project;
     use std::collections::HashSet;
     use std::path::PathBuf;
@@ -247,7 +243,10 @@ mod tests {
 
     #[test]
     fn test_usage_sibling_constants() {
-        let project = Project::default();
+        let project = Project {
+            dunder_paths: common::default_dunder_paths(),
+            ..Project::default()
+        };
         assert_eq!(
             sibling_constants(&PathBuf::from("discover.rs"), &project),
             PathBuf::from("__basic__/constants.rs")

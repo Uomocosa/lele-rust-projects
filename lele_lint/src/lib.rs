@@ -14,8 +14,8 @@ pub use basic::structs::{
     LeleTomlLintSections, ModDecl, ParseFailure, ParsedSource, Reexport, RuleDoc, ScannedDir,
 };
 pub use basic::type_aliases::ModuleInfoMap;
-pub mod dunder;
-pub use dunder::Dunder;
+pub mod dunder_path;
+pub use dunder_path::DunderPath;
 pub mod error;
 pub use error::Error;
 pub mod module_info;

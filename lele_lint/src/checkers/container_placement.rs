@@ -9,7 +9,7 @@ pub struct ContainerPlacement;
 
 impl ContainerPlacement {
     pub const NAME: &'static str = "container_placement";
-    pub const CODE: &'static str = "E029";
+    pub const CODE: &'static str = "E040";
     pub const DOC: RuleDoc = RuleDoc {
         category: "layout",
         summary: "Behavior-free types (plain structs, enums, newtypes, aliases, ECS markers) go in the domain's `__basic__/<role>.rs`.",

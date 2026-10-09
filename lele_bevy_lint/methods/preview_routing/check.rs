@@ -18,7 +18,7 @@ pub fn check(
             }
             diags.push(scan::diag(project, source.origin, rel_path,
                 preview.line,
-                "E039",
+                checkers::preview_routing::PreviewRouting::CODE,
                 format!(
                     "`fn {}` is a preview test but does not call `lele_bevy_preview::run(...)`; route it through the harness so an empty frame fails",
                     preview.name

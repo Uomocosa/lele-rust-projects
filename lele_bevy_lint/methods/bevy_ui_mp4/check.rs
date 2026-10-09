@@ -30,7 +30,7 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
         let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Mp4) else {
             diags.push(scan::diag(project, source.origin, rel_path,
                 visual.line,
-                "E037",
+                checkers::bevy_ui_mp4::BevyUiMp4::CODE,
                 format!(
                     "file spawns UI `{}` and drives it over time/input ({}) but defines no ignored `*_ui_mp4_preview` test",
                     visual.visual,
@@ -46,7 +46,7 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
                 source.origin,
                 rel_path,
                 preview.line,
-                "E037",
+                checkers::bevy_ui_mp4::BevyUiMp4::CODE,
                 format!(
                     "`fn {}` must carry `#[ignore]` so the default test suite stays GPU-free",
                     preview.name

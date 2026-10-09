@@ -134,7 +134,7 @@ fn diag(project: &Project, rel: &Path, message: String) -> Diagnostic {
         file,
         line: 1,
         col: 0,
-        code: "E030".to_string(),
+        code: checkers::methods_layout::MethodsLayout::CODE.to_string(),
         message,
     }
 }

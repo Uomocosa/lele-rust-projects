@@ -32,7 +32,7 @@ impl<'ast> Visit<'ast> for PositionalVisitor<'_> {
                 file: self.file_path.clone(),
                 line: 1,
                 col: 0,
-                code: "E009".to_string(),
+                code: checkers::no_positional::NoPositional::CODE.to_string(),
                 message: "positional field access is not allowed, use named fields".to_string(),
             });
         }

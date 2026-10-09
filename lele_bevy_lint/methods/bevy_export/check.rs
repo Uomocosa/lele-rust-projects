@@ -25,7 +25,7 @@ pub fn check(_self: &checkers::bevy_export::BevyExport, project: &Project) -> Ve
                         .unwrap_or_else(|| project.root.join("src").join(mod_rs_path)),
                     line: 1,
                     col: 0,
-                    code: "E005".to_string(),
+                    code: checkers::bevy_export::BevyExport::CODE.to_string(),
                     message: format!(
                         "pub use {} re-exports bevy_systems items at the domain root; remove it — access via `{{domain}}::bevy_systems::{{name}}`",
                         reexported_path

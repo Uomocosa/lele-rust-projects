@@ -112,7 +112,7 @@ fn config_diag(project: &Project, message: &str) -> Diagnostic {
         file: project.root.join("lele.toml"),
         line: 1,
         col: 0,
-        code: "E036".to_string(),
+        code: checkers::boundary_imports::BoundaryImports::CODE.to_string(),
         message: message.to_string(),
     }
 }
@@ -193,7 +193,7 @@ fn use_diag(file: &Path, line: usize, reported: &str, boundary: &BoundaryEntry) 
         file: file.to_path_buf(),
         line,
         col: 0,
-        code: "E036".to_string(),
+        code: checkers::boundary_imports::BoundaryImports::CODE.to_string(),
         message: format!("`{reported}` is not allowed in boundary \"{name}\" ({folders}) — {why}"),
     }
 }

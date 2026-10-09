@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use derive_more::Deref;
 
-use crate::Dunder;
+use crate::DunderPath;
 use crate::Error;
 use crate::LeleSection;
 
@@ -17,7 +17,7 @@ pub struct Config(pub Option<LeleSection>);
 #[atomic_delegates]
 impl Config {
     pub fn load(project_root: &Path) -> Result<Self, Error> {}
-    pub fn dunder(&self) -> Dunder {}
+    pub fn dunder_paths(&self) -> Vec<DunderPath> {}
 }
 
 // no test_usage necessary

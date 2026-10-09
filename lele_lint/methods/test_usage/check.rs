@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
-use crate::Dunder;
+use crate::DunderPath;
 use crate::Origin;
 use crate::Project;
 
@@ -17,7 +17,7 @@ pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<
             continue;
         }
         let rel_path = source.relative_path;
-        if is_exempt(rel_path, source.file, &project.dunder) {
+        if is_exempt(rel_path, source.file, &project.dunder_paths) {
             continue;
         }
 
@@ -31,7 +31,7 @@ pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<
                 file: absolute,
                 line: 1,
                 col: 0,
-                code: "E006".to_string(),
+                code: checkers::test_usage::TestUsage::CODE.to_string(),
                 message: format!(
                     "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
                     rel_path.display()
@@ -61,7 +61,7 @@ fn opt_out_at_end(content: &str) -> bool {
 }
 
 // needed helper: file exemption rules
-fn is_exempt(rel_path: &Path, file: &syn::File, dunder: &Dunder) -> bool {
+fn is_exempt(rel_path: &Path, file: &syn::File, dunder_paths: &[DunderPath]) -> bool {
     let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     if file_name == "main.rs" {
@@ -76,7 +76,7 @@ fn is_exempt(rel_path: &Path, file: &syn::File, dunder: &Dunder) -> bool {
         return true;
     }
 
-    if common::is_dunder_path(rel_path, dunder) {
+    if common::is_dunder_path(rel_path, dunder_paths) {
         return true;
     }
 

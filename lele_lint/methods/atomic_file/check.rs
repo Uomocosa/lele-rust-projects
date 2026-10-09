@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
-use crate::Dunder;
+use crate::DunderPath;
 use crate::Project;
 
 pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Vec<Diagnostic> {
@@ -16,7 +16,7 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
     for (rel_path, file) in &project.parsed_files {
         let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-        if is_exempt_path(rel_path, file_name, &project.dunder) {
+        if is_exempt_path(rel_path, file_name, &project.dunder_paths) {
             continue;
         }
 
@@ -43,7 +43,7 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
-                code: "E001".to_string(),
+                code: checkers::atomic_file::AtomicFile::CODE.to_string(),
                 message: format!(
                     "only one public item per file — move `pub {} {}` to `{}`",
                     extra.kind.kind_str(),
@@ -58,7 +58,7 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
 
     for (rel_path, file) in &project.parsed_files {
         let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if is_exempt_path(rel_path, file_name, &project.dunder) {
+        if is_exempt_path(rel_path, file_name, &project.dunder_paths) {
             continue;
         }
         check_delegate_shape(rel_path, file, project, &known_stems, &declared, &mut diags);
@@ -111,7 +111,7 @@ fn check_delegate_shape(
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: "E001".to_string(),
+        code: checkers::atomic_file::AtomicFile::CODE.to_string(),
         message,
     });
 }
@@ -151,7 +151,7 @@ fn check_fn_file_purity(
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: "E001".to_string(),
+            code: checkers::atomic_file::AtomicFile::CODE.to_string(),
             message: format!(
                 "SHAPE-F fn-file `{file_stem}.rs` must hold only the fn — move exposed `{kind} {name}` to {home} (O2-extraction)"
             ),
@@ -181,11 +181,11 @@ impl PubItemKind {
 }
 
 // needed helper: path exemption logic
-fn is_exempt_path(rel_path: &Path, file_name: &str, dunder: &Dunder) -> bool {
+fn is_exempt_path(rel_path: &Path, file_name: &str, dunder_paths: &[DunderPath]) -> bool {
     if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
         return true;
     }
-    if common::is_dunder_path(rel_path, dunder) {
+    if common::is_dunder_path(rel_path, dunder_paths) {
         return true;
     }
     rel_path
@@ -249,7 +249,7 @@ fn check_filename_match(
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: "E001".to_string(),
+        code: checkers::atomic_file::AtomicFile::CODE.to_string(),
         message: format!("filename mismatch — `{file_stem}.rs` should be `{expected}.rs`"),
     });
 }
@@ -276,7 +276,6 @@ mod tests {
     };
     use crate::checkers::atomic_file::AtomicFile;
     use crate::common;
-    use crate::Dunder;
     use crate::Project;
     use std::path::{Path, PathBuf};
 
@@ -292,12 +291,12 @@ mod tests {
         assert!(is_exempt_path(
             Path::new("checkers/mod.rs"),
             "mod.rs",
-            &Dunder::default()
+            &common::default_dunder_paths()
         ));
         assert!(!is_exempt_path(
             Path::new("checkers/atomic_file.rs"),
             "atomic_file.rs",
-            &Dunder::default()
+            &common::default_dunder_paths()
         ));
     }
 
