@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::text::EditableText;
 
 use crate::discovery;
+use crate::net_id;
 use discovery::ui::{CreateRoomButton, RoomNameInput};
 
 pub fn handle_create(
@@ -20,7 +21,7 @@ pub fn handle_create(
             continue;
         }
         tracing::info!(target: "room_lobby", "ui create room={name}");
-        commands.write(discovery::Command::Create(discovery::RoomName(
+        commands.write(discovery::Command::Create(net_id::RoomName(
             name.to_string(),
         )));
     }
@@ -28,6 +29,7 @@ pub fn handle_create(
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use bevy::prelude::*;
     use bevy::text::EditableText;
 
@@ -52,7 +54,7 @@ mod tests {
     fn test_usage() {
         assert_eq!(
             sent_after_press(" alpha "),
-            vec![discovery::Command::Create(discovery::RoomName(
+            vec![discovery::Command::Create(net_id::RoomName(
                 "alpha".to_string()
             ))]
         );

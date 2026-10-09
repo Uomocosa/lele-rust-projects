@@ -27,6 +27,7 @@ pub fn seed_candidates(session: &mut Session) {
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use std::collections::BTreeMap;
 
     use super::seed_candidates;
@@ -36,22 +37,22 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
-        let room = discovery::RoomName("r".to_string());
+        let room = net_id::RoomName("r".to_string());
         session.room = Some(discovery::Room {
             name: room.clone(),
             members: discovery::Members::new(),
         });
         let presence = discovery::Presence {
-            addrs: vec!["/ip4/1".to_string()],
+            addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
             updated_at: discovery::EpochSecs(5),
         };
         let members = BTreeMap::from([
-            (discovery::PeerId("me".to_string()), presence.clone()),
-            (discovery::PeerId("a".to_string()), presence),
+            (net_id::PeerId("me".to_string()), presence.clone()),
+            (net_id::PeerId("a".to_string()), presence),
         ]);
         session.lobby.insert(
             room,
@@ -62,6 +63,6 @@ mod tests {
         );
         seed_candidates(&mut session);
         let seeded: Vec<_> = session.candidates.keys().cloned().collect();
-        assert_eq!(seeded, vec![discovery::PeerId("a".to_string())]);
+        assert_eq!(seeded, vec![net_id::PeerId("a".to_string())]);
     }
 }

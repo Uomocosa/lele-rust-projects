@@ -5,17 +5,18 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::discovery;
+use crate::net_id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub struct Presence {
-    pub addrs: Vec<String>,
+    pub addrs: Vec<net_id::PeerAddr>,
     pub updated_at: discovery::EpochSecs,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub struct RoomRecord {
     pub capacity: u16,
-    pub members: BTreeMap<discovery::PeerId, Presence>,
+    pub members: BTreeMap<net_id::PeerId, Presence>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Reflect)]
@@ -26,7 +27,7 @@ pub struct Member {
 
 #[derive(Debug, Clone, PartialEq, Eq, Reflect)]
 pub struct Room {
-    pub name: discovery::RoomName,
+    pub name: net_id::RoomName,
     pub members: discovery::Members,
 }
 

@@ -1,12 +1,13 @@
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 
+use crate::net_id;
 use crate::p2p;
 
 pub fn dial_peer<T: p2p::Message>(
     swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    peer_id: &str,
-    addrs: &[String],
+    peer_id: &net_id::PeerId,
+    addrs: &[net_id::PeerAddr],
     condition: PeerCondition,
 ) {
     let parsed: Vec<libp2p::Multiaddr> = addrs.iter().filter_map(|a| a.parse().ok()).collect();
@@ -21,7 +22,7 @@ pub fn dial_peer<T: p2p::Message>(
         if let Err(e) = swarm.dial(opts) {
             event_tx
                 .send(p2p::Event::DialFailed {
-                    peer_id: peer_id.to_string(),
+                    peer_id: peer_id.clone(),
                     reason: e.to_string(),
                 })
                 .ok();
@@ -39,18 +40,19 @@ mod tests {
     use libp2p::swarm::dial_opts::PeerCondition;
 
     use super::dial_peer;
+    use crate::net_id;
     use crate::p2p;
 
     fn swarm() -> libp2p::Swarm<p2p::Behaviour<u32>> {
-        p2p::build_swarm::<u32>(Keypair::generate_ed25519(), false).unwrap()
+        p2p::build_swarm::<u32>(Keypair::generate_ed25519(), p2p::MdnsMode::Disabled).unwrap()
     }
 
     #[tokio::test]
     async fn test_usage() {
         let mut swarm = swarm();
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-        let peer = libp2p::PeerId::random().to_string();
-        let addrs = vec![String::from("/ip4/127.0.0.1/tcp/9")];
+        let peer = net_id::PeerId(libp2p::PeerId::random().to_string());
+        let addrs = vec![net_id::PeerAddr(String::from("/ip4/127.0.0.1/tcp/9"))];
         let gentle = PeerCondition::DisconnectedAndNotDialing;
         dial_peer(&mut swarm, &tx, &peer, &addrs, gentle);
         assert!(rx.try_recv().is_err());

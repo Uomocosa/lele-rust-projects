@@ -12,6 +12,7 @@ pub fn merge_lobby(mut base: Lobby, incoming: Lobby) -> Lobby {
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use std::collections::BTreeMap;
 
     use super::merge_lobby;
@@ -20,7 +21,7 @@ mod tests {
     fn record(peer: &str, updated_at: u64) -> discovery::RoomRecord {
         let mut members = BTreeMap::new();
         members.insert(
-            discovery::PeerId(peer.to_string()),
+            net_id::PeerId(peer.to_string()),
             discovery::Presence {
                 addrs: Vec::new(),
                 updated_at: discovery::EpochSecs(updated_at),
@@ -34,7 +35,7 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let room = discovery::RoomName("room-a".to_string());
+        let room = net_id::RoomName("room-a".to_string());
         let mut base = BTreeMap::new();
         base.insert(room.clone(), record("peer", 5));
         let mut incoming = BTreeMap::new();
@@ -42,7 +43,7 @@ mod tests {
         let merged = merge_lobby(base, incoming);
         let row = merged
             .get(&room)
-            .and_then(|record| record.members.get(&discovery::PeerId("peer".to_string())));
+            .and_then(|record| record.members.get(&net_id::PeerId("peer".to_string())));
         assert_eq!(row.map(|presence| *presence.updated_at), Some(9));
     }
 }

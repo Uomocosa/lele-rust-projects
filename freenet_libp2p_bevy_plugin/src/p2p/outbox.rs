@@ -18,6 +18,7 @@ impl Outbox {
 #[cfg(test)]
 mod tests {
     use super::Outbox;
+    use crate::net_id;
     use crate::p2p;
 
     #[test]
@@ -25,7 +26,7 @@ mod tests {
         let mut commands = Outbox::default();
         assert!(commands.is_empty());
         commands.push(p2p::NetCommand::FindRoom {
-            room: "room".to_string(),
+            room: net_id::RoomName("room".to_string()),
         });
         assert_eq!(commands.len(), 1);
     }

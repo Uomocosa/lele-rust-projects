@@ -1,5 +1,6 @@
 use libp2p::gossipsub;
 
+use crate::net_id;
 use crate::p2p;
 
 pub fn handle_gossipsub<T: p2p::Message>(
@@ -62,9 +63,11 @@ fn forward_gossip<T: p2p::Message>(
     event_tx
         .send(p2p::Event::Gossip {
             topic: message.topic.to_string(),
-            from: message
-                .source
-                .map_or_else(|| propagation_source.to_string(), |s| s.to_string()),
+            from: net_id::PeerId(
+                message
+                    .source
+                    .map_or_else(|| propagation_source.to_string(), |s| s.to_string()),
+            ),
             data: message.data,
         })
         .ok();
@@ -79,7 +82,7 @@ mod tests {
     use crate::p2p;
 
     fn swarm() -> libp2p::Swarm<p2p::Behaviour<u32>> {
-        p2p::build_swarm::<u32>(Keypair::generate_ed25519(), false).unwrap()
+        p2p::build_swarm::<u32>(Keypair::generate_ed25519(), p2p::MdnsMode::Disabled).unwrap()
     }
 
     #[test]
@@ -103,6 +106,6 @@ mod tests {
             panic!("expected a gossip event");
         };
         assert_eq!((topic.as_str(), data), ("lobby/topic", vec![7]));
-        assert_eq!(from, relay.to_string());
+        assert_eq!(from.as_str(), relay.to_string());
     }
 }

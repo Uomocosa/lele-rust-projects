@@ -1,15 +1,14 @@
 use libp2p::gossipsub;
 use libp2p::kad;
-use libp2p::mdns;
-use libp2p::swarm::behaviour::toggle::Toggle;
 use libp2p::swarm::dial_opts::PeerCondition;
 
+use crate::net_id;
 use crate::p2p;
 
 pub fn dispatch_net_command<T: p2p::Message>(
     swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
+    room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, net_id::RoomName>,
     command: p2p::NetCommand,
 ) {
     match command {
@@ -22,23 +21,14 @@ pub fn dispatch_net_command<T: p2p::Message>(
                 PeerCondition::DisconnectedAndNotDialing,
             );
         }
-        p2p::NetCommand::DialForce { peer_id, addrs } => {
-            p2p::swarm_loop::dial_peer(swarm, event_tx, &peer_id, &addrs, PeerCondition::Always);
-        }
         p2p::NetCommand::ReserveRelay { relay_addr } => {
             if let Ok(addr) = relay_addr.parse::<libp2p::Multiaddr>() {
                 let _ = swarm.listen_on(addr);
             }
         }
-        p2p::NetCommand::SetMdns { enabled } => {
-            swarm.behaviour_mut().mdns = Toggle::from(
-                enabled
-                    .then(|| {
-                        mdns::tokio::Behaviour::new(mdns::Config::default(), *swarm.local_peer_id())
-                            .ok()
-                    })
-                    .flatten(),
-            );
+        p2p::NetCommand::SetMdns { mode } => {
+            let peer_id = *swarm.local_peer_id();
+            swarm.behaviour_mut().mdns = p2p::mdns_behaviour(mode, peer_id);
         }
         p2p::NetCommand::AddKadPeer { peer_id, addrs } => {
             p2p::swarm_loop::seed_kad_peer(swarm, &peer_id, &addrs);
@@ -109,10 +99,11 @@ mod tests {
     use libp2p::identity::Keypair;
 
     use super::dispatch_net_command;
+    use crate::net_id;
     use crate::p2p;
 
     fn swarm() -> libp2p::Swarm<p2p::Behaviour<u32>> {
-        p2p::build_swarm::<u32>(Keypair::generate_ed25519(), false).unwrap()
+        p2p::build_swarm::<u32>(Keypair::generate_ed25519(), p2p::MdnsMode::Disabled).unwrap()
     }
 
     #[tokio::test]
@@ -132,7 +123,7 @@ mod tests {
         let hash = IdentTopic::new(topic).hash();
         assert!(swarm.behaviour().gossipsub.topics().any(|t| *t == hash));
 
-        let room = String::from("room-a");
+        let room = net_id::RoomName(String::from("room-a"));
         dispatch_net_command(
             &mut swarm,
             &tx,

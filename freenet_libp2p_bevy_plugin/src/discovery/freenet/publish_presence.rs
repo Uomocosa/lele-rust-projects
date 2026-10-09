@@ -4,11 +4,12 @@ use freenet_stdlib::client_api::{ClientRequest, ContractRequest};
 use freenet_stdlib::prelude::{StateDelta, UpdateData};
 
 use crate::discovery;
+use crate::net_id;
 
 pub fn publish_presence(
     lobby_client: &mut discovery::freenet::LobbyClient,
-    room: &discovery::RoomName,
-    me: &discovery::PeerId,
+    room: &net_id::RoomName,
+    me: &net_id::PeerId,
     presence: discovery::Presence,
     capacity: u16,
 ) -> Result<(), discovery::Error> {

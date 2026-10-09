@@ -101,6 +101,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     use super::poll_p2p_events;
+    use crate::net_id;
     use crate::p2p;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Deref)]
@@ -116,12 +117,14 @@ mod tests {
         app.insert_resource(p2p::Commands::<Dummy>::default());
         app.insert_resource(p2p::Outbox::default());
         event_tx
-            .send(p2p::Event::PeerConnected("peer".to_string()))
+            .send(p2p::Event::PeerConnected(net_id::PeerId(
+                "peer".to_string(),
+            )))
             .ok();
         app.world_mut()
             .resource_mut::<p2p::Commands<Dummy>>()
             .push(p2p::Command::Net(p2p::NetCommand::Dial {
-                peer_id: "peer".to_string(),
+                peer_id: net_id::PeerId("peer".to_string()),
                 addrs: vec![],
             }));
         app.insert_resource(p2p::Bridge {
@@ -153,18 +156,25 @@ mod tests {
             rx: std::sync::Mutex::new(None),
         });
         event_tx
-            .send(p2p::Event::PeerConnected("peer".to_string()))
+            .send(p2p::Event::PeerConnected(net_id::PeerId(
+                "peer".to_string(),
+            )))
             .ok();
         event_tx
             .send(p2p::Event::Message {
-                from: "peer".to_string(),
+                from: net_id::PeerId("peer".to_string()),
                 payload: Dummy(1),
             })
             .ok();
         app.add_systems(Update, poll_p2p_events::<Dummy>);
         app.update();
         let tapped = tap_rx.try_recv();
-        assert_eq!(tapped, Ok(p2p::TapEvent::PeerConnected("peer".to_string())));
+        assert_eq!(
+            tapped,
+            Ok(p2p::TapEvent::PeerConnected(net_id::PeerId(
+                "peer".to_string()
+            )))
+        );
         assert!(tap_rx.try_recv().is_err(), "game messages stay off the tap");
     }
 }

@@ -51,6 +51,7 @@ pub fn sync_room_list(
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use bevy::prelude::*;
 
     use super::sync_room_list;
@@ -62,7 +63,7 @@ mod tests {
         let mut snapshot = discovery::Snapshot::default();
         for name in ["alpha", "beta"] {
             snapshot.lobby.insert(
-                discovery::RoomName(name.to_string()),
+                net_id::RoomName(name.to_string()),
                 discovery::RoomRecord {
                     capacity: 8,
                     members: std::collections::BTreeMap::new(),
@@ -92,7 +93,7 @@ mod tests {
         let mut snapshot = discovery::Snapshot::default();
         for (name, capacity) in [("alpha", 8_u16), ("beta", 4_u16)] {
             snapshot.lobby.insert(
-                discovery::RoomName(name.to_string()),
+                net_id::RoomName(name.to_string()),
                 discovery::RoomRecord {
                     capacity,
                     members: std::collections::BTreeMap::new(),
@@ -111,7 +112,7 @@ mod tests {
     fn add_room(world: &mut World) {
         let mut snapshot = world.resource_mut::<discovery::Snapshot>();
         snapshot.lobby.insert(
-            discovery::RoomName(String::from("gamma")),
+            net_id::RoomName(String::from("gamma")),
             discovery::RoomRecord {
                 capacity: 4,
                 members: std::collections::BTreeMap::new(),

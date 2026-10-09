@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::net_id;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportMode {
     Tcp,
@@ -7,30 +9,36 @@ pub enum TransportMode {
     Both,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MdnsMode {
+    Enabled,
+    Disabled,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TapEvent {
     Ready {
-        peer_id: String,
-        addrs: Vec<String>,
+        peer_id: net_id::PeerId,
+        addrs: Vec<net_id::PeerAddr>,
     },
-    ObservedAddr(String),
-    PeerConnected(String),
-    PeerDisconnected(String),
+    ObservedAddr(net_id::PeerAddr),
+    PeerConnected(net_id::PeerId),
+    PeerDisconnected(net_id::PeerId),
     DialFailed {
-        peer_id: String,
+        peer_id: net_id::PeerId,
         reason: String,
     },
     RoomProviders {
-        room: String,
-        peers: Vec<String>,
+        room: net_id::RoomName,
+        peers: Vec<net_id::PeerId>,
     },
     Gossip {
         topic: String,
-        from: String,
+        from: net_id::PeerId,
         data: Vec<u8>,
     },
     Exchange {
-        from: String,
+        from: net_id::PeerId,
         data: Vec<u8>,
     },
 }
@@ -38,40 +46,36 @@ pub enum TapEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetCommand {
     Dial {
-        peer_id: String,
-        addrs: Vec<String>,
-    },
-    DialForce {
-        peer_id: String,
-        addrs: Vec<String>,
+        peer_id: net_id::PeerId,
+        addrs: Vec<net_id::PeerAddr>,
     },
     ReserveRelay {
-        relay_addr: String,
+        relay_addr: net_id::PeerAddr,
     },
     SetMdns {
-        enabled: bool,
+        mode: MdnsMode,
     },
     AddKadPeer {
-        peer_id: String,
-        addrs: Vec<String>,
+        peer_id: net_id::PeerId,
+        addrs: Vec<net_id::PeerAddr>,
     },
     ProvideRoom {
-        room: String,
+        room: net_id::RoomName,
     },
     FindRoom {
-        room: String,
+        room: net_id::RoomName,
     },
     PutHistory {
-        room: String,
+        room: net_id::RoomName,
         chunk: u64,
         data: Vec<u8>,
     },
     FetchHistory {
-        room: String,
+        room: net_id::RoomName,
         chunk: u64,
     },
     FetchRoster {
-        room: String,
+        room: net_id::RoomName,
     },
     Subscribe {
         topic: String,
@@ -81,7 +85,7 @@ pub enum NetCommand {
         data: Vec<u8>,
     },
     Exchange {
-        peer_id: String,
+        peer_id: net_id::PeerId,
         data: Vec<u8>,
     },
 }
@@ -89,45 +93,45 @@ pub enum NetCommand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command<T> {
     Net(NetCommand),
-    Send { peer_id: String, payload: T },
+    Send { peer_id: net_id::PeerId, payload: T },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Event<T> {
     Ready {
-        peer_id: String,
-        addrs: Vec<String>,
+        peer_id: net_id::PeerId,
+        addrs: Vec<net_id::PeerAddr>,
     },
-    PeerConnected(String),
-    PeerDisconnected(String),
+    PeerConnected(net_id::PeerId),
+    PeerDisconnected(net_id::PeerId),
     DialFailed {
-        peer_id: String,
+        peer_id: net_id::PeerId,
         reason: String,
     },
     RelayReserved {
-        relay_peer_id: String,
+        relay_peer_id: net_id::PeerId,
     },
-    ObservedAddr(String),
+    ObservedAddr(net_id::PeerAddr),
     RoomProviders {
-        room: String,
-        peers: Vec<String>,
+        room: net_id::RoomName,
+        peers: Vec<net_id::PeerId>,
     },
     Message {
-        from: String,
+        from: net_id::PeerId,
         payload: T,
     },
     HistoryChunk {
-        room: String,
+        room: net_id::RoomName,
         chunk: u64,
         data: Vec<u8>,
     },
     Gossip {
         topic: String,
-        from: String,
+        from: net_id::PeerId,
         data: Vec<u8>,
     },
     Exchange {
-        from: String,
+        from: net_id::PeerId,
         data: Vec<u8>,
     },
     Error(String),

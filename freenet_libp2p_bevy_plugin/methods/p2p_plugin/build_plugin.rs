@@ -65,7 +65,7 @@ mod tests {
             &plugin::P2PPlugin(plugin::Config::<Dummy>::new(
                 net_id::NetworkId(1),
                 p2p::TransportMode::Both,
-                false,
+                p2p::MdnsMode::Disabled,
             )),
             &mut app,
         );
@@ -76,7 +76,7 @@ mod tests {
         assert!(app.world().get_resource::<roster::RoomRoster>().is_some());
         assert_eq!(
             app.world().get_resource::<roster::Room>(),
-            Some(&roster::Room("default".to_string()))
+            Some(&roster::Room(net_id::RoomName("default".to_string())))
         );
         assert!(app.world().get_resource::<net_id::NetworkId>().is_some());
     }

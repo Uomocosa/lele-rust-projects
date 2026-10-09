@@ -9,18 +9,6 @@ pub struct GameName(pub String);
 pub struct GameToken(pub String);
 
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
-)]
-#[reflect(Hash)]
-pub struct RoomName(pub String);
-
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
-)]
-#[reflect(Hash)]
-pub struct PeerId(pub String);
-
-#[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Deref, Reflect,
 )]
 pub struct EpochSecs(pub u64);

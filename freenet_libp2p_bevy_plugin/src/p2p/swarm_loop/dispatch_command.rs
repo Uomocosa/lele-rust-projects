@@ -1,9 +1,10 @@
+use crate::net_id;
 use crate::p2p;
 
 pub fn dispatch_command<T: p2p::Message>(
     swarm: &mut libp2p::Swarm<p2p::Behaviour<T>>,
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
-    room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
+    room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, net_id::RoomName>,
     cmd: Option<p2p::Command<T>>,
 ) -> bool {
     match cmd {
@@ -34,7 +35,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_usage() {
-        let mut swarm = p2p::build_swarm::<u32>(Keypair::generate_ed25519(), false).unwrap();
+        let mut swarm =
+            p2p::build_swarm::<u32>(Keypair::generate_ed25519(), p2p::MdnsMode::Disabled).unwrap();
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let mut room_queries = HashMap::new();
         let subscribe = p2p::Command::Net(p2p::NetCommand::Subscribe {

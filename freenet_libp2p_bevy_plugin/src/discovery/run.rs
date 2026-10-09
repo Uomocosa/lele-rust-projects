@@ -4,6 +4,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::watch::Receiver;
 
 use crate::discovery;
+use crate::net_id;
 use crate::p2p;
 use discovery::session::{Input, Output, Session};
 
@@ -21,7 +22,7 @@ pub async fn run(
     let Some(ready) = discovery::libp2p::wait_ready(&mut net.ready).await else {
         return;
     };
-    let me = discovery::PeerId(ready.peer_id);
+    let me = ready.peer_id;
     let addrs = discovery::libp2p::dialable(ready.addrs);
     let timing = config.timing;
     let capacity = config.capacity;
@@ -58,7 +59,7 @@ pub async fn run(
 }
 
 // needed helper: adopts libp2p-observed addresses so peers can dial us back
-fn adopt_observed(session: &mut Session, observed: &mut Receiver<Option<Vec<String>>>) {
+fn adopt_observed(session: &mut Session, observed: &mut Receiver<Option<Vec<net_id::PeerAddr>>>) {
     if !observed.has_changed().unwrap_or(false) {
         return;
     }

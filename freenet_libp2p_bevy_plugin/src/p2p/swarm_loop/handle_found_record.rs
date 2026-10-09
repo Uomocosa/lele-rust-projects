@@ -1,5 +1,6 @@
 use libp2p::kad;
 
+use crate::net_id;
 use crate::p2p;
 
 pub fn handle_found_record<T: p2p::Message>(
@@ -13,7 +14,7 @@ pub fn handle_found_record<T: p2p::Message>(
     };
     event_tx
         .send(p2p::Event::HistoryChunk {
-            room,
+            room: net_id::RoomName(room),
             chunk,
             data: record.value,
         })

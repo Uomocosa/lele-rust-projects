@@ -1,9 +1,10 @@
 use crate::discovery;
+use crate::net_id;
 use discovery::session::{Hello, Output, Session};
 
 pub fn handle_hello(
     session: &mut Session,
-    from: &discovery::PeerId,
+    from: &net_id::PeerId,
     data: &[u8],
     now: discovery::EpochSecs,
 ) {
@@ -49,7 +50,7 @@ pub fn handle_hello(
 }
 
 // needed helper: removes a peer that left our room or switched to another one
-fn drop_member(session: &mut Session, peer: &discovery::PeerId) {
+fn drop_member(session: &mut Session, peer: &net_id::PeerId) {
     let removed = session
         .room
         .as_mut()
@@ -68,17 +69,18 @@ fn drop_member(session: &mut Session, peer: &discovery::PeerId) {
 mod tests {
     use super::handle_hello;
     use crate::discovery;
+    use crate::net_id;
     use crate::p2p;
     use discovery::session::{Hello, Output, Session};
 
     fn session_in_room() -> Session {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
-            name: discovery::RoomName("r".to_string()),
+            name: net_id::RoomName("r".to_string()),
             members: discovery::Members::new(),
         });
         session
@@ -87,14 +89,14 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = session_in_room();
-        let peer = discovery::PeerId("a".to_string());
+        let peer = net_id::PeerId("a".to_string());
         session.connected.insert(peer.clone());
         let hello = Hello {
-            room: Some(discovery::RoomName("r".to_string())),
-            addrs: vec!["/ip4/1".to_string()],
+            room: Some(net_id::RoomName("r".to_string())),
+            addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
             peers: vec![(
-                discovery::PeerId("b".to_string()),
-                vec!["/ip4/2".to_string()],
+                net_id::PeerId("b".to_string()),
+                vec![net_id::PeerAddr("/ip4/2".to_string())],
             )],
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
@@ -122,11 +124,11 @@ mod tests {
     #[test]
     fn test_connected_before_known_becomes_member() {
         let mut session = session_in_room();
-        let joiner = discovery::PeerId("joiner".to_string());
+        let joiner = net_id::PeerId("joiner".to_string());
         session.connected.insert(joiner.clone());
         let hello = Hello {
-            room: Some(discovery::RoomName("r".to_string())),
-            addrs: vec!["/ip4/1".to_string()],
+            room: Some(net_id::RoomName("r".to_string())),
+            addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
             peers: Vec::new(),
         };
         let data = bincode::serialize(&hello).unwrap_or_default();

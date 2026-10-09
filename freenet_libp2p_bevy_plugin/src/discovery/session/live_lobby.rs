@@ -19,6 +19,7 @@ pub fn live_lobby(
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use std::collections::BTreeMap;
 
     use super::live_lobby;
@@ -35,27 +36,27 @@ mod tests {
     fn test_usage() {
         let mut lobby = discovery::Lobby::new();
         lobby.insert(
-            discovery::RoomName("live".to_string()),
+            net_id::RoomName("live".to_string()),
             discovery::RoomRecord {
                 capacity: 8,
                 members: BTreeMap::from([
-                    (discovery::PeerId("fresh".to_string()), presence(90)),
-                    (discovery::PeerId("stale".to_string()), presence(10)),
+                    (net_id::PeerId("fresh".to_string()), presence(90)),
+                    (net_id::PeerId("stale".to_string()), presence(10)),
                 ]),
             },
         );
         lobby.insert(
-            discovery::RoomName("dead".to_string()),
+            net_id::RoomName("dead".to_string()),
             discovery::RoomRecord {
                 capacity: 8,
-                members: BTreeMap::from([(discovery::PeerId("gone".to_string()), presence(1))]),
+                members: BTreeMap::from([(net_id::PeerId("gone".to_string()), presence(1))]),
             },
         );
         let live = live_lobby(lobby, discovery::EpochSecs(100), 30);
         let rooms: Vec<_> = live.keys().map(|room| room.as_str()).collect();
         assert_eq!(rooms, vec!["live"]);
         let members = live
-            .get(&discovery::RoomName("live".to_string()))
+            .get(&net_id::RoomName("live".to_string()))
             .map_or(0, |record| record.members.len());
         assert_eq!(members, 1);
     }

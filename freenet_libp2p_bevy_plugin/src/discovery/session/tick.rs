@@ -17,18 +17,19 @@ pub fn tick(session: &mut Session, now: discovery::EpochSecs) {
 mod tests {
     use super::tick;
     use crate::discovery;
+    use crate::net_id;
     use discovery::session::Session;
 
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
-        session.connected.insert(discovery::PeerId("a".to_string()));
+        session.connected.insert(net_id::PeerId("a".to_string()));
         session.room = Some(discovery::Room {
-            name: discovery::RoomName("r".to_string()),
+            name: net_id::RoomName("r".to_string()),
             members: discovery::Members::new(),
         });
         tick(&mut session, discovery::EpochSecs(100));

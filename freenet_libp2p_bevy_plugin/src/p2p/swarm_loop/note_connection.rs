@@ -1,5 +1,6 @@
 use libp2p::swarm::SwarmEvent;
 
+use crate::net_id;
 use crate::p2p;
 
 pub fn note_connection<T: p2p::Message>(
@@ -18,7 +19,9 @@ pub fn note_connection<T: p2p::Message>(
             log_established(&peer_id, connection_id, &endpoint);
             if num_established.get() == 1 {
                 event_tx
-                    .send(p2p::Event::PeerConnected(peer_id.to_string()))
+                    .send(p2p::Event::PeerConnected(net_id::PeerId(
+                        peer_id.to_string(),
+                    )))
                     .ok();
             }
         }
@@ -40,7 +43,9 @@ pub fn note_connection<T: p2p::Message>(
             );
             if num_established == 0 {
                 event_tx
-                    .send(p2p::Event::PeerDisconnected(peer_id.to_string()))
+                    .send(p2p::Event::PeerDisconnected(net_id::PeerId(
+                        peer_id.to_string(),
+                    )))
                     .ok();
             }
         }

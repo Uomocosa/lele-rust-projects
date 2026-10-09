@@ -26,19 +26,20 @@ pub fn prune_members(session: &mut Session, now: discovery::EpochSecs) {
 mod tests {
     use super::prune_members;
     use crate::discovery;
+    use crate::net_id;
     use discovery::session::Session;
 
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
         let mut members = discovery::Members::new();
         for peer in ["live", "gone"] {
             members.insert(
-                discovery::PeerId(peer.to_string()),
+                net_id::PeerId(peer.to_string()),
                 discovery::Member {
                     presence: discovery::Presence {
                         addrs: Vec::new(),
@@ -49,18 +50,16 @@ mod tests {
             );
         }
         session.room = Some(discovery::Room {
-            name: discovery::RoomName("r".to_string()),
+            name: net_id::RoomName("r".to_string()),
             members,
         });
-        session
-            .connected
-            .insert(discovery::PeerId("live".to_string()));
+        session.connected.insert(net_id::PeerId("live".to_string()));
         prune_members(&mut session, discovery::EpochSecs(100));
         let left: Vec<_> = session
             .room
             .as_ref()
             .map(|room| room.members.keys().cloned().collect())
             .unwrap_or_default();
-        assert_eq!(left, vec![discovery::PeerId("live".to_string())]);
+        assert_eq!(left, vec![net_id::PeerId("live".to_string())]);
     }
 }

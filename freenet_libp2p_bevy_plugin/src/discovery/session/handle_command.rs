@@ -1,4 +1,5 @@
 use crate::discovery;
+use crate::net_id;
 use discovery::session::{Output, Session};
 
 pub fn handle_command(
@@ -15,7 +16,7 @@ pub fn handle_command(
 }
 
 // needed helper: enters a room, says hello to every live link and dials the lobby seeds
-fn join(session: &mut Session, room: discovery::RoomName, now: discovery::EpochSecs) {
+fn join(session: &mut Session, room: net_id::RoomName, now: discovery::EpochSecs) {
     leave(session);
     session.room = Some(discovery::Room {
         name: room.clone(),
@@ -47,18 +48,19 @@ fn leave(session: &mut Session) {
 mod tests {
     use super::handle_command;
     use crate::discovery;
+    use crate::net_id;
     use crate::p2p;
     use discovery::session::{Output, Session};
 
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
-        session.connected.insert(discovery::PeerId("a".to_string()));
-        let room = discovery::RoomName("r".to_string());
+        session.connected.insert(net_id::PeerId("a".to_string()));
+        let room = net_id::RoomName("r".to_string());
         handle_command(
             &mut session,
             discovery::Command::Create(room),

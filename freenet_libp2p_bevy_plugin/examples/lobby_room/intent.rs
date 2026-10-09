@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use bevy::prelude::*;
 use freenet_libp2p_bevy_plugin::discovery;
+use freenet_libp2p_bevy_plugin::net_id;
 
 use crate::args;
 
@@ -22,7 +23,7 @@ pub fn press_once<C, J>(
     mut join: Query<(&mut Interaction, &J), Without<C>>,
 ) where
     C: Component,
-    J: Component + Deref<Target = discovery::RoomName>,
+    J: Component + Deref<Target = net_id::RoomName>,
 {
     if intent.sent {
         return;

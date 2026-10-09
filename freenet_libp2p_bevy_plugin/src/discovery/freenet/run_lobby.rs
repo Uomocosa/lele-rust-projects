@@ -4,11 +4,12 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::watch::Receiver;
 
 use crate::discovery;
+use crate::net_id;
 use discovery::freenet::basic::constants;
 
 pub async fn run_lobby(
     mut lobby_client: discovery::freenet::LobbyClient,
-    me: discovery::PeerId,
+    me: net_id::PeerId,
     capacity: u16,
     timing: discovery::Timing,
     mut target: Receiver<Option<discovery::session::PublishTarget>>,
@@ -31,7 +32,7 @@ pub async fn run_lobby(
         let now = Instant::now();
         let mut lobby = discovery::freenet::poll(&mut lobby_client).await.ok();
         if is_due(last_refresh, now, timing.lobby_secs) {
-            let timeout = Duration::from_secs(constants::REQUEST_TIMEOUT_SECS);
+            let timeout = constants::REQUEST_TIMEOUT;
             let refresh = discovery::freenet::refresh(&mut lobby_client);
             if let Ok(Ok(fresh)) = tokio::time::timeout(timeout, refresh).await {
                 lobby = Some(fresh);

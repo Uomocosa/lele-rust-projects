@@ -17,12 +17,13 @@ pub async fn wait_ready(ready: &mut Receiver<Option<p2p::Ready>>) -> Option<p2p:
 #[cfg(test)]
 mod tests {
     use super::wait_ready;
+    use crate::net_id;
     use crate::p2p;
 
     #[tokio::test]
     async fn test_usage() {
         let ready = p2p::Ready {
-            peer_id: "me".to_string(),
+            peer_id: net_id::PeerId("me".to_string()),
             addrs: Vec::new(),
         };
         let (_tx, mut rx) = tokio::sync::watch::channel(Some(ready.clone()));

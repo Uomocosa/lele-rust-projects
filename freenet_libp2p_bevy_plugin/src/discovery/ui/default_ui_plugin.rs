@@ -18,6 +18,7 @@ impl bevy::prelude::Plugin for DefaultUiPlugin {
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use bevy::prelude::*;
 
     use crate::discovery;
@@ -32,7 +33,7 @@ mod tests {
         let mut snapshot = discovery::Snapshot::default();
         for (name, capacity) in [("alpha", 8_u16), ("beta", 4_u16)] {
             snapshot.lobby.insert(
-                discovery::RoomName(name.to_string()),
+                net_id::RoomName(name.to_string()),
                 discovery::RoomRecord {
                     capacity,
                     members: std::collections::BTreeMap::new(),

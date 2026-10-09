@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::{Parser, ValueEnum};
-use freenet_libp2p_bevy_plugin::discovery::RoomName;
+use freenet_libp2p_bevy_plugin::net_id::RoomName;
 use freenet_libp2p_bevy_plugin::p2p::TransportMode;
 
 /// Scripted button press: `create` presses "Create room", `join:<room>`

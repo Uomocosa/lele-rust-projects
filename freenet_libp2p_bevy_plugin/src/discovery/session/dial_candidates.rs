@@ -1,4 +1,5 @@
 use crate::discovery;
+use crate::net_id;
 use crate::p2p;
 use discovery::session::{Output, Session};
 
@@ -7,7 +8,7 @@ pub fn dial_candidates(session: &mut Session, now: discovery::EpochSecs) {
         return;
     }
     let redial_secs = session.timing.redial_secs;
-    let due: Vec<(discovery::PeerId, Vec<String>)> = session
+    let due: Vec<(net_id::PeerId, Vec<net_id::PeerAddr>)> = session
         .candidates
         .iter()
         .filter(|(peer, _)| !session.connected.contains(*peer))
@@ -23,7 +24,7 @@ pub fn dial_candidates(session: &mut Session, now: discovery::EpochSecs) {
         tracing::debug!(target: "room_lobby", peer = %peer.as_str(), "discovery dial candidate");
         session.last_dial.insert(peer.clone(), now);
         session.outputs.push(Output::Net(p2p::NetCommand::Dial {
-            peer_id: peer.to_string(),
+            peer_id: peer,
             addrs,
         }));
     }
@@ -33,37 +34,38 @@ pub fn dial_candidates(session: &mut Session, now: discovery::EpochSecs) {
 mod tests {
     use super::dial_candidates;
     use crate::discovery;
+    use crate::net_id;
     use crate::p2p;
     use discovery::session::{Output, Session};
 
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
-            name: discovery::RoomName("r".to_string()),
+            name: net_id::RoomName("r".to_string()),
             members: discovery::Members::new(),
         });
         let peers = vec![
             (
-                discovery::PeerId("a".to_string()),
-                vec!["/ip4/1".to_string()],
+                net_id::PeerId("a".to_string()),
+                vec![net_id::PeerAddr("/ip4/1".to_string())],
             ),
             (
-                discovery::PeerId("b".to_string()),
-                vec!["/ip4/2".to_string()],
+                net_id::PeerId("b".to_string()),
+                vec![net_id::PeerAddr("/ip4/2".to_string())],
             ),
         ];
         discovery::session::add_candidates(&mut session, peers, discovery::EpochSecs(1));
-        session.connected.insert(discovery::PeerId("b".to_string()));
+        session.connected.insert(net_id::PeerId("b".to_string()));
         dial_candidates(&mut session, discovery::EpochSecs(10));
         dial_candidates(&mut session, discovery::EpochSecs(10));
         assert!(matches!(
             std::mem::take(&mut session.outputs).as_slice(),
-            [Output::Net(p2p::NetCommand::Dial { peer_id, .. })] if peer_id == "a"
+            [Output::Net(p2p::NetCommand::Dial { peer_id, .. })] if peer_id.as_str() == "a"
         ));
         dial_candidates(&mut session, discovery::EpochSecs(12));
         assert_eq!(std::mem::take(&mut session.outputs).len(), 1);

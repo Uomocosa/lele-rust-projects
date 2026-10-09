@@ -39,6 +39,7 @@ impl Default for EventTap {
 #[cfg(test)]
 mod tests {
     use super::EventTap;
+    use crate::net_id;
     use crate::p2p;
 
     #[test]
@@ -46,7 +47,9 @@ mod tests {
         let tap = EventTap::default();
         assert!(
             tap.tx
-                .send(p2p::TapEvent::PeerConnected("p".to_string()))
+                .send(p2p::TapEvent::PeerConnected(net_id::PeerId(
+                    "p".to_string()
+                )))
                 .is_ok()
         );
         assert!(tap.take_rx().is_some());

@@ -11,7 +11,7 @@ pub async fn connect(
     port: u16,
     contract_wasm: &[u8],
     params: &[u8],
-    deploy: bool,
+    deploy: discovery::freenet::DeployPolicy,
 ) -> Result<discovery::freenet::LobbyClient, discovery::Error> {
     let mut client = discovery::freenet::Client::connect(host, port).await?;
     let code = Arc::new(ContractCode::from(contract_wasm.to_vec()));
@@ -20,7 +20,9 @@ pub async fn connect(
     let instance_id = *key.id();
     let lobby = match discovery::freenet::fetch(&mut client, instance_id).await {
         Ok(lobby) => lobby,
-        Err(discovery::Error::ContractNotFound) if deploy => {
+        Err(discovery::Error::ContractNotFound)
+            if deploy == discovery::freenet::DeployPolicy::FetchOrDeploy =>
+        {
             let container = ContractContainer::from(ContractWasmAPIVersion::V1(wrapped));
             deploy_contract(&mut client, container).await?;
             discovery::freenet::fetch(&mut client, instance_id).await?
@@ -59,9 +61,20 @@ async fn deploy_contract(
 #[cfg(test)]
 mod tests {
     use super::connect;
+    use crate::discovery;
 
     #[tokio::test]
     async fn test_usage() {
-        assert!(connect("127.0.0.1", 1, &[], &[], true).await.is_err());
+        assert!(
+            connect(
+                "127.0.0.1",
+                1,
+                &[],
+                &[],
+                discovery::freenet::DeployPolicy::FetchOrDeploy,
+            )
+            .await
+            .is_err()
+        );
     }
 }

@@ -11,16 +11,9 @@ pub fn spawn_runner<T: p2p::Message>(
     event_tx: UnboundedSender<p2p::Event<T>>,
     keypair: Keypair,
     mode: p2p::TransportMode,
-    mdns_enabled: bool,
+    mdns: p2p::MdnsMode,
 ) -> JoinHandle<()> {
-    tokio::spawn(p2p::run(
-        cmd_rx,
-        net_rx,
-        event_tx,
-        keypair,
-        mode,
-        mdns_enabled,
-    ))
+    tokio::spawn(p2p::run(cmd_rx, net_rx, event_tx, keypair, mode, mdns))
 }
 
 #[cfg(test)]
@@ -40,7 +33,7 @@ mod tests {
             event_tx,
             keypair,
             p2p::TransportMode::Both,
-            false,
+            p2p::MdnsMode::Disabled,
         );
         let found = tokio::time::timeout(std::time::Duration::from_secs(10), async {
             while let Some(event) = event_rx.recv().await {

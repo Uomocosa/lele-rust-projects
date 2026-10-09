@@ -8,7 +8,7 @@ mod ui;
 use bevy::prelude::*;
 use bevy::ui::UiSystems;
 use clap::Parser;
-use freenet_libp2p_bevy_plugin::{discovery, net_id, plugin};
+use freenet_libp2p_bevy_plugin::{discovery, net_id, p2p, plugin};
 
 #[tokio::main]
 async fn main() {
@@ -37,7 +37,7 @@ async fn main() {
     app.add_plugins(plugin::P2PPlugin(plugin::Config::<dummy::Dummy>::new(
         net_id::NetworkId(0),
         transport,
-        false,
+        p2p::MdnsMode::Disabled,
     )));
     let discovery_plugins = discovery::Plugins(discovery::Config {
         game_name: discovery::GameName("lobby_room_example".to_string()),

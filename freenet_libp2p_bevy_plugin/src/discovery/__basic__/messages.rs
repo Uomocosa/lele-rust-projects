@@ -1,18 +1,18 @@
 use bevy::prelude::Message;
 
-use crate::discovery;
+use crate::net_id;
 
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    Create(discovery::RoomName),
-    Join(discovery::RoomName),
+    Create(net_id::RoomName),
+    Join(net_id::RoomName),
     Leave,
 }
 
 #[derive(Message, Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     LobbyChanged,
-    Joined(discovery::RoomName),
-    Left(discovery::RoomName),
+    Joined(net_id::RoomName),
+    Left(net_id::RoomName),
     MembersChanged,
 }

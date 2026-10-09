@@ -26,17 +26,18 @@ pub fn hello(session: &Session) -> Hello {
 mod tests {
     use super::hello;
     use crate::discovery;
+    use crate::net_id;
     use discovery::session::Session;
 
     #[test]
     fn test_usage() {
         let session = Session::new(
-            discovery::PeerId("me".to_string()),
-            vec!["/ip4/9".to_string()],
+            net_id::PeerId("me".to_string()),
+            vec![net_id::PeerAddr("/ip4/9".to_string())],
             discovery::Timing::default(),
         );
         let hello = hello(&session);
         assert_eq!(hello.room, None);
-        assert_eq!(hello.addrs, vec!["/ip4/9".to_string()]);
+        assert_eq!(hello.addrs, vec![net_id::PeerAddr("/ip4/9".to_string())]);
     }
 }

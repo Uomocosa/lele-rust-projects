@@ -89,6 +89,7 @@ pub fn log_tick(
 #[cfg(test)]
 mod tests {
     use bevy::prelude::*;
+    use freenet_libp2p_bevy_plugin::net_id;
 
     use super::{StatusText, Username, log_tick};
     use freenet_libp2p_bevy_plugin::discovery;
@@ -118,7 +119,7 @@ mod tests {
     fn add_room(world: &mut World) {
         let mut snapshot = world.resource_mut::<discovery::Snapshot>();
         snapshot.lobby.insert(
-            discovery::RoomName(String::from("gamma")),
+            net_id::RoomName(String::from("gamma")),
             discovery::RoomRecord {
                 capacity: 4,
                 members: std::collections::BTreeMap::new(),

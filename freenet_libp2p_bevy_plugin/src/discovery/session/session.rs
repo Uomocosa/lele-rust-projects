@@ -1,24 +1,29 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::discovery;
+use crate::net_id;
 use discovery::session::Output;
 
 pub struct Session {
-    pub me: discovery::PeerId,
-    pub addrs: Vec<String>,
+    pub me: net_id::PeerId,
+    pub addrs: Vec<net_id::PeerAddr>,
     pub timing: discovery::Timing,
     pub lobby: discovery::Lobby,
     pub room: Option<discovery::Room>,
-    pub connected: BTreeSet<discovery::PeerId>,
-    pub candidates: BTreeMap<discovery::PeerId, discovery::Presence>,
-    pub last_dial: BTreeMap<discovery::PeerId, discovery::EpochSecs>,
+    pub connected: BTreeSet<net_id::PeerId>,
+    pub candidates: BTreeMap<net_id::PeerId, discovery::Presence>,
+    pub last_dial: BTreeMap<net_id::PeerId, discovery::EpochSecs>,
     pub last_hello: Option<discovery::EpochSecs>,
     pub outputs: Vec<Output>,
 }
 
 impl Session {
     #[must_use]
-    pub const fn new(me: discovery::PeerId, addrs: Vec<String>, timing: discovery::Timing) -> Self {
+    pub const fn new(
+        me: net_id::PeerId,
+        addrs: Vec<net_id::PeerAddr>,
+        timing: discovery::Timing,
+    ) -> Self {
         Self {
             me,
             addrs,
@@ -38,11 +43,12 @@ impl Session {
 mod tests {
     use super::Session;
     use crate::discovery;
+    use crate::net_id;
 
     #[test]
     fn test_usage() {
         let session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );

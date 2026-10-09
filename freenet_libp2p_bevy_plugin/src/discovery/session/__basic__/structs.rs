@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
 
-use crate::discovery;
+use crate::net_id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Hello {
-    pub room: Option<discovery::RoomName>,
-    pub addrs: Vec<String>,
-    pub peers: Vec<(discovery::PeerId, Vec<String>)>,
+    pub room: Option<net_id::RoomName>,
+    pub addrs: Vec<net_id::PeerAddr>,
+    pub peers: Vec<(net_id::PeerId, Vec<net_id::PeerAddr>)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublishTarget {
-    pub room: discovery::RoomName,
-    pub addrs: Vec<String>,
+    pub room: net_id::RoomName,
+    pub addrs: Vec<net_id::PeerAddr>,
 }

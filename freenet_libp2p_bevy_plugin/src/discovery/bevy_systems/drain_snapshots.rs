@@ -24,6 +24,7 @@ pub fn drain_snapshots(
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use std::sync::Mutex;
 
     use bevy::prelude::*;
@@ -42,7 +43,7 @@ mod tests {
         let snapshot = discovery::Snapshot {
             lobby: discovery::Lobby::new(),
             room: Some(discovery::Room {
-                name: discovery::RoomName("r".to_string()),
+                name: net_id::RoomName("r".to_string()),
                 members: discovery::Members::new(),
             }),
         };

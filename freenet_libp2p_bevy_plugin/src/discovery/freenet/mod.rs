@@ -2,6 +2,7 @@
 pub mod basic;
 
 pub use basic::constants::*;
+pub use basic::enums::DeployPolicy;
 pub use basic::structs::LobbyClient;
 
 mod client;

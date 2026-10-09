@@ -49,7 +49,7 @@ missing_errors_doc = "allow"
 [dependencies]
 atomic_delegate_macros = { path = "../atomic_delegate_macros" }
 bevy = { version = "=0.19.1", default-features = false, features = ["2d", "ui"] }
-derive_more = { version = "=2.1.1", features = ["deref", "deref_mut"] }
+derive_more = { version = "=2.1.1", features = ["deref", "deref_mut", "display"] }
 libp2p = { version = "=0.56.0", features = ["tokio", "quic", "tcp", "noise", "yamux", "dns", "identify", "ping", "relay", "dcutr", "request-response", "kad", "gossipsub", "mdns", "macros"] }
 tokio = { version = "=1.52.3", features = ["rt", "sync", "macros", "rt-multi-thread", "time", "io-util"] }
 thiserror = "=2.0.18"

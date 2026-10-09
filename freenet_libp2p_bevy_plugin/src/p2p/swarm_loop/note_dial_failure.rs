@@ -1,3 +1,4 @@
+use crate::net_id;
 use crate::p2p;
 
 pub fn note_dial_failure<T: p2p::Message>(
@@ -9,7 +10,7 @@ pub fn note_dial_failure<T: p2p::Message>(
         Some(peer_id) => {
             event_tx
                 .send(p2p::Event::DialFailed {
-                    peer_id: peer_id.to_string(),
+                    peer_id: net_id::PeerId(peer_id.to_string()),
                     reason: error.to_string(),
                 })
                 .ok();
@@ -35,7 +36,7 @@ mod tests {
         let Ok(p2p::Event::DialFailed { peer_id, .. }) = rx.try_recv() else {
             panic!("expected a dial failure");
         };
-        assert_eq!(peer_id, peer.to_string());
+        assert_eq!(peer_id.as_str(), peer.to_string());
         note_dial_failure(&tx, None, &DialError::NoAddresses);
         assert!(rx.try_recv().is_err());
     }

@@ -26,6 +26,7 @@ fn merge_presence(current: Option<Presence>, incoming: Presence) -> Presence {
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use std::collections::BTreeMap;
 
     use super::merge_room;
@@ -35,7 +36,7 @@ mod tests {
     fn test_usage() {
         let mut members = BTreeMap::new();
         members.insert(
-            discovery::PeerId("peer".to_string()),
+            net_id::PeerId("peer".to_string()),
             discovery::Presence {
                 addrs: Vec::new(),
                 updated_at: discovery::EpochSecs(5),
@@ -47,7 +48,7 @@ mod tests {
         };
         let mut newer = BTreeMap::new();
         newer.insert(
-            discovery::PeerId("peer".to_string()),
+            net_id::PeerId("peer".to_string()),
             discovery::Presence {
                 addrs: Vec::new(),
                 updated_at: discovery::EpochSecs(9),
@@ -58,7 +59,7 @@ mod tests {
             members: newer,
         };
         let merged = merge_room(Some(current), incoming);
-        let row = merged.members.get(&discovery::PeerId("peer".to_string()));
+        let row = merged.members.get(&net_id::PeerId("peer".to_string()));
         assert_eq!(row.map(|presence| *presence.updated_at), Some(9));
     }
 }

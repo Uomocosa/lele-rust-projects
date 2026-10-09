@@ -1,20 +1,21 @@
 use bevy::prelude::Resource;
 use derive_more::Deref;
 
+use crate::net_id;
 use crate::roster::basic::constants;
 
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deref)]
-pub struct Room(pub String);
+pub struct Room(pub net_id::RoomName);
 
 impl Default for Room {
     fn default() -> Self {
-        Self(constants::DEFAULT_ROOM.to_string())
+        Self(net_id::RoomName(constants::DEFAULT_ROOM.to_string()))
     }
 }
 
 impl Room {
     #[must_use]
-    pub const fn new(name: String) -> Self {
+    pub const fn new(name: net_id::RoomName) -> Self {
         Self(name)
     }
 }
@@ -22,10 +23,14 @@ impl Room {
 #[cfg(test)]
 mod tests {
     use super::Room;
+    use crate::net_id;
 
     #[test]
     fn test_usage() {
-        assert_eq!(&*Room::default(), "default");
-        assert_eq!(&*Room::new("alpha".to_string()), "alpha");
+        assert_eq!(Room::default().as_str(), "default");
+        assert_eq!(
+            Room::new(net_id::RoomName("alpha".to_string())).as_str(),
+            "alpha"
+        );
     }
 }

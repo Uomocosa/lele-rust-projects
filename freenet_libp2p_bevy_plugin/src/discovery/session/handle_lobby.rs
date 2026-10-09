@@ -16,6 +16,7 @@ pub fn handle_lobby(session: &mut Session, lobby: discovery::Lobby, now: discove
 
 #[cfg(test)]
 mod tests {
+    use crate::net_id;
     use std::collections::BTreeMap;
 
     use super::handle_lobby;
@@ -25,27 +26,27 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
-            name: discovery::RoomName("r".to_string()),
+            name: net_id::RoomName("r".to_string()),
             members: discovery::Members::new(),
         });
         let mut members = BTreeMap::new();
         for peer in ["me", "a"] {
             members.insert(
-                discovery::PeerId(peer.to_string()),
+                net_id::PeerId(peer.to_string()),
                 discovery::Presence {
-                    addrs: vec!["/ip4/1".to_string()],
+                    addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
                     updated_at: discovery::EpochSecs(3),
                 },
             );
         }
         let mut lobby = discovery::Lobby::new();
         lobby.insert(
-            discovery::RoomName("r".to_string()),
+            net_id::RoomName("r".to_string()),
             discovery::RoomRecord {
                 capacity: 8,
                 members,

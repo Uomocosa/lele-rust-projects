@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::text::EditableText;
 use derive_more::Deref;
 use freenet_libp2p_bevy_plugin::discovery;
+use freenet_libp2p_bevy_plugin::net_id;
 
 const PANEL_COLOR: Color = Color::srgb(0.30, 0.12, 0.34);
 const FIELD_COLOR: Color = Color::srgb(0.10, 0.10, 0.12);
@@ -31,7 +32,7 @@ pub struct NewRoomButton;
 struct RoomColumn;
 
 #[derive(Component, Deref)]
-pub struct JoinButton(pub discovery::RoomName);
+pub struct JoinButton(pub net_id::RoomName);
 
 fn spawn(mut commands: Commands) {
     commands.spawn((
@@ -124,7 +125,7 @@ fn on_create(
             continue;
         }
         tracing::info!("lobby ui click create room={name}");
-        commands.write(discovery::Command::Create(discovery::RoomName(
+        commands.write(discovery::Command::Create(net_id::RoomName(
             name.to_string(),
         )));
     }
@@ -145,6 +146,7 @@ fn on_join(
 #[cfg(test)]
 mod tests {
     use bevy::prelude::*;
+    use freenet_libp2p_bevy_plugin::net_id;
 
     use super::{JoinButton, LobbyUi, NameField, NewRoomButton, RoomColumn};
     use freenet_libp2p_bevy_plugin::discovery;
@@ -158,7 +160,7 @@ mod tests {
     fn preview_snapshot() -> discovery::Snapshot {
         let mut snapshot = discovery::Snapshot::default();
         snapshot.lobby.insert(
-            discovery::RoomName(String::from("alpha")),
+            net_id::RoomName(String::from("alpha")),
             discovery::RoomRecord {
                 capacity: 8,
                 members: std::collections::BTreeMap::new(),
@@ -172,7 +174,7 @@ mod tests {
     fn add_room(world: &mut World) {
         let mut snapshot = world.resource_mut::<discovery::Snapshot>();
         snapshot.lobby.insert(
-            discovery::RoomName(String::from("gamma")),
+            net_id::RoomName(String::from("gamma")),
             discovery::RoomRecord {
                 capacity: 4,
                 members: std::collections::BTreeMap::new(),

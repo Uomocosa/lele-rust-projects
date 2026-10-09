@@ -16,16 +16,17 @@ pub fn handle(session: &mut Session, input: Input, now: discovery::EpochSecs) {
 mod tests {
     use super::handle;
     use crate::discovery;
+    use crate::net_id;
     use discovery::session::{Input, Output, Session};
 
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            discovery::PeerId("me".to_string()),
+            net_id::PeerId("me".to_string()),
             Vec::new(),
             discovery::Timing::default(),
         );
-        let room = discovery::RoomName("r".to_string());
+        let room = net_id::RoomName("r".to_string());
         handle(
             &mut session,
             Input::Command(discovery::Command::Join(room.clone())),

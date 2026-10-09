@@ -41,7 +41,7 @@ mod tests {
         app.add_plugins(P2PPlugin(plugin::Config::<Dummy>::new(
             net_id::NetworkId(1),
             p2p::TransportMode::Both,
-            false,
+            p2p::MdnsMode::Disabled,
         )));
         app.update();
         assert!(app.world().get_resource::<p2p::Events<Dummy>>().is_some());
