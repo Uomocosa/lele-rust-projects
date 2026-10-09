@@ -60,7 +60,7 @@ impl AllowFinder<'_> {
         }
         self.clippy_allow_whitelist.iter().any(|entry| {
             !entry.reason.trim().is_empty()
-                && self.crate_rel == Path::new(&entry.file)
+                && self.crate_rel == entry.file
                 && lint_paths.iter().all(|path| path == &entry.allow)
         })
     }
@@ -106,7 +106,7 @@ mod tests {
     fn entry(allow: &str, file: &str, reason: &str) -> AllowWhitelistEntry {
         AllowWhitelistEntry {
             allow: allow.to_string(),
-            file: file.to_string(),
+            file: PathBuf::from(file),
             reason: reason.to_string(),
         }
     }

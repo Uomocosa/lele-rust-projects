@@ -51,7 +51,7 @@ fn src_stem_map(project: &Project) -> HashMap<String, PathBuf> {
 // needed helper: a file is inside a boundary directly or through its primary type
 fn file_in_boundary(
     crate_rel: &Path,
-    folders: &[String],
+    folders: &[PathBuf],
     stem_map: &HashMap<String, PathBuf>,
 ) -> bool {
     if folders.iter().any(|folder| crate_rel.starts_with(folder)) {
@@ -89,8 +89,9 @@ fn validate_boundary(project: &Project, boundary: &BoundaryEntry, diags: &mut Ve
             diags.push(config_diag(
                 project,
                 &format!(
-                    "boundary `{}` names folder `{folder}` which does not exist",
-                    boundary.name
+                    "boundary `{}` names folder `{}` which does not exist",
+                    boundary.name,
+                    folder.display()
                 ),
             ));
         }
@@ -187,7 +188,12 @@ fn report_uses(file: &FileUse, boundary: &BoundaryEntry, diags: &mut Vec<Diagnos
 // needed helper: build the diagnostic message for one forbidden use
 fn use_diag(file: &Path, line: usize, reported: &str, boundary: &BoundaryEntry) -> Diagnostic {
     let name = &boundary.name;
-    let folders = boundary.folders.join(", ");
+    let folders = boundary
+        .folders
+        .iter()
+        .map(|folder| folder.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
     let why = &boundary.why;
     Diagnostic {
         file: file.to_path_buf(),

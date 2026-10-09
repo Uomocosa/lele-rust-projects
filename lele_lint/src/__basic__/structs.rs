@@ -20,7 +20,7 @@ pub struct LeleSection {
 pub struct BoundaryEntry {
     pub name: String,
     pub why: String,
-    pub folders: Vec<String>,
+    pub folders: Vec<std::path::PathBuf>,
     #[serde(default)]
     pub cannot_use: Vec<String>,
     #[serde(default)]
@@ -40,7 +40,7 @@ pub struct LeleTomlLintSections {
 #[serde(deny_unknown_fields)]
 pub struct AllowWhitelistEntry {
     pub allow: String,
-    pub file: String,
+    pub file: std::path::PathBuf,
     pub reason: String,
 }
 

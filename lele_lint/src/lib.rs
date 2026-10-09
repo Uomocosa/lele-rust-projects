@@ -18,6 +18,8 @@ pub mod dunder_path;
 pub use dunder_path::DunderPath;
 pub mod error;
 pub use error::Error;
+pub mod error_format;
+pub use error_format::ErrorFormat;
 pub mod module_info;
 pub use module_info::ModuleInfo;
 #[path = "../methods/mod.rs"]

@@ -9,13 +9,14 @@ use lele_lint::print_diagnostics;
 use lele_lint::rules_markdown;
 use lele_lint::sync_methods;
 use lele_lint::Config;
+use lele_lint::ErrorFormat;
 use lele_lint::Project;
 
 #[derive(Parser)]
 #[command(name = "lele_lint", about = "Enforce lele-syntax-rs conventions")]
 struct Args {
-    #[arg(short, long, default_value = "clippy")]
-    error_format: String,
+    #[arg(short, long, value_enum, default_value_t = ErrorFormat::Clippy)]
+    error_format: ErrorFormat,
 
     #[arg(long)]
     checker_list: bool,
@@ -110,7 +111,7 @@ fn main() {
         all_diags.extend(diags);
     }
 
-    print_diagnostics(&all_diags, &args.error_format);
+    print_diagnostics(&all_diags, args.error_format);
 
     if !all_diags.is_empty() {
         process::exit(1);

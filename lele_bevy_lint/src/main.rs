@@ -7,6 +7,7 @@ use lele_bevy_lint::checkers::build_checkers;
 use lele_bevy_lint::inventory;
 use lele_bevy_lint::skill_markdown;
 use lele_lint::Config;
+use lele_lint::ErrorFormat;
 use lele_lint::Project;
 use lele_lint::explain;
 use lele_lint::print_checker_list;
@@ -25,8 +26,8 @@ enum Emit {
     about = "Enforce Bevy-specific lele-syntax-rs conventions"
 )]
 struct Args {
-    #[arg(short, long, default_value = "clippy")]
-    error_format: String,
+    #[arg(short, long, value_enum, default_value_t = ErrorFormat::Clippy)]
+    error_format: ErrorFormat,
 
     #[arg(long)]
     checker_list: bool,
@@ -113,7 +114,7 @@ fn main() {
         all_diags.extend(diags);
     }
 
-    print_diagnostics(&all_diags, &args.error_format);
+    print_diagnostics(&all_diags, args.error_format);
 
     if !all_diags.is_empty() {
         process::exit(1);

@@ -1,12 +1,13 @@
 use crate::Diagnostic;
+use crate::ErrorFormat;
 use std::io::Write;
 
-pub fn print_diagnostics(diags: &[Diagnostic], error_format: &str) {
+pub fn print_diagnostics(diags: &[Diagnostic], error_format: ErrorFormat) {
     let mut stderr = std::io::stderr().lock();
     for d in diags {
         match error_format {
-            "github" => print_github(d, &mut stderr),
-            _ => print_clippy(d, &mut stderr),
+            ErrorFormat::Github => print_github(d, &mut stderr),
+            ErrorFormat::Clippy => print_clippy(d, &mut stderr),
         }
     }
 }
