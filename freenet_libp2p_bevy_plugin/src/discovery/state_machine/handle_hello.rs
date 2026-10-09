@@ -1,9 +1,9 @@
 use crate::discovery;
 use crate::net_id;
-use discovery::session::{Hello, Output, Session};
+use discovery::state_machine::{Hello, Output, State};
 
 pub fn handle_hello(
-    session: &mut Session,
+    state: &mut State,
     from: &net_id::PeerId,
     data: &[u8],
     now: discovery::EpochSecs,
@@ -11,9 +11,9 @@ pub fn handle_hello(
     let Ok(hello) = bincode::deserialize::<Hello>(data) else {
         return;
     };
-    let my_room = session.room.as_ref().map(|room| room.name.clone());
+    let my_room = state.room.as_ref().map(|room| room.name.clone());
     if hello.room.is_none() || hello.room != my_room {
-        drop_member(session, from);
+        drop_member(state, from);
         return;
     }
     let mut peers = hello.peers;
@@ -21,11 +21,11 @@ pub fn handle_hello(
         id: from.clone(),
         addrs: hello.addrs.clone(),
     });
-    discovery::session::add_candidates(session, peers, now);
-    if !session.connected.contains(from) {
+    discovery::state_machine::add_candidates(state, peers, now);
+    if !state.connected.contains(from) {
         return;
     }
-    let Some(room) = session.room.as_mut() else {
+    let Some(room) = state.room.as_mut() else {
         return;
     };
     let member = discovery::Member {
@@ -46,15 +46,15 @@ pub fn handle_hello(
         members = room.members.len(),
         "discovery member joined"
     );
-    session
+    state
         .outputs
         .push(Output::Event(discovery::Event::MembersChanged));
-    discovery::session::send_hello(session, from);
+    discovery::state_machine::send_hello(state, from);
 }
 
 // needed helper: removes a peer that left our room or switched to another one
-fn drop_member(session: &mut Session, peer: &net_id::PeerId) {
-    let removed = session
+fn drop_member(state: &mut State, peer: &net_id::PeerId) {
+    let removed = state
         .room
         .as_mut()
         .and_then(|room| room.members.remove(peer))
@@ -63,7 +63,7 @@ fn drop_member(session: &mut Session, peer: &net_id::PeerId) {
         return;
     }
     tracing::info!(target: "room_lobby", peer = %peer.as_str(), "discovery member left");
-    session
+    state
         .outputs
         .push(Output::Event(discovery::Event::MembersChanged));
 }
@@ -74,28 +74,28 @@ mod tests {
     use crate::discovery;
     use crate::net_id;
     use crate::p2p;
-    use discovery::session::{Hello, Output, Session};
+    use discovery::state_machine::{Hello, Output, State};
 
-    fn session_in_room() -> Session {
-        let mut session = Session::new(
+    fn session_in_room() -> State {
+        let mut state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: Vec::new(),
             },
             discovery::Timing::default(),
         );
-        session.room = Some(discovery::Room {
+        state.room = Some(discovery::Room {
             name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
-        session
+        state
     }
 
     #[test]
     fn test_usage() {
-        let mut session = session_in_room();
+        let mut state = session_in_room();
         let peer = net_id::PeerId::from("a");
-        session.connected.insert(peer.clone());
+        state.connected.insert(peer.clone());
         let hello = Hello {
             room: Some(net_id::RoomName::from("r")),
             addrs: vec![net_id::PeerAddr::from("/ip4/1")],
@@ -105,40 +105,34 @@ mod tests {
             }],
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
-        handle_hello(&mut session, &peer, &data, discovery::EpochSecs(1));
-        assert_eq!(
-            session.room.as_ref().map_or(0, |room| room.members.len()),
-            1
-        );
-        assert_eq!(session.candidates.len(), 2);
+        handle_hello(&mut state, &peer, &data, discovery::EpochSecs(1));
+        assert_eq!(state.room.as_ref().map_or(0, |room| room.members.len()), 1);
+        assert_eq!(state.candidates.len(), 2);
         assert!(matches!(
-            std::mem::take(&mut session.outputs).as_slice(),
+            std::mem::take(&mut state.outputs).as_slice(),
             [
                 Output::Event(discovery::Event::MembersChanged),
                 Output::Net(p2p::NetCommand::Exchange { .. }),
             ]
         ));
         let left = bincode::serialize(&Hello::default()).unwrap_or_default();
-        handle_hello(&mut session, &peer, &left, discovery::EpochSecs(2));
-        assert_eq!(
-            session.room.as_ref().map_or(0, |room| room.members.len()),
-            0
-        );
+        handle_hello(&mut state, &peer, &left, discovery::EpochSecs(2));
+        assert_eq!(state.room.as_ref().map_or(0, |room| room.members.len()), 0);
     }
 
     #[test]
     fn test_connected_before_known_becomes_member() {
-        let mut session = session_in_room();
+        let mut state = session_in_room();
         let joiner = net_id::PeerId::from("joiner");
-        session.connected.insert(joiner.clone());
+        state.connected.insert(joiner.clone());
         let hello = Hello {
             room: Some(net_id::RoomName::from("r")),
             addrs: vec![net_id::PeerAddr::from("/ip4/1")],
             peers: Vec::new(),
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
-        handle_hello(&mut session, &joiner, &data, discovery::EpochSecs(1));
-        let status = session
+        handle_hello(&mut state, &joiner, &data, discovery::EpochSecs(1));
+        let status = state
             .room
             .as_ref()
             .and_then(|room| room.members.get(&joiner))

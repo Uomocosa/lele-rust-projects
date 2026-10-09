@@ -1,29 +1,29 @@
 use crate::discovery;
 use crate::net_id;
 use crate::p2p;
-use discovery::session::{Output, Session};
+use discovery::state_machine::{Output, State};
 
-pub fn handle_net_event(session: &mut Session, event: p2p::NetEvent, now: discovery::EpochSecs) {
+pub fn handle_net_event(state: &mut State, event: p2p::NetEvent, now: discovery::EpochSecs) {
     match event {
         p2p::NetEvent::PeerConnected(peer) => {
-            session.connected.insert(peer.clone());
-            discovery::session::send_hello(session, &peer);
+            state.connected.insert(peer.clone());
+            discovery::state_machine::send_hello(state, &peer);
         }
         p2p::NetEvent::PeerDisconnected(peer) => {
-            session.connected.remove(&peer);
-            mark_lost(session, &peer, now);
+            state.connected.remove(&peer);
+            mark_lost(state, &peer, now);
         }
         p2p::NetEvent::Exchange { from, data } => {
-            discovery::session::handle_hello(session, &from, &data, now);
+            discovery::state_machine::handle_hello(state, &from, &data, now);
         }
         _ => return,
     }
-    discovery::session::dial_candidates(session, now);
+    discovery::state_machine::dial_candidates(state, now);
 }
 
 // needed helper: keeps a dropped member for the grace window, marked not connected
-fn mark_lost(session: &mut Session, peer: &net_id::PeerId, now: discovery::EpochSecs) {
-    let Some(member) = session
+fn mark_lost(state: &mut State, peer: &net_id::PeerId, now: discovery::EpochSecs) {
+    let Some(member) = state
         .room
         .as_mut()
         .and_then(|room| room.members.get_mut(peer))
@@ -32,7 +32,7 @@ fn mark_lost(session: &mut Session, peer: &net_id::PeerId, now: discovery::Epoch
     };
     member.status = discovery::LinkStatus::Known;
     member.presence.updated_at = now;
-    session
+    state
         .outputs
         .push(Output::Event(discovery::Event::MembersChanged));
 }
@@ -43,11 +43,11 @@ mod tests {
     use crate::discovery;
     use crate::net_id;
     use crate::p2p;
-    use discovery::session::{Output, Session};
+    use discovery::state_machine::{Output, State};
 
     #[test]
     fn test_usage() {
-        let mut session = Session::new(
+        let mut state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: Vec::new(),
@@ -55,20 +55,20 @@ mod tests {
             discovery::Timing::default(),
         );
         handle_net_event(
-            &mut session,
+            &mut state,
             p2p::NetEvent::PeerConnected(net_id::PeerId::from("a")),
             discovery::EpochSecs(1),
         );
-        assert!(session.connected.contains(&net_id::PeerId::from("a")));
+        assert!(state.connected.contains(&net_id::PeerId::from("a")));
         assert!(matches!(
-            std::mem::take(&mut session.outputs).as_slice(),
+            std::mem::take(&mut state.outputs).as_slice(),
             [Output::Net(p2p::NetCommand::Exchange { peer_id, .. })] if peer_id.as_str() == "a"
         ));
         handle_net_event(
-            &mut session,
+            &mut state,
             p2p::NetEvent::PeerDisconnected(net_id::PeerId::from("a")),
             discovery::EpochSecs(2),
         );
-        assert!(session.connected.is_empty());
+        assert!(state.connected.is_empty());
     }
 }

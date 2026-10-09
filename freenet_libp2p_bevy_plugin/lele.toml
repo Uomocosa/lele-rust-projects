@@ -3,9 +3,9 @@ declared_honest = []
 declared_dishonest = ["std::time::SystemTime::now", "std::time::Instant::now", "rand::thread_rng", "rand::random", "getrandom::getrandom", "std::fs::read", "std::fs::write", "std::env::var"]
 
 [[lele.boundary]]
-name       = "session is pure protocol logic"
-why        = "Session is driven by run.rs; it receives `now` and messages as arguments and returns actions."
-folders    = ["src/discovery/session"]
+name       = "state_machine is pure protocol logic"
+why        = "State is driven by run.rs through `update`; it receives `now` and inputs as arguments and returns outputs."
+folders    = ["src/discovery/state_machine"]
 cannot_use = ["tokio", "libp2p", "bevy", "std::net", "std::fs", "std::time"]
 require    = "honest"
 

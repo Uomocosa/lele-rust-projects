@@ -6,7 +6,7 @@ use tokio::sync::watch::Receiver;
 use crate::discovery;
 use crate::net_id;
 use crate::p2p;
-use discovery::session::{Input, Output, Session};
+use discovery::state_machine::{Input, Output, State};
 
 pub async fn run(
     config: discovery::Config,
@@ -28,7 +28,7 @@ pub async fn run(
     };
     let timing = config.timing;
     let capacity = config.capacity;
-    let mut session = Session::new(me.clone(), timing);
+    let mut state = State::new(me.clone(), timing);
     let (target_tx, target_rx) = tokio::sync::watch::channel(None);
     let (lobby_tx, mut lobbies) = tokio::sync::mpsc::unbounded_channel();
     let params = discovery::freenet::contract_params(&config.game_name, &config.token);
@@ -45,10 +45,10 @@ pub async fn run(
             Some(lobby) = lobbies.recv() => Input::Lobby(lobby),
             _ = tick.tick() => Input::Tick,
         };
-        adopt_observed(&mut session, &mut net.observed);
-        discovery::session::handle(&mut session, input, discovery::now_epoch());
-        flush(&mut session, &net.commands, &events);
-        let target = discovery::session::publish_target(&session);
+        adopt_observed(&mut state, &mut net.observed);
+        discovery::state_machine::update(&mut state, input, discovery::now_epoch());
+        flush(&mut state, &net.commands, &events);
+        let target = discovery::state_machine::publish_target(&state);
         target_tx.send_if_modified(|current| {
             let changed = *current != target;
             if changed {
@@ -56,28 +56,28 @@ pub async fn run(
             }
             changed
         });
-        let _ = snapshots.send(discovery::session::snapshot(&session));
+        let _ = snapshots.send(discovery::state_machine::snapshot(&state));
     }
 }
 
 // needed helper: adopts libp2p-observed addresses so peers can dial us back
-fn adopt_observed(session: &mut Session, observed: &mut Receiver<Option<Vec<net_id::PeerAddr>>>) {
+fn adopt_observed(state: &mut State, observed: &mut Receiver<Option<Vec<net_id::PeerAddr>>>) {
     if !observed.has_changed().unwrap_or(false) {
         return;
     }
     let latest = observed.borrow_and_update().clone();
     if let Some(addrs) = latest {
-        session.me.addrs = discovery::libp2p::dialable(addrs);
+        state.me.addrs = discovery::libp2p::dialable(addrs);
     }
 }
 
-// needed helper: performs the session's queued effects
+// needed helper: performs the state's queued effects
 fn flush(
-    session: &mut Session,
+    state: &mut State,
     net: &UnboundedSender<p2p::NetCommand>,
     events: &UnboundedSender<discovery::Event>,
 ) {
-    for output in std::mem::take(&mut session.outputs) {
+    for output in std::mem::take(&mut state.outputs) {
         match output {
             Output::Event(event) => {
                 let _ = events.send(event);

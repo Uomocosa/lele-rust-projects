@@ -1,11 +1,11 @@
 use crate::discovery;
-use discovery::session::Session;
+use discovery::state_machine::State;
 
 #[must_use]
-pub fn snapshot(session: &Session) -> discovery::Snapshot {
+pub fn snapshot(state: &State) -> discovery::Snapshot {
     discovery::Snapshot {
-        lobby: session.lobby.clone(),
-        room: session.room.clone(),
+        lobby: state.lobby.clone(),
+        room: state.room.clone(),
     }
 }
 
@@ -14,17 +14,17 @@ mod tests {
     use super::snapshot;
     use crate::discovery;
     use crate::net_id;
-    use discovery::session::Session;
+    use discovery::state_machine::State;
 
     #[test]
     fn test_usage() {
-        let session = Session::new(
+        let state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: vec![net_id::PeerAddr::from("/ip4/9")],
             },
             discovery::Timing::default(),
         );
-        assert_eq!(snapshot(&session), discovery::Snapshot::default());
+        assert_eq!(snapshot(&state), discovery::Snapshot::default());
     }
 }

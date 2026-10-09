@@ -12,7 +12,7 @@ pub async fn run_lobby(
     me: net_id::PeerId,
     capacity: u16,
     timing: discovery::Timing,
-    mut target: Receiver<Option<discovery::session::PublishTarget>>,
+    mut target: Receiver<Option<discovery::state_machine::PublishTarget>>,
     lobbies: UnboundedSender<discovery::Lobby>,
 ) {
     let mut tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));

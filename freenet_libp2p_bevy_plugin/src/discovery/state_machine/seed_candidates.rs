@@ -1,26 +1,26 @@
 use crate::discovery;
-use discovery::session::Session;
+use discovery::state_machine::State;
 
-pub fn seed_candidates(session: &mut Session) {
-    let Some(room) = &session.room else {
+pub fn seed_candidates(state: &mut State) {
+    let Some(room) = &state.room else {
         return;
     };
-    let Some(record) = session.lobby.get(&room.name) else {
+    let Some(record) = state.lobby.get(&room.name) else {
         return;
     };
     let seeds: Vec<_> = record
         .members
         .iter()
-        .filter(|(peer, presence)| **peer != session.me.id && !presence.addrs.is_empty())
+        .filter(|(peer, presence)| **peer != state.me.id && !presence.addrs.is_empty())
         .map(|(peer, presence)| (peer.clone(), presence.clone()))
         .collect();
     for (peer, presence) in seeds {
-        let newer = session
+        let newer = state
             .candidates
             .get(&peer)
             .is_none_or(|known| known.updated_at < presence.updated_at);
         if newer {
-            session.candidates.insert(peer, presence);
+            state.candidates.insert(peer, presence);
         }
     }
 }
@@ -32,11 +32,11 @@ mod tests {
 
     use super::seed_candidates;
     use crate::discovery;
-    use discovery::session::Session;
+    use discovery::state_machine::State;
 
     #[test]
     fn test_usage() {
-        let mut session = Session::new(
+        let mut state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: Vec::new(),
@@ -44,7 +44,7 @@ mod tests {
             discovery::Timing::default(),
         );
         let room = net_id::RoomName::from("r");
-        session.room = Some(discovery::Room {
+        state.room = Some(discovery::Room {
             name: room.clone(),
             members: discovery::Members::new(),
         });
@@ -56,15 +56,15 @@ mod tests {
             (net_id::PeerId::from("me"), presence.clone()),
             (net_id::PeerId::from("a"), presence),
         ]);
-        session.lobby.insert(
+        state.lobby.insert(
             room,
             discovery::RoomRecord {
                 capacity: 8,
                 members,
             },
         );
-        seed_candidates(&mut session);
-        let seeded: Vec<_> = session.candidates.keys().cloned().collect();
+        seed_candidates(&mut state);
+        let seeded: Vec<_> = state.candidates.keys().cloned().collect();
         assert_eq!(seeded, vec![net_id::PeerId::from("a")]);
     }
 }

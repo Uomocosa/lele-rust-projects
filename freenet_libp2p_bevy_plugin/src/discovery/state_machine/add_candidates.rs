@@ -1,17 +1,17 @@
 use crate::discovery;
 use crate::net_id;
-use discovery::session::Session;
+use discovery::state_machine::State;
 
 pub fn add_candidates(
-    session: &mut Session,
+    state: &mut State,
     peers: impl IntoIterator<Item = net_id::Peer>,
     now: discovery::EpochSecs,
 ) {
     for peer in peers {
-        if peer.id == session.me.id || peer.id.is_empty() || peer.addrs.is_empty() {
+        if peer.id == state.me.id || peer.id.is_empty() || peer.addrs.is_empty() {
             continue;
         }
-        session.candidates.insert(
+        state.candidates.insert(
             peer.id,
             discovery::Presence {
                 addrs: peer.addrs,
@@ -26,11 +26,11 @@ mod tests {
     use super::add_candidates;
     use crate::discovery;
     use crate::net_id;
-    use discovery::session::Session;
+    use discovery::state_machine::State;
 
     #[test]
     fn test_usage() {
-        let mut session = Session::new(
+        let mut state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: Vec::new(),
@@ -51,8 +51,8 @@ mod tests {
                 addrs: Vec::new(),
             },
         ];
-        add_candidates(&mut session, peers, discovery::EpochSecs(1));
-        assert_eq!(session.candidates.len(), 1);
-        assert!(session.candidates.contains_key(&net_id::PeerId::from("a")));
+        add_candidates(&mut state, peers, discovery::EpochSecs(1));
+        assert_eq!(state.candidates.len(), 1);
+        assert!(state.candidates.contains_key(&net_id::PeerId::from("a")));
     }
 }

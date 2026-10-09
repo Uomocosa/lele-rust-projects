@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::discovery;
 use crate::net_id;
-use discovery::session::Output;
+use discovery::state_machine::Output;
 
-pub struct Session {
+pub struct State {
     pub me: net_id::Peer,
     pub timing: discovery::Timing,
     pub lobby: discovery::Lobby,
@@ -16,7 +16,7 @@ pub struct Session {
     pub outputs: Vec<Output>,
 }
 
-impl Session {
+impl State {
     #[must_use]
     pub const fn new(me: net_id::Peer, timing: discovery::Timing) -> Self {
         Self {
@@ -35,20 +35,20 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
-    use super::Session;
+    use super::State;
     use crate::discovery;
     use crate::net_id;
 
     #[test]
     fn test_usage() {
-        let session = Session::new(
+        let state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: Vec::new(),
             },
             discovery::Timing::default(),
         );
-        assert!(session.room.is_none());
-        assert_eq!(session.outputs, Vec::new());
+        assert!(state.room.is_none());
+        assert_eq!(state.outputs, Vec::new());
     }
 }

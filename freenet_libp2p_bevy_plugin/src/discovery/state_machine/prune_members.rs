@@ -1,14 +1,14 @@
 use crate::discovery;
-use discovery::session::{Output, Session};
+use discovery::state_machine::{Output, State};
 
-pub fn prune_members(session: &mut Session, now: discovery::EpochSecs) {
-    let ttl_secs = session.timing.presence_ttl_secs;
-    let grace_secs = session.timing.member_grace_secs;
-    session
+pub fn prune_members(state: &mut State, now: discovery::EpochSecs) {
+    let ttl_secs = state.timing.presence_ttl_secs;
+    let grace_secs = state.timing.member_grace_secs;
+    state
         .candidates
         .retain(|_, presence| now.saturating_sub(*presence.updated_at) <= ttl_secs);
-    let connected = &session.connected;
-    let Some(room) = session.room.as_mut() else {
+    let connected = &state.connected;
+    let Some(room) = state.room.as_mut() else {
         return;
     };
     let before = room.members.len();
@@ -16,7 +16,7 @@ pub fn prune_members(session: &mut Session, now: discovery::EpochSecs) {
         connected.contains(peer) || now.saturating_sub(*member.presence.updated_at) <= grace_secs
     });
     if room.members.len() != before {
-        session
+        state
             .outputs
             .push(Output::Event(discovery::Event::MembersChanged));
     }
@@ -27,11 +27,11 @@ mod tests {
     use super::prune_members;
     use crate::discovery;
     use crate::net_id;
-    use discovery::session::Session;
+    use discovery::state_machine::State;
 
     #[test]
     fn test_usage() {
-        let mut session = Session::new(
+        let mut state = State::new(
             net_id::Peer {
                 id: net_id::PeerId::from("me"),
                 addrs: Vec::new(),
@@ -51,13 +51,13 @@ mod tests {
                 },
             );
         }
-        session.room = Some(discovery::Room {
+        state.room = Some(discovery::Room {
             name: net_id::RoomName::from("r"),
             members,
         });
-        session.connected.insert(net_id::PeerId::from("live"));
-        prune_members(&mut session, discovery::EpochSecs(100));
-        let left: Vec<_> = session
+        state.connected.insert(net_id::PeerId::from("live"));
+        prune_members(&mut state, discovery::EpochSecs(100));
+        let left: Vec<_> = state
             .room
             .as_ref()
             .map(|room| room.members.keys().cloned().collect())

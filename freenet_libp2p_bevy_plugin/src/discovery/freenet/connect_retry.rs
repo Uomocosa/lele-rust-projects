@@ -7,7 +7,7 @@ pub async fn connect_retry(
     host: &str,
     port: u16,
     params: &[u8],
-    target: &tokio::sync::watch::Receiver<Option<discovery::session::PublishTarget>>,
+    target: &tokio::sync::watch::Receiver<Option<discovery::state_machine::PublishTarget>>,
 ) -> discovery::freenet::LobbyClient {
     let wasm = discovery::freenet::contract_wasm();
     let timeout = constants::REQUEST_TIMEOUT;
