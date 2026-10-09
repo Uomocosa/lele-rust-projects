@@ -52,3 +52,20 @@ pub struct PeerAddr(pub String);
 )]
 #[reflect(Hash)]
 pub struct RoomName(pub String);
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    Deref,
+    Display,
+    Reflect,
+)]
+#[reflect(Hash)]
+pub struct Topic(pub String);

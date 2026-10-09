@@ -31,6 +31,7 @@ mod tests {
     use libp2p::identity::Keypair;
 
     use super::dispatch_command;
+    use crate::net_id;
     use crate::p2p;
 
     #[tokio::test]
@@ -40,7 +41,7 @@ mod tests {
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let mut room_queries = HashMap::new();
         let subscribe = p2p::Command::Net(p2p::NetCommand::Subscribe {
-            topic: String::from("lobby/topic"),
+            topic: net_id::Topic(String::from("lobby/topic")),
         });
         assert!(dispatch_command(
             &mut swarm,

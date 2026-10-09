@@ -62,7 +62,7 @@ fn forward_gossip<T: p2p::Message>(
 ) {
     event_tx
         .send(p2p::Event::Net(p2p::NetEvent::Gossip {
-            topic: message.topic.to_string(),
+            topic: net_id::Topic(message.topic.to_string()),
             from: net_id::PeerId(
                 message
                     .source

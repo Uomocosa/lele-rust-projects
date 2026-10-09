@@ -41,7 +41,7 @@ pub enum NetEvent {
         data: Vec<u8>,
     },
     Gossip {
-        topic: String,
+        topic: net_id::Topic,
         from: net_id::PeerId,
         data: Vec<u8>,
     },
@@ -86,10 +86,10 @@ pub enum NetCommand {
         room: net_id::RoomName,
     },
     Subscribe {
-        topic: String,
+        topic: net_id::Topic,
     },
     Publish {
-        topic: String,
+        topic: net_id::Topic,
         data: Vec<u8>,
     },
     Exchange {

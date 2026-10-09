@@ -76,11 +76,11 @@ pub fn dispatch_net_command<T: p2p::Message>(
             room_queries.insert(id, room);
         }
         p2p::NetCommand::Subscribe { topic } => {
-            let topic = gossipsub::IdentTopic::new(topic);
+            let topic = gossipsub::IdentTopic::new(topic.as_str());
             let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);
         }
         p2p::NetCommand::Publish { topic, data } => {
-            let topic = gossipsub::IdentTopic::new(topic);
+            let topic = gossipsub::IdentTopic::new(topic.as_str());
             let _ = swarm.behaviour_mut().gossipsub.publish(topic, data);
         }
         p2p::NetCommand::Exchange { peer_id, data } => {
@@ -111,7 +111,7 @@ mod tests {
         let mut swarm = swarm();
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let mut room_queries = HashMap::new();
-        let topic = String::from("lobby/topic");
+        let topic = net_id::Topic(String::from("lobby/topic"));
         dispatch_net_command(
             &mut swarm,
             &tx,
@@ -120,7 +120,7 @@ mod tests {
                 topic: topic.clone(),
             },
         );
-        let hash = IdentTopic::new(topic).hash();
+        let hash = IdentTopic::new(topic.as_str()).hash();
         assert!(swarm.behaviour().gossipsub.topics().any(|t| *t == hash));
 
         let room = net_id::RoomName(String::from("room-a"));
