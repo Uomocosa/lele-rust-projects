@@ -36,7 +36,7 @@ pub fn check(
                             ),
                         ));
                     }
-                    if !has_test_usage(file) {
+                    if !common::has_test_usage(file) {
                         diags.push(diag(
                             project,
                             &rel,
@@ -160,26 +160,6 @@ fn pub_fn_block<'a>(file: &'a syn::File, name: &str) -> Option<&'a syn::Block> {
             Some(&*func.block)
         }
         _ => None,
-    })
-}
-
-// needed helper: method file carries its own `#[cfg(test)]` `test_usage`
-fn has_test_usage(file: &syn::File) -> bool {
-    file.items.iter().any(|item| {
-        let syn::Item::Mod(module) = item else {
-            return false;
-        };
-        if !common::is_cfg_test_mod(module) {
-            return false;
-        }
-        module.content.as_ref().is_some_and(|(_, items)| {
-            items.iter().any(|inner| {
-                matches!(
-                    inner,
-                    syn::Item::Fn(func) if func.sig.ident == "test_usage"
-                )
-            })
-        })
     })
 }
 

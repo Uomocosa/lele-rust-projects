@@ -26,7 +26,7 @@ fn scan_entries(entries: &[Entry], base: &Path, diags: &mut Vec<Diagnostic>) {
             continue;
         };
         for hit in common::find_comments(&content) {
-            if !hit.block && is_allowlisted(&hit.text) {
+            if matches!(&hit.kind, common::CommentKind::Line(text) if is_allowlisted(text)) {
                 continue;
             }
             diags.push(Diagnostic {

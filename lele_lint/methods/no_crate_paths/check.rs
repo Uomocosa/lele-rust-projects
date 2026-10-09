@@ -1,10 +1,9 @@
-use std::path::Path;
-
 use derive_more::{Deref, DerefMut};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
 use crate::checkers;
+use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 
@@ -14,7 +13,7 @@ pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) 
     for source in project.content_sources() {
         let rel_path = source.relative_path;
         let file = source.file;
-        if is_crate_root(rel_path) {
+        if common::is_crate_root(rel_path) {
             continue;
         }
         let mut hits = Vec::new();
@@ -37,14 +36,6 @@ pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) 
     }
 
     diags
-}
-
-// needed helper: crate root file detection
-fn is_crate_root(rel_path: &Path) -> bool {
-    matches!(
-        rel_path.file_name().and_then(|n| n.to_str()),
-        Some("lib.rs") | Some("main.rs")
-    )
 }
 
 // needed helper: AST visitor collecting `crate::` paths outside `use` items

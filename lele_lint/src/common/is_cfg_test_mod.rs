@@ -1,12 +1,7 @@
+use crate::common;
+
 pub(crate) fn is_cfg_test_mod(module: &syn::ItemMod) -> bool {
-    module.attrs.iter().any(|attr| {
-        if attr.path().is_ident("cfg") {
-            if let syn::Meta::List(list) = &attr.meta {
-                return list.tokens.to_string().contains("test");
-            }
-        }
-        false
-    })
+    common::has_cfg_test(&module.attrs)
 }
 
 #[cfg(test)]

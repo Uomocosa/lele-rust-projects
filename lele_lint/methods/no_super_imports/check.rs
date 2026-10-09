@@ -5,6 +5,7 @@ use syn::spanned::Spanned;
 use syn::visit::Visit;
 
 use crate::checkers;
+use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 
@@ -51,7 +52,7 @@ struct SuperPathVisitor<'a>(&'a mut Vec<SuperPathHit>);
 
 impl<'ast> Visit<'ast> for SuperPathVisitor<'_> {
     fn visit_item_use(&mut self, item: &'ast syn::ItemUse) {
-        if has_cfg_test(&item.attrs) {
+        if common::has_cfg_test(&item.attrs) {
             return;
         }
         if starts_with_super(&item.tree) {
@@ -83,14 +84,14 @@ impl<'ast> Visit<'ast> for SuperPathVisitor<'_> {
     }
 
     fn visit_item_mod(&mut self, item: &'ast syn::ItemMod) {
-        if has_cfg_test(&item.attrs) {
+        if common::has_cfg_test(&item.attrs) {
             return;
         }
         syn::visit::visit_item_mod(self, item);
     }
 
     fn visit_item_fn(&mut self, item: &'ast syn::ItemFn) {
-        if has_cfg_test(&item.attrs) {
+        if common::has_cfg_test(&item.attrs) {
             return;
         }
         syn::visit::visit_item_fn(self, item);
@@ -125,14 +126,6 @@ fn generic_suggestion() -> (String, String) {
         "<domain>::…".to_string(),
     )
 }
-// needed helper: cfg(test) attribute detection on any item
-fn has_cfg_test(attrs: &[syn::Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        attr.path().is_ident("cfg")
-            && matches!(&attr.meta, syn::Meta::List(list) if list.tokens.to_string().contains("test"))
-    })
-}
-
 // needed helper: leading `super` use-tree detection
 fn starts_with_super(tree: &syn::UseTree) -> bool {
     matches!(tree, syn::UseTree::Path(path) if path.ident == "super")

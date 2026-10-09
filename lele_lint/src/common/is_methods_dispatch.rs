@@ -1,30 +1,23 @@
+use crate::common;
+
 pub(crate) fn is_methods_dispatch(block: &syn::Block) -> bool {
-    if block.stmts.len() != 1 {
-        return false;
-    }
-    let Some(syn::Stmt::Expr(expr, None)) = block.stmts.first() else {
+    let Some(segments) = common::single_path_call_segments(block) else {
         return false;
     };
-    let syn::Expr::Call(call) = expr else {
-        return false;
-    };
-    let syn::Expr::Path(path_expr) = call.func.as_ref() else {
-        return false;
-    };
-    if path_expr.qself.is_some() {
+    if segments.len() < 3 {
         return false;
     }
-    let segs: Vec<_> = path_expr.path.segments.iter().collect();
-    if segs.len() < 3 {
-        return false;
-    }
-    let Some(first) = segs.first() else {
+    let Some(first) = segments.first() else {
         return false;
     };
-    if matches!(first.ident.to_string().as_str(), "Self" | "self") {
+    if matches!(first.as_str(), "Self" | "self") {
         return false;
     }
-    segs.iter().rev().skip(1).any(|seg| seg.ident == "methods")
+    segments
+        .iter()
+        .rev()
+        .skip(1)
+        .any(|segment| segment.as_str() == "methods")
 }
 
 #[cfg(test)]

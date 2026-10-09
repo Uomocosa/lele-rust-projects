@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fmt::Write;
 
 use lele_lint::Origin;
@@ -20,9 +21,9 @@ pub fn report(project: &Project) -> String {
             row.markers,
             row.visual,
             row.anim,
-            mark(row.png),
-            mark(row.mp4),
-            mark(row.scene)
+            mark(row.kinds.contains(&scan::PreviewKind::Png)),
+            mark(row.kinds.contains(&scan::PreviewKind::Mp4)),
+            mark(row.kinds.contains(&scan::PreviewKind::Scene))
         );
     }
     out
@@ -33,9 +34,7 @@ struct Row {
     markers: String,
     visual: String,
     anim: String,
-    png: bool,
-    mp4: bool,
-    scene: bool,
+    kinds: BTreeSet<scan::PreviewKind>,
 }
 
 // needed helper: one inventory row per file that has UI or previews
@@ -57,9 +56,7 @@ fn rows(project: &Project) -> Vec<Row> {
                 markers: join_unique(scan::declared_components(file)),
                 visual: join_unique(visuals.iter().map(|found| found.visual.clone()).collect()),
                 anim: join_unique(scan::drivers(file)),
-                png: previews.iter().any(|p| p.kind == scan::PreviewKind::Png),
-                mp4: previews.iter().any(|p| p.kind == scan::PreviewKind::Mp4),
-                scene: previews.iter().any(|p| p.kind == scan::PreviewKind::Scene),
+                kinds: previews.iter().map(|p| p.kind).collect(),
             })
         })
         .collect();

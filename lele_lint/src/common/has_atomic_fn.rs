@@ -1,10 +1,7 @@
+use crate::common;
+
 pub(crate) fn has_atomic_fn(attrs: &[syn::Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        attr.path()
-            .segments
-            .last()
-            .is_some_and(|segment| segment.ident == "atomic_delegate")
-    })
+    common::has_attr(attrs, "atomic_delegate")
 }
 
 #[cfg(test)]

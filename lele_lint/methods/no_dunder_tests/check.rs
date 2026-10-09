@@ -53,19 +53,11 @@ fn cfg_test_line(item: &syn::Item) -> Option<usize> {
         syn::Item::Mod(module) if common::is_cfg_test_mod(module) => {
             Some(module.span().start().line)
         }
-        syn::Item::Fn(function) if has_cfg_test(&function.attrs) => {
+        syn::Item::Fn(function) if common::has_cfg_test(&function.attrs) => {
             Some(function.span().start().line)
         }
         _ => None,
     }
-}
-
-// needed helper: cfg(test) attribute detection
-fn has_cfg_test(attrs: &[syn::Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        attr.path().is_ident("cfg")
-            && matches!(&attr.meta, syn::Meta::List(list) if list.tokens.to_string().contains("test"))
-    })
 }
 
 #[cfg(test)]

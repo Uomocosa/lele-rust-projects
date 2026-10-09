@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::checkers;
+use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 
@@ -40,7 +41,7 @@ fn check_struct(struct_def: &syn::ItemStruct, file_path: &Path, diags: &mut Vec<
 
     if field_count == 1 {
         if let syn::Fields::Named(_) = struct_def.fields {
-            if has_data_shape_derive(struct_def) {
+            if common::has_data_shape_derive(struct_def) {
                 return;
             }
             if has_deref_derive(struct_def) {
@@ -71,40 +72,7 @@ fn check_struct(struct_def: &syn::ItemStruct, file_path: &Path, diags: &mut Vec<
 
 // needed helper: derive Deref attribute presence check
 fn has_deref_derive(struct_def: &syn::ItemStruct) -> bool {
-    has_derive_name(struct_def, &["Deref"])
-}
-
-// needed helper: wire-shape derive exemption (serde/clap field names come from the format)
-fn has_data_shape_derive(struct_def: &syn::ItemStruct) -> bool {
-    has_derive_name(
-        struct_def,
-        &[
-            "Serialize",
-            "Deserialize",
-            "Parser",
-            "Args",
-            "Subcommand",
-            "ValueEnum",
-        ],
-    )
-}
-
-// needed helper: derive list name matching (bare and path-suffixed)
-fn has_derive_name(struct_def: &syn::ItemStruct, names: &[&str]) -> bool {
-    struct_def.attrs.iter().any(|attr| {
-        if !attr.path().is_ident("derive") {
-            return false;
-        }
-        let syn::Meta::List(list) = &attr.meta else {
-            return false;
-        };
-        list.tokens.to_string().split(',').any(|t| {
-            let compact: String = t.split_whitespace().collect();
-            names
-                .iter()
-                .any(|n| compact == *n || compact.ends_with(&format!("::{n}")))
-        })
-    })
+    common::has_derive_name(struct_def, &["Deref"])
 }
 
 // needed helper: diagnostic emission
@@ -126,9 +94,9 @@ mod tests {
 
     use super::check;
     use super::check_struct;
-    use super::has_data_shape_derive;
     use super::has_deref_derive;
     use crate::checkers;
+    use crate::common;
     use syn::ItemStruct;
 
     #[test]
@@ -200,7 +168,7 @@ mod tests {
             "#[derive(Args)] struct Cmd { root: String }",
         ] {
             let s = parse(code);
-            assert!(has_data_shape_derive(&s));
+            assert!(common::has_data_shape_derive(&s));
             let mut diags = Vec::new();
             check_struct(&s, Path::new("x.rs"), &mut diags);
             assert!(diags.is_empty());
@@ -210,7 +178,7 @@ mod tests {
     #[test]
     fn test_usage_non_shape_single_field_rejected() {
         let s = parse("#[derive(Clone, Debug)] struct X { value: u64 }");
-        assert!(!has_data_shape_derive(&s));
+        assert!(!common::has_data_shape_derive(&s));
         let mut diags = Vec::new();
         check_struct(&s, Path::new("x.rs"), &mut diags);
         assert_eq!(diags.len(), 1);

@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 
+use crate::common;
+
 #[derive(Debug, Clone, Default)]
 pub struct DeclaredType {
     pub methods: BTreeSet<String>,
@@ -8,6 +10,5 @@ pub struct DeclaredType {
 
 pub(crate) struct CommentHit {
     pub line: usize,
-    pub text: String,
-    pub block: bool,
+    pub kind: common::CommentKind,
 }

@@ -1,7 +1,12 @@
 mod has_atomic_fn;
+mod has_attr;
 mod has_cfg_test;
+mod has_data_shape_derive;
+mod has_derive_name;
 mod has_rustfmt_skip;
+mod has_test_usage;
 mod is_cfg_test_mod;
+mod is_crate_root;
 mod is_default_impl;
 mod is_delegate_call;
 mod is_dunder_path;
@@ -13,6 +18,7 @@ mod is_stuttered_path;
 mod longest_type_prefix;
 mod primary_type_name;
 mod self_type_last;
+mod single_path_call_segments;
 mod to_pascal_case;
 
 mod collect_declared;
@@ -27,6 +33,7 @@ mod type_index_content;
 #[path = "__basic__/mod.rs"]
 pub mod basic;
 
+pub(crate) use basic::enums::CommentKind;
 pub(crate) use basic::structs::{CommentHit, DeclaredType};
 pub(crate) use basic::type_aliases::ModuleCfgMap;
 
@@ -37,9 +44,14 @@ pub(crate) use comment_scan::find_comments;
 pub(crate) use file_cfgs::file_cfgs;
 pub(crate) use has_atomic_delegates::has_atomic_delegates;
 pub(crate) use has_atomic_fn::has_atomic_fn;
+pub(crate) use has_attr::has_attr;
 pub(crate) use has_cfg_test::has_cfg_test;
+pub(crate) use has_data_shape_derive::has_data_shape_derive;
+pub(crate) use has_derive_name::has_derive_name;
 pub(crate) use has_rustfmt_skip::has_rustfmt_skip;
+pub(crate) use has_test_usage::has_test_usage;
 pub(crate) use is_cfg_test_mod::is_cfg_test_mod;
+pub(crate) use is_crate_root::is_crate_root;
 pub(crate) use is_default_impl::is_default_impl;
 pub(crate) use is_delegate_call::is_delegate_call;
 pub(crate) use is_dunder_path::is_dunder_path;
@@ -53,6 +65,7 @@ pub(crate) use module_paths::module_path_of;
 pub(crate) use primary_type_name::primary_type_name;
 pub(crate) use root_index_content::root_index_content;
 pub(crate) use self_type_last::self_type_last;
+pub(crate) use single_path_call_segments::single_path_call_segments;
 pub(crate) use type_index_content::type_index_content;
 
 pub(crate) use lele_snake_case::to_snake_case;

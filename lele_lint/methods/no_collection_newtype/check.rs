@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::checkers;
+use crate::common;
 use crate::Diagnostic;
 use crate::Project;
 
@@ -44,7 +45,7 @@ fn check_struct(struct_def: &syn::ItemStruct, file_path: &Path, diags: &mut Vec<
     let Some(field) = fields.unnamed.first() else {
         return;
     };
-    if has_data_shape_derive(struct_def) {
+    if common::has_data_shape_derive(struct_def) {
         return;
     }
     let Some(collection) = collection_name(&field.ty) else {
@@ -166,39 +167,6 @@ fn is_unsigned_int(ty: &syn::Type) -> bool {
         return false;
     }
     matches!(segment.arguments, syn::PathArguments::None)
-}
-
-// needed helper: wire-shape derive exemption (matches E018)
-fn has_data_shape_derive(struct_def: &syn::ItemStruct) -> bool {
-    has_derive_name(
-        struct_def,
-        &[
-            "Serialize",
-            "Deserialize",
-            "Parser",
-            "Args",
-            "Subcommand",
-            "ValueEnum",
-        ],
-    )
-}
-
-// needed helper: derive list name matching (bare and path-suffixed)
-fn has_derive_name(struct_def: &syn::ItemStruct, names: &[&str]) -> bool {
-    struct_def.attrs.iter().any(|attr| {
-        if !attr.path().is_ident("derive") {
-            return false;
-        }
-        let syn::Meta::List(list) = &attr.meta else {
-            return false;
-        };
-        list.tokens.to_string().split(',').any(|t| {
-            let compact: String = t.split_whitespace().collect();
-            names
-                .iter()
-                .any(|n| compact == *n || compact.ends_with(&format!("::{n}")))
-        })
-    })
 }
 
 // needed helper: naive plural-to-singular suggestion for the message

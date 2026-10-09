@@ -26,7 +26,7 @@ pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<
             continue;
         }
 
-        if !has_test_usage(source.file) {
+        if !common::has_test_usage(source.file) {
             diags.push(Diagnostic {
                 file: absolute,
                 line: 1,
@@ -177,30 +177,11 @@ fn is_likely_delegate_impl(impl_block: &syn::ItemImpl) -> bool {
     !impl_block.items.is_empty()
 }
 
-// needed helper: test_usage function presence in cfg(test) module
-fn has_test_usage(file: &syn::File) -> bool {
-    for item in &file.items {
-        if let syn::Item::Mod(module) = item {
-            if common::is_cfg_test_mod(module) {
-                if let Some((_, items)) = &module.content {
-                    for inner in items {
-                        if let syn::Item::Fn(func) = inner {
-                            if func.sig.ident == "test_usage" {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    false
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{check, has_test_usage, opt_out_at_end};
+    use super::{check, opt_out_at_end};
     use crate::checkers;
+    use crate::common;
     use crate::Project;
 
     #[test]
@@ -215,13 +196,13 @@ mod tests {
         let file: syn::File =
             syn::parse_str("#[cfg(test)] mod tests { #[test] fn test_usage() { assert!(true); } }")
                 .unwrap();
-        assert!(has_test_usage(&file));
+        assert!(common::has_test_usage(&file));
     }
 
     #[test]
     fn test_usage_missing() {
         let file: syn::File = syn::parse_str("pub fn compute(x: u32) -> u32 { x * 2 }").unwrap();
-        assert!(!has_test_usage(&file));
+        assert!(!common::has_test_usage(&file));
     }
 
     #[test]

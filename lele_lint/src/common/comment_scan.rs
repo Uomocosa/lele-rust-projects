@@ -19,15 +19,13 @@ pub(crate) fn find_comments(source: &str) -> Vec<common::CommentHit> {
                     .to_string();
                 hits.push(common::CommentHit {
                     line: line_of(source, start),
-                    text,
-                    block: false,
+                    kind: common::CommentKind::Line(text),
                 });
             }
             TokenKind::BlockComment { .. } => {
                 hits.push(common::CommentHit {
                     line: line_of(source, start),
-                    text: String::new(),
-                    block: true,
+                    kind: common::CommentKind::Block,
                 });
             }
             _ => {}
@@ -46,6 +44,7 @@ fn line_of(source: &str, offset: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::find_comments;
+    use crate::common::CommentKind;
 
     #[test]
     fn test_usage() {
@@ -53,9 +52,11 @@ mod tests {
         let hits = find_comments(source);
         assert_eq!(hits.len(), 2);
         assert_eq!(hits[0].line, 1);
-        assert!(!hits[0].block);
-        assert!(hits[0].text.contains("real"));
-        assert!(hits[1].block);
+        assert!(matches!(
+            &hits[0].kind,
+            CommentKind::Line(text) if text.contains("real")
+        ));
+        assert!(matches!(hits[1].kind, CommentKind::Block));
         assert_eq!(hits[1].line, 2);
     }
 
