@@ -61,7 +61,7 @@ fn forward_gossip<T: p2p::Message>(
     message: gossipsub::Message,
 ) {
     event_tx
-        .send(p2p::Event::Gossip {
+        .send(p2p::Event::Net(p2p::NetEvent::Gossip {
             topic: message.topic.to_string(),
             from: net_id::PeerId(
                 message
@@ -69,7 +69,7 @@ fn forward_gossip<T: p2p::Message>(
                     .map_or_else(|| propagation_source.to_string(), |s| s.to_string()),
             ),
             data: message.data,
-        })
+        }))
         .ok();
 }
 
@@ -102,7 +102,7 @@ mod tests {
             message,
         };
         handle_gossipsub(&swarm, &tx, event);
-        let Ok(p2p::Event::Gossip { topic, from, data }) = rx.try_recv() else {
+        let Ok(p2p::Event::Net(p2p::NetEvent::Gossip { topic, from, data })) = rx.try_recv() else {
             panic!("expected a gossip event");
         };
         assert_eq!((topic.as_str(), data), ("lobby/topic", vec![7]));

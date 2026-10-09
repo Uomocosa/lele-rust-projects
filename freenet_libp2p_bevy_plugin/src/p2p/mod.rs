@@ -29,7 +29,7 @@ pub use matches_transport::matches_transport;
 pub mod basic;
 
 pub use basic::constants::*;
-pub use basic::enums::{Command, Event, MdnsMode, NetCommand, TapEvent, TransportMode};
+pub use basic::enums::{Command, Event, MdnsMode, NetCommand, NetEvent, TransportMode};
 pub use basic::resources::{Bridge, NetBridge};
 pub use basic::structs::Ready;
 

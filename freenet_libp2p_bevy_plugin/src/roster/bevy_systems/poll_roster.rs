@@ -14,7 +14,7 @@ pub fn poll_roster<T: p2p::Message>(
     let room = room.into_inner();
     for event in events.take_all() {
         match event {
-            p2p::Event::PeerConnected(peer) => {
+            p2p::Event::Net(p2p::NetEvent::PeerConnected(peer)) => {
                 links
                     .entry(peer.clone())
                     .and_modify(|count| *count = count.saturating_add(1))
@@ -22,7 +22,7 @@ pub fn poll_roster<T: p2p::Message>(
                 let id = *blake3::hash(peer.as_bytes()).as_bytes();
                 roster.add_entry((**room).clone(), id, peer);
             }
-            p2p::Event::PeerDisconnected(peer) => {
+            p2p::Event::Net(p2p::NetEvent::PeerDisconnected(peer)) => {
                 let drained = links.get_mut(&peer).is_some_and(|count| {
                     *count = count.saturating_sub(1);
                     *count == 0
@@ -33,7 +33,7 @@ pub fn poll_roster<T: p2p::Message>(
                     roster.remove_entry(room, id);
                 }
             }
-            p2p::Event::Ready { peer_id, addrs } => {
+            p2p::Event::Net(p2p::NetEvent::Ready { peer_id, addrs }) => {
                 tracing::info!("ready peer_id={peer_id} addrs={addrs:?}");
             }
             p2p::Event::Error(message) => {
@@ -70,8 +70,8 @@ mod tests {
         app.insert_resource(p2p::Events::<Dummy>::default());
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
-            .push(p2p::Event::PeerConnected(net_id::PeerId(
-                "peer".to_string(),
+            .push(p2p::Event::Net(p2p::NetEvent::PeerConnected(
+                net_id::PeerId("peer".to_string()),
             )));
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
@@ -95,8 +95,8 @@ mod tests {
         );
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
-            .push(p2p::Event::PeerDisconnected(net_id::PeerId(
-                "peer".to_string(),
+            .push(p2p::Event::Net(p2p::NetEvent::PeerDisconnected(
+                net_id::PeerId("peer".to_string()),
             )));
         app.update();
         let members: usize = app
@@ -118,20 +118,20 @@ mod tests {
         app.insert_resource(p2p::Events::<Dummy>::default());
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
-            .push(p2p::Event::PeerConnected(net_id::PeerId(
-                "peer".to_string(),
+            .push(p2p::Event::Net(p2p::NetEvent::PeerConnected(
+                net_id::PeerId("peer".to_string()),
             )));
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
-            .push(p2p::Event::PeerConnected(net_id::PeerId(
-                "peer".to_string(),
+            .push(p2p::Event::Net(p2p::NetEvent::PeerConnected(
+                net_id::PeerId("peer".to_string()),
             )));
         app.add_systems(Update, poll_roster::<Dummy>);
         app.update();
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
-            .push(p2p::Event::PeerDisconnected(net_id::PeerId(
-                "peer".to_string(),
+            .push(p2p::Event::Net(p2p::NetEvent::PeerDisconnected(
+                net_id::PeerId("peer".to_string()),
             )));
         app.update();
         let members: usize = app
@@ -143,8 +143,8 @@ mod tests {
         assert_eq!(members, 1);
         app.world_mut()
             .resource_mut::<p2p::Events<Dummy>>()
-            .push(p2p::Event::PeerDisconnected(net_id::PeerId(
-                "peer".to_string(),
+            .push(p2p::Event::Net(p2p::NetEvent::PeerDisconnected(
+                net_id::PeerId("peer".to_string()),
             )));
         app.update();
         let members: usize = app

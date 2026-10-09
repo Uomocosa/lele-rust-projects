@@ -9,10 +9,10 @@ pub fn note_dial_failure<T: p2p::Message>(
     match peer_id {
         Some(peer_id) => {
             event_tx
-                .send(p2p::Event::DialFailed {
+                .send(p2p::Event::Net(p2p::NetEvent::DialFailed {
                     peer_id: net_id::PeerId(peer_id.to_string()),
                     reason: error.to_string(),
-                })
+                }))
                 .ok();
         }
         None => {
@@ -33,7 +33,7 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
         let peer = libp2p::PeerId::random();
         note_dial_failure(&tx, Some(peer), &DialError::NoAddresses);
-        let Ok(p2p::Event::DialFailed { peer_id, .. }) = rx.try_recv() else {
+        let Ok(p2p::Event::Net(p2p::NetEvent::DialFailed { peer_id, .. })) = rx.try_recv() else {
             panic!("expected a dial failure");
         };
         assert_eq!(peer_id.as_str(), peer.to_string());

@@ -21,10 +21,10 @@ pub fn dial_peer<T: p2p::Message>(
             .build();
         if let Err(e) = swarm.dial(opts) {
             event_tx
-                .send(p2p::Event::DialFailed {
+                .send(p2p::Event::Net(p2p::NetEvent::DialFailed {
                     peer_id: peer_id.clone(),
                     reason: e.to_string(),
-                })
+                }))
                 .ok();
         }
         return;
@@ -59,6 +59,9 @@ mod tests {
         dial_peer(&mut swarm, &tx, &peer, &addrs, PeerCondition::Always);
         assert!(rx.try_recv().is_err());
         dial_peer(&mut swarm, &tx, &peer, &addrs, gentle);
-        assert!(matches!(rx.try_recv(), Ok(p2p::Event::DialFailed { .. })));
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(p2p::Event::Net(p2p::NetEvent::DialFailed { .. }))
+        ));
     }
 }

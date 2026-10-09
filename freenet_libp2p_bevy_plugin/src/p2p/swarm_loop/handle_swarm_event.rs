@@ -65,17 +65,17 @@ pub fn handle_swarm_event<T: p2p::Message>(
             relay::client::Event::ReservationReqAccepted { relay_peer_id, .. },
         )) => {
             event_tx
-                .send(p2p::Event::RelayReserved {
+                .send(p2p::Event::Net(p2p::NetEvent::RelayReserved {
                     relay_peer_id: net_id::PeerId(relay_peer_id.to_string()),
-                })
+                }))
                 .ok();
         }
         SwarmEvent::Behaviour(p2p::behaviour::BehaviourEvent::Identify(
             identify::Event::Received { info, .. },
         )) => {
             event_tx
-                .send(p2p::Event::ObservedAddr(net_id::PeerAddr(
-                    info.observed_addr.to_string(),
+                .send(p2p::Event::Net(p2p::NetEvent::ObservedAddr(
+                    net_id::PeerAddr(info.observed_addr.to_string()),
                 )))
                 .ok();
         }

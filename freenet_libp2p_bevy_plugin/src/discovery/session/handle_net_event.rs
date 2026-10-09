@@ -3,17 +3,17 @@ use crate::net_id;
 use crate::p2p;
 use discovery::session::{Output, Session};
 
-pub fn handle_net_event(session: &mut Session, event: p2p::TapEvent, now: discovery::EpochSecs) {
+pub fn handle_net_event(session: &mut Session, event: p2p::NetEvent, now: discovery::EpochSecs) {
     match event {
-        p2p::TapEvent::PeerConnected(peer) => {
+        p2p::NetEvent::PeerConnected(peer) => {
             session.connected.insert(peer.clone());
             discovery::session::send_hello(session, &peer);
         }
-        p2p::TapEvent::PeerDisconnected(peer) => {
+        p2p::NetEvent::PeerDisconnected(peer) => {
             session.connected.remove(&peer);
             mark_lost(session, &peer, now);
         }
-        p2p::TapEvent::Exchange { from, data } => {
+        p2p::NetEvent::Exchange { from, data } => {
             discovery::session::handle_hello(session, &from, &data, now);
         }
         _ => return,
@@ -54,7 +54,7 @@ mod tests {
         );
         handle_net_event(
             &mut session,
-            p2p::TapEvent::PeerConnected(net_id::PeerId("a".to_string())),
+            p2p::NetEvent::PeerConnected(net_id::PeerId("a".to_string())),
             discovery::EpochSecs(1),
         );
         assert!(session.connected.contains(&net_id::PeerId("a".to_string())));
@@ -64,7 +64,7 @@ mod tests {
         ));
         handle_net_event(
             &mut session,
-            p2p::TapEvent::PeerDisconnected(net_id::PeerId("a".to_string())),
+            p2p::NetEvent::PeerDisconnected(net_id::PeerId("a".to_string())),
             discovery::EpochSecs(2),
         );
         assert!(session.connected.is_empty());

@@ -13,10 +13,10 @@ pub fn handle_found_providers<T: p2p::Message>(
             .map(|peer| net_id::PeerId(peer.to_string()))
             .collect::<Vec<_>>();
         event_tx
-            .send(p2p::Event::RoomProviders {
+            .send(p2p::Event::Net(p2p::NetEvent::RoomProviders {
                 room: room.clone(),
                 peers,
-            })
+            }))
             .ok();
     }
 }
@@ -46,7 +46,8 @@ mod tests {
         let provider = libp2p::PeerId::random();
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
         handle_found_providers(&tx, &room_queries, id, &HashSet::from([provider]));
-        let Ok(p2p::Event::RoomProviders { room, peers }) = rx.try_recv() else {
+        let Ok(p2p::Event::Net(p2p::NetEvent::RoomProviders { room, peers })) = rx.try_recv()
+        else {
             panic!("expected room providers");
         };
         assert_eq!(room.as_str(), "room-a");

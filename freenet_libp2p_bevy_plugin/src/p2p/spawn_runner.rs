@@ -37,7 +37,7 @@ mod tests {
         );
         let found = tokio::time::timeout(std::time::Duration::from_secs(10), async {
             while let Some(event) = event_rx.recv().await {
-                if matches!(event, p2p::Event::Ready { .. }) {
+                if matches!(event, p2p::Event::Net(p2p::NetEvent::Ready { .. })) {
                     break;
                 }
             }

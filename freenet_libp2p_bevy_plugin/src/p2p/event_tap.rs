@@ -4,17 +4,17 @@ use bevy::prelude::Resource;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::p2p;
-use p2p::TapEvent;
+use p2p::NetEvent;
 
 #[derive(Resource)]
 pub struct EventTap {
-    pub tx: UnboundedSender<TapEvent>,
-    pub rx: Mutex<Option<UnboundedReceiver<TapEvent>>>,
+    pub tx: UnboundedSender<NetEvent>,
+    pub rx: Mutex<Option<UnboundedReceiver<NetEvent>>>,
 }
 
 #[rustfmt::skip]
 impl EventTap {
-    pub fn take_rx(&self) -> Option<UnboundedReceiver<TapEvent>> {
+    pub fn take_rx(&self) -> Option<UnboundedReceiver<NetEvent>> {
         self.rx.lock().ok()?.take()
     }
 }
@@ -47,7 +47,7 @@ mod tests {
         let tap = EventTap::default();
         assert!(
             tap.tx
-                .send(p2p::TapEvent::PeerConnected(net_id::PeerId(
+                .send(p2p::NetEvent::PeerConnected(net_id::PeerId(
                     "p".to_string()
                 )))
                 .is_ok()

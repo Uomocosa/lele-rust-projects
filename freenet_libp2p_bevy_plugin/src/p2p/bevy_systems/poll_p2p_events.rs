@@ -50,13 +50,13 @@ pub fn poll_p2p_events<T: p2p::Message>(
 // needed helper: updates the latest-value ready/observed watch channels
 fn publish_signal<T: p2p::Message>(signals: &p2p::Signals, event: &p2p::Event<T>) {
     match event {
-        p2p::Event::Ready { peer_id, addrs } => {
+        p2p::Event::Net(p2p::NetEvent::Ready { peer_id, addrs }) => {
             signals.ready_tx.send_replace(Some(p2p::Ready {
                 peer_id: peer_id.clone(),
                 addrs: addrs.clone(),
             }));
         }
-        p2p::Event::ObservedAddr(addr) => {
+        p2p::Event::Net(p2p::NetEvent::ObservedAddr(addr)) => {
             signals.observed_tx.send_replace(Some(vec![addr.clone()]));
         }
         _ => {}
@@ -64,32 +64,9 @@ fn publish_signal<T: p2p::Message>(signals: &p2p::Signals, event: &p2p::Event<T>
 }
 
 // needed helper: maps the non-generic subset of events onto the discovery tap
-fn tap_of<T: p2p::Message>(event: &p2p::Event<T>) -> Option<p2p::TapEvent> {
+fn tap_of<T: p2p::Message>(event: &p2p::Event<T>) -> Option<p2p::NetEvent> {
     match event {
-        p2p::Event::Ready { peer_id, addrs } => Some(p2p::TapEvent::Ready {
-            peer_id: peer_id.clone(),
-            addrs: addrs.clone(),
-        }),
-        p2p::Event::ObservedAddr(addr) => Some(p2p::TapEvent::ObservedAddr(addr.clone())),
-        p2p::Event::PeerConnected(peer) => Some(p2p::TapEvent::PeerConnected(peer.clone())),
-        p2p::Event::PeerDisconnected(peer) => Some(p2p::TapEvent::PeerDisconnected(peer.clone())),
-        p2p::Event::DialFailed { peer_id, reason } => Some(p2p::TapEvent::DialFailed {
-            peer_id: peer_id.clone(),
-            reason: reason.clone(),
-        }),
-        p2p::Event::RoomProviders { room, peers } => Some(p2p::TapEvent::RoomProviders {
-            room: room.clone(),
-            peers: peers.clone(),
-        }),
-        p2p::Event::Exchange { from, data } => Some(p2p::TapEvent::Exchange {
-            from: from.clone(),
-            data: data.clone(),
-        }),
-        p2p::Event::Gossip { topic, from, data } => Some(p2p::TapEvent::Gossip {
-            topic: topic.clone(),
-            from: from.clone(),
-            data: data.clone(),
-        }),
+        p2p::Event::Net(tap) => Some(tap.clone()),
         _ => None,
     }
 }
@@ -117,8 +94,8 @@ mod tests {
         app.insert_resource(p2p::Commands::<Dummy>::default());
         app.insert_resource(p2p::Outbox::default());
         event_tx
-            .send(p2p::Event::PeerConnected(net_id::PeerId(
-                "peer".to_string(),
+            .send(p2p::Event::Net(p2p::NetEvent::PeerConnected(
+                net_id::PeerId("peer".to_string()),
             )))
             .ok();
         app.world_mut()
@@ -141,7 +118,7 @@ mod tests {
     fn tap_forwards_non_generic_events() {
         let (cmd_tx, _cmd_rx) = tokio::sync::mpsc::unbounded_channel();
         let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<Dummy>>();
-        let (tap_tx, mut tap_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::TapEvent>();
+        let (tap_tx, mut tap_rx) = tokio::sync::mpsc::unbounded_channel::<p2p::NetEvent>();
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(p2p::Events::<Dummy>::default());
@@ -156,8 +133,8 @@ mod tests {
             rx: std::sync::Mutex::new(None),
         });
         event_tx
-            .send(p2p::Event::PeerConnected(net_id::PeerId(
-                "peer".to_string(),
+            .send(p2p::Event::Net(p2p::NetEvent::PeerConnected(
+                net_id::PeerId("peer".to_string()),
             )))
             .ok();
         event_tx
@@ -171,7 +148,7 @@ mod tests {
         let tapped = tap_rx.try_recv();
         assert_eq!(
             tapped,
-            Ok(p2p::TapEvent::PeerConnected(net_id::PeerId(
+            Ok(p2p::NetEvent::PeerConnected(net_id::PeerId(
                 "peer".to_string()
             )))
         );

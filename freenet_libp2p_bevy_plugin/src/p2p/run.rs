@@ -50,7 +50,7 @@ pub async fn run<T: p2p::Message>(
         tokio::select! {
             () = &mut ready_sleep, if ready_deadline.is_some() => {
                 let addrs = std::mem::take(&mut listen_addrs);
-                event_tx.send(p2p::Event::Ready { peer_id: own_peer_id.clone(), addrs }).ok();
+                event_tx.send(p2p::Event::Net(p2p::NetEvent::Ready { peer_id: own_peer_id.clone(), addrs })).ok();
                 ready_deadline = None;
             }
             () = &mut mesh_sleep => {

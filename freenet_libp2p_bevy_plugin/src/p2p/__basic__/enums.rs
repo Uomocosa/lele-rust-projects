@@ -15,8 +15,8 @@ pub enum MdnsMode {
     Disabled,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TapEvent {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NetEvent {
     Ready {
         peer_id: net_id::PeerId,
         addrs: Vec<net_id::PeerAddr>,
@@ -28,9 +28,17 @@ pub enum TapEvent {
         peer_id: net_id::PeerId,
         reason: String,
     },
+    RelayReserved {
+        relay_peer_id: net_id::PeerId,
+    },
     RoomProviders {
         room: net_id::RoomName,
         peers: Vec<net_id::PeerId>,
+    },
+    HistoryChunk {
+        room: net_id::RoomName,
+        chunk: u64,
+        data: Vec<u8>,
     },
     Gossip {
         topic: String,
@@ -98,41 +106,7 @@ pub enum Command<T> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Event<T> {
-    Ready {
-        peer_id: net_id::PeerId,
-        addrs: Vec<net_id::PeerAddr>,
-    },
-    PeerConnected(net_id::PeerId),
-    PeerDisconnected(net_id::PeerId),
-    DialFailed {
-        peer_id: net_id::PeerId,
-        reason: String,
-    },
-    RelayReserved {
-        relay_peer_id: net_id::PeerId,
-    },
-    ObservedAddr(net_id::PeerAddr),
-    RoomProviders {
-        room: net_id::RoomName,
-        peers: Vec<net_id::PeerId>,
-    },
-    Message {
-        from: net_id::PeerId,
-        payload: T,
-    },
-    HistoryChunk {
-        room: net_id::RoomName,
-        chunk: u64,
-        data: Vec<u8>,
-    },
-    Gossip {
-        topic: String,
-        from: net_id::PeerId,
-        data: Vec<u8>,
-    },
-    Exchange {
-        from: net_id::PeerId,
-        data: Vec<u8>,
-    },
+    Net(NetEvent),
+    Message { from: net_id::PeerId, payload: T },
     Error(String),
 }

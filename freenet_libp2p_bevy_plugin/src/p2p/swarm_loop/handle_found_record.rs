@@ -13,11 +13,11 @@ pub fn handle_found_record<T: p2p::Message>(
         return;
     };
     event_tx
-        .send(p2p::Event::HistoryChunk {
+        .send(p2p::Event::Net(p2p::NetEvent::HistoryChunk {
             room: net_id::RoomName(room),
             chunk,
             data: record.value,
-        })
+        }))
         .ok();
 }
 
@@ -44,7 +44,8 @@ mod tests {
     fn test_usage() {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
         handle_found_record(&tx, peer_record(p2p::history_key("room-a", 5)));
-        let Ok(p2p::Event::HistoryChunk { room, chunk, data }) = rx.try_recv() else {
+        let Ok(p2p::Event::Net(p2p::NetEvent::HistoryChunk { room, chunk, data })) = rx.try_recv()
+        else {
             panic!("expected a history chunk");
         };
         assert_eq!((room.as_str(), chunk, data), ("room-a", 5, vec![1, 2, 3]));
