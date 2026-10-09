@@ -4,17 +4,17 @@ use discovery::session::Session;
 
 pub fn add_candidates(
     session: &mut Session,
-    peers: impl IntoIterator<Item = (net_id::PeerId, Vec<net_id::PeerAddr>)>,
+    peers: impl IntoIterator<Item = net_id::Peer>,
     now: discovery::EpochSecs,
 ) {
-    for (peer, addrs) in peers {
-        if peer == session.me || peer.is_empty() || addrs.is_empty() {
+    for peer in peers {
+        if peer.id == session.me.id || peer.id.is_empty() || peer.addrs.is_empty() {
             continue;
         }
         session.candidates.insert(
-            peer,
+            peer.id,
             discovery::Presence {
-                addrs,
+                addrs: peer.addrs,
                 updated_at: now,
             },
         );
@@ -31,20 +31,25 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId::from("me"),
-            Vec::new(),
+            net_id::Peer {
+                id: net_id::PeerId::from("me"),
+                addrs: Vec::new(),
+            },
             discovery::Timing::default(),
         );
         let peers = vec![
-            (
-                net_id::PeerId::from("me"),
-                vec![net_id::PeerAddr::from("/ip4/1")],
-            ),
-            (
-                net_id::PeerId::from("a"),
-                vec![net_id::PeerAddr::from("/ip4/2")],
-            ),
-            (net_id::PeerId::from("b"), Vec::new()),
+            net_id::Peer {
+                id: net_id::PeerId::from("me"),
+                addrs: vec![net_id::PeerAddr::from("/ip4/1")],
+            },
+            net_id::Peer {
+                id: net_id::PeerId::from("a"),
+                addrs: vec![net_id::PeerAddr::from("/ip4/2")],
+            },
+            net_id::Peer {
+                id: net_id::PeerId::from("b"),
+                addrs: Vec::new(),
+            },
         ];
         add_candidates(&mut session, peers, discovery::EpochSecs(1));
         assert_eq!(session.candidates.len(), 1);

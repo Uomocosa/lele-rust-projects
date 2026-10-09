@@ -17,10 +17,7 @@ pub enum MdnsMode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetEvent {
-    Ready {
-        peer_id: net_id::PeerId,
-        addrs: Vec<net_id::PeerAddr>,
-    },
+    Ready(net_id::Peer),
     ObservedAddr(net_id::PeerAddr),
     PeerConnected(net_id::PeerId),
     PeerDisconnected(net_id::PeerId),
@@ -53,20 +50,14 @@ pub enum NetEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetCommand {
-    Dial {
-        peer_id: net_id::PeerId,
-        addrs: Vec<net_id::PeerAddr>,
-    },
+    Dial(net_id::Peer),
     ReserveRelay {
         relay_addr: net_id::PeerAddr,
     },
     SetMdns {
         mode: MdnsMode,
     },
-    AddKadPeer {
-        peer_id: net_id::PeerId,
-        addrs: Vec<net_id::PeerAddr>,
-    },
+    AddKadPeer(net_id::Peer),
     ProvideRoom {
         room: net_id::RoomName,
     },

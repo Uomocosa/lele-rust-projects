@@ -33,8 +33,8 @@ pub fn poll_roster<T: p2p::Message>(
                     roster.remove_entry(room, id);
                 }
             }
-            p2p::Event::Net(p2p::NetEvent::Ready { peer_id, addrs }) => {
-                tracing::info!("ready peer_id={peer_id} addrs={addrs:?}");
+            p2p::Event::Net(p2p::NetEvent::Ready(me)) => {
+                tracing::info!("ready peer_id={} addrs={:?}", me.id, me.addrs);
             }
             p2p::Event::Error(message) => {
                 tracing::warn!("p2p error: {message}");

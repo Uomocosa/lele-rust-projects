@@ -22,18 +22,20 @@ pub async fn run(
     let Some(ready) = discovery::libp2p::wait_ready(&mut net.ready).await else {
         return;
     };
-    let me = ready.peer_id;
-    let addrs = discovery::libp2p::dialable(ready.addrs);
+    let me = net_id::Peer {
+        addrs: discovery::libp2p::dialable(ready.addrs),
+        id: ready.id,
+    };
     let timing = config.timing;
     let capacity = config.capacity;
-    let mut session = Session::new(me.clone(), addrs, timing);
+    let mut session = Session::new(me.clone(), timing);
     let (target_tx, target_rx) = tokio::sync::watch::channel(None);
     let (lobby_tx, mut lobbies) = tokio::sync::mpsc::unbounded_channel();
     let params = discovery::freenet::contract_params(&config.game_name, &config.token);
     tokio::spawn(async move {
         let client =
             discovery::freenet::connect_retry("127.0.0.1", *endpoint, &params, &target_rx).await;
-        discovery::freenet::run_lobby(client, me, capacity, timing, target_rx, lobby_tx).await;
+        discovery::freenet::run_lobby(client, me.id, capacity, timing, target_rx, lobby_tx).await;
     });
     let mut tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
     loop {
@@ -65,7 +67,7 @@ fn adopt_observed(session: &mut Session, observed: &mut Receiver<Option<Vec<net_
     }
     let latest = observed.borrow_and_update().clone();
     if let Some(addrs) = latest {
-        session.addrs = discovery::libp2p::dialable(addrs);
+        session.me.addrs = discovery::libp2p::dialable(addrs);
     }
 }
 

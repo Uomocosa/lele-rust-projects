@@ -11,7 +11,7 @@ pub fn seed_candidates(session: &mut Session) {
     let seeds: Vec<_> = record
         .members
         .iter()
-        .filter(|(peer, presence)| **peer != session.me && !presence.addrs.is_empty())
+        .filter(|(peer, presence)| **peer != session.me.id && !presence.addrs.is_empty())
         .map(|(peer, presence)| (peer.clone(), presence.clone()))
         .collect();
     for (peer, presence) in seeds {
@@ -37,8 +37,10 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId::from("me"),
-            Vec::new(),
+            net_id::Peer {
+                id: net_id::PeerId::from("me"),
+                addrs: Vec::new(),
+            },
             discovery::Timing::default(),
         );
         let room = net_id::RoomName::from("r");

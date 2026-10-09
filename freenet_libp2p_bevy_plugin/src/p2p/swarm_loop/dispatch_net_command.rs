@@ -12,12 +12,12 @@ pub fn dispatch_net_command<T: p2p::Message>(
     command: p2p::NetCommand,
 ) {
     match command {
-        p2p::NetCommand::Dial { peer_id, addrs } => {
+        p2p::NetCommand::Dial(peer) => {
             p2p::swarm_loop::dial_peer(
                 swarm,
                 event_tx,
-                &peer_id,
-                &addrs,
+                &peer.id,
+                &peer.addrs,
                 PeerCondition::DisconnectedAndNotDialing,
             );
         }
@@ -30,8 +30,8 @@ pub fn dispatch_net_command<T: p2p::Message>(
             let peer_id = *swarm.local_peer_id();
             swarm.behaviour_mut().mdns = p2p::mdns_behaviour(mode, peer_id);
         }
-        p2p::NetCommand::AddKadPeer { peer_id, addrs } => {
-            p2p::swarm_loop::seed_kad_peer(swarm, &peer_id, &addrs);
+        p2p::NetCommand::AddKadPeer(peer) => {
+            p2p::swarm_loop::seed_kad_peer(swarm, &peer.id, &peer.addrs);
         }
         p2p::NetCommand::ProvideRoom { room } => {
             let _ = swarm

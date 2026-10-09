@@ -5,8 +5,7 @@ use crate::net_id;
 use discovery::session::Output;
 
 pub struct Session {
-    pub me: net_id::PeerId,
-    pub addrs: Vec<net_id::PeerAddr>,
+    pub me: net_id::Peer,
     pub timing: discovery::Timing,
     pub lobby: discovery::Lobby,
     pub room: Option<discovery::Room>,
@@ -19,14 +18,9 @@ pub struct Session {
 
 impl Session {
     #[must_use]
-    pub const fn new(
-        me: net_id::PeerId,
-        addrs: Vec<net_id::PeerAddr>,
-        timing: discovery::Timing,
-    ) -> Self {
+    pub const fn new(me: net_id::Peer, timing: discovery::Timing) -> Self {
         Self {
             me,
-            addrs,
             timing,
             lobby: discovery::Lobby::new(),
             room: None,
@@ -48,8 +42,10 @@ mod tests {
     #[test]
     fn test_usage() {
         let session = Session::new(
-            net_id::PeerId::from("me"),
-            Vec::new(),
+            net_id::Peer {
+                id: net_id::PeerId::from("me"),
+                addrs: Vec::new(),
+            },
             discovery::Timing::default(),
         );
         assert!(session.room.is_none());

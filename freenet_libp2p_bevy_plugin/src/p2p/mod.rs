@@ -31,7 +31,6 @@ pub mod basic;
 pub use basic::constants::*;
 pub use basic::enums::{Command, Event, MdnsMode, NetCommand, NetEvent, TransportMode};
 pub use basic::resources::{Bridge, NetBridge};
-pub use basic::structs::Ready;
 
 pub mod mdns_behaviour;
 pub use mdns_behaviour::mdns_behaviour;

@@ -50,11 +50,8 @@ pub fn poll_p2p_events<T: p2p::Message>(
 // needed helper: updates the latest-value ready/observed watch channels
 fn publish_signal<T: p2p::Message>(signals: &p2p::Signals, event: &p2p::Event<T>) {
     match event {
-        p2p::Event::Net(p2p::NetEvent::Ready { peer_id, addrs }) => {
-            signals.ready_tx.send_replace(Some(p2p::Ready {
-                peer_id: peer_id.clone(),
-                addrs: addrs.clone(),
-            }));
+        p2p::Event::Net(p2p::NetEvent::Ready(me)) => {
+            signals.ready_tx.send_replace(Some(me.clone()));
         }
         p2p::Event::Net(p2p::NetEvent::ObservedAddr(addr)) => {
             signals.observed_tx.send_replace(Some(vec![addr.clone()]));
@@ -100,10 +97,10 @@ mod tests {
             .ok();
         app.world_mut()
             .resource_mut::<p2p::Commands<Dummy>>()
-            .push(p2p::Command::Net(p2p::NetCommand::Dial {
-                peer_id: net_id::PeerId::from("peer"),
+            .push(p2p::Command::Net(p2p::NetCommand::Dial(net_id::Peer {
+                id: net_id::PeerId::from("peer"),
                 addrs: vec![],
-            }));
+            })));
         app.insert_resource(p2p::Bridge {
             cmd_tx,
             event_rx: std::sync::Mutex::new(Some(event_rx)),

@@ -6,7 +6,7 @@ use crate::net_id;
 pub struct Hello {
     pub room: Option<net_id::RoomName>,
     pub addrs: Vec<net_id::PeerAddr>,
-    pub peers: Vec<(net_id::PeerId, Vec<net_id::PeerAddr>)>,
+    pub peers: Vec<net_id::Peer>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

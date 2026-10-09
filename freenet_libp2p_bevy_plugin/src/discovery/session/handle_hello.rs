@@ -17,7 +17,10 @@ pub fn handle_hello(
         return;
     }
     let mut peers = hello.peers;
-    peers.push((from.clone(), hello.addrs.clone()));
+    peers.push(net_id::Peer {
+        id: from.clone(),
+        addrs: hello.addrs.clone(),
+    });
     discovery::session::add_candidates(session, peers, now);
     if !session.connected.contains(from) {
         return;
@@ -75,8 +78,10 @@ mod tests {
 
     fn session_in_room() -> Session {
         let mut session = Session::new(
-            net_id::PeerId::from("me"),
-            Vec::new(),
+            net_id::Peer {
+                id: net_id::PeerId::from("me"),
+                addrs: Vec::new(),
+            },
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
@@ -94,10 +99,10 @@ mod tests {
         let hello = Hello {
             room: Some(net_id::RoomName::from("r")),
             addrs: vec![net_id::PeerAddr::from("/ip4/1")],
-            peers: vec![(
-                net_id::PeerId::from("b"),
-                vec![net_id::PeerAddr::from("/ip4/2")],
-            )],
+            peers: vec![net_id::Peer {
+                id: net_id::PeerId::from("b"),
+                addrs: vec![net_id::PeerAddr::from("/ip4/2")],
+            }],
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
         handle_hello(&mut session, &peer, &data, discovery::EpochSecs(1));

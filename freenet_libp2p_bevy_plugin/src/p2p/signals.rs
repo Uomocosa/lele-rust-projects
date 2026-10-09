@@ -2,13 +2,12 @@ use bevy::prelude::Resource;
 use tokio::sync::watch::{self, Receiver, Sender};
 
 use crate::net_id;
-use crate::p2p;
-use p2p::Ready;
+use net_id::Peer;
 
 #[derive(Resource)]
 pub struct Signals {
-    pub ready_tx: Sender<Option<Ready>>,
-    pub ready_rx: Receiver<Option<Ready>>,
+    pub ready_tx: Sender<Option<Peer>>,
+    pub ready_rx: Receiver<Option<Peer>>,
     pub observed_tx: Sender<Option<Vec<net_id::PeerAddr>>>,
     pub observed_rx: Receiver<Option<Vec<net_id::PeerAddr>>>,
 }
@@ -16,7 +15,7 @@ pub struct Signals {
 #[rustfmt::skip]
 impl Signals {
     #[must_use]
-    pub fn subscribe(&self) -> (Receiver<Option<Ready>>, Receiver<Option<Vec<net_id::PeerAddr>>>) {
+    pub fn subscribe(&self) -> (Receiver<Option<Peer>>, Receiver<Option<Vec<net_id::PeerAddr>>>) {
         (self.ready_rx.clone(), self.observed_rx.clone())
     }
 }
@@ -45,23 +44,19 @@ impl Default for Signals {
 mod tests {
     use super::Signals;
     use crate::net_id;
-    use crate::p2p;
 
     #[test]
     fn test_usage() {
         let signals = Signals::default();
         let (ready_rx, observed_rx) = signals.subscribe();
-        signals.ready_tx.send_replace(Some(p2p::Ready {
-            peer_id: net_id::PeerId::from("p"),
+        signals.ready_tx.send_replace(Some(net_id::Peer {
+            id: net_id::PeerId::from("p"),
             addrs: vec![],
         }));
         signals.observed_tx.send_replace(Some(vec![net_id::PeerAddr(
             "/ip4/1.2.3.4/tcp/1".to_string(),
         )]));
-        assert_eq!(
-            ready_rx.borrow().as_ref().map(|r| r.peer_id.as_str()),
-            Some("p")
-        );
+        assert_eq!(ready_rx.borrow().as_ref().map(|r| r.id.as_str()), Some("p"));
         assert!(observed_rx.borrow().is_some());
     }
 }

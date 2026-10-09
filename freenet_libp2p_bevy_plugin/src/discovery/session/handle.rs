@@ -22,8 +22,10 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId::from("me"),
-            Vec::new(),
+            net_id::Peer {
+                id: net_id::PeerId::from("me"),
+                addrs: Vec::new(),
+            },
             discovery::Timing::default(),
         );
         let room = net_id::RoomName::from("r");
