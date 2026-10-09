@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoSuperImports {
     pub const NAME: &'static str = "no_super_imports";
     pub const CODE: &'static str = "E033";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "`super::` is allowed only inside `#[cfg(test)]`; production code imports the domain (`use crate::stock;`).",
         why: "`super::` paths break when files move; domain paths read the same from every file.",
         bad: &[

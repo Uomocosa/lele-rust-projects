@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl RootReexport {
     pub const NAME: &'static str = "root_reexport";
     pub const CODE: &'static str = "E024";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "A public type in a crate-root file is re-exported from `lib.rs` (`pub use meters::Meters;`); a root fn file is a private `mod` plus `pub use`.",
         why: "Root items are used as `crate::Meters`, never `crate::meters::Meters`.",
         bad: &[

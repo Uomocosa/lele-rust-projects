@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoDunderTests {
     pub const NAME: &'static str = "no_dunder_tests";
     pub const CODE: &'static str = "E034";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "tests",
+        category: Category::Tests,
         summary: "No `#[cfg(test)]` inside `__basic__/` containers.",
         why: "Containers hold declarations only; test the function or method that uses the types instead.",
         bad: &[

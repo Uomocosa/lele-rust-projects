@@ -8,16 +8,6 @@ use lele_lint::Checker;
 use lele_lint::ExampleFile;
 use lele_lint::Project;
 
-const CATEGORIES: [&str; 7] = [
-    "layout",
-    "delegates",
-    "imports",
-    "types",
-    "tests",
-    "style",
-    "config",
-];
-
 const DEFAULT_CARGO_TOML: &str = r#"[package]
 name = "example"
 version = "0.1.0"
@@ -98,9 +88,6 @@ fn check_rule(checker: &dyn Checker) -> Result<Vec<String>, Box<dyn std::error::
     let mut problems = Vec::new();
     let code = checker.code();
     let doc = checker.doc();
-    if !CATEGORIES.contains(&doc.category) {
-        problems.push(format!("{code}: unknown category `{}`", doc.category));
-    }
     if doc.summary.is_empty() || doc.why.is_empty() {
         problems.push(format!("{code}: summary and why must not be empty"));
     }

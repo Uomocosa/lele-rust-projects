@@ -1,4 +1,5 @@
 use atomic_delegate_macros::atomic_delegate;
+use lele_lint::Category;
 use lele_lint::Checker;
 use lele_lint::Diagnostic;
 use lele_lint::ExampleFile;
@@ -11,7 +12,7 @@ impl BevyPluginScene {
     pub const NAME: &'static str = "bevy_plugin_scene";
     pub const CODE: &'static str = "E038";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "tests",
+        category: Category::Tests,
         summary: "A file defining a `Plugin` whose build spawns UI must ship an ignored `*_ui_scene_preview` test.",
         why: "A plugin is the assembly point for a whole screen; its scene preview proves the assembled screen renders.",
         bad: &[ExampleFile {

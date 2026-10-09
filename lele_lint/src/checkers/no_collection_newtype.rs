@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoCollectionNewtype {
     pub const NAME: &'static str = "no_collection_newtype";
     pub const CODE: &'static str = "E028";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "types",
+        category: Category::Types,
         summary: "No newtype around a collection (`Rooms(Vec<String>)`); wrap the element (`Room(String)`) and use `Vec<Room>`.",
         why: "The element is the concept; a collection wrapper hides the standard collection API behind a new name.",
         bad: &[

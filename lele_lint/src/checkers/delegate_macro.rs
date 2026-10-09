@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl DelegateMacro {
     pub const NAME: &'static str = "delegate_macro";
     pub const CODE: &'static str = "E032";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "delegates",
+        category: Category::Delegates,
         summary: "Method shells (empty bodies) are declared in one `#[atomic_delegates]` impl block per type; `new` is never delegated.",
         why: "The macro wires each shell to `methods/<type>/<method>.rs`; one block per type means one place to read the type's API.",
         bad: &[

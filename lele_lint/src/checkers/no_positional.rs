@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoPositional {
     pub const NAME: &'static str = "no_positional";
     pub const CODE: &'static str = "E009";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "types",
+        category: Category::Types,
         summary: "No positional field access (`.0`, `.1`).",
         why: "A single-field newtype derefs to its value and multi-field types have names, so a number never stands for a meaning.",
         bad: &[

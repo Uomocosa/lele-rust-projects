@@ -1,17 +1,9 @@
 use crate::render_rule;
+use std::collections::BTreeMap;
 use std::fmt::Write;
 
+use crate::Category;
 use crate::Checker;
-
-const CATEGORIES: [(&str, &str); 7] = [
-    ("layout", "Layout: files and folders"),
-    ("delegates", "Delegates: methods and `methods/`"),
-    ("imports", "Imports and re-exports"),
-    ("types", "Types"),
-    ("tests", "Tests"),
-    ("style", "Style"),
-    ("config", "Crate config"),
-];
 
 const HEADER: &str = "# lele_lint rules
 
@@ -29,16 +21,16 @@ every **Good** example reports nothing at all.
 
 pub fn rules_markdown(checkers: &[Box<dyn Checker>]) -> String {
     let mut out = String::from(HEADER);
-    for (category, title) in CATEGORIES {
-        let mut in_category: Vec<&Box<dyn Checker>> = checkers
-            .iter()
-            .filter(|c| c.doc().category == category)
-            .collect();
-        if in_category.is_empty() {
-            continue;
-        }
+    let mut by_category: BTreeMap<Category, Vec<&Box<dyn Checker>>> = BTreeMap::new();
+    for checker in checkers {
+        by_category
+            .entry(checker.doc().category)
+            .or_default()
+            .push(checker);
+    }
+    for (category, mut in_category) in by_category {
         in_category.sort_by_key(|c| c.code());
-        let _ = writeln!(out, "## {title}\n");
+        let _ = writeln!(out, "## {category}\n");
         for checker in &in_category {
             let _ = writeln!(
                 out,

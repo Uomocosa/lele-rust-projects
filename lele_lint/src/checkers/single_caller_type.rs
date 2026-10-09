@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl SingleCallerType {
     pub const NAME: &'static str = "single_caller_type";
     pub const CODE: &'static str = "E016";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "types",
+        category: Category::Types,
         summary: "A type with no methods that is used from exactly one file is defined privately in that file.",
         why: "A separate file for a type only one function uses spreads one idea over two places.",
         bad: &[

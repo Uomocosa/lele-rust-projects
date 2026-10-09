@@ -1,4 +1,5 @@
 use atomic_delegate_macros::atomic_delegate;
+use lele_lint::Category;
 use lele_lint::Checker;
 use lele_lint::Diagnostic;
 use lele_lint::ExampleFile;
@@ -11,7 +12,7 @@ impl BevyUi {
     pub const NAME: &'static str = "bevy_ui";
     pub const CODE: &'static str = "E029";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "tests",
+        category: Category::Tests,
         summary: "A file whose visual spawn is reachable from production must ship an ignored `*_ui_png_preview` (and, when it drives a recorder, a `*_ui_mp4_preview`) test ending with `assert!(exists)` plus `println!(\"PREVIEW_ARTIFACT=...\")`.",
         why: "UI that is never rendered cannot be reviewed; the named preview test is the contract that forces an artifact for every production visual.",
         bad: &[ExampleFile {

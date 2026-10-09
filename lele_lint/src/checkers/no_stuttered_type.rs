@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoStutteredType {
     pub const NAME: &'static str = "no_stuttered_type";
     pub const CODE: &'static str = "E027";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "types",
+        category: Category::Types,
         summary: "A type does not repeat its folder's name (`freenet::Client`, not `freenet::FreenetClient`).",
         why: "Code always says `freenet::Client` through the domain prefix, so the prefix in the type name is said twice.",
         bad: &[

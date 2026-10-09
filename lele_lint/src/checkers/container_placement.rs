@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl ContainerPlacement {
     pub const NAME: &'static str = "container_placement";
     pub const CODE: &'static str = "E040";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "Behavior-free types (plain structs, enums, newtypes, aliases, ECS markers) go in the domain's `__basic__/<role>.rs`.",
         why: "Small data types don't need a file and a test each; grouping them keeps atomic files for code that does something.",
         bad: &[

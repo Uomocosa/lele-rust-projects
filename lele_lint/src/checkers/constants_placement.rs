@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl ConstantsPlacement {
     pub const NAME: &'static str = "constants_placement";
     pub const CODE: &'static str = "E026";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "A constant lives in the nearest `constants.rs` (or `__basic__/constants.rs`) shared by all its users.",
         why: "Constants placed too high leak across domains; placed too low they get duplicated.",
         bad: &[

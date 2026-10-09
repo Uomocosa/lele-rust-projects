@@ -6,6 +6,7 @@ pub mod config;
 pub use config::Config;
 #[path = "__basic__/mod.rs"]
 pub mod basic;
+pub use basic::enums::Category;
 pub use basic::enums::EntryKind;
 pub use basic::enums::Origin;
 pub use basic::enums::Requirement;

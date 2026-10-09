@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl MethodVisibility {
     pub const NAME: &'static str = "method_visibility";
     pub const CODE: &'static str = "E003";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "delegates",
+        category: Category::Delegates,
         summary: "A method file is a private module: declared with `mod`, never `pub mod` or `pub use`.",
         why: "Method bodies are reached only through the type's methods, so callers can't depend on the file layout.",
         bad: &[

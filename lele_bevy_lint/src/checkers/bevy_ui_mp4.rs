@@ -1,4 +1,5 @@
 use atomic_delegate_macros::atomic_delegate;
+use lele_lint::Category;
 use lele_lint::Checker;
 use lele_lint::Diagnostic;
 use lele_lint::ExampleFile;
@@ -11,7 +12,7 @@ impl BevyUiMp4 {
     pub const NAME: &'static str = "bevy_ui_mp4";
     pub const CODE: &'static str = "E037";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "tests",
+        category: Category::Tests,
         summary: "A file that spawns UI reachable from production and drives it over time or input must ship an ignored `*_ui_mp4_preview` test.",
         why: "Static frames cannot show motion, hover or press states; a time/input-driven UI needs a recorded clip to be reviewable.",
         bad: &[ExampleFile {

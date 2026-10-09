@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl DomainImport {
     pub const NAME: &'static str = "domain_import";
     pub const CODE: &'static str = "E011";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "Import the domain, not the item: `use crate::stock;` then `stock::Item`.",
         why: "The domain prefix at every use site says where a name comes from, so names never need to be unique crate-wide.",
         bad: &[

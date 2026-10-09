@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoCrossDomainReexport {
     pub const NAME: &'static str = "no_cross_domain_reexport";
     pub const CODE: &'static str = "E004";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "A `mod.rs` re-exports only items from its own folder; cross-domain re-exports go in `lib.rs`.",
         why: "Each domain's `mod.rs` then describes only that domain, and the crate's public surface is in one file.",
         bad: &[

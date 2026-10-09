@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl TestInline {
     pub const NAME: &'static str = "test_inline";
     pub const CODE: &'static str = "E007";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "tests",
+        category: Category::Tests,
         summary: "Unit tests live in the same file as the code (no `tests/` folders under `src/`).",
         why: "The test sits next to what it tests, so reading one means reading the other.",
         bad: &[

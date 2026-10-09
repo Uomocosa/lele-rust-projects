@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoComments {
     pub const NAME: &'static str = "no_comments";
     pub const CODE: &'static str = "E031";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "style",
+        category: Category::Style,
         summary: "No comments in `src/` or `methods/`, except `// needed helper: <why>` and a final `// no test_usage necessary`.",
         why: "Names, signatures and the usage test carry the meaning; comments drift from the code they describe.",
         bad: &[

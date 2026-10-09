@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoAllowAttributes {
     pub const NAME: &'static str = "no_allow_attributes";
     pub const CODE: &'static str = "E023";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "style",
+        category: Category::Style,
         summary: "No `#[allow(...)]`/`#[expect(...)]` unless whitelisted in `lele.toml` with the exact lint, file and a reason.",
         why: "Every silenced lint is a decision the user made on purpose, recorded with its reason.",
         bad: &[

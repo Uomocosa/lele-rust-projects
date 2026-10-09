@@ -1,4 +1,5 @@
 use atomic_delegate_macros::atomic_delegate;
+use lele_lint::Category;
 use lele_lint::Checker;
 use lele_lint::Diagnostic;
 use lele_lint::ExampleFile;
@@ -11,7 +12,7 @@ impl BevyFolder {
     pub const NAME: &'static str = "bevy_folder";
     pub const CODE: &'static str = "E008";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "A `pub fn` registered with `app.add_systems()` whose parameters read Bevy system types must live in the domain's `bevy_systems/` folder.",
         why: "Systems are the domain's Bevy edge; keeping them in one folder makes the plugin surface readable.",
         bad: &[ExampleFile {

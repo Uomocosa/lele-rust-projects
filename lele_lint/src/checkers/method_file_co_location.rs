@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl MethodFileCoLocation {
     pub const NAME: &'static str = "method_file_co_location";
     pub const CODE: &'static str = "E017";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "A `<type>_<method>.rs` file must sit in the same folder as `<type>.rs`.",
         why: "A method file that drifts away from its type is impossible to find from the type.",
         bad: &[

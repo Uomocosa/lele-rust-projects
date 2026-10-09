@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoCratePaths {
     pub const NAME: &'static str = "no_crate_paths";
     pub const CODE: &'static str = "E020";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "`crate::` appears only in `use` items (outside `lib.rs`/`main.rs`).",
         why: "All cross-domain dependencies of a file are then visible in its `use` lines at the top.",
         bad: &[

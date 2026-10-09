@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl NoStutteredPath {
     pub const NAME: &'static str = "no_stuttered_path";
     pub const CODE: &'static str = "E025";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "No `meters::Meters` paths for crate-root modules: import the type once and write `Meters`.",
         why: "The module and type say the same word twice; the type name alone is already unambiguous.",
         bad: &[

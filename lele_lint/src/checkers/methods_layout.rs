@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl MethodsLayout {
     pub const NAME: &'static str = "methods_layout";
     pub const CODE: &'static str = "E030";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "delegates",
+        category: Category::Delegates,
         summary: "Every `#[atomic_delegates]` shell has a body at `methods/<type>/<method>.rs` with `pub fn <method>`, 2+ statements and its own `test_usage`.",
         why: "`methods/` hides bodies until you need them; the type file stays a short list of what the type can do.",
         bad: &[

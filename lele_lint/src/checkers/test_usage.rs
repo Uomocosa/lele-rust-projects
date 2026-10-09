@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl TestUsage {
     pub const NAME: &'static str = "test_usage";
     pub const CODE: &'static str = "E006";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "tests",
+        category: Category::Tests,
         summary: "Every non-trivial file has a `#[cfg(test)] mod tests` with a `test_usage` test, or ends with `// no test_usage necessary`.",
         why: "The usage test is the function's documentation: it shows how to call it and proves it works.",
         bad: &[

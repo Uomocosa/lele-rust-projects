@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl SingleFieldNewtype {
     pub const NAME: &'static str = "single_field_newtype";
     pub const CODE: &'static str = "E018";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "types",
+        category: Category::Types,
         summary: "A struct with one field is a tuple newtype deriving `Deref`; two or more fields are named.",
         why: "Field count decides the shape, so every single-value wrapper reads the same: `*meters`, never `meters.value`.",
         bad: &[

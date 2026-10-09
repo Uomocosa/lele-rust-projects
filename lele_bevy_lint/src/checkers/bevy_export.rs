@@ -1,4 +1,5 @@
 use atomic_delegate_macros::atomic_delegate;
+use lele_lint::Category;
 use lele_lint::Checker;
 use lele_lint::Diagnostic;
 use lele_lint::ExampleFile;
@@ -11,7 +12,7 @@ impl BevyExport {
     pub const NAME: &'static str = "bevy_export";
     pub const CODE: &'static str = "E005";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "A domain declares `pub mod bevy_systems;` but never re-exports its systems at the domain root.",
         why: "Consumers reach systems as `domain::bevy_systems::system`, so the folder is always visible in the path.",
         bad: &[

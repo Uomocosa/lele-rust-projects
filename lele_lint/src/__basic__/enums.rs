@@ -18,3 +18,21 @@ pub enum Origin {
     Methods,
     Examples,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, derive_more::Display)]
+pub enum Category {
+    #[display("Layout: files and folders")]
+    Layout,
+    #[display("Delegates: methods and `methods/`")]
+    Delegates,
+    #[display("Imports and re-exports")]
+    Imports,
+    #[display("Types")]
+    Types,
+    #[display("Tests")]
+    Tests,
+    #[display("Style")]
+    Style,
+    #[display("Crate config")]
+    Config,
+}

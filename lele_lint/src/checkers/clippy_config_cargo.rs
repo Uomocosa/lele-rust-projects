@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl ClippyConfigCargo {
     pub const NAME: &'static str = "clippy_config_cargo";
     pub const CODE: &'static str = "E021";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "config",
+        category: Category::Config,
         summary: "`Cargo.toml` has `[lints.clippy]` with `pedantic`/`nursery` denied at priority -1 and the 13 required deny lints (or inherits them from the workspace).",
         why: "Every crate gets the same strict baseline, so no crate silently allows unwraps, panics or lossy casts.",
         bad: &[

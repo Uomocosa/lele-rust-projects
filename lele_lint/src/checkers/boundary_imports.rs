@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl BoundaryImports {
     pub const NAME: &'static str = "boundary_imports";
     pub const CODE: &'static str = "E036";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "imports",
+        category: Category::Imports,
         summary: "A `[[lele.boundary]]` folder may not use any path from its `cannot_use` list.",
         why: "A boundary marks a pure core; forbidden imports are how I/O and frameworks leak in.",
         bad: &[

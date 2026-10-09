@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl ModRsPurity {
     pub const NAME: &'static str = "mod_rs_purity";
     pub const CODE: &'static str = "E019";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "`mod.rs` holds only `mod`/`pub mod` declarations and `pub use` re-exports.",
         why: "`mod.rs` is the folder's table of contents; logic hidden there is logic nobody looks for.",
         bad: &[

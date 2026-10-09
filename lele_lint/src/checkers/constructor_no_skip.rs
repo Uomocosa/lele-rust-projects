@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl ConstructorNoSkip {
     pub const NAME: &'static str = "constructor_no_skip";
     pub const CODE: &'static str = "E013";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "delegates",
+        category: Category::Delegates,
         summary: "`impl Default` and real constructors are never `#[rustfmt::skip]`.",
         why: "Constructors list every field; rustfmt keeps them one field per line so diffs stay readable.",
         bad: &[

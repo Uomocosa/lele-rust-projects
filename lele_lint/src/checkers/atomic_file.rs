@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl AtomicFile {
     pub const NAME: &'static str = "atomic_file";
     pub const CODE: &'static str = "E001";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "One public item per file, and the file is named after it (`greet.rs` holds `pub fn greet`).",
         why: "A file name tells you exactly what is inside; finding code means finding a file, and every unit gets its own test.",
         bad: &[

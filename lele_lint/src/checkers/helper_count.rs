@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl HelperCount {
     pub const NAME: &'static str = "helper_count";
     pub const CODE: &'static str = "E015";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "A file has one public function; at most 2 private helpers unless each is marked `// needed helper: <why>`.",
         why: "Helpers pile up silently; the marker forces a reason for every extra function, and unexplained ones get their own file.",
         bad: &[

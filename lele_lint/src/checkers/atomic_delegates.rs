@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl AtomicDelegates {
     pub const NAME: &'static str = "atomic_delegates";
     pub const CODE: &'static str = "E012";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "delegates",
+        category: Category::Delegates,
         summary: "Hand-written methods have at most 3 statements, and an impl block with one-line methods carries `#[rustfmt::skip]`.",
         why: "Longer methods belong in `methods/<type>/<method>.rs`; short ones stay readable as one line each.",
         bad: &[

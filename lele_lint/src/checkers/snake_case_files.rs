@@ -1,3 +1,4 @@
+use crate::Category;
 use crate::Checker;
 use crate::Diagnostic;
 use crate::ExampleFile;
@@ -11,7 +12,7 @@ impl SnakeCaseFiles {
     pub const NAME: &'static str = "snake_case_files";
     pub const CODE: &'static str = "E002";
     pub const DOC: RuleDoc = RuleDoc {
-        category: "layout",
+        category: Category::Layout,
         summary: "File and folder names are snake_case.",
         why: "Module names are derived from file names; one casing keeps paths predictable.",
         bad: &[
