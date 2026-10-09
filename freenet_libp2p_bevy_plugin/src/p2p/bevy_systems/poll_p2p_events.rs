@@ -120,10 +120,10 @@ mod tests {
             .ok();
         app.world_mut()
             .resource_mut::<p2p::Commands<Dummy>>()
-            .push(p2p::Command::Dial {
+            .push(p2p::Command::Net(p2p::NetCommand::Dial {
                 peer_id: "peer".to_string(),
                 addrs: vec![],
-            });
+            }));
         app.insert_resource(p2p::Bridge {
             cmd_tx,
             event_rx: std::sync::Mutex::new(Some(event_rx)),

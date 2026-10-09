@@ -89,53 +89,7 @@ pub enum NetCommand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command<T> {
     Net(NetCommand),
-    Dial {
-        peer_id: String,
-        addrs: Vec<String>,
-    },
-    DialForce {
-        peer_id: String,
-        addrs: Vec<String>,
-    },
-    ReserveRelay {
-        relay_addr: String,
-    },
-    SetMdns {
-        enabled: bool,
-    },
-    AddKadPeer {
-        peer_id: String,
-        addrs: Vec<String>,
-    },
-    ProvideRoom {
-        room: String,
-    },
-    FindRoom {
-        room: String,
-    },
-    Send {
-        peer_id: String,
-        payload: T,
-    },
-    PutHistory {
-        room: String,
-        chunk: u64,
-        data: Vec<u8>,
-    },
-    FetchHistory {
-        room: String,
-        chunk: u64,
-    },
-    FetchRoster {
-        room: String,
-    },
-    Subscribe {
-        topic: String,
-    },
-    Publish {
-        topic: String,
-        data: Vec<u8>,
-    },
+    Send { peer_id: String, payload: T },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

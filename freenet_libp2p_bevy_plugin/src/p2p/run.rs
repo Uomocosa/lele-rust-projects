@@ -444,30 +444,8 @@ fn dispatch_command<T: p2p::Message>(
     room_queries: &mut std::collections::HashMap<libp2p::kad::QueryId, String>,
     cmd: Option<p2p::Command<T>>,
 ) -> bool {
-    let net = match cmd {
-        Some(p2p::Command::Net(net)) => net,
-        Some(p2p::Command::Dial { peer_id, addrs }) => p2p::NetCommand::Dial { peer_id, addrs },
-        Some(p2p::Command::DialForce { peer_id, addrs }) => {
-            p2p::NetCommand::DialForce { peer_id, addrs }
-        }
-        Some(p2p::Command::ReserveRelay { relay_addr }) => {
-            p2p::NetCommand::ReserveRelay { relay_addr }
-        }
-        Some(p2p::Command::SetMdns { enabled }) => p2p::NetCommand::SetMdns { enabled },
-        Some(p2p::Command::AddKadPeer { peer_id, addrs }) => {
-            p2p::NetCommand::AddKadPeer { peer_id, addrs }
-        }
-        Some(p2p::Command::ProvideRoom { room }) => p2p::NetCommand::ProvideRoom { room },
-        Some(p2p::Command::FindRoom { room }) => p2p::NetCommand::FindRoom { room },
-        Some(p2p::Command::PutHistory { room, chunk, data }) => {
-            p2p::NetCommand::PutHistory { room, chunk, data }
-        }
-        Some(p2p::Command::FetchHistory { room, chunk }) => {
-            p2p::NetCommand::FetchHistory { room, chunk }
-        }
-        Some(p2p::Command::FetchRoster { room }) => p2p::NetCommand::FetchRoster { room },
-        Some(p2p::Command::Subscribe { topic }) => p2p::NetCommand::Subscribe { topic },
-        Some(p2p::Command::Publish { topic, data }) => p2p::NetCommand::Publish { topic, data },
+    match cmd {
+        Some(p2p::Command::Net(net)) => dispatch_net_command(swarm, event_tx, room_queries, net),
         Some(p2p::Command::Send { peer_id, payload }) => {
             if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
                 swarm
@@ -475,11 +453,9 @@ fn dispatch_command<T: p2p::Message>(
                     .request_response
                     .send_request(&pid, payload);
             }
-            return true;
         }
         None => return false,
-    };
-    dispatch_net_command(swarm, event_tx, room_queries, net);
+    }
     true
 }
 
