@@ -15,11 +15,11 @@ mod tests {
     #[test]
     fn test_usage() {
         assert_eq!(
-            dialable(vec![net_id::PeerAddr("/ip4/0.0.0.0/tcp/9000".to_string())]),
+            dialable(vec![net_id::PeerAddr::from("/ip4/0.0.0.0/tcp/9000")]),
             Vec::<net_id::PeerAddr>::new()
         );
         assert_eq!(
-            dialable(vec![net_id::PeerAddr("/ip4/1.2.3.4/tcp/9000".to_string())]).len(),
+            dialable(vec![net_id::PeerAddr::from("/ip4/1.2.3.4/tcp/9000")]).len(),
             1
         );
     }

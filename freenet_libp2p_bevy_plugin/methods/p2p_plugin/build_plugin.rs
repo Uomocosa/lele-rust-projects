@@ -76,7 +76,7 @@ mod tests {
         assert!(app.world().get_resource::<roster::RoomRoster>().is_some());
         assert_eq!(
             app.world().get_resource::<roster::Room>(),
-            Some(&roster::Room(net_id::RoomName("default".to_string())))
+            Some(&roster::Room(net_id::RoomName::from("default")))
         );
         assert!(app.world().get_resource::<net_id::NetworkId>().is_some());
     }

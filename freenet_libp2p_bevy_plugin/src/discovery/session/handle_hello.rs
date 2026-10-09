@@ -75,12 +75,12 @@ mod tests {
 
     fn session_in_room() -> Session {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
-            name: net_id::RoomName("r".to_string()),
+            name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
         session
@@ -89,14 +89,14 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = session_in_room();
-        let peer = net_id::PeerId("a".to_string());
+        let peer = net_id::PeerId::from("a");
         session.connected.insert(peer.clone());
         let hello = Hello {
-            room: Some(net_id::RoomName("r".to_string())),
-            addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
+            room: Some(net_id::RoomName::from("r")),
+            addrs: vec![net_id::PeerAddr::from("/ip4/1")],
             peers: vec![(
-                net_id::PeerId("b".to_string()),
-                vec![net_id::PeerAddr("/ip4/2".to_string())],
+                net_id::PeerId::from("b"),
+                vec![net_id::PeerAddr::from("/ip4/2")],
             )],
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
@@ -124,11 +124,11 @@ mod tests {
     #[test]
     fn test_connected_before_known_becomes_member() {
         let mut session = session_in_room();
-        let joiner = net_id::PeerId("joiner".to_string());
+        let joiner = net_id::PeerId::from("joiner");
         session.connected.insert(joiner.clone());
         let hello = Hello {
-            room: Some(net_id::RoomName("r".to_string())),
-            addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
+            room: Some(net_id::RoomName::from("r")),
+            addrs: vec![net_id::PeerAddr::from("/ip4/1")],
             peers: Vec::new(),
         };
         let data = bincode::serialize(&hello).unwrap_or_default();

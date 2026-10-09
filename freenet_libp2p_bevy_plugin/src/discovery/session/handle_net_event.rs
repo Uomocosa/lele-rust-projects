@@ -48,23 +48,23 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
         handle_net_event(
             &mut session,
-            p2p::NetEvent::PeerConnected(net_id::PeerId("a".to_string())),
+            p2p::NetEvent::PeerConnected(net_id::PeerId::from("a")),
             discovery::EpochSecs(1),
         );
-        assert!(session.connected.contains(&net_id::PeerId("a".to_string())));
+        assert!(session.connected.contains(&net_id::PeerId::from("a")));
         assert!(matches!(
             std::mem::take(&mut session.outputs).as_slice(),
             [Output::Net(p2p::NetCommand::Exchange { peer_id, .. })] if peer_id.as_str() == "a"
         ));
         handle_net_event(
             &mut session,
-            p2p::NetEvent::PeerDisconnected(net_id::PeerId("a".to_string())),
+            p2p::NetEvent::PeerDisconnected(net_id::PeerId::from("a")),
             discovery::EpochSecs(2),
         );
         assert!(session.connected.is_empty());

@@ -23,13 +23,13 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
-        session.connected.insert(net_id::PeerId("a".to_string()));
+        session.connected.insert(net_id::PeerId::from("a"));
         session.room = Some(discovery::Room {
-            name: net_id::RoomName("r".to_string()),
+            name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
         tick(&mut session, discovery::EpochSecs(100));

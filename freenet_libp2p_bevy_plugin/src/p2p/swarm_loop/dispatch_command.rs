@@ -41,7 +41,7 @@ mod tests {
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let mut room_queries = HashMap::new();
         let subscribe = p2p::Command::Net(p2p::NetCommand::Subscribe {
-            topic: net_id::Topic(String::from("lobby/topic")),
+            topic: net_id::Topic::from("lobby/topic"),
         });
         assert!(dispatch_command(
             &mut swarm,

@@ -26,7 +26,7 @@ mod tests {
         let mut commands = Outbox::default();
         assert!(commands.is_empty());
         commands.push(p2p::NetCommand::FindRoom {
-            room: net_id::RoomName("room".to_string()),
+            room: net_id::RoomName::from("room"),
         });
         assert_eq!(commands.len(), 1);
     }

@@ -22,11 +22,11 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
-        let room = net_id::RoomName("r".to_string());
+        let room = net_id::RoomName::from("r");
         handle(
             &mut session,
             Input::Command(discovery::Command::Join(room.clone())),

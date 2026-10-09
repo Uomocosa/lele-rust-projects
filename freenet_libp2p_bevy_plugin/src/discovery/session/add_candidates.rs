@@ -31,27 +31,23 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
         let peers = vec![
             (
-                net_id::PeerId("me".to_string()),
-                vec![net_id::PeerAddr("/ip4/1".to_string())],
+                net_id::PeerId::from("me"),
+                vec![net_id::PeerAddr::from("/ip4/1")],
             ),
             (
-                net_id::PeerId("a".to_string()),
-                vec![net_id::PeerAddr("/ip4/2".to_string())],
+                net_id::PeerId::from("a"),
+                vec![net_id::PeerAddr::from("/ip4/2")],
             ),
-            (net_id::PeerId("b".to_string()), Vec::new()),
+            (net_id::PeerId::from("b"), Vec::new()),
         ];
         add_candidates(&mut session, peers, discovery::EpochSecs(1));
         assert_eq!(session.candidates.len(), 1);
-        assert!(
-            session
-                .candidates
-                .contains_key(&net_id::PeerId("a".to_string()))
-        );
+        assert!(session.candidates.contains_key(&net_id::PeerId::from("a")));
     }
 }

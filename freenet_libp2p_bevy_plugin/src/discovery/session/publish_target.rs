@@ -19,19 +19,19 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
-            vec![net_id::PeerAddr("/ip4/9".to_string())],
+            net_id::PeerId::from("me"),
+            vec![net_id::PeerAddr::from("/ip4/9")],
             discovery::Timing::default(),
         );
         assert!(publish_target(&session).is_none());
         session.room = Some(discovery::Room {
-            name: net_id::RoomName("r".to_string()),
+            name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
         let target = publish_target(&session);
         assert_eq!(
             target.map(|target| target.addrs),
-            Some(vec![net_id::PeerAddr("/ip4/9".to_string())])
+            Some(vec![net_id::PeerAddr::from("/ip4/9")])
         );
     }
 }

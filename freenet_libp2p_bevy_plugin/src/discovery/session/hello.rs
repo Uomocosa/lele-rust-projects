@@ -32,12 +32,12 @@ mod tests {
     #[test]
     fn test_usage() {
         let session = Session::new(
-            net_id::PeerId("me".to_string()),
-            vec![net_id::PeerAddr("/ip4/9".to_string())],
+            net_id::PeerId::from("me"),
+            vec![net_id::PeerAddr::from("/ip4/9")],
             discovery::Timing::default(),
         );
         let hello = hello(&session);
         assert_eq!(hello.room, None);
-        assert_eq!(hello.addrs, vec![net_id::PeerAddr("/ip4/9".to_string())]);
+        assert_eq!(hello.addrs, vec![net_id::PeerAddr::from("/ip4/9")]);
     }
 }

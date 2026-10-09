@@ -31,7 +31,7 @@ mod tests {
         let mut c = Commands::<()>::default();
         assert!(c.is_empty());
         c.push(p2p::Command::Net(p2p::NetCommand::Dial {
-            peer_id: net_id::PeerId("p".to_string()),
+            peer_id: net_id::PeerId::from("p"),
             addrs: vec![],
         }));
         assert_eq!(c.take_all().len(), 1);

@@ -43,7 +43,7 @@ mod tests {
         let snapshot = discovery::Snapshot {
             lobby: discovery::Lobby::new(),
             room: Some(discovery::Room {
-                name: net_id::RoomName("r".to_string()),
+                name: net_id::RoomName::from("r"),
                 members: discovery::Members::new(),
             }),
         };

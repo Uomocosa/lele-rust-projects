@@ -19,12 +19,12 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
-            vec![net_id::PeerAddr("/ip4/9".to_string())],
+            net_id::PeerId::from("me"),
+            vec![net_id::PeerAddr::from("/ip4/9")],
             discovery::Timing::default(),
         );
-        session.connected.insert(net_id::PeerId("a".to_string()));
-        session.connected.insert(net_id::PeerId("b".to_string()));
+        session.connected.insert(net_id::PeerId::from("a"));
+        session.connected.insert(net_id::PeerId::from("b"));
         broadcast_hello(&mut session);
         assert_eq!(std::mem::take(&mut session.outputs).len(), 2);
     }

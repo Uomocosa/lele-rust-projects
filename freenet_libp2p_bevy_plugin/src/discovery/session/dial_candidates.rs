@@ -41,26 +41,26 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
-            name: net_id::RoomName("r".to_string()),
+            name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
         let peers = vec![
             (
-                net_id::PeerId("a".to_string()),
-                vec![net_id::PeerAddr("/ip4/1".to_string())],
+                net_id::PeerId::from("a"),
+                vec![net_id::PeerAddr::from("/ip4/1")],
             ),
             (
-                net_id::PeerId("b".to_string()),
-                vec![net_id::PeerAddr("/ip4/2".to_string())],
+                net_id::PeerId::from("b"),
+                vec![net_id::PeerAddr::from("/ip4/2")],
             ),
         ];
         discovery::session::add_candidates(&mut session, peers, discovery::EpochSecs(1));
-        session.connected.insert(net_id::PeerId("b".to_string()));
+        session.connected.insert(net_id::PeerId::from("b"));
         dial_candidates(&mut session, discovery::EpochSecs(10));
         dial_candidates(&mut session, discovery::EpochSecs(10));
         assert!(matches!(

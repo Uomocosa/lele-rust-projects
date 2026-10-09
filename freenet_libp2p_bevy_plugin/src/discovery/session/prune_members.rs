@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
@@ -50,16 +50,16 @@ mod tests {
             );
         }
         session.room = Some(discovery::Room {
-            name: net_id::RoomName("r".to_string()),
+            name: net_id::RoomName::from("r"),
             members,
         });
-        session.connected.insert(net_id::PeerId("live".to_string()));
+        session.connected.insert(net_id::PeerId::from("live"));
         prune_members(&mut session, discovery::EpochSecs(100));
         let left: Vec<_> = session
             .room
             .as_ref()
             .map(|room| room.members.keys().cloned().collect())
             .unwrap_or_default();
-        assert_eq!(left, vec![net_id::PeerId("live".to_string())]);
+        assert_eq!(left, vec![net_id::PeerId::from("live")]);
     }
 }

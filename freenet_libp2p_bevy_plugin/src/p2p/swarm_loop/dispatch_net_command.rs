@@ -111,7 +111,7 @@ mod tests {
         let mut swarm = swarm();
         let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
         let mut room_queries = HashMap::new();
-        let topic = net_id::Topic(String::from("lobby/topic"));
+        let topic = net_id::Topic::from("lobby/topic");
         dispatch_net_command(
             &mut swarm,
             &tx,
@@ -123,7 +123,7 @@ mod tests {
         let hash = IdentTopic::new(topic.as_str()).hash();
         assert!(swarm.behaviour().gossipsub.topics().any(|t| *t == hash));
 
-        let room = net_id::RoomName(String::from("room-a"));
+        let room = net_id::RoomName::from("room-a");
         dispatch_net_command(
             &mut swarm,
             &tx,

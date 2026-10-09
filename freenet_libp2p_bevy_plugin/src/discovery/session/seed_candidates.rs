@@ -37,22 +37,22 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
-        let room = net_id::RoomName("r".to_string());
+        let room = net_id::RoomName::from("r");
         session.room = Some(discovery::Room {
             name: room.clone(),
             members: discovery::Members::new(),
         });
         let presence = discovery::Presence {
-            addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
+            addrs: vec![net_id::PeerAddr::from("/ip4/1")],
             updated_at: discovery::EpochSecs(5),
         };
         let members = BTreeMap::from([
-            (net_id::PeerId("me".to_string()), presence.clone()),
-            (net_id::PeerId("a".to_string()), presence),
+            (net_id::PeerId::from("me"), presence.clone()),
+            (net_id::PeerId::from("a"), presence),
         ]);
         session.lobby.insert(
             room,
@@ -63,6 +63,6 @@ mod tests {
         );
         seed_candidates(&mut session);
         let seeded: Vec<_> = session.candidates.keys().cloned().collect();
-        assert_eq!(seeded, vec![net_id::PeerId("a".to_string())]);
+        assert_eq!(seeded, vec![net_id::PeerId::from("a")]);
     }
 }

@@ -36,7 +36,7 @@ mod tests {
     fn test_usage() {
         let mut members = BTreeMap::new();
         members.insert(
-            net_id::PeerId("peer".to_string()),
+            net_id::PeerId::from("peer"),
             discovery::Presence {
                 addrs: Vec::new(),
                 updated_at: discovery::EpochSecs(5),
@@ -48,7 +48,7 @@ mod tests {
         };
         let mut newer = BTreeMap::new();
         newer.insert(
-            net_id::PeerId("peer".to_string()),
+            net_id::PeerId::from("peer"),
             discovery::Presence {
                 addrs: Vec::new(),
                 updated_at: discovery::EpochSecs(9),
@@ -59,7 +59,7 @@ mod tests {
             members: newer,
         };
         let merged = merge_room(Some(current), incoming);
-        let row = merged.members.get(&net_id::PeerId("peer".to_string()));
+        let row = merged.members.get(&net_id::PeerId::from("peer"));
         assert_eq!(row.map(|presence| *presence.updated_at), Some(9));
     }
 }

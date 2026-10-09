@@ -12,10 +12,10 @@ mod tests {
 
     #[test]
     fn test_usage() {
-        let game = discovery::GameName("chess".to_string());
-        let token = discovery::GameToken("token".to_string());
+        let game = discovery::GameName::from("chess");
+        let token = discovery::GameToken::from("token");
         assert_eq!(contract_params(&game, &token), b"chess/token".to_vec());
-        let other = discovery::GameToken("other".to_string());
+        let other = discovery::GameToken::from("other");
         assert_ne!(
             contract_params(&game, &token),
             contract_params(&game, &other)

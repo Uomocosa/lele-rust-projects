@@ -19,8 +19,8 @@ mod tests {
     #[test]
     fn test_usage() {
         let session = Session::new(
-            net_id::PeerId("me".to_string()),
-            vec![net_id::PeerAddr("/ip4/9".to_string())],
+            net_id::PeerId::from("me"),
+            vec![net_id::PeerAddr::from("/ip4/9")],
             discovery::Timing::default(),
         );
         assert_eq!(snapshot(&session), discovery::Snapshot::default());

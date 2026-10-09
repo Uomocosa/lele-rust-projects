@@ -55,12 +55,12 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
-        session.connected.insert(net_id::PeerId("a".to_string()));
-        let room = net_id::RoomName("r".to_string());
+        session.connected.insert(net_id::PeerId::from("a"));
+        let room = net_id::RoomName::from("r");
         handle_command(
             &mut session,
             discovery::Command::Create(room),

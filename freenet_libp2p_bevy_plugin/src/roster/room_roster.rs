@@ -29,8 +29,8 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut r = RoomRoster::default();
-        let peer = net_id::PeerId("peer".to_string());
-        r.add_entry(net_id::RoomName("room".to_string()), [1u8; 32], peer);
+        let peer = net_id::PeerId::from("peer");
+        r.add_entry(net_id::RoomName::from("room"), [1u8; 32], peer);
         assert_eq!(r.len(), 1);
     }
 }

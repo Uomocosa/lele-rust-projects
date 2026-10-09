@@ -23,7 +23,7 @@ mod tests {
     #[tokio::test]
     async fn test_usage() {
         let ready = p2p::Ready {
-            peer_id: net_id::PeerId("me".to_string()),
+            peer_id: net_id::PeerId::from("me"),
             addrs: Vec::new(),
         };
         let (_tx, mut rx) = tokio::sync::watch::channel(Some(ready.clone()));

@@ -41,8 +41,8 @@ mod tests {
         let mut swarm = swarm();
         let peer = libp2p::PeerId::random();
         let addrs = vec![
-            net_id::PeerAddr(String::from("/ip4/10.0.0.2/tcp/4001")),
-            net_id::PeerAddr(String::from("not-an-addr")),
+            net_id::PeerAddr::from("/ip4/10.0.0.2/tcp/4001"),
+            net_id::PeerAddr::from("not-an-addr"),
         ];
         seed_kad_peer(&mut swarm, &net_id::PeerId(peer.to_string()), &addrs);
         let known = swarm.behaviour_mut().kademlia.kbuckets().any(|bucket| {

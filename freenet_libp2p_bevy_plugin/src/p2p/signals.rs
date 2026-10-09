@@ -52,7 +52,7 @@ mod tests {
         let signals = Signals::default();
         let (ready_rx, observed_rx) = signals.subscribe();
         signals.ready_tx.send_replace(Some(p2p::Ready {
-            peer_id: net_id::PeerId("p".to_string()),
+            peer_id: net_id::PeerId::from("p"),
             addrs: vec![],
         }));
         signals.observed_tx.send_replace(Some(vec![net_id::PeerAddr(

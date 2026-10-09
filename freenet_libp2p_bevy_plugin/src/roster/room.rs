@@ -28,9 +28,6 @@ mod tests {
     #[test]
     fn test_usage() {
         assert_eq!(Room::default().as_str(), "default");
-        assert_eq!(
-            Room::new(net_id::RoomName("alpha".to_string())).as_str(),
-            "alpha"
-        );
+        assert_eq!(Room::new(net_id::RoomName::from("alpha")).as_str(), "alpha");
     }
 }

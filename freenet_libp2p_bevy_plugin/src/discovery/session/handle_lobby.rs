@@ -26,12 +26,12 @@ mod tests {
     #[test]
     fn test_usage() {
         let mut session = Session::new(
-            net_id::PeerId("me".to_string()),
+            net_id::PeerId::from("me"),
             Vec::new(),
             discovery::Timing::default(),
         );
         session.room = Some(discovery::Room {
-            name: net_id::RoomName("r".to_string()),
+            name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
         let mut members = BTreeMap::new();
@@ -39,14 +39,14 @@ mod tests {
             members.insert(
                 net_id::PeerId(peer.to_string()),
                 discovery::Presence {
-                    addrs: vec![net_id::PeerAddr("/ip4/1".to_string())],
+                    addrs: vec![net_id::PeerAddr::from("/ip4/1")],
                     updated_at: discovery::EpochSecs(3),
                 },
             );
         }
         let mut lobby = discovery::Lobby::new();
         lobby.insert(
-            net_id::RoomName("r".to_string()),
+            net_id::RoomName::from("r"),
             discovery::RoomRecord {
                 capacity: 8,
                 members,

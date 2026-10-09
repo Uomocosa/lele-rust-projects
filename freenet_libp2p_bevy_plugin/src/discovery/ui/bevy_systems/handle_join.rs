@@ -39,7 +39,7 @@ mod tests {
         let mut app = App::new();
         app.add_message::<discovery::Command>();
         app.init_resource::<discovery::Snapshot>();
-        let room = net_id::RoomName("alpha".to_string());
+        let room = net_id::RoomName::from("alpha");
         app.world_mut().spawn((
             discovery::ui::RoomButton(room.clone()),
             Interaction::Pressed,

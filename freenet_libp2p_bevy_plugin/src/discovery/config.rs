@@ -11,8 +11,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            game_name: discovery::GameName("test".to_string()),
-            token: discovery::GameToken("test".to_string()),
+            game_name: discovery::GameName::from("test"),
+            token: discovery::GameToken::from("test"),
             timing: discovery::Timing::default(),
             capacity: 8,
         }

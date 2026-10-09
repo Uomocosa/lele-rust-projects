@@ -52,7 +52,7 @@ mod tests {
         let mut swarm = swarm();
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         let peer = net_id::PeerId(libp2p::PeerId::random().to_string());
-        let addrs = vec![net_id::PeerAddr(String::from("/ip4/127.0.0.1/tcp/9"))];
+        let addrs = vec![net_id::PeerAddr::from("/ip4/127.0.0.1/tcp/9")];
         let gentle = PeerCondition::DisconnectedAndNotDialing;
         dial_peer(&mut swarm, &tx, &peer, &addrs, gentle);
         assert!(rx.try_recv().is_err());

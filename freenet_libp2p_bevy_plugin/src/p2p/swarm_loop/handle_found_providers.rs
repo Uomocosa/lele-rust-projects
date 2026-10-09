@@ -42,7 +42,7 @@ mod tests {
             .behaviour_mut()
             .kademlia
             .get_providers(p2p::provider_key("room-a"));
-        let room_queries = HashMap::from([(id, net_id::RoomName(String::from("room-a")))]);
+        let room_queries = HashMap::from([(id, net_id::RoomName::from("room-a"))]);
         let provider = libp2p::PeerId::random();
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
         handle_found_providers(&tx, &room_queries, id, &HashSet::from([provider]));

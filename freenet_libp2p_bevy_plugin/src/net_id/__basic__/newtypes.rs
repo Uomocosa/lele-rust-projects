@@ -1,5 +1,5 @@
 use bevy::prelude::Reflect;
-use derive_more::{Deref, Display};
+use derive_more::{Deref, Display, From};
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -14,9 +14,11 @@ use serde::{Deserialize, Serialize};
     Deserialize,
     Deref,
     Display,
+    From,
     Reflect,
 )]
 #[reflect(Hash)]
+#[from(forward)]
 pub struct PeerId(pub String);
 
 #[derive(
@@ -31,9 +33,11 @@ pub struct PeerId(pub String);
     Deserialize,
     Deref,
     Display,
+    From,
     Reflect,
 )]
 #[reflect(Hash)]
+#[from(forward)]
 pub struct PeerAddr(pub String);
 
 #[derive(
@@ -48,9 +52,11 @@ pub struct PeerAddr(pub String);
     Deserialize,
     Deref,
     Display,
+    From,
     Reflect,
 )]
 #[reflect(Hash)]
+#[from(forward)]
 pub struct RoomName(pub String);
 
 #[derive(
@@ -65,7 +71,9 @@ pub struct RoomName(pub String);
     Deserialize,
     Deref,
     Display,
+    From,
     Reflect,
 )]
 #[reflect(Hash)]
+#[from(forward)]
 pub struct Topic(pub String);

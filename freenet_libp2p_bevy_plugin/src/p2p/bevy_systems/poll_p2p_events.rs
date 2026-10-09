@@ -95,13 +95,13 @@ mod tests {
         app.insert_resource(p2p::Outbox::default());
         event_tx
             .send(p2p::Event::Net(p2p::NetEvent::PeerConnected(
-                net_id::PeerId("peer".to_string()),
+                net_id::PeerId::from("peer"),
             )))
             .ok();
         app.world_mut()
             .resource_mut::<p2p::Commands<Dummy>>()
             .push(p2p::Command::Net(p2p::NetCommand::Dial {
-                peer_id: net_id::PeerId("peer".to_string()),
+                peer_id: net_id::PeerId::from("peer"),
                 addrs: vec![],
             }));
         app.insert_resource(p2p::Bridge {
@@ -134,12 +134,12 @@ mod tests {
         });
         event_tx
             .send(p2p::Event::Net(p2p::NetEvent::PeerConnected(
-                net_id::PeerId("peer".to_string()),
+                net_id::PeerId::from("peer"),
             )))
             .ok();
         event_tx
             .send(p2p::Event::Message {
-                from: net_id::PeerId("peer".to_string()),
+                from: net_id::PeerId::from("peer"),
                 payload: Dummy(1),
             })
             .ok();

@@ -40,7 +40,7 @@ async fn main() {
         p2p::MdnsMode::Disabled,
     )));
     let discovery_plugins = discovery::Plugins(discovery::Config {
-        game_name: discovery::GameName("lobby_room_example".to_string()),
+        game_name: discovery::GameName::from("lobby_room_example"),
         token: args.token.clone().map_or_else(
             || freenet_libp2p_bevy_plugin::game_token!(),
             discovery::GameToken,
