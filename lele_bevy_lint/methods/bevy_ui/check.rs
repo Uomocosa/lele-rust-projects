@@ -12,14 +12,7 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
     for source in project.sources() {
         let rel_path = source.relative_path;
         let file = source.file;
-        if !scan::file_reaches_production(file, &graph) {
-            continue;
-        }
-        let visuals = scan::prod_visuals(file);
-        let Some(visual) = visuals
-            .iter()
-            .find(|found| graph.reaches_production(&found.owner))
-        else {
+        let Some(visual) = scan::reachable_visual(file, &graph) else {
             continue;
         };
 
@@ -39,19 +32,13 @@ pub fn check(_self: &checkers::bevy_ui::BevyUi, project: &Project) -> Vec<Diagno
             continue;
         };
 
-        if !preview.ignored {
-            diags.push(scan::diag(
-                project,
-                source.origin,
-                rel_path,
-                preview.line,
-                checkers::bevy_ui::BevyUi::CODE,
-                format!(
-                    "`fn {}` must carry `#[ignore]` so the default test suite stays GPU-free",
-                    preview.name
-                ),
-            ));
-        }
+        diags.extend(scan::require_ignored(
+            project,
+            source.origin,
+            rel_path,
+            preview,
+            checkers::bevy_ui::BevyUi::CODE,
+        ));
 
         substance_check(project, source.origin, rel_path, file, preview, &mut diags);
     }

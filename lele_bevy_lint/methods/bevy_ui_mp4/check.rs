@@ -11,18 +11,11 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
     for source in project.sources() {
         let rel_path = source.relative_path;
         let file = source.file;
-        if !scan::file_reaches_production(file, &graph) {
-            continue;
-        }
         let found_drivers = scan::drivers(file);
         if found_drivers.is_empty() {
             continue;
         }
-        let visuals = scan::prod_visuals(file);
-        let Some(visual) = visuals
-            .iter()
-            .find(|found| graph.reaches_production(&found.owner))
-        else {
+        let Some(visual) = scan::reachable_visual(file, &graph) else {
             continue;
         };
 
@@ -40,19 +33,13 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
             continue;
         };
 
-        if !preview.ignored {
-            diags.push(scan::diag(
-                project,
-                source.origin,
-                rel_path,
-                preview.line,
-                checkers::bevy_ui_mp4::BevyUiMp4::CODE,
-                format!(
-                    "`fn {}` must carry `#[ignore]` so the default test suite stays GPU-free",
-                    preview.name
-                ),
-            ));
-        }
+        diags.extend(scan::require_ignored(
+            project,
+            source.origin,
+            rel_path,
+            preview,
+            checkers::bevy_ui_mp4::BevyUiMp4::CODE,
+        ));
     }
 
     diags

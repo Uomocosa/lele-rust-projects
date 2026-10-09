@@ -29,19 +29,13 @@ pub fn check(
             continue;
         };
 
-        if !preview.ignored {
-            diags.push(scan::diag(
-                project,
-                source.origin,
-                rel_path,
-                preview.line,
-                checkers::bevy_plugin_scene::BevyPluginScene::CODE,
-                format!(
-                    "`fn {}` must carry `#[ignore]` so the default test suite stays GPU-free",
-                    preview.name
-                ),
-            ));
-        }
+        diags.extend(scan::require_ignored(
+            project,
+            source.origin,
+            rel_path,
+            preview,
+            checkers::bevy_plugin_scene::BevyPluginScene::CODE,
+        ));
     }
 
     diags
