@@ -468,10 +468,16 @@ fn dispatch_net_command<T: p2p::Message>(
 ) {
     match command {
         p2p::NetCommand::Dial { peer_id, addrs } => {
-            dial_peer(swarm, event_tx, &peer_id, &addrs, false);
+            dial_peer(
+                swarm,
+                event_tx,
+                &peer_id,
+                &addrs,
+                PeerCondition::DisconnectedAndNotDialing,
+            );
         }
         p2p::NetCommand::DialForce { peer_id, addrs } => {
-            dial_peer(swarm, event_tx, &peer_id, &addrs, true);
+            dial_peer(swarm, event_tx, &peer_id, &addrs, PeerCondition::Always);
         }
         p2p::NetCommand::ReserveRelay { relay_addr } => {
             if let Ok(addr) = relay_addr.parse::<libp2p::Multiaddr>() {
@@ -578,18 +584,13 @@ fn dial_peer<T: p2p::Message>(
     event_tx: &tokio::sync::mpsc::UnboundedSender<p2p::Event<T>>,
     peer_id: &str,
     addrs: &[String],
-    force: bool,
+    condition: PeerCondition,
 ) {
     let parsed: Vec<libp2p::Multiaddr> = addrs.iter().filter_map(|a| a.parse().ok()).collect();
     if parsed.is_empty() {
         return;
     }
     if let Ok(pid) = peer_id.parse::<libp2p::PeerId>() {
-        let condition = if force {
-            PeerCondition::Always
-        } else {
-            PeerCondition::DisconnectedAndNotDialing
-        };
         let opts = DialOpts::peer_id(pid)
             .condition(condition)
             .addresses(parsed)
