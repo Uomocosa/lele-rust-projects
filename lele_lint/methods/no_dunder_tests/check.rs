@@ -25,7 +25,7 @@ pub fn check(
                 file: project.absolute_path(source.origin, rel_path),
                 line,
                 col: 0,
-                code: checkers::no_dunder_tests::NoDunderTests::CODE.to_string(),
+                code: checkers::no_dunder_tests::NoDunderTests::CODE,
                 message: "`#[cfg(test)]` is not allowed in a `__basic__` container — cover the function or method that uses these types instead"
                     .to_string(),
             });

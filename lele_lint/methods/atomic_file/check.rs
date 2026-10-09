@@ -43,7 +43,7 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
-                code: checkers::atomic_file::AtomicFile::CODE.to_string(),
+                code: checkers::atomic_file::AtomicFile::CODE,
                 message: format!(
                     "only one public item per file — move `pub {} {}` to `{}`",
                     extra.kind.kind_str(),
@@ -111,7 +111,7 @@ fn check_delegate_shape(
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: checkers::atomic_file::AtomicFile::CODE.to_string(),
+        code: checkers::atomic_file::AtomicFile::CODE,
         message,
     });
 }
@@ -151,7 +151,7 @@ fn check_fn_file_purity(
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: checkers::atomic_file::AtomicFile::CODE.to_string(),
+            code: checkers::atomic_file::AtomicFile::CODE,
             message: format!(
                 "SHAPE-F fn-file `{file_stem}.rs` must hold only the fn — move exposed `{kind} {name}` to {home} (O2-extraction)"
             ),
@@ -249,7 +249,7 @@ fn check_filename_match(
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: checkers::atomic_file::AtomicFile::CODE.to_string(),
+        code: checkers::atomic_file::AtomicFile::CODE,
         message: format!("filename mismatch — `{file_stem}.rs` should be `{expected}.rs`"),
     });
 }

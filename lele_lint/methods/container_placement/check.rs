@@ -166,7 +166,7 @@ fn push(diags: &mut Vec<Diagnostic>, file_path: &Path, message: String) {
         file: file_path.to_path_buf(),
         line: 1,
         col: 0,
-        code: checkers::container_placement::ContainerPlacement::CODE.to_string(),
+        code: checkers::container_placement::ContainerPlacement::CODE,
         message,
     });
 }

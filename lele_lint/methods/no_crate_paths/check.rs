@@ -26,7 +26,7 @@ pub fn check(_self: &checkers::no_crate_paths::NoCratePaths, project: &Project) 
                 file: project.absolute_path(source.origin, rel_path),
                 line: hit.line,
                 col: 0,
-                code: checkers::no_crate_paths::NoCratePaths::CODE.to_string(),
+                code: checkers::no_crate_paths::NoCratePaths::CODE,
                 message: format!(
                     "`{}` path used outside a top-level `use` declaration — add `use crate::<module>;` at the top of the file and reference `<module>::…` instead",
                     hit.path

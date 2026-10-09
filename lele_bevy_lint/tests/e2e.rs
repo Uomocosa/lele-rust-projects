@@ -33,7 +33,7 @@ fn compliant_crate_has_no_violations() {
 #[test]
 fn violation_crate_catches_all_errors() {
     let diags = run_checkers("violation_crate");
-    let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+    let codes: Vec<&str> = diags.iter().map(|d| d.code).collect();
 
     let expected = [
         "E005", // bevy_export

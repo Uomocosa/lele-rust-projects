@@ -41,7 +41,7 @@ pub fn check(
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
-                    code: checkers::method_file_co_location::MethodFileCoLocation::CODE.to_string(),
+                    code: checkers::method_file_co_location::MethodFileCoLocation::CODE,
                     message: format!(
                         "method file `{}` must be co-located with `{type_snake}.rs`; found in: {candidates}",
                         rel_path.display()
@@ -54,7 +54,7 @@ pub fn check(
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
-                    code: checkers::method_file_co_location::MethodFileCoLocation::CODE.to_string(),
+                    code: checkers::method_file_co_location::MethodFileCoLocation::CODE,
                     message: format!(
                         "orphan method file `{file_stem}.rs` — no parent type found; rename to `{suffix}.rs` or `<type>_{suffix}.rs` with a `<type>.rs` defining the type",
                     ),

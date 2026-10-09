@@ -32,7 +32,7 @@ pub fn check(
                 file: project.absolute_path(source.origin, rel_path),
                 line: hit.line,
                 col: 0,
-                code: checkers::no_stuttered_path::NoStutteredPath::CODE.to_string(),
+                code: checkers::no_stuttered_path::NoStutteredPath::CODE,
                 message: format!(
                     "stuttered path `{}` adds no information — import `{}` once and use `{}` directly",
                     hit.path, hit.ty, hit.ty

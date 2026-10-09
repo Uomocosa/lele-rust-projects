@@ -32,7 +32,7 @@ pub fn check(
                 file: cargo_path,
                 line: 1,
                 col: 0,
-                code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
+                code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE,
                 message: "Cargo.toml not found or unreadable — add [lints.clippy] with minimum clippy config".to_string(),
             }];
         }
@@ -44,7 +44,7 @@ pub fn check(
                 file: cargo_path,
                 line: 1,
                 col: 0,
-                code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
+                code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE,
                 message: format!("Cargo.toml parse error: {e}"),
             }];
         }
@@ -71,7 +71,7 @@ pub fn check(
             file: cargo_path.clone(),
             line: 1,
             col: 0,
-            code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
+            code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE,
             message: "missing [lints.clippy] in Cargo.toml — add minimum clippy config (pedantic/nursery + 13 deny lints)".to_string(),
         }],
     }
@@ -178,7 +178,7 @@ fn diag_for_key(path: &PathBuf, key: &str, expected: &str) -> Diagnostic {
         file: path.clone(),
         line: 1,
         col: 0,
-        code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE.to_string(),
+        code: checkers::clippy_config_cargo::ClippyConfigCargo::CODE,
         message: format!(
             "Cargo.toml [lints.clippy].{key} {expected} — minimum clippy config requires it"
         ),

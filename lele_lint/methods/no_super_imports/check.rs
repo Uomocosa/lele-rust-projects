@@ -29,7 +29,7 @@ pub fn check(
                 file: project.absolute_path(source.origin, rel_path),
                 line: hit.line,
                 col: 0,
-                code: checkers::no_super_imports::NoSuperImports::CODE.to_string(),
+                code: checkers::no_super_imports::NoSuperImports::CODE,
                 message: format!(
                     "`{}` used outside `#[cfg(test)]` — write `{replacement}` instead and add `{import}` at the top of the file",
                     hit.path

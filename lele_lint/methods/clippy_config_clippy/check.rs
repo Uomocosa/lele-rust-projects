@@ -21,7 +21,7 @@ pub fn check(
                 file: path,
                 line: 1,
                 col: 0,
-                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE,
                 message: "clippy.toml not found — add it with allow-unwrap-in-tests, allow-expect-in-tests, allow-panic-in-tests, allow-indexing-slicing-in-tests = true".to_string(),
             }];
         }
@@ -33,7 +33,7 @@ pub fn check(
                 file: path,
                 line: 1,
                 col: 0,
-                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE,
                 message: format!("clippy.toml parse error: {e}"),
             }];
         }
@@ -45,7 +45,7 @@ pub fn check(
                 file: path,
                 line: 1,
                 col: 0,
-                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE,
                 message: "clippy.toml must be a table with allow-* = true entries".to_string(),
             }];
         }
@@ -58,7 +58,7 @@ pub fn check(
                 file: path.clone(),
                 line: 1,
                 col: 0,
-                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE.to_string(),
+                code: checkers::clippy_config_clippy::ClippyConfigClippy::CODE,
                 message: format!(
                     "clippy.toml missing {key} = true — minimum clippy config requires it"
                 ),

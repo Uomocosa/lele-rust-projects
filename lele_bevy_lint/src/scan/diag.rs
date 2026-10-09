@@ -12,14 +12,14 @@ pub fn diag(
     origin: Origin,
     rel_path: &Path,
     line: usize,
-    code: &str,
+    code: &'static str,
     message: String,
 ) -> Diagnostic {
     Diagnostic {
         file: scan::file_path(project, origin, rel_path),
         line,
         col: 0,
-        code: code.to_string(),
+        code,
         message,
     }
 }

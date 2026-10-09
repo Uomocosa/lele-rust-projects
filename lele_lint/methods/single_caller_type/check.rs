@@ -51,7 +51,7 @@ pub fn check(
                 file: project.src_dir.join(rel_path),
                 line: 1,
                 col: 0,
-                code: checkers::single_caller_type::SingleCallerType::CODE.to_string(),
+                code: checkers::single_caller_type::SingleCallerType::CODE,
                 message: format!(
                     "type `{name}` has exactly one caller in `{}` and no atomic-delegate methods — define it in the caller's file instead of its own file",
                     caller.display()

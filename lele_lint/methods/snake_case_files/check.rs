@@ -27,7 +27,7 @@ pub fn check(
                     file: entry.absolute_path.clone(),
                     line: 1,
                     col: 0,
-                    code: checkers::snake_case_files::SnakeCaseFiles::CODE.to_string(),
+                    code: checkers::snake_case_files::SnakeCaseFiles::CODE,
                     message: format!(
                         "{kind} `{name}` is not snake_case — rename it to use lowercase letters, digits, and underscores",
                         kind = kind,

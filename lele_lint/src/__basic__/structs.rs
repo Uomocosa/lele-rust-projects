@@ -49,7 +49,7 @@ pub struct Diagnostic {
     pub file: std::path::PathBuf,
     pub line: usize,
     pub col: usize,
-    pub code: String,
+    pub code: &'static str,
     pub message: String,
 }
 

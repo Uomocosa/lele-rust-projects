@@ -19,7 +19,7 @@ pub fn check(_self: &checkers::domain_import::DomainImport, project: &Project) -
                         file: project.absolute_path(source.origin, rel_path),
                         line: find_use_line(item_use),
                         col: 0,
-                        code: checkers::domain_import::DomainImport::CODE.to_string(),
+                        code: checkers::domain_import::DomainImport::CODE,
                         message: msg,
                     });
                 }

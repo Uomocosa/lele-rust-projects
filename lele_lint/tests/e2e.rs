@@ -31,7 +31,7 @@ fn compliant_crate_has_no_violations() -> Result<(), Box<dyn std::error::Error>>
 #[test]
 fn violation_crate_catches_all_errors() -> Result<(), Box<dyn std::error::Error>> {
     let diags = run_checkers("violation_crate")?;
-    let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+    let codes: Vec<&str> = diags.iter().map(|d| d.code).collect();
 
     let expected = [
         "E001", // atomic_file (orphan method file has no parent type)
@@ -75,7 +75,7 @@ fn methods_crate_has_no_violations() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn methods_violation_crate_catches_layout_errors() -> Result<(), Box<dyn std::error::Error>> {
     let diags = run_checkers("methods_violation_crate")?;
-    let codes: Vec<&str> = diags.iter().map(|d| d.code.as_str()).collect();
+    let codes: Vec<&str> = diags.iter().map(|d| d.code).collect();
 
     for code in ["E030", "E031", "E032"] {
         if !codes.contains(&code) {

@@ -32,7 +32,7 @@ pub fn check(
             file: project.absolute_path(source.origin, rel_path),
             line: 1,
             col: 0,
-            code: checkers::no_stuttered_type::NoStutteredType::CODE.to_string(),
+            code: checkers::no_stuttered_type::NoStutteredType::CODE,
             message: format!(
                 "type `{name}` repeats parent module `{dir}` — rename to `{suggested}` (`{dir}::{suggested}`)"
             ),

@@ -34,7 +34,7 @@ pub fn check(_self: &checkers::root_reexport::RootReexport, project: &Project) -
                 file: project.src_dir.join(rel_path),
                 line: missing.line,
                 col: 0,
-                code: checkers::root_reexport::RootReexport::CODE.to_string(),
+                code: checkers::root_reexport::RootReexport::CODE,
                 message: format!(
                     "public type `{}` in root module `{stem}` is not re-exported at the crate root — add `pub use {stem}::{};` to lib.rs",
                     missing.ty, missing.ty
@@ -46,7 +46,7 @@ pub fn check(_self: &checkers::root_reexport::RootReexport, project: &Project) -
                 file: project.src_dir.join("lib.rs"),
                 line: 1,
                 col: 0,
-                code: checkers::root_reexport::RootReexport::CODE.to_string(),
+                code: checkers::root_reexport::RootReexport::CODE,
                 message: missing,
             });
         }

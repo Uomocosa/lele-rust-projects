@@ -32,8 +32,7 @@ pub fn check(
                             .unwrap_or_else(|| project.root.join("src").join(mod_rs_path)),
                         line: 1,
                         col: 0,
-                        code: checkers::no_cross_domain_reexport::NoCrossDomainReexport::CODE
-                            .to_string(),
+                        code: checkers::no_cross_domain_reexport::NoCrossDomainReexport::CODE,
                         message: format!(
                             "cross-domain re-export `pub use {}` in mod.rs, move to lib.rs",
                             reexported_path

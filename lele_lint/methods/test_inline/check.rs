@@ -15,7 +15,7 @@ pub fn check(_self: &checkers::test_inline::TestInline, project: &Project) -> Ve
                 file: entry.absolute_path.clone(),
                 line: 1,
                 col: 0,
-                code: checkers::test_inline::TestInline::CODE.to_string(),
+                code: checkers::test_inline::TestInline::CODE,
                 message: format!(
                     "unit tests must be in the same file as the primary item — delete `{}` and move the tests inline",
                     entry.relative_path.display()

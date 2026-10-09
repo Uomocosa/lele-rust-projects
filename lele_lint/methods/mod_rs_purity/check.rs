@@ -26,7 +26,7 @@ pub fn check(_self: &checkers::mod_rs_purity::ModRsPurity, project: &Project) ->
                 file: project.absolute_path(source.origin, rel_path),
                 line: item.span().start().line,
                 col: 0,
-                code: checkers::mod_rs_purity::ModRsPurity::CODE.to_string(),
+                code: checkers::mod_rs_purity::ModRsPurity::CODE,
                 message,
             });
         }

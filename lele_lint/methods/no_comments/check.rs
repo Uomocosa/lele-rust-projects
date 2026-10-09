@@ -33,7 +33,7 @@ fn scan_entries(entries: &[Entry], base: &Path, diags: &mut Vec<Diagnostic>) {
                 file: base.join(&entry.relative_path),
                 line: hit.line,
                 col: 0,
-                code: checkers::no_comments::NoComments::CODE.to_string(),
+                code: checkers::no_comments::NoComments::CODE,
                 message:
                     "comments are not allowed in the methods layout (code, tests and logs only)"
                         .to_string(),

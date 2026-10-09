@@ -31,7 +31,7 @@ pub fn check(_self: &checkers::test_usage::TestUsage, project: &Project) -> Vec<
                 file: absolute,
                 line: 1,
                 col: 0,
-                code: checkers::test_usage::TestUsage::CODE.to_string(),
+                code: checkers::test_usage::TestUsage::CODE,
                 message: format!(
                     "file `{}` must contain a `#[cfg(test)] mod tests {{ fn test_usage() {{ ... }} }}` block, or add `{OPT_OUT}` as its last line to opt out",
                     rel_path.display()

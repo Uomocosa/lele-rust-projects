@@ -107,7 +107,7 @@ fn check_fn_file_const(
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: checkers::constants_placement::ConstantsPlacement::CODE.to_string(),
+            code: checkers::constants_placement::ConstantsPlacement::CODE,
             message: format!(
                 "const `{name}` lives in fn-file `{}` — move it to `{}` (nearest constants.rs)",
                 rel_path.display(),
@@ -133,7 +133,7 @@ fn check_lift_to_ancestor(
             file: project.src_dir.join(rel_path),
             line: 1,
             col: 0,
-            code: checkers::constants_placement::ConstantsPlacement::CODE.to_string(),
+            code: checkers::constants_placement::ConstantsPlacement::CODE,
             message: format!(
                 "const `{name}` is used across top-level dirs but lives in `{}` — lift it to `src/{}`",
                 rel_path.display(),
@@ -163,7 +163,7 @@ fn check_lower_to_subdir(
         file: project.src_dir.join(rel_path),
         line: 1,
         col: 0,
-        code: checkers::constants_placement::ConstantsPlacement::CODE.to_string(),
+        code: checkers::constants_placement::ConstantsPlacement::CODE,
         message: format!(
             "const `{name}` lives at root but is only used under `{}` — lower it to `{}`",
             ancestor.display(),

@@ -12,7 +12,7 @@ pub fn require_ignored(
     origin: Origin,
     rel_path: &Path,
     preview: &scan::Preview,
-    code: &str,
+    code: &'static str,
 ) -> Option<Diagnostic> {
     (!preview.ignored).then(|| {
         scan::diag(

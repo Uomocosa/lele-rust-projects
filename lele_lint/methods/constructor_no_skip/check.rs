@@ -37,7 +37,7 @@ pub fn check(
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
-                    code: checkers::constructor_no_skip::ConstructorNoSkip::CODE.to_string(),
+                    code: checkers::constructor_no_skip::ConstructorNoSkip::CODE,
                     message: format!("{blurb} must not have #[rustfmt::skip]",),
                 });
             }

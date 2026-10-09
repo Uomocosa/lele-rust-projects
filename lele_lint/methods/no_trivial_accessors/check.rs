@@ -41,7 +41,7 @@ pub fn check(
                                 file: project.absolute_path(source.origin, rel_path),
                                 line: 1,
                                 col: 0,
-                                code: checkers::no_trivial_accessors::NoTrivialAccessors::CODE.to_string(),
+                                code: checkers::no_trivial_accessors::NoTrivialAccessors::CODE,
                                 message: format!(
                                     "trivial accessor `{}` reads {vis} field `{field}`, make field public/pub(crate) and access directly",
                                     method.sig.ident
@@ -53,7 +53,7 @@ pub fn check(
                                 file: project.absolute_path(source.origin, rel_path),
                                 line: 1,
                                 col: 0,
-                                code: checkers::no_trivial_accessors::NoTrivialAccessors::CODE.to_string(),
+                                code: checkers::no_trivial_accessors::NoTrivialAccessors::CODE,
                                 message: format!(
                                     "trivial setter `{}` assigns {vis} field `{field}`, make field public/pub(crate) and assign directly",
                                     method.sig.ident

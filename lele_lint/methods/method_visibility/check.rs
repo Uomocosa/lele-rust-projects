@@ -41,7 +41,7 @@ pub fn check(
                     file: declared_pub,
                     line: 1,
                     col: 0,
-                    code: checkers::method_visibility::MethodVisibility::CODE.to_string(),
+                    code: checkers::method_visibility::MethodVisibility::CODE,
                     message: format!(
                         "method file `{}` of struct `{}` must be declared with `mod` (private), not `pub mod`",
                         file_name, struct_name
@@ -56,7 +56,7 @@ pub fn check(
                     file: reexported_at,
                     line: 1,
                     col: 0,
-                    code: checkers::method_visibility::MethodVisibility::CODE.to_string(),
+                    code: checkers::method_visibility::MethodVisibility::CODE,
                     message: format!(
                         "method file `{}` of struct `{}` must not appear in a `pub use` re-export",
                         file_name, struct_name

@@ -64,7 +64,7 @@ pub fn check(
                     file: project.src_dir.join(rel_path),
                     line: 1,
                     col: 0,
-                    code: checkers::atomic_delegates::AtomicDelegates::CODE.to_string(),
+                    code: checkers::atomic_delegates::AtomicDelegates::CODE,
                     message: format!(
                         "method(s) `{names}` have >3 statements — extract each into `<type>_<method>.rs`"
                     ),
@@ -98,7 +98,7 @@ pub fn check(
                                 file: project.src_dir.join(rel_path),
                                 line: 1,
                                 col: 0,
-                                code: checkers::atomic_delegates::AtomicDelegates::CODE.to_string(),
+                                code: checkers::atomic_delegates::AtomicDelegates::CODE,
                                 message: format!(
                                     "one-liner method `{}` body must be on one line, e.g. `{{ module::func(self) }}`",
                                     method.sig.ident
@@ -138,7 +138,7 @@ pub fn check(
                         file: project.src_dir.join(rel_path),
                         line: 1,
                         col: 0,
-                        code: checkers::atomic_delegates::AtomicDelegates::CODE.to_string(),
+                        code: checkers::atomic_delegates::AtomicDelegates::CODE,
                         message,
                     });
                 }
