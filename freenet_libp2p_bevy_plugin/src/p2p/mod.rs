@@ -19,6 +19,12 @@ pub use history_key::history_key;
 pub mod provider_key;
 pub use provider_key::provider_key;
 
+pub mod parse_history_key;
+pub use parse_history_key::parse_history_key;
+
+pub mod matches_transport;
+pub use matches_transport::matches_transport;
+
 #[path = "__basic__/mod.rs"]
 pub mod basic;
 
@@ -32,6 +38,8 @@ pub use build_swarm::build_swarm;
 
 pub mod run;
 pub use run::run;
+
+pub(crate) mod swarm_loop;
 
 pub mod spawn_runner;
 pub use spawn_runner::spawn_runner;
