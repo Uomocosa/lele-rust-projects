@@ -14,7 +14,7 @@ pub struct Snapshot {
 }
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deref)]
-pub struct FreenetEndpoint(pub u16);
+pub struct FreenetPort(pub u16);
 
 #[derive(Resource, Debug, Deref)]
 pub struct CommandSender(pub UnboundedSender<discovery::Command>);

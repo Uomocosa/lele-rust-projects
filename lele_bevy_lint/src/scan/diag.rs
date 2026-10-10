@@ -4,8 +4,6 @@ use lele_lint::Diagnostic;
 use lele_lint::Origin;
 use lele_lint::Project;
 
-use crate::scan;
-
 #[must_use]
 pub fn diag(
     project: &Project,
@@ -16,7 +14,7 @@ pub fn diag(
     message: String,
 ) -> Diagnostic {
     Diagnostic {
-        file: scan::file_path(project, origin, rel_path),
+        file: project.absolute_path(origin, rel_path),
         line,
         col: 0,
         code,

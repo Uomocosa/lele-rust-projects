@@ -17,24 +17,25 @@ pub fn check(
             continue;
         }
 
-        let previews = scan::collect_previews(file);
-        let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Scene) else {
-            diags.push(scan::diag(project, source.origin, rel_path,
-                1,
-                checkers::bevy_plugin_scene::BevyPluginScene::CODE,
-                String::from(
-                    "file defines a `Plugin` whose domain spawns UI but has no ignored `*_ui_scene_preview` test routing through `lele_bevy_preview::run`",
-                ),
-            ));
-            continue;
-        };
-
-        diags.extend(scan::require_ignored(
+        diags.extend(scan::require_preview(
             project,
             source.origin,
             rel_path,
-            preview,
+            file,
+            scan::PreviewKind::Scene,
             checkers::bevy_plugin_scene::BevyPluginScene::CODE,
+            || {
+                scan::diag(
+                    project,
+                    source.origin,
+                    rel_path,
+                    1,
+                    checkers::bevy_plugin_scene::BevyPluginScene::CODE,
+                    String::from(
+                        "file defines a `Plugin` whose domain spawns UI but has no ignored `*_ui_scene_preview` test routing through `lele_bevy_preview::run`",
+                    ),
+                )
+            },
         ));
     }
 

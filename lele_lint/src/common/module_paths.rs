@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::common;
+
 pub(crate) fn module_path_of(rel_path: &Path) -> Vec<String> {
     let mut components: Vec<String> = rel_path
         .components()
@@ -8,17 +10,12 @@ pub(crate) fn module_path_of(rel_path: &Path) -> Vec<String> {
     let Some(file_name) = components.pop() else {
         return Vec::new();
     };
-    if is_index_file(&file_name) {
+    if common::is_index_file(&file_name) {
         return components;
     }
     let stem = file_name.strip_suffix(".rs").unwrap_or(&file_name);
     components.push(stem.to_string());
     components
-}
-
-// needed helper: crate root or directory index files map to their parent module
-fn is_index_file(file_name: &str) -> bool {
-    matches!(file_name, "mod.rs" | "lib.rs" | "main.rs")
 }
 
 #[cfg(test)]

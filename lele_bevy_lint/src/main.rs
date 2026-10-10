@@ -42,7 +42,7 @@ struct Args {
     ui_inventory: bool,
 
     #[arg(long = "scan-folder", value_name = "FOLDERS", value_delimiter = ',')]
-    scan_folder: Option<Vec<String>>,
+    scan_folder: Option<Vec<PathBuf>>,
 
     #[arg(long, value_name = "PATH")]
     config: Option<PathBuf>,

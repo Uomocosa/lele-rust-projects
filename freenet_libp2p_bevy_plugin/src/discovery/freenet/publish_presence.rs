@@ -23,8 +23,7 @@ pub fn publish_presence(
     lobby_client
         .client
         .send(&ClientRequest::ContractOp(request))?;
-    let cached = std::mem::take(&mut lobby_client.lobby);
-    lobby_client.lobby = discovery::freenet::merge_lobby(cached, update);
+    discovery::freenet::cache_lobby(lobby_client, update);
     Ok(())
 }
 

@@ -38,12 +38,11 @@ impl Project {
     pub fn apply_layout(&mut self, config: &Config) -> Result<(), Error> {}
     pub fn discover(
         start_dir: Option<&Path>,
-        scan_folders: Option<&[String]>,
+        scan_folders: Option<&[PathBuf]>,
     ) -> Result<Self, Error> {
     }
     pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {}
     pub fn sources(&self) -> impl Iterator<Item = ParsedSource<'_>> {}
-    pub fn content_sources(&self) -> impl Iterator<Item = ParsedSource<'_>> {}
 }
 
 #[rustfmt::skip]
@@ -58,6 +57,36 @@ impl Project {
             Origin::Examples => self.root.join("examples").join(rel_path),
         }
     }
+    pub fn content_sources(&self) -> impl Iterator<Item = ParsedSource<'_>> {
+        self.sources()
+            .filter(|source| !matches!(source.origin, Origin::Examples))
+    }
 }
 
-// no test_usage necessary
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::Origin;
+    use crate::Project;
+
+    #[test]
+    fn test_usage() {
+        let mut project = Project::default();
+        project
+            .parsed_files
+            .insert(PathBuf::from("a.rs"), syn::parse_str("").unwrap());
+        project
+            .methods_parsed_files
+            .insert(PathBuf::from("b.rs"), syn::parse_str("").unwrap());
+        project
+            .example_parsed_files
+            .insert(PathBuf::from("c.rs"), syn::parse_str("").unwrap());
+        let origins: Vec<Origin> = project
+            .content_sources()
+            .map(|source| source.origin)
+            .collect();
+        assert_eq!(origins.len(), 2);
+        assert!(!origins.contains(&Origin::Examples));
+    }
+}

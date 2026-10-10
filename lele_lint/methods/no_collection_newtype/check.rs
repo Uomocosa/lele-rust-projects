@@ -13,25 +13,14 @@ pub fn check(
 
     for source in project.content_sources() {
         let file_path = project.absolute_path(source.origin, source.relative_path);
-        scan_items(&source.file.items, &file_path, &mut diags);
+        diags.extend(common::scan_struct_items(
+            &source.file.items,
+            &file_path,
+            check_struct,
+        ));
     }
 
     diags
-}
-
-// needed helper: recursive item scanner
-fn scan_items(items: &[syn::Item], file_path: &Path, diags: &mut Vec<Diagnostic>) {
-    for item in items {
-        match item {
-            syn::Item::Struct(struct_def) => check_struct(struct_def, file_path, diags),
-            syn::Item::Mod(module) => {
-                if let Some((_, inner)) = &module.content {
-                    scan_items(inner, file_path, diags);
-                }
-            }
-            _ => {}
-        }
-    }
 }
 
 // needed helper: single-field collection inner-type validation

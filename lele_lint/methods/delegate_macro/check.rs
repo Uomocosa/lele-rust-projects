@@ -44,30 +44,9 @@ pub fn check(
                     continue;
                 }
                 if common::has_atomic_delegates(&impl_block.attrs) {
-                    for method in fn_methods(impl_block) {
-                        let ident = &method.sig.ident;
-                        if is_reserved(ident) {
-                            diags.push(diag(
-                                project,
-                                rel_path,
-                                format!(
-                                    "`{ident}` is a constructor and must be defined in the struct file, not delegated"
-                                ),
-                            ));
-                        }
-                        if common::has_atomic_fn(&method.attrs) {
-                            diags.push(diag(
-                                project,
-                                rel_path,
-                                format!(
-                                    "`{ident}` carries a redundant `#[atomic_delegate]` — the whole block is already `#[atomic_delegates]`"
-                                ),
-                            ));
-                        }
-                        if !seen.insert(format!("{primary}::{ident}")) {
-                            diags.push(duplicate_diag(project, rel_path, &primary, ident));
-                        }
-                    }
+                    check_delegated_methods(
+                        project, rel_path, &primary, impl_block, &mut seen, &mut diags,
+                    );
                     continue;
                 }
                 check_fn_shells(
@@ -100,30 +79,9 @@ pub fn check(
             }
 
             if common::has_atomic_delegates(&impl_block.attrs) {
-                for method in fn_methods(impl_block) {
-                    let ident = &method.sig.ident;
-                    if is_reserved(ident) {
-                        diags.push(diag(
-                            project,
-                            rel_path,
-                            format!(
-                                "`{ident}` is a constructor and must be defined in the struct file, not delegated"
-                            ),
-                        ));
-                    }
-                    if common::has_atomic_fn(&method.attrs) {
-                        diags.push(diag(
-                            project,
-                            rel_path,
-                            format!(
-                                "`{ident}` carries a redundant `#[atomic_delegate]` — the whole block is already `#[atomic_delegates]`"
-                            ),
-                        ));
-                    }
-                    if !seen.insert(format!("{primary}::{ident}")) {
-                        diags.push(duplicate_diag(project, rel_path, &primary, ident));
-                    }
-                }
+                check_delegated_methods(
+                    project, rel_path, &primary, impl_block, &mut seen, &mut diags,
+                );
                 continue;
             }
 
@@ -269,6 +227,41 @@ fn fn_methods(impl_block: &syn::ItemImpl) -> Vec<&syn::ImplItemFn> {
             _ => None,
         })
         .collect()
+}
+
+// needed helper: reserved / redundant-attr / duplicate checks for delegated methods
+fn check_delegated_methods(
+    project: &Project,
+    rel_path: &Path,
+    primary: &str,
+    impl_block: &syn::ItemImpl,
+    seen: &mut HashSet<String>,
+    diags: &mut Vec<Diagnostic>,
+) {
+    for method in fn_methods(impl_block) {
+        let ident = &method.sig.ident;
+        if is_reserved(ident) {
+            diags.push(diag(
+                project,
+                rel_path,
+                format!(
+                    "`{ident}` is a constructor and must be defined in the struct file, not delegated"
+                ),
+            ));
+        }
+        if common::has_atomic_fn(&method.attrs) {
+            diags.push(diag(
+                project,
+                rel_path,
+                format!(
+                    "`{ident}` carries a redundant `#[atomic_delegate]` — the whole block is already `#[atomic_delegates]`"
+                ),
+            ));
+        }
+        if !seen.insert(format!("{primary}::{ident}")) {
+            diags.push(duplicate_diag(project, rel_path, primary, ident));
+        }
+    }
 }
 
 // needed helper: reserved + duplicate checks for per-function atomic shells

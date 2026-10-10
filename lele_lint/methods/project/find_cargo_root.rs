@@ -10,7 +10,7 @@ pub fn find_cargo_root(start: &Path) -> Result<PathBuf, Error> {
             return Ok(current);
         }
         if !current.pop() {
-            return Err(Error::NoCargoRoot(start.display().to_string()));
+            return Err(Error::NoCargoRoot(start.to_path_buf()));
         }
     }
 }

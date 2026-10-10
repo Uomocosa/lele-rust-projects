@@ -32,10 +32,10 @@ pub fn build_plugin(plugin: &discovery::Plugin, app: &mut App) {
     };
     let Some(endpoint) = app
         .world()
-        .get_resource::<discovery::FreenetEndpoint>()
+        .get_resource::<discovery::FreenetPort>()
         .copied()
     else {
-        error!(target: "room_lobby", "discovery: FreenetEndpoint missing, discovery disabled");
+        error!(target: "room_lobby", "discovery: FreenetPort missing, discovery disabled");
         return;
     };
     let channels = discovery::Channels {

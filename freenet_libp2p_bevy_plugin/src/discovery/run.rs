@@ -9,7 +9,7 @@ use discovery::state_machine::{Input, Output, State};
 
 pub async fn run(
     config: discovery::Config,
-    endpoint: discovery::FreenetEndpoint,
+    endpoint: discovery::FreenetPort,
     channels: discovery::Channels,
 ) {
     let discovery::Channels {

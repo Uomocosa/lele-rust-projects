@@ -45,8 +45,7 @@ fn absorb_update(lobby_client: &mut discovery::freenet::LobbyClient, update: Upd
 // needed helper: merges raw lobby bytes into the cached lobby
 fn absorb_bytes(lobby_client: &mut discovery::freenet::LobbyClient, bytes: &[u8]) {
     let incoming: discovery::Lobby = bincode::deserialize(bytes).unwrap_or_default();
-    let cached = std::mem::take(&mut lobby_client.lobby);
-    lobby_client.lobby = discovery::freenet::merge_lobby(cached, incoming);
+    discovery::freenet::cache_lobby(lobby_client, incoming);
 }
 
 #[cfg(test)]

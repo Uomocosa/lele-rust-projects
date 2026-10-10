@@ -19,8 +19,7 @@ pub fn poll_roster<T: p2p::Message>(
                     .entry(peer.clone())
                     .and_modify(|count| *count = count.saturating_add(1))
                     .or_insert(1);
-                let id = *blake3::hash(peer.as_bytes()).as_bytes();
-                roster.add_entry((**room).clone(), id, peer);
+                roster.add_entry((**room).clone(), peer_key(&peer), peer);
             }
             p2p::Event::Net(p2p::NetEvent::PeerDisconnected(peer)) => {
                 let drained = links.get_mut(&peer).is_some_and(|count| {
@@ -29,8 +28,7 @@ pub fn poll_roster<T: p2p::Message>(
                 });
                 if drained {
                     links.remove(&peer);
-                    let id = *blake3::hash(peer.as_bytes()).as_bytes();
-                    roster.remove_entry(room, id);
+                    roster.remove_entry(room, peer_key(&peer));
                 }
             }
             p2p::Event::Net(p2p::NetEvent::Ready(me)) => {
@@ -43,6 +41,11 @@ pub fn poll_roster<T: p2p::Message>(
         }
     }
     events.extend(rest);
+}
+
+// needed helper: stable 32-byte roster key for a peer
+fn peer_key(peer: &net_id::PeerId) -> [u8; 32] {
+    *blake3::hash(peer.as_bytes()).as_bytes()
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::common;
 use crate::Entry;
 use crate::ModDecl;
 use crate::ModuleInfo;
@@ -10,7 +11,12 @@ pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
     let mut map = ModuleInfoMap::new();
 
     for entry in entries {
-        if !is_index_file(&entry.relative_path) {
+        if !entry
+            .relative_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(common::is_index_file)
+        {
             continue;
         }
 
@@ -32,13 +38,6 @@ pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
     }
 
     map
-}
-
-// needed helper: crate root or directory index filename check
-fn is_index_file(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|n| n.to_str())
-        .is_some_and(|n| matches!(n, "mod.rs" | "lib.rs" | "main.rs"))
 }
 
 // needed helper: mod.rs AST parsing for declarations and re-exports

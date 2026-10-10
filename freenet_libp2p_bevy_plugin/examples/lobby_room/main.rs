@@ -28,7 +28,7 @@ async fn main() {
         }),
         ..default()
     }));
-    app.insert_resource(discovery::FreenetEndpoint(ws_port));
+    app.insert_resource(discovery::FreenetPort(ws_port));
     app.insert_resource(status::Username(args.username.clone()));
     app.insert_resource(intent::Intent {
         action: args.action.clone(),

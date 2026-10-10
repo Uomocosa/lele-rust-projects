@@ -2,14 +2,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("no Cargo.toml found in {0} or any parent directory")]
-    NoCargoRoot(String),
+    #[error("no Cargo.toml found in {} or any parent directory", .0.display())]
+    NoCargoRoot(std::path::PathBuf),
 
-    #[error("src/ directory not found at {0}")]
-    NoSrcDirectory(String),
+    #[error("src/ directory not found at {}", .0.display())]
+    NoSrcDirectory(std::path::PathBuf),
 
-    #[error("scan folder not found or not a directory: {0}")]
-    NoScanFolder(String),
+    #[error("scan folder not found or not a directory: {}", .0.display())]
+    NoScanFolder(std::path::PathBuf),
 
     #[error("methods layout requested but no `methods/` directory was found")]
     NoMethodsDir,

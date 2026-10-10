@@ -5,6 +5,9 @@ pub use basic::constants::*;
 pub use basic::enums::DeployPolicy;
 pub use basic::structs::LobbyClient;
 
+mod cache_lobby;
+pub use cache_lobby::cache_lobby;
+
 mod client;
 pub use client::Client;
 

@@ -26,6 +26,7 @@ mod tests {
     use libp2p::kad;
 
     use super::handle_found_record;
+    use crate::net_id;
     use crate::p2p;
 
     fn peer_record(key: kad::RecordKey) -> kad::PeerRecord {
@@ -43,7 +44,10 @@ mod tests {
     #[test]
     fn test_usage() {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
-        handle_found_record(&tx, peer_record(p2p::history_key("room-a", 5)));
+        handle_found_record(
+            &tx,
+            peer_record(p2p::history_key(&net_id::RoomName::from("room-a"), 5)),
+        );
         let Ok(p2p::Event::Net(p2p::NetEvent::HistoryChunk { room, chunk, data })) = rx.try_recv()
         else {
             panic!("expected a history chunk");
@@ -55,7 +59,10 @@ mod tests {
     fn test_usage_skips_malformed_keys() {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
         handle_found_record(&tx, peer_record(kad::RecordKey::new(&"lobby/history/r/xx")));
-        handle_found_record(&tx, peer_record(p2p::provider_key("room-a")));
+        handle_found_record(
+            &tx,
+            peer_record(p2p::provider_key(&net_id::RoomName::from("room-a"))),
+        );
         assert!(rx.try_recv().is_err());
     }
 }

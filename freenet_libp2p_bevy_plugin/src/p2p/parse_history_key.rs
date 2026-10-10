@@ -8,18 +8,19 @@ pub fn parse_history_key(key: &str) -> Option<(String, u64)> {
 #[cfg(test)]
 mod tests {
     use super::parse_history_key;
+    use crate::net_id;
     use crate::p2p;
 
     #[test]
     fn test_usage() {
-        let key = p2p::history_key("room-a", 7);
+        let key = p2p::history_key(&net_id::RoomName::from("room-a"), 7);
         let key = String::from_utf8_lossy(key.as_ref()).to_string();
         assert_eq!(parse_history_key(&key), Some(("room-a".to_string(), 7)));
     }
 
     #[test]
     fn test_usage_room_with_slash_round_trips() {
-        let key = p2p::history_key("team/blue", 3);
+        let key = p2p::history_key(&net_id::RoomName::from("team/blue"), 3);
         let key = String::from_utf8_lossy(key.as_ref()).to_string();
         assert_eq!(parse_history_key(&key), Some(("team/blue".to_string(), 3)));
     }

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::methods;
 use crate::parse_source_files;
@@ -10,19 +10,19 @@ use crate::ScannedDir;
 
 pub fn discover(
     start_dir: Option<&Path>,
-    scan_folders: Option<&[String]>,
+    scan_folders: Option<&[PathBuf]>,
 ) -> Result<Project, Error> {
     let cwd = std::env::current_dir()?;
-    let base = start_dir.unwrap_or(&cwd);
+    let base_path = start_dir.unwrap_or(&cwd);
 
     if let Some(folders) = scan_folders {
-        return discover_folders(base, folders);
+        return discover_folders(base_path, folders);
     }
 
-    let root = methods::project::find_cargo_root(base)?;
+    let root = methods::project::find_cargo_root(base_path)?;
     let src_dir = root.join("src");
     if !src_dir.exists() || !src_dir.is_dir() {
-        return Err(Error::NoSrcDirectory(src_dir.display().to_string()));
+        return Err(Error::NoSrcDirectory(src_dir));
     }
     let entries = walk_entries::walk_entries(&src_dir, &src_dir)?;
     let module_info = ModuleInfo::build(&src_dir, &entries);
@@ -59,19 +59,20 @@ fn scan_examples(root: &Path) -> Result<ScannedDir, Error> {
 }
 
 // needed helper: aggregate scanning over explicitly-passed folders (relative to the invocation base)
-fn discover_folders(base: &Path, folders: &[String]) -> Result<Project, Error> {
+fn discover_folders(base_path: &Path, folders: &[PathBuf]) -> Result<Project, Error> {
     let mut entries = Vec::new();
     for folder in folders {
-        let rel = folder.trim_start_matches('/');
-        let abs = base.join(rel);
-        if !abs.exists() || !abs.is_dir() {
-            return Err(Error::NoScanFolder(abs.display().to_string()));
+        let rel_dir = folder.strip_prefix("/").unwrap_or(folder.as_path());
+        let abs_dir = base_path.join(rel_dir);
+        if !abs_dir.exists() || !abs_dir.is_dir() {
+            return Err(Error::NoScanFolder(abs_dir));
         }
-        entries.extend(walk_entries::walk_entries(&abs, base)?);
+        entries.extend(walk_entries::walk_entries(&abs_dir, base_path)?);
     }
-    let module_info = ModuleInfo::build(base, &entries);
-    let (parsed_files, parse_failures) = parse_source_files::parse_source_files(base, &entries);
-    let owned_base = base.to_path_buf();
+    let module_info = ModuleInfo::build(base_path, &entries);
+    let (parsed_files, parse_failures) =
+        parse_source_files::parse_source_files(base_path, &entries);
+    let owned_base = base_path.to_path_buf();
     Ok(Project {
         root: owned_base.clone(),
         src_dir: owned_base,
@@ -136,7 +137,7 @@ mod tests {
         let root = base.path();
         write_file(root, "src/a.rs");
         write_file(root, "contract/src/lib.rs");
-        let folders = vec!["src".to_string(), "contract".to_string()];
+        let folders = vec![PathBuf::from("src"), PathBuf::from("contract")];
         let project = discover(Some(root), Some(&folders)).unwrap();
         assert!(project
             .parsed_files
@@ -151,7 +152,7 @@ mod tests {
     fn test_discover_folders_missing_errors() {
         let base = tempfile::tempdir().unwrap();
         let root = base.path();
-        let folders = vec!["nope".to_string()];
+        let folders = vec![PathBuf::from("nope")];
         assert!(matches!(
             discover(Some(root), Some(&folders)),
             Err(Error::NoScanFolder(_))

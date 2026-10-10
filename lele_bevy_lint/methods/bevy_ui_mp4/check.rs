@@ -19,26 +19,27 @@ pub fn check(_self: &checkers::bevy_ui_mp4::BevyUiMp4, project: &Project) -> Vec
             continue;
         };
 
-        let previews = scan::collect_previews(file);
-        let Some(preview) = previews.iter().find(|p| p.kind == scan::PreviewKind::Mp4) else {
-            diags.push(scan::diag(project, source.origin, rel_path,
-                visual.line,
-                checkers::bevy_ui_mp4::BevyUiMp4::CODE,
-                format!(
-                    "file spawns UI `{}` and drives it over time/input ({}) but defines no ignored `*_ui_mp4_preview` test",
-                    visual.visual,
-                    found_drivers.join(", ")
-                ),
-            ));
-            continue;
-        };
-
-        diags.extend(scan::require_ignored(
+        diags.extend(scan::require_preview(
             project,
             source.origin,
             rel_path,
-            preview,
+            file,
+            scan::PreviewKind::Mp4,
             checkers::bevy_ui_mp4::BevyUiMp4::CODE,
+            || {
+                scan::diag(
+                    project,
+                    source.origin,
+                    rel_path,
+                    visual.line,
+                    checkers::bevy_ui_mp4::BevyUiMp4::CODE,
+                    format!(
+                        "file spawns UI `{}` and drives it over time/input ({}) but defines no ignored `*_ui_mp4_preview` test",
+                        visual.visual,
+                        found_drivers.join(", ")
+                    ),
+                )
+            },
         ));
     }
 
