@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::discovery;
 use crate::net_id;
-use discovery::state_machine::Output;
 
 pub struct State {
     pub me: net_id::Peer,
@@ -13,7 +12,6 @@ pub struct State {
     pub candidates: BTreeMap<net_id::PeerId, discovery::Presence>,
     pub last_dial: BTreeMap<net_id::PeerId, discovery::EpochSecs>,
     pub last_hello: Option<discovery::EpochSecs>,
-    pub outputs: Vec<Output>,
 }
 
 impl State {
@@ -28,7 +26,6 @@ impl State {
             candidates: BTreeMap::new(),
             last_dial: BTreeMap::new(),
             last_hello: None,
-            outputs: Vec::new(),
         }
     }
 }
@@ -49,6 +46,5 @@ mod tests {
             discovery::Timing::default(),
         );
         assert!(state.room.is_none());
-        assert_eq!(state.outputs, Vec::new());
     }
 }

@@ -1,16 +1,18 @@
 use crate::discovery;
+use crate::net_id;
 use crate::p2p;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Input {
     Command(discovery::Command),
-    Net(p2p::NetEvent),
-    Lobby(discovery::Lobby),
+    NetEvent(p2p::NetEvent),
+    LobbyUpdated(discovery::Lobby),
+    OwnAddrsChanged(Vec<net_id::PeerAddr>),
     Tick,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Output {
-    Event(discovery::Event),
-    Net(p2p::NetCommand),
+    Notify(discovery::Event),
+    NetCommand(p2p::NetCommand),
 }

@@ -1,17 +1,19 @@
 use crate::discovery;
 use discovery::state_machine::{Output, State};
 
-pub fn handle_lobby(state: &mut State, lobby: discovery::Lobby, now: discovery::EpochSecs) {
+pub fn handle_lobby(
+    state: &mut State,
+    lobby: discovery::Lobby,
+    now: discovery::EpochSecs,
+) -> Vec<Output> {
     let ttl_secs = state.timing.presence_ttl_secs;
     let lobby = discovery::state_machine::live_lobby(lobby, now, ttl_secs);
     if lobby == state.lobby {
-        return;
+        return Vec::new();
     }
     state.lobby = lobby;
-    state
-        .outputs
-        .push(Output::Event(discovery::Event::LobbyChanged));
     discovery::state_machine::seed_candidates(state);
+    vec![Output::Notify(discovery::Event::LobbyChanged)]
 }
 
 #[cfg(test)]
@@ -54,13 +56,14 @@ mod tests {
                 members,
             },
         );
-        handle_lobby(&mut state, lobby.clone(), discovery::EpochSecs(10));
+        assert_eq!(
+            handle_lobby(&mut state, lobby.clone(), discovery::EpochSecs(10)),
+            vec![Output::Notify(discovery::Event::LobbyChanged)]
+        );
         assert_eq!(state.candidates.len(), 1);
         assert_eq!(
-            std::mem::take(&mut state.outputs),
-            vec![Output::Event(discovery::Event::LobbyChanged)]
+            handle_lobby(&mut state, lobby, discovery::EpochSecs(10)),
+            Vec::new()
         );
-        handle_lobby(&mut state, lobby, discovery::EpochSecs(10));
-        assert_eq!(std::mem::take(&mut state.outputs), Vec::new());
     }
 }

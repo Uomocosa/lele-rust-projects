@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::watch::Receiver;
 
 use crate::discovery;
 use crate::net_id;
@@ -41,13 +40,18 @@ pub async fn run(
     loop {
         let input = tokio::select! {
             Some(command) = commands.recv() => Input::Command(command),
-            Some(event) = net.events.recv() => Input::Net(event),
-            Some(lobby) = lobbies.recv() => Input::Lobby(lobby),
+            Some(event) = net.events.recv() => Input::NetEvent(event),
+            Some(lobby) = lobbies.recv() => Input::LobbyUpdated(lobby),
+            Ok(()) = net.observed.changed() => {
+                let Some(addrs) = net.observed.borrow_and_update().clone() else {
+                    continue;
+                };
+                Input::OwnAddrsChanged(discovery::libp2p::dialable(addrs))
+            }
             _ = tick.tick() => Input::Tick,
         };
-        adopt_observed(&mut state, &mut net.observed);
-        discovery::state_machine::update(&mut state, input, discovery::now_epoch());
-        flush(&mut state, &net.commands, &events);
+        let outputs = discovery::state_machine::update(&mut state, input, discovery::now_epoch());
+        flush(outputs, &net.commands, &events);
         let target = discovery::state_machine::publish_target(&state);
         target_tx.send_if_modified(|current| {
             let changed = *current != target;
@@ -60,29 +64,18 @@ pub async fn run(
     }
 }
 
-// needed helper: adopts libp2p-observed addresses so peers can dial us back
-fn adopt_observed(state: &mut State, observed: &mut Receiver<Option<Vec<net_id::PeerAddr>>>) {
-    if !observed.has_changed().unwrap_or(false) {
-        return;
-    }
-    let latest = observed.borrow_and_update().clone();
-    if let Some(addrs) = latest {
-        state.me.addrs = discovery::libp2p::dialable(addrs);
-    }
-}
-
-// needed helper: performs the state's queued effects
+// needed helper: performs the outputs of one update
 fn flush(
-    state: &mut State,
+    outputs: Vec<Output>,
     net: &UnboundedSender<p2p::NetCommand>,
     events: &UnboundedSender<discovery::Event>,
 ) {
-    for output in std::mem::take(&mut state.outputs) {
+    for output in outputs {
         match output {
-            Output::Event(event) => {
+            Output::Notify(event) => {
                 let _ = events.send(event);
             }
-            Output::Net(command) => {
+            Output::NetCommand(command) => {
                 let _ = net.send(command);
             }
         }

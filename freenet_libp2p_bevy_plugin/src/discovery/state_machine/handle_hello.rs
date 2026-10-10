@@ -7,14 +7,13 @@ pub fn handle_hello(
     from: &net_id::PeerId,
     data: &[u8],
     now: discovery::EpochSecs,
-) {
+) -> Vec<Output> {
     let Ok(hello) = bincode::deserialize::<Hello>(data) else {
-        return;
+        return Vec::new();
     };
     let my_room = state.room.as_ref().map(|room| room.name.clone());
     if hello.room.is_none() || hello.room != my_room {
-        drop_member(state, from);
-        return;
+        return drop_member(state, from);
     }
     let mut peers = hello.peers;
     peers.push(net_id::Peer {
@@ -23,10 +22,10 @@ pub fn handle_hello(
     });
     discovery::state_machine::add_candidates(state, peers, now);
     if !state.connected.contains(from) {
-        return;
+        return Vec::new();
     }
     let Some(room) = state.room.as_mut() else {
-        return;
+        return Vec::new();
     };
     let member = discovery::Member {
         presence: discovery::Presence {
@@ -37,7 +36,7 @@ pub fn handle_hello(
     };
     let added = room.members.insert(from.clone(), member).is_none();
     if !added {
-        return;
+        return Vec::new();
     }
     tracing::info!(
         target: "room_lobby",
@@ -46,26 +45,23 @@ pub fn handle_hello(
         members = room.members.len(),
         "discovery member joined"
     );
-    state
-        .outputs
-        .push(Output::Event(discovery::Event::MembersChanged));
-    discovery::state_machine::send_hello(state, from);
+    let mut outputs = vec![Output::Notify(discovery::Event::MembersChanged)];
+    outputs.extend(discovery::state_machine::send_hello(state, from));
+    outputs
 }
 
 // needed helper: removes a peer that left our room or switched to another one
-fn drop_member(state: &mut State, peer: &net_id::PeerId) {
+fn drop_member(state: &mut State, peer: &net_id::PeerId) -> Vec<Output> {
     let removed = state
         .room
         .as_mut()
         .and_then(|room| room.members.remove(peer))
         .is_some();
     if !removed {
-        return;
+        return Vec::new();
     }
     tracing::info!(target: "room_lobby", peer = %peer.as_str(), "discovery member left");
-    state
-        .outputs
-        .push(Output::Event(discovery::Event::MembersChanged));
+    vec![Output::Notify(discovery::Event::MembersChanged)]
 }
 
 #[cfg(test)]
@@ -105,18 +101,18 @@ mod tests {
             }],
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
-        handle_hello(&mut state, &peer, &data, discovery::EpochSecs(1));
+        let outputs = handle_hello(&mut state, &peer, &data, discovery::EpochSecs(1));
         assert_eq!(state.room.as_ref().map_or(0, |room| room.members.len()), 1);
         assert_eq!(state.candidates.len(), 2);
         assert!(matches!(
-            std::mem::take(&mut state.outputs).as_slice(),
+            outputs.as_slice(),
             [
-                Output::Event(discovery::Event::MembersChanged),
-                Output::Net(p2p::NetCommand::Exchange { .. }),
+                Output::Notify(discovery::Event::MembersChanged),
+                Output::NetCommand(p2p::NetCommand::Exchange { .. }),
             ]
         ));
         let left = bincode::serialize(&Hello::default()).unwrap_or_default();
-        handle_hello(&mut state, &peer, &left, discovery::EpochSecs(2));
+        let _ = handle_hello(&mut state, &peer, &left, discovery::EpochSecs(2));
         assert_eq!(state.room.as_ref().map_or(0, |room| room.members.len()), 0);
     }
 
@@ -131,7 +127,7 @@ mod tests {
             peers: Vec::new(),
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
-        handle_hello(&mut state, &joiner, &data, discovery::EpochSecs(1));
+        let _ = handle_hello(&mut state, &joiner, &data, discovery::EpochSecs(1));
         let status = state
             .room
             .as_ref()

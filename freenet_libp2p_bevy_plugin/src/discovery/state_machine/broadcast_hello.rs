@@ -1,12 +1,14 @@
 use crate::discovery;
 use crate::net_id;
-use discovery::state_machine::State;
+use discovery::state_machine::{Output, State};
 
-pub fn broadcast_hello(state: &mut State) {
+#[must_use]
+pub fn broadcast_hello(state: &State) -> Vec<Output> {
     let peers: Vec<net_id::PeerId> = state.connected.iter().cloned().collect();
-    for peer in &peers {
-        discovery::state_machine::send_hello(state, peer);
-    }
+    peers
+        .iter()
+        .flat_map(|peer| discovery::state_machine::send_hello(state, peer))
+        .collect()
 }
 
 #[cfg(test)]
@@ -27,7 +29,6 @@ mod tests {
         );
         state.connected.insert(net_id::PeerId::from("a"));
         state.connected.insert(net_id::PeerId::from("b"));
-        broadcast_hello(&mut state);
-        assert_eq!(std::mem::take(&mut state.outputs).len(), 2);
+        assert_eq!(broadcast_hello(&state).len(), 2);
     }
 }

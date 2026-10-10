@@ -1,16 +1,18 @@
 use crate::discovery;
-use discovery::state_machine::State;
+use discovery::state_machine::{Output, State};
 
-pub fn tick(state: &mut State, now: discovery::EpochSecs) {
-    discovery::state_machine::dial_candidates(state, now);
+#[must_use]
+pub fn tick(state: &mut State, now: discovery::EpochSecs) -> Vec<Output> {
+    let mut outputs = discovery::state_machine::dial_candidates(state, now);
     let hello_due = state
         .last_hello
         .is_none_or(|last| now.saturating_sub(*last) >= state.timing.hello_secs);
     if hello_due && state.room.is_some() {
-        discovery::state_machine::broadcast_hello(state);
+        outputs.extend(discovery::state_machine::broadcast_hello(state));
         state.last_hello = Some(now);
     }
-    discovery::state_machine::prune_members(state, now);
+    outputs.extend(discovery::state_machine::prune_members(state, now));
+    outputs
 }
 
 #[cfg(test)]
@@ -34,9 +36,9 @@ mod tests {
             name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
-        tick(&mut state, discovery::EpochSecs(100));
-        tick(&mut state, discovery::EpochSecs(101));
+        let mut outputs = tick(&mut state, discovery::EpochSecs(100));
+        outputs.extend(tick(&mut state, discovery::EpochSecs(101)));
         assert_eq!(state.last_hello, Some(discovery::EpochSecs(100)));
-        assert_eq!(std::mem::take(&mut state.outputs).len(), 1);
+        assert_eq!(outputs.len(), 1);
     }
 }

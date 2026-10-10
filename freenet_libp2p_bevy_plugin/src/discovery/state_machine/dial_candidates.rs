@@ -3,9 +3,10 @@ use crate::net_id;
 use crate::p2p;
 use discovery::state_machine::{Output, State};
 
-pub fn dial_candidates(state: &mut State, now: discovery::EpochSecs) {
+#[must_use]
+pub fn dial_candidates(state: &mut State, now: discovery::EpochSecs) -> Vec<Output> {
     if state.room.is_none() {
-        return;
+        return Vec::new();
     }
     let redial_secs = state.timing.redial_secs;
     let due: Vec<net_id::Peer> = state
@@ -23,11 +24,13 @@ pub fn dial_candidates(state: &mut State, now: discovery::EpochSecs) {
             addrs: presence.addrs.clone(),
         })
         .collect();
+    let mut outputs = Vec::new();
     for peer in due {
         tracing::debug!(target: "room_lobby", peer = %peer.id.as_str(), "discovery dial candidate");
         state.last_dial.insert(peer.id.clone(), now);
-        state.outputs.push(Output::Net(p2p::NetCommand::Dial(peer)));
+        outputs.push(Output::NetCommand(p2p::NetCommand::Dial(peer)));
     }
+    outputs
 }
 
 #[cfg(test)]
@@ -63,13 +66,15 @@ mod tests {
         ];
         discovery::state_machine::add_candidates(&mut state, peers, discovery::EpochSecs(1));
         state.connected.insert(net_id::PeerId::from("b"));
-        dial_candidates(&mut state, discovery::EpochSecs(10));
-        dial_candidates(&mut state, discovery::EpochSecs(10));
+        let mut outputs = dial_candidates(&mut state, discovery::EpochSecs(10));
+        outputs.extend(dial_candidates(&mut state, discovery::EpochSecs(10)));
         assert!(matches!(
-            std::mem::take(&mut state.outputs).as_slice(),
-            [Output::Net(p2p::NetCommand::Dial(peer))] if peer.id.as_str() == "a"
+            outputs.as_slice(),
+            [Output::NetCommand(p2p::NetCommand::Dial(peer))] if peer.id.as_str() == "a"
         ));
-        dial_candidates(&mut state, discovery::EpochSecs(12));
-        assert_eq!(std::mem::take(&mut state.outputs).len(), 1);
+        assert_eq!(
+            dial_candidates(&mut state, discovery::EpochSecs(12)).len(),
+            1
+        );
     }
 }
