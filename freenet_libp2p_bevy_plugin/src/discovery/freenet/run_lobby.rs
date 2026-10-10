@@ -15,7 +15,7 @@ pub async fn run_lobby(
     mut target: Receiver<Option<discovery::state_machine::PublishTarget>>,
     lobbies: UnboundedSender<discovery::Lobby>,
 ) {
-    let mut tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
+    let mut tick = tokio::time::interval(timing.tick.max(Duration::from_secs(1)));
     let mut last_sent: Option<discovery::Lobby> = None;
     let mut last_refresh: Option<Instant> = None;
     let mut last_publish: Option<Instant> = None;
@@ -31,7 +31,7 @@ pub async fn run_lobby(
         }
         let now = Instant::now();
         let mut lobby = discovery::freenet::poll(&mut lobby_client).await.ok();
-        if is_due(last_refresh, now, timing.lobby_secs) {
+        if is_due(last_refresh, now, timing.lobby) {
             let timeout = constants::REQUEST_TIMEOUT;
             let refresh = discovery::freenet::refresh(&mut lobby_client);
             if let Ok(Ok(fresh)) = tokio::time::timeout(timeout, refresh).await {
@@ -48,12 +48,12 @@ pub async fn run_lobby(
             }
         }
         let current = target.borrow_and_update().clone();
-        if is_due(last_publish, now, timing.republish_secs)
+        if is_due(last_publish, now, timing.republish)
             && let Some(current) = current
         {
             let presence = discovery::Presence {
                 addrs: current.addrs,
-                updated_at: discovery::now_epoch(),
+                updated_at: discovery::UnixTime::now(),
             };
             let _ = discovery::freenet::publish_presence(
                 &mut lobby_client,
@@ -67,9 +67,9 @@ pub async fn run_lobby(
     }
 }
 
-// needed helper: true when `every_secs` have elapsed since `last` (or it never ran)
-fn is_due(last: Option<Instant>, now: Instant, every_secs: u64) -> bool {
-    last.is_none_or(|last| now.duration_since(last).as_secs() >= every_secs)
+// needed helper: true when `every` has elapsed since `last` (or it never ran)
+fn is_due(last: Option<Instant>, now: Instant, every: Duration) -> bool {
+    last.is_none_or(|last| now.duration_since(last) >= every)
 }
 
 // no test_usage necessary

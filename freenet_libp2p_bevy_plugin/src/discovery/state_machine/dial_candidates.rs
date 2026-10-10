@@ -4,11 +4,11 @@ use crate::p2p;
 use discovery::state_machine::{Output, State};
 
 #[must_use]
-pub fn dial_candidates(state: &mut State, now: discovery::EpochSecs) -> Vec<Output> {
+pub fn dial_candidates(state: &mut State, now: discovery::UnixTime) -> Vec<Output> {
     if state.room.is_none() {
         return Vec::new();
     }
-    let redial_secs = state.timing.redial_secs;
+    let redial = state.timing.redial;
     let due: Vec<net_id::Peer> = state
         .candidates
         .iter()
@@ -17,7 +17,7 @@ pub fn dial_candidates(state: &mut State, now: discovery::EpochSecs) -> Vec<Outp
             state
                 .last_dial
                 .get(*peer)
-                .is_none_or(|last| now.saturating_sub(**last) >= redial_secs)
+                .is_none_or(|last| now.since(*last) >= redial)
         })
         .map(|(peer, presence)| net_id::Peer {
             id: peer.clone(),
@@ -64,16 +64,23 @@ mod tests {
                 addrs: vec![net_id::PeerAddr::from("/ip4/2")],
             },
         ];
-        discovery::state_machine::add_candidates(&mut state, peers, discovery::EpochSecs(1));
+        discovery::state_machine::add_candidates(
+            &mut state,
+            peers,
+            discovery::UnixTime::from_secs(1),
+        );
         state.connected.insert(net_id::PeerId::from("b"));
-        let mut outputs = dial_candidates(&mut state, discovery::EpochSecs(10));
-        outputs.extend(dial_candidates(&mut state, discovery::EpochSecs(10)));
+        let mut outputs = dial_candidates(&mut state, discovery::UnixTime::from_secs(10));
+        outputs.extend(dial_candidates(
+            &mut state,
+            discovery::UnixTime::from_secs(10),
+        ));
         assert!(matches!(
             outputs.as_slice(),
             [Output::NetCommand(p2p::NetCommand::Dial(peer))] if peer.id.as_str() == "a"
         ));
         assert_eq!(
-            dial_candidates(&mut state, discovery::EpochSecs(12)).len(),
+            dial_candidates(&mut state, discovery::UnixTime::from_secs(12)).len(),
             1
         );
     }

@@ -5,7 +5,7 @@ use discovery::state_machine::{Output, State};
 pub fn handle_command(
     state: &mut State,
     command: discovery::Command,
-    now: discovery::EpochSecs,
+    now: discovery::UnixTime,
 ) -> Vec<Output> {
     match command {
         discovery::Command::Create(room) | discovery::Command::Join(room) => join(state, room, now),
@@ -14,7 +14,7 @@ pub fn handle_command(
 }
 
 // needed helper: enters a room, says hello to every live link and dials the lobby seeds
-fn join(state: &mut State, room: net_id::RoomName, now: discovery::EpochSecs) -> Vec<Output> {
+fn join(state: &mut State, room: net_id::RoomName, now: discovery::UnixTime) -> Vec<Output> {
     let mut outputs = leave(state);
     state.room = Some(discovery::Room {
         name: room.clone(),
@@ -62,13 +62,13 @@ mod tests {
         let mut outputs = handle_command(
             &mut state,
             discovery::Command::Create(room),
-            discovery::EpochSecs(1),
+            discovery::UnixTime::from_secs(1),
         );
         assert!(state.room.is_some());
         outputs.extend(handle_command(
             &mut state,
             discovery::Command::Leave,
-            discovery::EpochSecs(2),
+            discovery::UnixTime::from_secs(2),
         ));
         assert!(state.room.is_none());
         assert!(matches!(

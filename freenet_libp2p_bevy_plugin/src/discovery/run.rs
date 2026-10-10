@@ -36,7 +36,7 @@ pub async fn run(
             discovery::freenet::connect_retry("127.0.0.1", *endpoint, &params, &target_rx).await;
         discovery::freenet::run_lobby(client, me.id, capacity, timing, target_rx, lobby_tx).await;
     });
-    let mut tick = tokio::time::interval(Duration::from_secs(timing.tick_secs.max(1)));
+    let mut tick = tokio::time::interval(timing.tick.max(Duration::from_secs(1)));
     loop {
         let input = tokio::select! {
             Some(command) = commands.recv() => Input::Command(command),
@@ -50,7 +50,8 @@ pub async fn run(
             }
             _ = tick.tick() => Input::Tick,
         };
-        let outputs = discovery::state_machine::update(&mut state, input, discovery::now_epoch());
+        let outputs =
+            discovery::state_machine::update(&mut state, input, discovery::UnixTime::now());
         flush(outputs, &net.commands, &events);
         let target = discovery::state_machine::publish_target(&state);
         target_tx.send_if_modified(|current| {

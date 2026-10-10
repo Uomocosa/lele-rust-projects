@@ -63,13 +63,11 @@
     "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "bash -c 'grep -q require lele.toml 2>/dev/null || exit 0; d=$HOME/.cache/cargo-target/lele_taxonomy_tool; devenv --from path:../lele_function_taxonomy shell -- bash -c \"CARGO_TARGET_DIR=$d cargo build --quiet --manifest-path ../lele_function_taxonomy/Cargo.toml --bins\" && LELE_TAXONOMY_DRIVER=$d/debug/lele-taxonomy-driver $d/debug/lele-function-taxonomy --manifest-path ./Cargo.toml'"; showOutput = true; };
     "freenet:contract-harness" = { exec = "cargo test --manifest-path ../freenet_contract_harness/Cargo.toml -- --nocapture"; showOutput = true; };
+    "lobby:contract-test" = { exec = "cargo test --manifest-path contract/lobby/Cargo.toml"; showOutput = true; };
     "freenet:run-local-mainnet" = { exec = "cargo nextest run --test mainnet_local --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "freenet:run-cross-os" = { exec = "cargo nextest run --test mainnet_cross --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "lobby:e2e-discovery" = { exec = "cargo nextest run --test lobby_room_discovery --all-features --run-ignored all -- --nocapture"; showOutput = true; };
     "lobby:e2e-join" = { exec = "cargo nextest run --test lobby_room_join --all-features --run-ignored all -- --nocapture"; showOutput = true; };
-    "lele:docs:check" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- check"; showOutput = true; };
-    "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- serve"; showOutput = true; };
-    "lele:docs:export" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- export --out target/docs-site"; showOutput = true; };
     "lele:bevy-lint" = { exec = "cargo run --manifest-path ../lele_bevy_lint/Cargo.toml"; showOutput = true; };
     "ui:previews" = { exec = "cargo nextest run --all-targets ui_png_preview ui_mp4_preview ui_scene_preview --all-features --run-ignored all -- --nocapture"; showOutput = true; };
   };
@@ -117,10 +115,10 @@
       pass_filenames = false;
       always_run = true;
     };
-    lele-docs = {
+    lobby-contract-test = {
       enable = true;
-      name = "lele_code_viewer (freenet_libp2p_bevy_plugin)";
-      entry = "bash -c 'cd freenet_libp2p_bevy_plugin && devenv tasks run lele:docs:check 2>&1'";
+      name = "contract test (lobby_contract)";
+      entry = "bash -c 'cd freenet_libp2p_bevy_plugin && devenv tasks run lobby:contract-test 2>&1'";
       pass_filenames = false;
       always_run = true;
     };

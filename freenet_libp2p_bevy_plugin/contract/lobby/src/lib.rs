@@ -11,10 +11,20 @@ pub struct RoomName(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RemotePeerId(pub String);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct UnixTime(pub u64);
+
+impl UnixTime {
+    #[must_use]
+    pub const fn from_secs(secs: u64) -> Self {
+        Self(secs)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Presence {
     pub addrs: Vec<String>,
-    pub updated_at: u64,
+    pub updated_at: UnixTime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -161,7 +171,13 @@ mod tests {
         State::from(bincode::serialize(&lobby).unwrap())
     }
 
-    fn room(peer: &str, updated_at: u64) -> RoomRecord {
+    fn state_bytes(modification: UpdateModification<'_>) -> Vec<u8> {
+        modification
+            .new_state
+            .map_or_else(Vec::new, |state| state.as_ref().to_vec())
+    }
+
+    fn room(peer: &str, updated_at: UnixTime) -> RoomRecord {
         let mut members = BTreeMap::new();
         members.insert(
             RemotePeerId(peer.to_string()),
@@ -187,7 +203,7 @@ mod tests {
         ));
 
         let mut base = LobbyState::new();
-        base.insert(RoomName("room-a".to_string()), room("peer", 5));
+        base.insert(RoomName("room-a".to_string()), room("peer", UnixTime::from_secs(5)));
         let update = UpdateData::Delta(StateDelta::from(
             bincode::serialize(&base).unwrap(),
         ));
@@ -197,17 +213,14 @@ mod tests {
             vec![update],
         )
         .unwrap();
-        let bytes = match merged {
-            UpdateModification::ValidUpdate(state) => state.as_ref().to_vec(),
-            _ => unreachable!(),
-        };
+        let bytes = state_bytes(merged);
         let decoded: LobbyState = bincode::deserialize(&bytes).unwrap();
         assert_eq!(decoded.len(), 1);
 
         let older = UpdateData::Delta(StateDelta::from(
             bincode::serialize(&{
                 let mut old = LobbyState::new();
-                old.insert(RoomName("room-a".to_string()), room("peer", 1));
+                old.insert(RoomName("room-a".to_string()), room("peer", UnixTime::from_secs(1)));
                 old
             })
             .unwrap(),
@@ -218,11 +231,8 @@ mod tests {
             vec![older],
         )
         .unwrap();
-        let bytes = match merged {
-            UpdateModification::ValidUpdate(state) => state.as_ref().to_vec(),
-            _ => unreachable!(),
-        };
+        let bytes = state_bytes(merged);
         let decoded: LobbyState = bincode::deserialize(&bytes).unwrap();
-        assert_eq!(decoded[&RoomName("room-a".to_string())].members[&RemotePeerId("peer".to_string())].updated_at, 5);
+        assert_eq!(decoded[&RoomName("room-a".to_string())].members[&RemotePeerId("peer".to_string())].updated_at, UnixTime::from_secs(5));
     }
 }

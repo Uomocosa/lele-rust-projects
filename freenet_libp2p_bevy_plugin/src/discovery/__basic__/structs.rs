@@ -10,7 +10,7 @@ use crate::net_id;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]
 pub struct Presence {
     pub addrs: Vec<net_id::PeerAddr>,
-    pub updated_at: discovery::EpochSecs,
+    pub updated_at: discovery::UnixTime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]

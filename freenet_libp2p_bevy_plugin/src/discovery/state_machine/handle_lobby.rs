@@ -4,10 +4,9 @@ use discovery::state_machine::{Output, State};
 pub fn handle_lobby(
     state: &mut State,
     lobby: discovery::Lobby,
-    now: discovery::EpochSecs,
+    now: discovery::UnixTime,
 ) -> Vec<Output> {
-    let ttl_secs = state.timing.presence_ttl_secs;
-    let lobby = discovery::state_machine::live_lobby(lobby, now, ttl_secs);
+    let lobby = discovery::state_machine::live_lobby(lobby, now, state.timing.presence_ttl);
     if lobby == state.lobby {
         return Vec::new();
     }
@@ -44,7 +43,7 @@ mod tests {
                 net_id::PeerId(peer.to_string()),
                 discovery::Presence {
                     addrs: vec![net_id::PeerAddr::from("/ip4/1")],
-                    updated_at: discovery::EpochSecs(3),
+                    updated_at: discovery::UnixTime::from_secs(3),
                 },
             );
         }
@@ -57,12 +56,16 @@ mod tests {
             },
         );
         assert_eq!(
-            handle_lobby(&mut state, lobby.clone(), discovery::EpochSecs(10)),
+            handle_lobby(
+                &mut state,
+                lobby.clone(),
+                discovery::UnixTime::from_secs(10)
+            ),
             vec![Output::Notify(discovery::Event::LobbyChanged)]
         );
         assert_eq!(state.candidates.len(), 1);
         assert_eq!(
-            handle_lobby(&mut state, lobby, discovery::EpochSecs(10)),
+            handle_lobby(&mut state, lobby, discovery::UnixTime::from_secs(10)),
             Vec::new()
         );
     }

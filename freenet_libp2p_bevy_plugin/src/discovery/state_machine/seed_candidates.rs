@@ -50,7 +50,7 @@ mod tests {
         });
         let presence = discovery::Presence {
             addrs: vec![net_id::PeerAddr::from("/ip4/1")],
-            updated_at: discovery::EpochSecs(5),
+            updated_at: discovery::UnixTime::from_secs(5),
         };
         let members = BTreeMap::from([
             (net_id::PeerId::from("me"), presence.clone()),

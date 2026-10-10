@@ -1,7 +1,7 @@
 use crate::discovery;
 use discovery::state_machine::{Input, Output, State};
 
-pub fn update(state: &mut State, input: Input, now: discovery::EpochSecs) -> Vec<Output> {
+pub fn update(state: &mut State, input: Input, now: discovery::UnixTime) -> Vec<Output> {
     match input {
         Input::Command(command) => discovery::state_machine::handle_command(state, command, now),
         Input::NetEvent(event) => discovery::state_machine::handle_net_event(state, event, now),
@@ -34,7 +34,7 @@ mod tests {
         let outputs = update(
             &mut state,
             Input::Command(discovery::Command::Join(room.clone())),
-            discovery::EpochSecs(1),
+            discovery::UnixTime::from_secs(1),
         );
         assert_eq!(
             outputs,
@@ -55,7 +55,7 @@ mod tests {
         update(
             &mut state,
             Input::OwnAddrsChanged(addrs.clone()),
-            discovery::EpochSecs(1),
+            discovery::UnixTime::from_secs(1),
         );
         assert_eq!(state.me.addrs, addrs);
     }

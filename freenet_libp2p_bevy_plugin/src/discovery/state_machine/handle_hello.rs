@@ -6,7 +6,7 @@ pub fn handle_hello(
     state: &mut State,
     from: &net_id::PeerId,
     data: &[u8],
-    now: discovery::EpochSecs,
+    now: discovery::UnixTime,
 ) -> Vec<Output> {
     let Ok(hello) = bincode::deserialize::<Hello>(data) else {
         return Vec::new();
@@ -101,7 +101,7 @@ mod tests {
             }],
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
-        let outputs = handle_hello(&mut state, &peer, &data, discovery::EpochSecs(1));
+        let outputs = handle_hello(&mut state, &peer, &data, discovery::UnixTime::from_secs(1));
         assert_eq!(state.room.as_ref().map_or(0, |room| room.members.len()), 1);
         assert_eq!(state.candidates.len(), 2);
         assert!(matches!(
@@ -112,7 +112,7 @@ mod tests {
             ]
         ));
         let left = bincode::serialize(&Hello::default()).unwrap_or_default();
-        let _ = handle_hello(&mut state, &peer, &left, discovery::EpochSecs(2));
+        let _ = handle_hello(&mut state, &peer, &left, discovery::UnixTime::from_secs(2));
         assert_eq!(state.room.as_ref().map_or(0, |room| room.members.len()), 0);
     }
 
@@ -127,7 +127,12 @@ mod tests {
             peers: Vec::new(),
         };
         let data = bincode::serialize(&hello).unwrap_or_default();
-        let _ = handle_hello(&mut state, &joiner, &data, discovery::EpochSecs(1));
+        let _ = handle_hello(
+            &mut state,
+            &joiner,
+            &data,
+            discovery::UnixTime::from_secs(1),
+        );
         let status = state
             .room
             .as_ref()

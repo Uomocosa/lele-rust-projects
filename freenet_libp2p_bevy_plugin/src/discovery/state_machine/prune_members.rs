@@ -2,19 +2,19 @@ use crate::discovery;
 use discovery::state_machine::{Output, State};
 
 #[must_use]
-pub fn prune_members(state: &mut State, now: discovery::EpochSecs) -> Vec<Output> {
-    let ttl_secs = state.timing.presence_ttl_secs;
-    let grace_secs = state.timing.member_grace_secs;
+pub fn prune_members(state: &mut State, now: discovery::UnixTime) -> Vec<Output> {
+    let ttl = state.timing.presence_ttl;
+    let grace = state.timing.member_grace;
     state
         .candidates
-        .retain(|_, presence| now.saturating_sub(*presence.updated_at) <= ttl_secs);
+        .retain(|_, presence| now.since(presence.updated_at) <= ttl);
     let connected = &state.connected;
     let Some(room) = state.room.as_mut() else {
         return Vec::new();
     };
     let before = room.members.len();
     room.members.retain(|peer, member| {
-        connected.contains(peer) || now.saturating_sub(*member.presence.updated_at) <= grace_secs
+        connected.contains(peer) || now.since(member.presence.updated_at) <= grace
     });
     if room.members.len() == before {
         Vec::new()
@@ -46,7 +46,7 @@ mod tests {
                 discovery::Member {
                     presence: discovery::Presence {
                         addrs: Vec::new(),
-                        updated_at: discovery::EpochSecs(0),
+                        updated_at: discovery::UnixTime::from_secs(0),
                     },
                     status: discovery::LinkStatus::Known,
                 },
@@ -57,7 +57,7 @@ mod tests {
             members,
         });
         state.connected.insert(net_id::PeerId::from("live"));
-        let _ = prune_members(&mut state, discovery::EpochSecs(100));
+        let _ = prune_members(&mut state, discovery::UnixTime::from_secs(100));
         let left: Vec<_> = state
             .room
             .as_ref()

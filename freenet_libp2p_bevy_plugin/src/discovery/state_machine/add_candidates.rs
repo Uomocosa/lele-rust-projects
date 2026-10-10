@@ -5,7 +5,7 @@ use discovery::state_machine::State;
 pub fn add_candidates(
     state: &mut State,
     peers: impl IntoIterator<Item = net_id::Peer>,
-    now: discovery::EpochSecs,
+    now: discovery::UnixTime,
 ) {
     for peer in peers {
         if peer.id == state.me.id || peer.id.is_empty() || peer.addrs.is_empty() {
@@ -51,7 +51,7 @@ mod tests {
                 addrs: Vec::new(),
             },
         ];
-        add_candidates(&mut state, peers, discovery::EpochSecs(1));
+        add_candidates(&mut state, peers, discovery::UnixTime::from_secs(1));
         assert_eq!(state.candidates.len(), 1);
         assert!(state.candidates.contains_key(&net_id::PeerId::from("a")));
     }

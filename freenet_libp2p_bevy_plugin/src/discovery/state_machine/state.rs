@@ -10,8 +10,8 @@ pub struct State {
     pub room: Option<discovery::Room>,
     pub connected: BTreeSet<net_id::PeerId>,
     pub candidates: BTreeMap<net_id::PeerId, discovery::Presence>,
-    pub last_dial: BTreeMap<net_id::PeerId, discovery::EpochSecs>,
-    pub last_hello: Option<discovery::EpochSecs>,
+    pub last_dial: BTreeMap<net_id::PeerId, discovery::UnixTime>,
+    pub last_hello: Option<discovery::UnixTime>,
 }
 
 impl State {

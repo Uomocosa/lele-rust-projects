@@ -1,17 +1,19 @@
+use std::time::Duration;
+
 use crate::discovery;
 
 #[must_use]
 pub fn live_lobby(
     lobby: discovery::Lobby,
-    now: discovery::EpochSecs,
-    ttl_secs: u64,
+    now: discovery::UnixTime,
+    ttl: Duration,
 ) -> discovery::Lobby {
     lobby
         .into_iter()
         .filter_map(|(room, mut record)| {
             record
                 .members
-                .retain(|_, presence| now.saturating_sub(*presence.updated_at) <= ttl_secs);
+                .retain(|_, presence| now.since(presence.updated_at) <= ttl);
             (!record.members.is_empty()).then_some((room, record))
         })
         .collect()
@@ -25,10 +27,10 @@ mod tests {
     use super::live_lobby;
     use crate::discovery;
 
-    fn presence(updated_at: u64) -> discovery::Presence {
+    fn presence(updated_at: discovery::UnixTime) -> discovery::Presence {
         discovery::Presence {
             addrs: Vec::new(),
-            updated_at: discovery::EpochSecs(updated_at),
+            updated_at,
         }
     }
 
@@ -40,8 +42,14 @@ mod tests {
             discovery::RoomEntry {
                 capacity: 8,
                 members: BTreeMap::from([
-                    (net_id::PeerId::from("fresh"), presence(90)),
-                    (net_id::PeerId::from("stale"), presence(10)),
+                    (
+                        net_id::PeerId::from("fresh"),
+                        presence(discovery::UnixTime::from_secs(190)),
+                    ),
+                    (
+                        net_id::PeerId::from("stale"),
+                        presence(discovery::UnixTime::from_secs(1)),
+                    ),
                 ]),
             },
         );
@@ -49,10 +57,17 @@ mod tests {
             net_id::RoomName::from("dead"),
             discovery::RoomEntry {
                 capacity: 8,
-                members: BTreeMap::from([(net_id::PeerId::from("gone"), presence(1))]),
+                members: BTreeMap::from([(
+                    net_id::PeerId::from("gone"),
+                    presence(discovery::UnixTime::from_secs(1)),
+                )]),
             },
         );
-        let live = live_lobby(lobby, discovery::EpochSecs(100), 30);
+        let live = live_lobby(
+            lobby,
+            discovery::UnixTime::from_secs(200),
+            discovery::Timing::default().presence_ttl,
+        );
         let rooms: Vec<_> = live.keys().map(|room| room.as_str()).collect();
         assert_eq!(rooms, vec!["live"]);
         let members = live

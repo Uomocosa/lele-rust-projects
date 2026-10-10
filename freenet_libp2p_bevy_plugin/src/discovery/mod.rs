@@ -10,10 +10,13 @@ pub mod basic;
 
 pub use basic::enums::LinkStatus;
 pub use basic::messages::{Command, Event};
-pub use basic::newtypes::{EpochSecs, GameName, GameToken};
+pub use basic::newtypes::{GameName, GameToken};
 pub use basic::resources::{CommandSender, EventFeed, FreenetPort, Snapshot, SnapshotFeed};
 pub use basic::structs::{Channels, Member, Presence, Room, RoomEntry};
 pub use basic::type_aliases::{Lobby, Members};
+
+mod unix_time;
+pub use unix_time::UnixTime;
 
 mod config;
 pub use config::Config;
@@ -25,9 +28,6 @@ mod error;
 pub use error::Error;
 
 mod game_token;
-
-mod now_epoch;
-pub use now_epoch::now_epoch;
 
 mod run;
 pub use run::run;

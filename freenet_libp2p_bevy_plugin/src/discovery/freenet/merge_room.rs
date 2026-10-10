@@ -39,7 +39,7 @@ mod tests {
             net_id::PeerId::from("peer"),
             discovery::Presence {
                 addrs: Vec::new(),
-                updated_at: discovery::EpochSecs(5),
+                updated_at: discovery::UnixTime::from_secs(5),
             },
         );
         let current = discovery::RoomEntry {
@@ -51,7 +51,7 @@ mod tests {
             net_id::PeerId::from("peer"),
             discovery::Presence {
                 addrs: Vec::new(),
-                updated_at: discovery::EpochSecs(9),
+                updated_at: discovery::UnixTime::from_secs(9),
             },
         );
         let incoming = discovery::RoomEntry {
@@ -60,6 +60,9 @@ mod tests {
         };
         let merged = merge_room(Some(current), incoming);
         let row = merged.members.get(&net_id::PeerId::from("peer"));
-        assert_eq!(row.map(|presence| *presence.updated_at), Some(9));
+        assert_eq!(
+            row.map(|presence| presence.updated_at),
+            Some(discovery::UnixTime::from_secs(9))
+        );
     }
 }

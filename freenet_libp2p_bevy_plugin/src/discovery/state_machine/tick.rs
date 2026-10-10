@@ -2,11 +2,11 @@ use crate::discovery;
 use discovery::state_machine::{Output, State};
 
 #[must_use]
-pub fn tick(state: &mut State, now: discovery::EpochSecs) -> Vec<Output> {
+pub fn tick(state: &mut State, now: discovery::UnixTime) -> Vec<Output> {
     let mut outputs = discovery::state_machine::dial_candidates(state, now);
     let hello_due = state
         .last_hello
-        .is_none_or(|last| now.saturating_sub(*last) >= state.timing.hello_secs);
+        .is_none_or(|last| now.since(last) >= state.timing.hello);
     if hello_due && state.room.is_some() {
         outputs.extend(discovery::state_machine::broadcast_hello(state));
         state.last_hello = Some(now);
@@ -36,9 +36,9 @@ mod tests {
             name: net_id::RoomName::from("r"),
             members: discovery::Members::new(),
         });
-        let mut outputs = tick(&mut state, discovery::EpochSecs(100));
-        outputs.extend(tick(&mut state, discovery::EpochSecs(101)));
-        assert_eq!(state.last_hello, Some(discovery::EpochSecs(100)));
+        let mut outputs = tick(&mut state, discovery::UnixTime::from_secs(100));
+        outputs.extend(tick(&mut state, discovery::UnixTime::from_secs(101)));
+        assert_eq!(state.last_hello, Some(discovery::UnixTime::from_secs(100)));
         assert_eq!(outputs.len(), 1);
     }
 }

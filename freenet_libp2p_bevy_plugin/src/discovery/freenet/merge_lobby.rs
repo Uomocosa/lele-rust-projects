@@ -18,13 +18,13 @@ mod tests {
     use super::merge_lobby;
     use crate::discovery;
 
-    fn record(peer: &str, updated_at: u64) -> discovery::RoomEntry {
+    fn record(peer: &str, updated_at: discovery::UnixTime) -> discovery::RoomEntry {
         let mut members = BTreeMap::new();
         members.insert(
             net_id::PeerId(peer.to_string()),
             discovery::Presence {
                 addrs: Vec::new(),
-                updated_at: discovery::EpochSecs(updated_at),
+                updated_at,
             },
         );
         discovery::RoomEntry {
@@ -37,13 +37,22 @@ mod tests {
     fn test_usage() {
         let room = net_id::RoomName::from("room-a");
         let mut base = BTreeMap::new();
-        base.insert(room.clone(), record("peer", 5));
+        base.insert(
+            room.clone(),
+            record("peer", discovery::UnixTime::from_secs(5)),
+        );
         let mut incoming = BTreeMap::new();
-        incoming.insert(room.clone(), record("peer", 9));
+        incoming.insert(
+            room.clone(),
+            record("peer", discovery::UnixTime::from_secs(9)),
+        );
         let merged = merge_lobby(base, incoming);
         let row = merged
             .get(&room)
             .and_then(|record| record.members.get(&net_id::PeerId::from("peer")));
-        assert_eq!(row.map(|presence| *presence.updated_at), Some(9));
+        assert_eq!(
+            row.map(|presence| presence.updated_at),
+            Some(discovery::UnixTime::from_secs(9))
+        );
     }
 }

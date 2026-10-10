@@ -6,7 +6,7 @@ use discovery::state_machine::{Output, State};
 pub fn handle_net_event(
     state: &mut State,
     event: p2p::NetEvent,
-    now: discovery::EpochSecs,
+    now: discovery::UnixTime,
 ) -> Vec<Output> {
     let mut outputs = match event {
         p2p::NetEvent::PeerConnected(peer) => {
@@ -27,7 +27,7 @@ pub fn handle_net_event(
 }
 
 // needed helper: keeps a dropped member for the grace window, marked not connected
-fn mark_lost(state: &mut State, peer: &net_id::PeerId, now: discovery::EpochSecs) -> Vec<Output> {
+fn mark_lost(state: &mut State, peer: &net_id::PeerId, now: discovery::UnixTime) -> Vec<Output> {
     let Some(member) = state
         .room
         .as_mut()
@@ -60,7 +60,7 @@ mod tests {
         let outputs = handle_net_event(
             &mut state,
             p2p::NetEvent::PeerConnected(net_id::PeerId::from("a")),
-            discovery::EpochSecs(1),
+            discovery::UnixTime::from_secs(1),
         );
         assert!(state.connected.contains(&net_id::PeerId::from("a")));
         assert!(matches!(
@@ -70,7 +70,7 @@ mod tests {
         let _ = handle_net_event(
             &mut state,
             p2p::NetEvent::PeerDisconnected(net_id::PeerId::from("a")),
-            discovery::EpochSecs(2),
+            discovery::UnixTime::from_secs(2),
         );
         assert!(state.connected.is_empty());
     }
