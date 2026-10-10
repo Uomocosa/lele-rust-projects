@@ -12,6 +12,7 @@
     { "action": "skill", "resource": "definition-*", "effect": "allow" },
     { "action": "skill", "resource": "*-rs", "effect": "allow" },
     { "action": "skill", "resource": "crate-tag-ci", "effect": "allow" },
+    { "action": "skill", "resource": "devenv-multi-crate", "effect": "allow" },
     { "action": "skill", "resource": "libp2p", "effect": "allow" },
     { "action": "skill", "resource": "freenet", "effect": "allow" }
   ]
