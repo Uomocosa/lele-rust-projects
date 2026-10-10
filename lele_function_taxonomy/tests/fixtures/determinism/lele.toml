@@ -1,5 +1,0 @@
-[[lele.boundary]]
-name    = "determinism core"
-why     = "Diagnostics must not depend on file order."
-folders = ["src/core"]
-require = "honest"

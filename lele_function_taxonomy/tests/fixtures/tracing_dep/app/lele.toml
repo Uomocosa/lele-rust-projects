@@ -1,5 +1,0 @@
-[[lele.boundary]]
-name    = "honest core"
-why     = "A logging stub from a path dependency is assumed honest."
-folders = ["src/core"]
-require = "honest"

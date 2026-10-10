@@ -1,9 +1,0 @@
-[package]
-name = "fixture-methods-delegate"
-version = "0.0.0"
-edition = "2021"
-
-[workspace]
-
-[dependencies]
-atomic_delegate_macros = { path = "../../../../atomic_delegate_macros" }

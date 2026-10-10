@@ -1,9 +1,0 @@
-[[lele.boundary]]
-name    = "honest core"
-why     = "Everything here must be honest."
-folders = ["src/core"]
-require = "honest"
-
-[honesty]
-declared_honest = []
-declared_dishonest = []

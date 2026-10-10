@@ -1,5 +1,0 @@
-.devenv/
-target/
-contract/directory/target/
-.pre-commit-config.yaml
-.pre-commit-config.json

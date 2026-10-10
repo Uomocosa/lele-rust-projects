@@ -1,5 +1,0 @@
-[[lele.boundary]]
-name    = "honest core"
-why     = "External crate bodies are assumed honest (accepted false negative)."
-folders = ["src/core"]
-require = "honest"

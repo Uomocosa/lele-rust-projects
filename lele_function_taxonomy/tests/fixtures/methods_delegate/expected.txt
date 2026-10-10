@@ -1,1 +1,0 @@
-error: src/core/widget.rs:15:12: error[TAX001]: `core::widget::Widget::stamp` is dishonest: core::widget::Widget::stamp -> methods::widget::stamp::stamp (calls `std::time::SystemTime::now` (hidden read/write)); boundary "delegate core" requires honest functions

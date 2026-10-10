@@ -1,8 +1,0 @@
-[package]
-name = "fixture-scope-missing-folder"
-version = "0.0.0"
-edition = "2021"
-
-[workspace]
-
-[dependencies]

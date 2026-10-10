@@ -1,8 +1,0 @@
-[lele.lint]
-
-[[lele.boundary]]
-name       = "syntax analysis is pure"
-why        = "src/common holds pure helpers over syn ASTs, paths and strings; filesystem and process I/O live in Project::discover/walk_entries/parse_source_files."
-folders    = ["src/common"]
-cannot_use = ["std::fs", "std::env", "std::process", "std::net", "std::time"]
-require    = "honest"
