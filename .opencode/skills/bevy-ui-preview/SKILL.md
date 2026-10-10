@@ -27,8 +27,8 @@ reads, and `png`/`mp4`/`scene` whether a preview exists. Every `-` is a gap.
 - spawns UI (`Node`, `Text`, `ImageNode`, `Sprite`, `Text2d`, `Mesh2d`,
   `MeshMaterial2d`) -> an ignored `*_ui_png_preview`
 - also reads a time/input driver (`Res<Time>`, `delta_secs`, `elapsed_secs`,
-  `Timer`, `Animatable`, `AnimationClip`, `AnimationPlayer`, `tween`,
-  `keyframe`, `Interaction`,
+  `delta`, `Timer`, `Animatable`, `AnimatableUi`, `AnimationClip`,
+  `AnimationPlayer`, `tween`, `keyframe`, `keyframes`, `Interaction`,
   `ButtonInput`, `MouseButton`, `KeyCode`) -> an ignored `*_ui_mp4_preview`
 - defines `impl Plugin` and its domain spawns UI -> an ignored
   `*_ui_scene_preview`

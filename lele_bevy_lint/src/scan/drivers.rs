@@ -1,26 +1,8 @@
 use derive_more::{Deref, DerefMut};
 use syn::visit::Visit;
 
+use crate::DRIVER_TOKENS;
 use crate::scan;
-
-const DRIVER_TOKENS: [&str; 16] = [
-    "delta_secs",
-    "elapsed_secs",
-    "delta",
-    "Timer",
-    "Time",
-    "Animatable",
-    "AnimatableUi",
-    "AnimationClip",
-    "AnimationPlayer",
-    "tween",
-    "keyframe",
-    "keyframes",
-    "Interaction",
-    "ButtonInput",
-    "MouseButton",
-    "KeyCode",
-];
 
 #[must_use]
 pub fn drivers(file: &syn::File) -> Vec<String> {

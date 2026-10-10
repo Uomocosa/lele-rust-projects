@@ -18,7 +18,7 @@ mod tests {
     use super::merge_lobby;
     use crate::discovery;
 
-    fn record(peer: &str, updated_at: u64) -> discovery::RoomRecord {
+    fn record(peer: &str, updated_at: u64) -> discovery::RoomEntry {
         let mut members = BTreeMap::new();
         members.insert(
             net_id::PeerId(peer.to_string()),
@@ -27,7 +27,7 @@ mod tests {
                 updated_at: discovery::EpochSecs(updated_at),
             },
         );
-        discovery::RoomRecord {
+        discovery::RoomEntry {
             capacity: 8,
             members,
         }

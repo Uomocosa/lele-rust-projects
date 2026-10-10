@@ -58,7 +58,7 @@ mod tests {
         ]);
         state.lobby.insert(
             room,
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 8,
                 members,
             },

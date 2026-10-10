@@ -13,7 +13,7 @@ pub fn check(
         let rel_path = source.relative_path;
         let file = source.file;
         for preview in scan::collect_previews(file) {
-            if preview.calls_run {
+            if preview.is_routed_through_harness {
                 continue;
             }
             diags.push(scan::diag(project, source.origin, rel_path,

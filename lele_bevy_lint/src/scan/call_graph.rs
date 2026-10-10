@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use derive_more::{Deref, DerefMut};
 use syn::visit::Visit;
 
 use lele_lint::Project;
@@ -140,33 +139,12 @@ impl<'ast> Visit<'ast> for CallCollector<'_> {
     }
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        if node.method == "add_systems" {
-            let mut args = node.args.iter();
-            args.next();
-            for arg in args {
-                let mut collected = Vec::new();
-                {
-                    let mut paths = SystemPaths(&mut collected);
-                    paths.visit_expr(arg);
-                }
-                self.calls.extend(collected.iter().cloned());
-                self.systems.extend(collected);
-            }
+        if let Some(idents) = scan::system_args(node) {
+            self.calls.extend(idents.iter().cloned());
+            self.systems.extend(idents);
         } else {
             syn::visit::visit_expr_method_call(self, node);
         }
-    }
-}
-
-#[derive(Deref, DerefMut)]
-struct SystemPaths<'a>(&'a mut Vec<String>);
-
-impl<'ast> Visit<'ast> for SystemPaths<'_> {
-    fn visit_path(&mut self, node: &'ast syn::Path) {
-        if let Some(last) = node.segments.last() {
-            self.push(last.ident.to_string());
-        }
-        syn::visit::visit_path(self, node);
     }
 }
 

@@ -10,7 +10,7 @@ pub struct Preview {
     pub name: String,
     pub kind: PreviewKind,
     pub line: usize,
-    pub ignored: bool,
-    pub calls_run: bool,
+    pub is_ignored: bool,
+    pub is_routed_through_harness: bool,
     pub idents: Vec<String>,
 }

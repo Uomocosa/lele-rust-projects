@@ -15,7 +15,7 @@ pub fn publish_presence(
 ) -> Result<(), discovery::Error> {
     let members = BTreeMap::from([(me.clone(), presence)]);
     let update =
-        discovery::Lobby::from([(room.clone(), discovery::RoomRecord { capacity, members })]);
+        discovery::Lobby::from([(room.clone(), discovery::RoomEntry { capacity, members })]);
     let request = ContractRequest::Update {
         key: lobby_client.key,
         data: UpdateData::Delta(StateDelta::from(bincode::serialize(&update)?)),

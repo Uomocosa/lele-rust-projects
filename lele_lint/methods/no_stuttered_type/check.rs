@@ -14,7 +14,7 @@ pub fn check(
     for source in project.content_sources() {
         let rel_path = source.relative_path;
         let file = source.file;
-        if is_exempt_path(rel_path) {
+        if common::is_exempt_source_path(rel_path, &project.dunder_paths) {
             continue;
         }
         let Some(dir) = parent_dir_name(rel_path) else {
@@ -40,17 +40,6 @@ pub fn check(
     }
 
     diags
-}
-
-// needed helper: path exemption logic (mirrors atomic_file scope)
-fn is_exempt_path(rel_path: &Path) -> bool {
-    let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-    if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
-        return true;
-    }
-    rel_path
-        .components()
-        .any(|c| c.as_os_str().to_str() == Some("tests"))
 }
 
 // needed helper: parent directory name; crate-root files have no parent module

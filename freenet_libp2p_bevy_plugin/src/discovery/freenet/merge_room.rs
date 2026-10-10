@@ -1,8 +1,8 @@
 use crate::discovery;
-use discovery::{Presence, RoomRecord};
+use discovery::{Presence, RoomEntry};
 
 #[must_use]
-pub fn merge_room(current: Option<RoomRecord>, incoming: RoomRecord) -> RoomRecord {
+pub fn merge_room(current: Option<RoomEntry>, incoming: RoomEntry) -> RoomEntry {
     match current {
         Some(mut existing) => {
             for (peer, presence) in incoming.members {
@@ -42,7 +42,7 @@ mod tests {
                 updated_at: discovery::EpochSecs(5),
             },
         );
-        let current = discovery::RoomRecord {
+        let current = discovery::RoomEntry {
             capacity: 8,
             members,
         };
@@ -54,7 +54,7 @@ mod tests {
                 updated_at: discovery::EpochSecs(9),
             },
         );
-        let incoming = discovery::RoomRecord {
+        let incoming = discovery::RoomEntry {
             capacity: 8,
             members: newer,
         };

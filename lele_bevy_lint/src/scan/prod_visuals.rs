@@ -1,17 +1,8 @@
 use derive_more::{Deref, DerefMut};
 use syn::visit::Visit;
 
+use crate::VISUAL_IDENTS;
 use crate::scan;
-
-const VISUAL_IDENTS: [&str; 7] = [
-    "Sprite",
-    "Text2d",
-    "Text",
-    "Mesh2d",
-    "MeshMaterial2d",
-    "Node",
-    "ImageNode",
-];
 
 #[must_use]
 pub fn prod_visuals(file: &syn::File) -> Vec<scan::FoundVisual> {

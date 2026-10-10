@@ -12,7 +12,7 @@ pub use basic::enums::LinkStatus;
 pub use basic::messages::{Command, Event};
 pub use basic::newtypes::{EpochSecs, GameName, GameToken};
 pub use basic::resources::{CommandSender, EventFeed, FreenetPort, Snapshot, SnapshotFeed};
-pub use basic::structs::{Channels, Member, Presence, Room, RoomRecord};
+pub use basic::structs::{Channels, Member, Presence, Room, RoomEntry};
 pub use basic::type_aliases::{Lobby, Members};
 
 mod config;

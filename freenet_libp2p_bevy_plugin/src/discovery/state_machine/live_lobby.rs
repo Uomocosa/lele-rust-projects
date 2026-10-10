@@ -37,7 +37,7 @@ mod tests {
         let mut lobby = discovery::Lobby::new();
         lobby.insert(
             net_id::RoomName::from("live"),
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 8,
                 members: BTreeMap::from([
                     (net_id::PeerId::from("fresh"), presence(90)),
@@ -47,7 +47,7 @@ mod tests {
         );
         lobby.insert(
             net_id::RoomName::from("dead"),
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 8,
                 members: BTreeMap::from([(net_id::PeerId::from("gone"), presence(1))]),
             },

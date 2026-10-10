@@ -14,7 +14,7 @@ pub struct Presence {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Reflect)]
-pub struct RoomRecord {
+pub struct RoomEntry {
     pub capacity: u16,
     pub members: BTreeMap<net_id::PeerId, Presence>,
 }

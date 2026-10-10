@@ -34,7 +34,7 @@ mod tests {
         for (name, capacity) in [("alpha", 8_u16), ("beta", 4_u16)] {
             snapshot.lobby.insert(
                 net_id::RoomName(name.to_string()),
-                discovery::RoomRecord {
+                discovery::RoomEntry {
                     capacity,
                     members: std::collections::BTreeMap::new(),
                 },

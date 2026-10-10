@@ -45,8 +45,8 @@ impl<'ast> Visit<'ast> for PreviewFinder<'_> {
                 name,
                 kind,
                 line: node.sig.fn_token.span().start().line,
-                ignored: has_ignored(&node.attrs),
-                calls_run: runs && self.uses_crate,
+                is_ignored: has_ignored(&node.attrs),
+                is_routed_through_harness: runs && self.uses_crate,
                 idents,
             });
         }
@@ -172,8 +172,8 @@ mod tests {
         .unwrap();
         let previews = collect_previews(&file);
         assert_eq!(previews.len(), 1);
-        assert!(previews[0].ignored);
-        assert!(previews[0].calls_run);
+        assert!(previews[0].is_ignored);
+        assert!(previews[0].is_routed_through_harness);
         assert!(previews[0].idents.iter().any(|ident| ident == "Root"));
     }
 
@@ -191,6 +191,6 @@ mod tests {
         .unwrap();
         let previews = collect_previews(&file);
         assert_eq!(previews.len(), 1);
-        assert!(!previews[0].calls_run);
+        assert!(!previews[0].is_routed_through_harness);
     }
 }

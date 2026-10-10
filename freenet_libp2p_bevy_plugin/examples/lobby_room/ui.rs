@@ -161,7 +161,7 @@ mod tests {
         let mut snapshot = discovery::Snapshot::default();
         snapshot.lobby.insert(
             net_id::RoomName::from("alpha"),
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 8,
                 members: std::collections::BTreeMap::new(),
             },
@@ -175,7 +175,7 @@ mod tests {
         let mut snapshot = world.resource_mut::<discovery::Snapshot>();
         snapshot.lobby.insert(
             net_id::RoomName::from("gamma"),
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 4,
                 members: std::collections::BTreeMap::new(),
             },

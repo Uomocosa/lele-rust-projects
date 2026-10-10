@@ -19,6 +19,18 @@ enum Role {
 }
 
 impl Role {
+    const ALL: [Role; 9] = [
+        Role::Resource,
+        Role::Component,
+        Role::Message,
+        Role::Event,
+        Role::Newtype,
+        Role::Struct,
+        Role::Enum,
+        Role::TypeAlias,
+        Role::Const,
+    ];
+
     // no test_usage necessary
     fn file(self) -> &'static str {
         match self {
@@ -59,20 +71,11 @@ pub fn check(
     diags
 }
 
-// needed helper: role named by a container file stem
+// needed helper: role named by a container file stem (reverse of `Role::file`)
 fn role_of_stem(stem: &str) -> Option<Role> {
-    match stem {
-        "resources" => Some(Role::Resource),
-        "components" => Some(Role::Component),
-        "messages" => Some(Role::Message),
-        "events" => Some(Role::Event),
-        "newtypes" => Some(Role::Newtype),
-        "structs" => Some(Role::Struct),
-        "enums" => Some(Role::Enum),
-        "type_aliases" => Some(Role::TypeAlias),
-        "constants" => Some(Role::Const),
-        _ => None,
-    }
+    Role::ALL
+        .into_iter()
+        .find(|role| role.file().strip_suffix(".rs") == Some(stem))
 }
 
 // needed helper: container file item-role validation

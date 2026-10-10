@@ -14,7 +14,7 @@ pub fn require_ignored(
     preview: &scan::Preview,
     code: &'static str,
 ) -> Option<Diagnostic> {
-    (!preview.ignored).then(|| {
+    (!preview.is_ignored).then(|| {
         scan::diag(
             project,
             origin,
@@ -43,8 +43,8 @@ mod tests {
             name: String::from("root_ui_png_preview"),
             kind: scan::PreviewKind::Png,
             line: 4,
-            ignored,
-            calls_run: true,
+            is_ignored: ignored,
+            is_routed_through_harness: true,
             idents: Vec::new(),
         }
     }

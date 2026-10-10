@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use derive_more::{Deref, DerefMut};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
@@ -91,18 +92,18 @@ fn last_path_ident(ty: &syn::Type) -> Option<String> {
 
 // needed helper: collects idents passed to `add_systems` after the schedule
 fn registered_systems(file: &syn::File) -> Vec<String> {
-    let mut collector = RegisteredSystems::default();
-    collector.visit_file(file);
-    collector.found
+    let mut found = Vec::new();
+    {
+        let mut collector = RegisteredCollector(&mut found);
+        collector.visit_file(file);
+    }
+    found
 }
 
-#[derive(Default)]
-struct RegisteredSystems {
-    armed: bool,
-    found: Vec<String>,
-}
+#[derive(Deref, DerefMut)]
+struct RegisteredCollector<'a>(&'a mut Vec<String>);
 
-impl<'ast> Visit<'ast> for RegisteredSystems {
+impl<'ast> Visit<'ast> for RegisteredCollector<'_> {
     fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
         if scan::is_test_attrs(&node.attrs) {
             return;
@@ -111,26 +112,11 @@ impl<'ast> Visit<'ast> for RegisteredSystems {
     }
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        if node.method == "add_systems" {
-            self.armed = true;
-            let mut args = node.args.iter();
-            args.next();
-            for arg in args {
-                self.visit_expr(arg);
-            }
-            self.armed = false;
+        if let Some(idents) = scan::system_args(node) {
+            self.extend(idents);
         } else {
             syn::visit::visit_expr_method_call(self, node);
         }
-    }
-
-    fn visit_path(&mut self, node: &'ast syn::Path) {
-        if self.armed
-            && let Some(last) = node.segments.last()
-        {
-            self.found.push(last.ident.to_string());
-        }
-        syn::visit::visit_path(self, node);
     }
 }
 

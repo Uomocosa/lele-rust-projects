@@ -64,7 +64,7 @@ mod tests {
         for name in ["alpha", "beta"] {
             snapshot.lobby.insert(
                 net_id::RoomName(name.to_string()),
-                discovery::RoomRecord {
+                discovery::RoomEntry {
                     capacity: 8,
                     members: std::collections::BTreeMap::new(),
                 },
@@ -94,7 +94,7 @@ mod tests {
         for (name, capacity) in [("alpha", 8_u16), ("beta", 4_u16)] {
             snapshot.lobby.insert(
                 net_id::RoomName(name.to_string()),
-                discovery::RoomRecord {
+                discovery::RoomEntry {
                     capacity,
                     members: std::collections::BTreeMap::new(),
                 },
@@ -113,7 +113,7 @@ mod tests {
         let mut snapshot = world.resource_mut::<discovery::Snapshot>();
         snapshot.lobby.insert(
             net_id::RoomName::from("gamma"),
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 4,
                 members: std::collections::BTreeMap::new(),
             },

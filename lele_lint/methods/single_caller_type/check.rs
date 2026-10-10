@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use derive_more::{Deref, DerefMut};
 use syn::visit::Visit;
@@ -24,7 +24,7 @@ pub fn check(
     ));
 
     for (name, rel_path) in &defined_types {
-        if is_exempt_path(rel_path, project) {
+        if common::is_exempt_source_path(rel_path, &project.dunder_paths) {
             continue;
         }
         if embedded.contains(name) {
@@ -79,18 +79,6 @@ fn collect_defined_types(parsed_files: &HashMap<PathBuf, syn::File>) -> Vec<(Str
         }
     }
     types
-}
-
-// needed helper: path exemption for mod.rs/lib.rs and dunder containers
-fn is_exempt_path(rel_path: &Path, project: &Project) -> bool {
-    let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-    file_name == "mod.rs"
-        || file_name == "lib.rs"
-        || file_name == "constants.rs"
-        || common::in_dunder_dir(rel_path, &project.dunder_paths)
-        || rel_path
-            .components()
-            .any(|c| c.as_os_str().to_str() == Some("tests"))
 }
 
 // needed helper: embedded type name collection from field types

@@ -51,7 +51,7 @@ mod tests {
         let mut lobby = discovery::Lobby::new();
         lobby.insert(
             net_id::RoomName::from("r"),
-            discovery::RoomRecord {
+            discovery::RoomEntry {
                 capacity: 8,
                 members,
             },

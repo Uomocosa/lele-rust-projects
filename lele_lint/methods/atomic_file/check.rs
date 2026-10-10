@@ -5,7 +5,6 @@ use std::path::Path;
 use crate::checkers;
 use crate::common;
 use crate::Diagnostic;
-use crate::DunderPath;
 use crate::Project;
 
 pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Vec<Diagnostic> {
@@ -14,9 +13,7 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
     let declared = common::collect_declared(project);
 
     for (rel_path, file) in &project.parsed_files {
-        let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-        if is_exempt_path(rel_path, file_name, &project.dunder_paths) {
+        if common::is_exempt_source_path(rel_path, &project.dunder_paths) {
             continue;
         }
 
@@ -57,8 +54,7 @@ pub fn check(_self: &checkers::atomic_file::AtomicFile, project: &Project) -> Ve
     }
 
     for (rel_path, file) in &project.parsed_files {
-        let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if is_exempt_path(rel_path, file_name, &project.dunder_paths) {
+        if common::is_exempt_source_path(rel_path, &project.dunder_paths) {
             continue;
         }
         check_delegate_shape(rel_path, file, project, &known_stems, &declared, &mut diags);
@@ -180,19 +176,6 @@ impl PubItemKind {
     }
 }
 
-// needed helper: path exemption logic
-fn is_exempt_path(rel_path: &Path, file_name: &str, dunder_paths: &[DunderPath]) -> bool {
-    if file_name == "mod.rs" || file_name == "lib.rs" || file_name == "constants.rs" {
-        return true;
-    }
-    if common::is_dunder_path(rel_path, dunder_paths) {
-        return true;
-    }
-    rel_path
-        .components()
-        .any(|c| c.as_os_str().to_str() == Some("tests"))
-}
-
 // needed helper: pub item collection
 fn collect_pub_items(file: &syn::File) -> Vec<PubItem> {
     let mut items = Vec::new();
@@ -271,9 +254,7 @@ fn known_type_stems(project: &Project) -> HashSet<String> {
 mod tests {
     use std::collections::HashSet;
 
-    use super::{
-        check, check_filename_match, check_fn_file_purity, collect_pub_items, is_exempt_path,
-    };
+    use super::{check, check_filename_match, check_fn_file_purity, collect_pub_items};
     use crate::checkers::atomic_file::AtomicFile;
     use crate::common;
     use crate::Project;
@@ -288,14 +269,12 @@ mod tests {
         assert_eq!(items[0].name, "AtomicFile");
         assert_eq!(items[1].name, "helper");
 
-        assert!(is_exempt_path(
+        assert!(common::is_exempt_source_path(
             Path::new("checkers/mod.rs"),
-            "mod.rs",
             &common::default_dunder_paths()
         ));
-        assert!(!is_exempt_path(
+        assert!(!common::is_exempt_source_path(
             Path::new("checkers/atomic_file.rs"),
-            "atomic_file.rs",
             &common::default_dunder_paths()
         ));
     }
