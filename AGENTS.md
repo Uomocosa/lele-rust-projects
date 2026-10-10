@@ -61,10 +61,10 @@ At the end of every non-trivial code change, run `cargo clippy --all-targets --a
 
 `bacon` / `bacon clippy` is an interactive TUI for the user. Agents MUST NOT invoke `bacon`, `bacon clippy`, or `bacon --headless` in any form (no `devenv tasks run lele:bacon-clippy`, no `bacon clippy -- -- -D warnings`). Use `cargo clippy -- -D warnings` via devenv tasks instead. The user runs `bacon` themselves when they want it.
 
-> **Note:** The `freenet_example` project depends on `freenet` → `tikv-jemalloc-sys`,
-> which fails when the source path contains spaces (the `configure` step rejects them).
-> If your path has spaces (e.g. `[AAI] Agentic AI`), prepend `CARGO_TARGET_DIR=/tmp/frt-build`
-> to all cargo commands above.
+> **Note:** Crates that depend on `freenet` (e.g. `freenet_libp2p_bevy_plugin`) pull in
+> `tikv-jemalloc-sys`, which fails when the source path contains spaces (the `configure` step
+> rejects them). If your path has spaces (e.g. `[AAI] Agentic AI`), prepend
+> `CARGO_TARGET_DIR=/tmp/frt-build` to all cargo commands above.
 
 ## Conventions
 

@@ -21,9 +21,6 @@
     "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
     "lele:lint" = { exec = "CARGO_TARGET_DIR=$HOME/.cache/cargo-target/lele_lint cargo run --manifest-path ../lele_lint/Cargo.toml"; showOutput = true; };
     "lele:taxonomy_check" = { exec = "bash -c 'grep -q require lele.toml 2>/dev/null || exit 0; d=$HOME/.cache/cargo-target/lele_taxonomy_tool; devenv --from path:../lele_function_taxonomy shell -- bash -c \"CARGO_TARGET_DIR=$d cargo build --quiet --manifest-path ../lele_function_taxonomy/Cargo.toml --bins\" && LELE_TAXONOMY_DRIVER=$d/debug/lele-taxonomy-driver $d/debug/lele-function-taxonomy --manifest-path ./Cargo.toml'"; showOutput = true; };
-    "lele:docs:check" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- check"; showOutput = true; };
-    "lele:docs:serve" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- serve"; showOutput = true; };
-    "lele:docs:export" = { exec = "cargo run --manifest-path ../lele_code_viewer/Cargo.toml -- export --out target/docs-site"; showOutput = true; };
   };
 
   git-hooks.hooks = {
@@ -52,13 +49,6 @@
       enable = true;
       name = "taxonomy_check (lele_lint)";
       entry = "bash -c 'cd lele_lint && devenv tasks run lele:taxonomy_check 2>&1'";
-      pass_filenames = false;
-      always_run = true;
-    };
-    lele-docs = {
-      enable = true;
-      name = "lele_code_viewer (lele_lint)";
-      entry = "bash -c 'cd lele_lint && devenv tasks run lele:docs:check 2>&1'";
       pass_filenames = false;
       always_run = true;
     };

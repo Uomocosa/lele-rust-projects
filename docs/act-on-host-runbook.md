@@ -78,7 +78,7 @@ remote GitHub-hosted runners are the actual ground truth — see section 6.
 This is the push-triggered matrix. To run the **Linux leg** locally:
 
 ```bash
-cd <repo on host>      # the dir containing start_container.sh, freenet_example/, etc.
+cd <repo on host>      # the dir containing start_container.sh, freenet_libp2p_bevy_plugin/, etc.
 act push -W .github/workflows/ci.yml --matrix os:ubuntu-latest
 ```
 

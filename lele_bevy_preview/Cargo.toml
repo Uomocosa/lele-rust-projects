@@ -13,7 +13,7 @@ bevy = { version = "=0.19.1", default-features = false, features = ["2d", "ui"] 
 blake3 = "1.8"
 derive_more = { version = "2.1", features = ["deref", "deref_mut"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = "=1.0.151"
 thiserror = "2"
 tracing = "0.1"
 telegram_bot = { path = "../telegram_bot" }
