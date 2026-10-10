@@ -47,10 +47,10 @@ pub fn check(
                 .iter()
                 .filter_map(|item| {
                     if let syn::ImplItem::Fn(method) = item {
-                        if method.block.stmts.len() > 3 {
-                            Some(&method.sig.ident)
-                        } else {
+                        if common::is_short_body(&method.block) {
                             None
+                        } else {
+                            Some(&method.sig.ident)
                         }
                     } else {
                         None

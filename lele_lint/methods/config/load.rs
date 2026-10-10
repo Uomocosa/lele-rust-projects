@@ -16,7 +16,10 @@ pub fn load(project_root: &Path) -> Result<Config, Error> {
     let config_path = project_root.join("lele.toml");
     let content = match std::fs::read_to_string(&config_path) {
         Ok(c) => c,
-        Err(_) => return Ok(Config::default()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(Config::default());
+        }
+        Err(error) => return Err(Error::Io(error)),
     };
     let parsed: LeleToml = toml::from_str(&content)?;
     Ok(Config(Some(parsed.lele)))
