@@ -18,7 +18,7 @@
     "lele:nextest" = { exec = "cargo nextest run --all-targets --all-features"; showOutput = true; };
     "lele:taxonomy" = { exec = "cargo run --bin lele-function-taxonomy -- --manifest-path ./Cargo.toml"; showOutput = true; };
     "lele:lint" = { exec = "cargo run --bin lele-function-taxonomy -- --manifest-path ./Cargo.toml"; showOutput = true; };
-    "lele:taxonomy_check" = { exec = "bash -c 'grep -q require lele.toml 2>/dev/null || exit 0; d=$HOME/.cache/cargo-target/lele_taxonomy_tool; devenv --from path:../lele_function_taxonomy shell -- bash -c \"CARGO_TARGET_DIR=$d cargo build --quiet --manifest-path ../lele_function_taxonomy/Cargo.toml --bins\" && LELE_TAXONOMY_DRIVER=$d/debug/lele-taxonomy-driver $d/debug/lele-function-taxonomy --manifest-path ./Cargo.toml'"; showOutput = true; };
+    "lele:taxonomy_check" = { exec = "bash -c 'grep -q require lele.toml 2>/dev/null || exit 0; d=$HOME/.cache/cargo-target/lele_taxonomy_tool; cfg=.pre-commit-config.yaml; hook=$(git rev-parse --git-path hooks/pre-commit); if [ -e $cfg ]; then cp -a $cfg $cfg.lelebak; fi; if [ -e $hook ]; then cp -a $hook $hook.lelebak; fi; devenv --from path:../lele_function_taxonomy shell -- bash -c \"CARGO_TARGET_DIR=$d cargo build --quiet --manifest-path ../lele_function_taxonomy/Cargo.toml --bins\"; rc=$?; if [ -e $cfg.lelebak ]; then mv -f $cfg.lelebak $cfg; fi; if [ -e $hook.lelebak ]; then mv -f $hook.lelebak $hook; fi; [ $rc -eq 0 ] || exit $rc; LELE_TAXONOMY_DRIVER=$d/debug/lele-taxonomy-driver $d/debug/lele-function-taxonomy --manifest-path ./Cargo.toml'"; showOutput = true; };
   };
 
   git-hooks.hooks = {
