@@ -1,10 +1,20 @@
 use crate::net_id;
+
 #[must_use]
 pub fn dialable(addrs: Vec<net_id::PeerAddr>) -> Vec<net_id::PeerAddr> {
     addrs
         .into_iter()
-        .filter(|addr| !addr.contains("0.0.0.0"))
+        .filter(|addr| !is_unspecified(addr))
         .collect()
+}
+
+// needed helper: a multiaddr offering 0.0.0.0 cannot be dialled
+fn is_unspecified(addr: &net_id::PeerAddr) -> bool {
+    addr.parse::<libp2p::Multiaddr>().is_ok_and(|multiaddr| {
+        multiaddr.iter().any(|protocol| {
+                matches!(protocol, libp2p::multiaddr::Protocol::Ip4(ip) if ip.is_unspecified())
+            })
+    })
 }
 
 #[cfg(test)]

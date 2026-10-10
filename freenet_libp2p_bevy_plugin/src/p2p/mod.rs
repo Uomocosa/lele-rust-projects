@@ -7,20 +7,14 @@ pub use message_codec::MessageCodec;
 pub mod behaviour;
 pub use behaviour::Behaviour;
 
-pub mod decode_chunk;
-pub use decode_chunk::decode_chunk;
-
-pub mod encode_chunk;
-pub use encode_chunk::encode_chunk;
-
-pub mod history_key;
-pub use history_key::history_key;
+pub mod record_key;
+pub use record_key::record_key;
 
 pub mod provider_key;
 pub use provider_key::provider_key;
 
-pub mod parse_history_key;
-pub use parse_history_key::parse_history_key;
+pub mod parse_record_key;
+pub use parse_record_key::parse_record_key;
 
 pub mod matches_transport;
 pub use matches_transport::matches_transport;
@@ -30,7 +24,9 @@ pub mod basic;
 
 pub use basic::constants::*;
 pub use basic::enums::{Command, Event, MdnsMode, NetCommand, NetEvent, TransportMode};
+pub use basic::newtypes::ChunkIndex;
 pub use basic::resources::{Bridge, NetBridge};
+pub use basic::structs::HistoryChunkId;
 
 pub mod mdns_behaviour;
 pub use mdns_behaviour::mdns_behaviour;

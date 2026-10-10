@@ -46,10 +46,10 @@ pub fn dispatch_net_command<T: p2p::Message>(
                 .get_providers(p2p::provider_key(&room));
             room_queries.insert(id, room);
         }
-        p2p::NetCommand::PutHistory { room, chunk, data } => {
-            let key = p2p::history_key(&room, chunk);
+        p2p::NetCommand::PutHistory { id, data } => {
+            let record_key = p2p::record_key(&id);
             let record = kad::Record {
-                key: key.clone(),
+                key: record_key.clone(),
                 value: data,
                 publisher: None,
                 expires: None,
@@ -58,11 +58,13 @@ pub fn dispatch_net_command<T: p2p::Message>(
                 .behaviour_mut()
                 .kademlia
                 .put_record(record, kad::Quorum::One);
-            let _ = swarm.behaviour_mut().kademlia.start_providing(key);
+            let _ = swarm.behaviour_mut().kademlia.start_providing(record_key);
         }
-        p2p::NetCommand::FetchHistory { room, chunk } => {
-            let key = p2p::history_key(&room, chunk);
-            swarm.behaviour_mut().kademlia.get_record(key);
+        p2p::NetCommand::FetchHistory { id } => {
+            swarm
+                .behaviour_mut()
+                .kademlia
+                .get_record(p2p::record_key(&id));
         }
         p2p::NetCommand::FetchRoster { room } => {
             let _ = swarm

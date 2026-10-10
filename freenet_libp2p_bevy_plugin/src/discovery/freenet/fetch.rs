@@ -17,7 +17,7 @@ pub async fn fetch(
     loop {
         match client.recv_response().await? {
             HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-                return Ok(bincode::deserialize(state.as_ref()).unwrap_or_default());
+                return Ok(bincode::deserialize(state.as_ref())?);
             }
             HostResponse::ContractResponse(ContractResponse::NotFound { .. }) => {
                 return Err(discovery::Error::ContractNotFound);

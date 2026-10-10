@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::common;
 use crate::Entry;
 use crate::ModDecl;
@@ -7,7 +5,7 @@ use crate::ModuleInfo;
 use crate::ModuleInfoMap;
 use crate::Reexport;
 
-pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {
+pub fn build(entries: &[Entry]) -> ModuleInfoMap {
     let mut map = ModuleInfoMap::new();
 
     for entry in entries {
@@ -134,7 +132,7 @@ mod tests {
             absolute_path: abs,
             kind: EntryKind::File,
         }];
-        let map = build(dir.path(), &entries);
+        let map = build(&entries);
         let info = map.get(&rel).unwrap();
         assert_eq!(info.declarations.len(), 1);
         assert_eq!(info.declarations[0].name, "foo");

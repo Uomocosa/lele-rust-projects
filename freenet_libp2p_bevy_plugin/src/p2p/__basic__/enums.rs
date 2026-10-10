@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::net_id;
+use crate::p2p;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportMode {
@@ -33,8 +34,7 @@ pub enum NetEvent {
         peers: Vec<net_id::PeerId>,
     },
     HistoryChunk {
-        room: net_id::RoomName,
-        chunk: u64,
+        id: p2p::HistoryChunkId,
         data: Vec<u8>,
     },
     Gossip {
@@ -65,13 +65,11 @@ pub enum NetCommand {
         room: net_id::RoomName,
     },
     PutHistory {
-        room: net_id::RoomName,
-        chunk: u64,
+        id: p2p::HistoryChunkId,
         data: Vec<u8>,
     },
     FetchHistory {
-        room: net_id::RoomName,
-        chunk: u64,
+        id: p2p::HistoryChunkId,
     },
     FetchRoster {
         room: net_id::RoomName,

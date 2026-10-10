@@ -1,5 +1,5 @@
 // needed helper: syn parsing utilities for mod.rs declarations
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use atomic_delegate_macros::atomic_delegates;
 
@@ -17,78 +17,40 @@ pub struct ModuleInfo {
 
 #[atomic_delegates]
 impl ModuleInfo {
-    pub fn build(_src_dir: &Path, entries: &[Entry]) -> ModuleInfoMap {}
+    pub fn build(entries: &[Entry]) -> ModuleInfoMap {}
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ModDecl;
-    use crate::Reexport;
+    use std::path::PathBuf;
+
+    use crate::Entry;
+    use crate::EntryKind;
+    use crate::ModuleInfo;
 
     #[test]
     fn test_usage() {
-        let file = syn::parse_str::<syn::File>(
+        let dir = tempfile::tempdir().unwrap();
+        let rel = PathBuf::from("player/mod.rs");
+        let abs = dir.path().join("mod.rs");
+        std::fs::write(
+            &abs,
             "mod player;\nmod player_new;\npub mod bevy_systems;\npub use player::Player;\n",
         )
         .unwrap();
-
-        let mut decls = Vec::new();
-        let mut reexports = Vec::new();
-
-        for item in file.items {
-            match item {
-                syn::Item::Mod(m) => {
-                    decls.push(ModDecl {
-                        name: m.ident.to_string(),
-                        is_public: matches!(m.vis, syn::Visibility::Public(_)),
-                        cfg: None,
-                    });
-                }
-                syn::Item::Use(u) => {
-                    if matches!(u.vis, syn::Visibility::Public(_)) {
-                        for tree_node in walk_tree(&u.tree) {
-                            reexports.push(tree_node);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        assert_eq!(decls.len(), 3);
-        assert_eq!(decls[0].name, "player");
-        assert!(!decls[0].is_public);
-        assert_eq!(decls[1].name, "player_new");
-        assert!(!decls[1].is_public);
-        assert_eq!(decls[2].name, "bevy_systems");
-        assert!(decls[2].is_public);
-
-        assert_eq!(reexports.len(), 1);
-        assert_eq!(reexports[0].segments, vec!["player", "Player"]);
-    }
-
-    fn walk_tree(tree: &syn::UseTree) -> Vec<Reexport> {
-        match tree {
-            syn::UseTree::Path(p) => {
-                let mut results = walk_tree(&p.tree);
-                for r in &mut results {
-                    r.segments.insert(0, p.ident.to_string());
-                }
-                results
-            }
-            syn::UseTree::Name(n) => vec![Reexport {
-                segments: vec![n.ident.to_string()],
-                is_glob: false,
-            }],
-            syn::UseTree::Glob(_) => vec![Reexport {
-                segments: Vec::new(),
-                is_glob: true,
-            }],
-            syn::UseTree::Rename(r) => vec![Reexport {
-                segments: vec![r.ident.to_string()],
-                is_glob: false,
-            }],
-            syn::UseTree::Group(_) => Vec::new(),
-        }
+        let entries = vec![Entry {
+            relative_path: rel.clone(),
+            absolute_path: abs,
+            kind: EntryKind::File,
+        }];
+        let map = ModuleInfo::build(&entries);
+        let info = map.get(&rel).unwrap();
+        assert_eq!(info.declarations.len(), 3);
+        assert_eq!(info.declarations[0].name, "player");
+        assert!(!info.declarations[0].is_public);
+        assert_eq!(info.declarations[2].name, "bevy_systems");
+        assert!(info.declarations[2].is_public);
+        assert_eq!(info.reexports.len(), 1);
+        assert_eq!(info.reexports[0].segments, vec!["player", "Player"]);
     }
 }

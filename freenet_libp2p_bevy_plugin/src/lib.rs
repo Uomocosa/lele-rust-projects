@@ -1,4 +1,3 @@
-pub mod cli;
 #[cfg(feature = "room_lobby")]
 pub mod discovery;
 

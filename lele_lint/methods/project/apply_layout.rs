@@ -19,8 +19,7 @@ pub fn apply_layout(project: &mut Project, config: &Config) -> Result<(), Error>
     }
 
     let entries = walk_entries::walk_entries(&methods_dir, &methods_dir)?;
-    let (parsed_files, parse_failures) =
-        parse_source_files::parse_source_files(&methods_dir, &entries);
+    let (parsed_files, parse_failures) = parse_source_files::parse_source_files(&entries);
     project.methods_dir = Some(methods_dir);
     project.methods_entries = entries;
     project.methods_parsed_files = parsed_files;

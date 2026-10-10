@@ -1,6 +1,5 @@
 use libp2p::kad;
 
-use crate::net_id;
 use crate::p2p;
 
 pub fn handle_found_record<T: p2p::Message>(
@@ -8,14 +7,12 @@ pub fn handle_found_record<T: p2p::Message>(
     peer_record: kad::PeerRecord,
 ) {
     let record = peer_record.record;
-    let key = String::from_utf8_lossy(record.key.as_ref());
-    let Some((room, chunk)) = p2p::parse_history_key(&key) else {
+    let Some(id) = p2p::parse_record_key(&record.key) else {
         return;
     };
     event_tx
         .send(p2p::Event::Net(p2p::NetEvent::HistoryChunk {
-            room: net_id::RoomName(room),
-            chunk,
+            id,
             data: record.value,
         }))
         .ok();
@@ -44,15 +41,18 @@ mod tests {
     #[test]
     fn test_usage() {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<p2p::Event<u32>>();
-        handle_found_record(
-            &tx,
-            peer_record(p2p::history_key(&net_id::RoomName::from("room-a"), 5)),
-        );
-        let Ok(p2p::Event::Net(p2p::NetEvent::HistoryChunk { room, chunk, data })) = rx.try_recv()
-        else {
+        let chunk_id = p2p::HistoryChunkId {
+            room: net_id::RoomName::from("room-a"),
+            chunk: p2p::ChunkIndex(5),
+        };
+        handle_found_record(&tx, peer_record(p2p::record_key(&chunk_id)));
+        let Ok(p2p::Event::Net(p2p::NetEvent::HistoryChunk { id, data })) = rx.try_recv() else {
             panic!("expected a history chunk");
         };
-        assert_eq!((room.as_str(), chunk, data), ("room-a", 5, vec![1, 2, 3]));
+        assert_eq!(
+            (id.room.as_str(), *id.chunk, data),
+            ("room-a", 5, vec![1, 2, 3])
+        );
     }
 
     #[test]

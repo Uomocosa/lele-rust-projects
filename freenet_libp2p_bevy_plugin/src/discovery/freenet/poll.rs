@@ -18,9 +18,11 @@ pub async fn poll(
         match result? {
             HostResponse::ContractResponse(ContractResponse::UpdateNotification {
                 update, ..
-            }) => absorb_update(lobby_client, update),
+            }) => {
+                absorb_update(lobby_client, update)?;
+            }
             HostResponse::ContractResponse(ContractResponse::GetResponse { state, .. }) => {
-                absorb_bytes(lobby_client, state.as_ref());
+                absorb_bytes(lobby_client, state.as_ref())?;
             }
             _ => {}
         }
@@ -29,7 +31,10 @@ pub async fn poll(
 }
 
 // needed helper: merges one notification into the cached lobby
-fn absorb_update(lobby_client: &mut discovery::freenet::LobbyClient, update: UpdateData<'static>) {
+fn absorb_update(
+    lobby_client: &mut discovery::freenet::LobbyClient,
+    update: UpdateData<'static>,
+) -> Result<(), discovery::Error> {
     let bytes = match update {
         UpdateData::State(state) | UpdateData::StateAndDelta { state, .. } => {
             Some(state.as_ref().to_vec())
@@ -38,14 +43,19 @@ fn absorb_update(lobby_client: &mut discovery::freenet::LobbyClient, update: Upd
         _ => None,
     };
     if let Some(bytes) = bytes {
-        absorb_bytes(lobby_client, &bytes);
+        absorb_bytes(lobby_client, &bytes)?;
     }
+    Ok(())
 }
 
 // needed helper: merges raw lobby bytes into the cached lobby
-fn absorb_bytes(lobby_client: &mut discovery::freenet::LobbyClient, bytes: &[u8]) {
-    let incoming: discovery::Lobby = bincode::deserialize(bytes).unwrap_or_default();
+fn absorb_bytes(
+    lobby_client: &mut discovery::freenet::LobbyClient,
+    bytes: &[u8],
+) -> Result<(), discovery::Error> {
+    let incoming: discovery::Lobby = bincode::deserialize(bytes)?;
     discovery::freenet::cache_lobby(lobby_client, incoming);
+    Ok(())
 }
 
 #[cfg(test)]

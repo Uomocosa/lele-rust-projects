@@ -1,12 +1,11 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::Entry;
 use crate::EntryKind;
 use crate::ParseFailure;
 
 pub(crate) fn parse_source_files(
-    _src_dir: &Path,
     entries: &[Entry],
 ) -> (HashMap<PathBuf, syn::File>, Vec<ParseFailure>) {
     let mut map = HashMap::new();
@@ -56,7 +55,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("a.rs"), "pub fn f() {}\n").unwrap();
         let entries = vec![file_entry(dir.path(), "a.rs")];
-        let (parsed, failures) = parse_source_files(dir.path(), &entries);
+        let (parsed, failures) = parse_source_files(&entries);
         assert_eq!(parsed.len(), 1);
         assert!(failures.is_empty());
     }
@@ -70,7 +69,7 @@ mod tests {
             file_entry(dir.path(), "a.rs"),
             file_entry(dir.path(), "b.rs"),
         ];
-        let (parsed, failures) = parse_source_files(dir.path(), &entries);
+        let (parsed, failures) = parse_source_files(&entries);
         assert_eq!(parsed.len(), 1);
         assert_eq!(failures.len(), 1);
         assert!(failures[0].path.ends_with("b.rs"));
